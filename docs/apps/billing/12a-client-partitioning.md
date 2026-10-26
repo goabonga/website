@@ -114,6 +114,10 @@ created, bound and filled through the API or the command line.
 Operators who administer every application use a client holding
 `billing:admin`; applications never do.
 
+On a host deployed with Ansible, steps 2 and 3 can be declared in the inventory
+(`website_billing_saas_apps` and `website_billing_client_bindings`): see
+[Onboarding a SaaS application](../../ansible/07-saas-onboarding.md).
+
 ## Moving an existing deployment
 
 Before this feature every client could act on every application. After

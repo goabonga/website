@@ -22,6 +22,7 @@ from team.database import get_db
 from team.main import app
 from team.models import Base
 from team.services import ToolService
+from team.tasks.agent_runner import run_agent_task
 
 
 class SqliteUUID(TypeDecorator):
@@ -80,10 +81,18 @@ def before_scenario(context, scenario) -> None:
 
     app.dependency_overrides[get_db] = override_get_db
     _patch_authentication(context)
+    _patch_dispatch(context)
     context.get_client = lambda: get_client(context)
     context.run = lambda func, *args: get_client(context).portal.call(func, *args)
     context.tool_service = None
     context.run_tool = lambda name, params, **extra: run_tool(context, name, params, **extra)
+
+
+def _patch_dispatch(context) -> None:
+    """Creating a task for an agent sends it to the Celery worker: record it, do not queue it."""
+    patcher = patch.object(run_agent_task, "delay")
+    context.dispatch = patcher.start()
+    context.add_cleanup(patcher.stop)
 
 
 def _patch_authentication(context) -> None:

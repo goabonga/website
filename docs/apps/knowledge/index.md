@@ -48,6 +48,8 @@ how it is tested with pytest and behave.
 18. [Search page](17-web-search.md): searching the workspace from the browser.
 19. [Workspace settings and plans](18-workspace-settings.md): switching,
     upgrading and renaming workspaces.
+20. [Workspace members](19-workspace-members.md): invitations, roles and
+    removals.
 
 ## Running the tests
 

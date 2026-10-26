@@ -28,3 +28,5 @@ one feature as it exists in the code.
    discovery, keys and recorded requests.
 8. [Authorization endpoint](08-oidc-authorization.md) - authorization code
    flow, PKCE, login and consent pages.
+9. [Token endpoint](09-oidc-token.md) - authorization code, refresh token,
+   client credentials and token exchange.

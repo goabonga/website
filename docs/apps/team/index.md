@@ -14,6 +14,7 @@ is tested with pytest and behave.
 | [OAuth2 authentication](02-authentication.md) | bearer token validation, scopes and token exchange |
 | [Teams](03-teams.md) | teams CRUD and the first database migration |
 | [Agents](04-agents.md) | agents of a team |
+| [Conversations](05-conversations.md) | conversations, participants and messages |
 
 ## Running the tests
 

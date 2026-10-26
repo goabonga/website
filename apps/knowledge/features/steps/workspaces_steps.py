@@ -84,7 +84,12 @@ def _join(context, name, plan, role):
         id=uuid4(), name=name, slug=name.lower(), plan=PlanType(plan), is_active=True
     )
     member = OrganizationMember(
-        id=uuid4(), organization_id=organization.id, user_id=USER_ID, role=role
+        id=uuid4(),
+        organization_id=organization.id,
+        user_id=USER_ID,
+        role=role,
+        email="alice@example.test",
+        created_at=datetime.now(UTC),
     )
     context.store.organizations[organization.id] = organization
     context.store.members[member.id] = member
@@ -103,6 +108,11 @@ def _sign_in(context, organization, member):
 @given('I am the owner of the workspace "{name}" on the "{plan}" plan')
 def step_owner(context, name, plan):
     _sign_in(context, *_join(context, name, plan, OrganizationMemberRole.OWNER))
+
+
+@given('I am an administrator of the workspace "{name}" on the "{plan}" plan')
+def step_administrator(context, name, plan):
+    _sign_in(context, *_join(context, name, plan, OrganizationMemberRole.ADMIN))
 
 
 @given('I am a regular member of the workspace "{name}" on the "{plan}" plan')

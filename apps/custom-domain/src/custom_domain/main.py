@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from custom_domain import __version__
+from custom_domain.auth import introspection_client, jwks_manager, token_exchange_client
 from custom_domain.config import settings
 from custom_domain.database import engine
 from custom_domain.logging import get_logger
@@ -27,17 +28,53 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Shutting down Custom Domain Service")
+    await jwks_manager.close()
+    await token_exchange_client.close()
+    await introspection_client.close()
     await engine.dispose()
 
 
+def get_swagger_ui_oauth2_config() -> dict:
+    """Get Swagger UI OAuth2 configuration."""
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
+swagger_config = get_swagger_ui_oauth2_config()
+
 app = FastAPI(
     title="Custom Domain Service",
-    description="Centralized service for managing custom domains with SSL provisioning.",
+    description="""
+Centralized service for managing custom domains with SSL provisioning.
+
+## Authentication
+
+This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
+only `openid`, `profile`, and `email` scopes. The server validates that
+the user has the required `custom-domain:*` scopes via token exchange.
+
+## Required Scopes
+
+- `custom-domain:read` - Read domain configurations and events
+- `custom-domain:write` - Create, update, and delete domains
+- `custom-domain:lookup` - Internal DNS lookup
+- `custom-domain:admin` - Administrative access
+    """,
     version=__version__,
     lifespan=lifespan,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
+    **swagger_config,
 )
 
 # CORS middleware

@@ -177,3 +177,19 @@ bump_files = [
 ]
 changelog = "apps/analytics/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.mailler]
+tag_format = "mailler-v{version}"
+paths = [
+    "apps/mailler/src/**",
+    "apps/mailler/features/**",
+    "apps/mailler/tests/**",
+    "apps/mailler/alembic/**",
+    "apps/mailler/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/mailler/pyproject.toml", key = "project.version" },
+    { file = "apps/mailler/src/mailler/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/mailler/CHANGELOG.md"
+post_bump = ["uv lock"]

@@ -9,6 +9,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Signing keys: Encrypted RSA signing keys and the public JWKS endpoint.
 - Multi-tenancy and OIDC discovery: Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
 - Outbound webhooks and Celery: Signed webhook deliveries to tenant endpoints through a Celery worker.
+- Registration and email verification: User accounts, password hashing, email delivery and verification.
 
 ## Routes and scopes
 
@@ -24,7 +25,20 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/.well-known/openid-configuration` | public | Return the OpenID Connect Discovery metadata document |
 | GET | `/.well-known/jwks.json` | public | Return the authorization server's public JSON Web Key Set |
 
-Static files are served publicly under `/static` (favicon and Swagger UI assets).
+### Account pages and API
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/register` | public | Render the self-registration HTML form |
+| POST | `/auth/register` | public | Process the self-registration form and create a new user account |
+| POST | `/auth/register/api` | public | Register a new user account via the JSON API |
+| GET | `/auth/verify-email` | public | Render the email verification code entry page |
+| POST | `/auth/verify-email` | public | Submit the email verification code via the HTML form |
+| POST | `/auth/verify-email/api` | public | Verify an email address using a one-time code (JSON API) |
+| POST | `/auth/resend-verification` | public | Re-send the email verification code via the HTML form |
+| POST | `/auth/resend-verification/api` | public | Re-send the email verification code (JSON API) |
+
+Static files are served publicly under `/static` (favicon and Swagger UI assets) and `/uploads` (uploaded files).
 
 ### Scopes and roles
 

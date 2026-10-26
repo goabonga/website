@@ -18,6 +18,7 @@ The application is documented feature by feature, in the order in which each fea
 3. [Signing keys](03-signing-keys.md): Encrypted RSA signing keys and the public JWKS endpoint.
 4. [Multi-tenancy and OIDC discovery](04-tenancy.md): Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
 5. [Outbound webhooks and Celery](05-webhooks.md): Signed webhook deliveries to tenant endpoints through a Celery worker.
+6. [Registration and email verification](06-registration.md): User accounts, password hashing, email delivery and verification.
 
 ## Testing
 

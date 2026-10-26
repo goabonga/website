@@ -62,3 +62,8 @@ def step_json_field_false(context, field):
 @then('the JSON field "{field}" is null')
 def step_json_field_null(context, field):
     assert context.response.json()[field] is None
+
+
+@then('the response does not contain "{text}"')
+def step_response_lacks(context, text):
+    assert text not in context.response.text, context.response.text

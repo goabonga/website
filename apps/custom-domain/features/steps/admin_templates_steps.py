@@ -90,3 +90,18 @@ def step_queued(context, name):
 @then("nothing was queued for provisioning")
 def step_nothing_queued(context):
     context.provisioning.delay.assert_not_called()
+
+
+@given('a template "{slug}" is owned by "{client_id}"')
+def step_owned_template_exists(context, slug, client_id):
+    with context.db.session() as session:
+        template = NginxTemplate(
+            slug=slug,
+            name=slug.title(),
+            client_id=client_id,
+            http_template="server { server_name {{ domain }}; }",
+            https_template="server { listen 443 ssl; server_name {{ domain }}; }",
+        )
+        session.add(template)
+        session.commit()
+        context.ids[("template", slug)] = template.id

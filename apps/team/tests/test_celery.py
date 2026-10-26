@@ -37,3 +37,13 @@ class TestCeleryAppConfig:
         from team.celery import celery_app
 
         assert "dispatch-tasks-every-5-minutes" in celery_app.conf.beat_schedule
+
+    def test_beat_schedule_has_cleanup_logs(self):
+        from team.celery import celery_app
+
+        assert "cleanup-old-logs-daily" in celery_app.conf.beat_schedule
+
+    def test_beat_schedule_has_summarize_memory(self):
+        from team.celery import celery_app
+
+        assert "summarize-memory-hourly" in celery_app.conf.beat_schedule

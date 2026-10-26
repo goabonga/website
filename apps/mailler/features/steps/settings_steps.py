@@ -18,6 +18,11 @@ def step_setting_string(context, name, value):
     set_setting(context, name, value)
 
 
+@given('the setting "{name}" is empty')
+def step_setting_empty(context, name):
+    set_setting(context, name, "")
+
+
 @given('the setting "{name}" is {value:d}')
 def step_setting_int(context, name, value):
     set_setting(context, name, value)

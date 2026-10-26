@@ -468,6 +468,11 @@
                     </a>
                 </li>
                 {% if user and user.has_scope('vpn:admin') %}
+                <li>
+                    <a href="/vpn/sessions" class="{% if active_section == 'vpn' %}active{% endif %}">
+                        <span class="nav-icon">&#128274;</span>VPN
+                    </a>
+                </li>
                 {% endif %}
                 {% if user and user.has_scope('billing:read') %}
                 {% endif %}

@@ -36,6 +36,14 @@
     label: "{{ python_app__c.id }}"
   when: python_app__sha | length > 0
 
+- name: Register the data of {{ python_app__app }}
+  ansible.builtin.include_tasks: "onboarding_{{ python_app__app }}.yml"
+  vars:
+    python_app__c: "{{ python_app__p }}"
+  when:
+    - python_app__app in ['custom_domain']
+    - python_app__sha | length > 0
+
 - name: Configure the log rotation of {{ python_app__app }}
   ansible.builtin.template:
     src: logrotate.j2

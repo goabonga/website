@@ -1,0 +1,87 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Data of custom_domain that lives in its database: the default nginx
+# template and the authorized clients (the SaaS applications allowed to
+# register customer domains). Both steps are idempotent: an existing template
+# or client is left untouched.
+
+- name: Check the authorized clients of {{ python_app__app }}
+  ansible.builtin.assert:
+    that:
+      - item.client_id is defined and item.client_id | string | length > 0
+      - item.name is defined and item.name | string | length > 0
+      - item.webhook_url is not defined or item.webhook_secret | default('') | string | length >= 32
+    fail_msg: >-
+      Each entry of website_custom_domain_clients needs client_id and name, and a webhook_secret of at
+      least 32 characters when it has a webhook_url (entry: {{ item.client_id | default('?') }}).
+    quiet: true
+  loop: "{{ website_custom_domain_clients }}"
+  loop_control:
+    label: "{{ item.client_id | default('?') }}"
+  no_log: "{{ item.webhook_secret is defined }}"
+
+- name: Seed the default nginx template of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      exec "$VENV/bin/custom-domain" seed
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  register: python_app__seed
+  changed_when: "'Created default nginx template' in python_app__seed.stdout"
+  when: not ansible_check_mode
+
+- name: Register the authorized clients of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      cli="$VENV/bin/custom-domain"
+      if "$cli" list-clients | grep -qF "  $CLIENT_ID ("; then
+        echo "exists"
+        exit 0
+      fi
+      args=(--client-id "$CLIENT_ID" --name "$CLIENT_NAME")
+      [ -z "$DESCRIPTION" ] || args+=(--description "$DESCRIPTION")
+      [ -z "$UPSTREAM" ] || args+=(--upstream "$UPSTREAM")
+      [ -z "$CNAME" ] || args+=(--cname "$CNAME")
+      [ -z "$MAX_DOMAINS" ] || args+=(--max-domains "$MAX_DOMAINS")
+      [ -z "$WEBHOOK_URL" ] || args+=(--webhook-url "$WEBHOOK_URL")
+      "$cli" create-client "${args[@]}"
+      echo "created"
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    CLIENT_ID: "{{ item.client_id }}"
+    CLIENT_NAME: "{{ item.name }}"
+    DESCRIPTION: "{{ item.description | default('') }}"
+    UPSTREAM: "{{ item.upstream | default('') }}"
+    CNAME: "{{ item.cname | default('') }}"
+    MAX_DOMAINS: "{{ item.max_domains | default('') }}"
+    WEBHOOK_URL: "{{ item.webhook_url | default('') }}"
+    CUSTOM_DOMAIN_WEBHOOK_SECRET: "{{ item.webhook_secret | default('') }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ website_custom_domain_clients }}"
+  loop_control:
+    label: "{{ item.client_id }}"
+  register: python_app__clients
+  changed_when: (python_app__clients.stdout | default('') | trim).endswith('created')
+  no_log: "{{ item.webhook_secret is defined }}"
+  when: not ansible_check_mode

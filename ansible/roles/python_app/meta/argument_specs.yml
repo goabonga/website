@@ -618,3 +618,13 @@ argument_specs:
         - Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email when
           empty. One of the two is required by the worker.
         default: ''
+      website_custom_domain_clients:
+        type: list
+        description:
+        - 'Applications allowed to register customer domains, created in the database after the
+          migrations when missing and never modified afterwards. Each entry has client_id and name
+          (required), and optionally description, upstream (socket path or host:port), cname,
+          max_domains, webhook_url and webhook_secret (at least 32 characters, required with
+          webhook_url).'
+        default: []
+        elements: dict

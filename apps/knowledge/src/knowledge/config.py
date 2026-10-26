@@ -102,6 +102,7 @@ class Settings(BaseSettings):
     billing_cache_ttl: int = 300  # seconds the plans are cached
     billing_webhook_secret: str = ""  # signs the billing webhooks: required to accept them
     billing_event_ttl: int = 604800  # seconds a processed billing event id is remembered
+    billing_failure_backoff: int = 30  # seconds the fail-safe limits apply after a billing failure
     # Where Stripe sends the customer back after a checkout: both must be covered by the
     # checkout URL allow-list of the SaaS application in billing
     billing_checkout_success_url: str = ""

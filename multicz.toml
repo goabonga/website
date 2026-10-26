@@ -225,3 +225,18 @@ bump_files = [
 ]
 changelog = "apps/custom-domain/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.vpn-portal]
+tag_format = "vpn-portal-v{version}"
+paths = [
+    "apps/vpn-portal/src/**",
+    "apps/vpn-portal/features/**",
+    "apps/vpn-portal/tests/**",
+    "apps/vpn-portal/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/vpn-portal/pyproject.toml", key = "project.version" },
+    { file = "apps/vpn-portal/src/vpn_portal/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/vpn-portal/CHANGELOG.md"
+post_bump = ["uv lock"]

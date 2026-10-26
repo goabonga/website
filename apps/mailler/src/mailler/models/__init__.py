@@ -5,10 +5,13 @@
 
 from mailler.models.base import Base
 from mailler.models.email import Email, EmailStatus, ProviderStats
+from mailler.models.template import EmailTemplate, TemplateStatus
 
 __all__ = [
     "Base",
     "Email",
     "EmailStatus",
+    "EmailTemplate",
     "ProviderStats",
+    "TemplateStatus",
 ]

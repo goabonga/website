@@ -18,6 +18,7 @@ from mailler.routes import (
     schedule,
     send,
     stats,
+    templates,
 )
 
 # Setup logging before anything else
@@ -120,3 +121,4 @@ app.include_router(schedule.router, prefix="/api/v1")
 app.include_router(emails.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")
+app.include_router(templates.router, prefix="/api/v1")

@@ -15,6 +15,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/emails/{email_id}` | scope `mailler:read` | Get email details by ID |
 | GET | `/api/v1/stats` | scope `mailler:stats` | Get the email sending statistics of the calling client (real-time from emails table) |
 | GET | `/api/v1/providers` | scope `mailler:read` | List available (configured) email providers |
+| GET | `/api/v1/templates` | scope `mailler:read` | List the email templates of the calling client with pagination |
+| POST | `/api/v1/templates` | scope `mailler:write` | Create a new email template |
+| GET | `/api/v1/templates/{template_id}` | scope `mailler:read` | Get email template by ID |
+| GET | `/api/v1/templates/by-slug/{slug}` | scope `mailler:read` | Get an email template of the calling client by slug |
+| PUT | `/api/v1/templates/{template_id}` | scope `mailler:write` | Update an email template |
+| DELETE | `/api/v1/templates/{template_id}` | scope `mailler:write` | Delete an email template |
+| POST | `/api/v1/templates/compile` | scope `mailler:read` | Compile MJML to HTML without saving |
+| POST | `/api/v1/templates/{template_id}/render` | scope `mailler:read` | Render a template with provided variables |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -25,5 +33,6 @@ Emails, templates, contacts, groups and campaigns belong to the client of the ac
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `mailler:send` - checked by 2 routes
-- `mailler:read` - checked by 3 routes
+- `mailler:read` - checked by 8 routes
 - `mailler:stats` - checked by 1 route
+- `mailler:write` - checked by 3 routes

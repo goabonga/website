@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     redis_url: str = ""  # Uses prompt_cache_redis_url if empty
     redis_key_prefix: str = "fastapi"
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+
     # Rate limiting
     rate_limit_redis_url: str = "redis://localhost:6379/1"
     rate_limit_anon: int = 10  # requests per window for anonymous users
@@ -67,6 +71,8 @@ class Settings(BaseSettings):
     # Session configuration
     session_redis_url: str = "redis://localhost:6379/2"
     session_redis_ttl: int = 3600  # 1 hour TTL for session data
+    conversation_cache_ttl: int = 1800  # 30 minutes TTL for conversation cache
+    conversation_sync_interval: int = 30  # sync dirty conversations every N seconds
 
     # Session creation rate limiting (anti-abuse)
     session_create_limit: int = 3  # max new sessions per IP per window

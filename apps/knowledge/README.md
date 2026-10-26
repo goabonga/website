@@ -33,6 +33,7 @@ applications. It is a member of the `website` uv workspace.
   for Enterprise organizations.
 - Server-rendered signin, signup and account pages backed by the platform
   authentication service.
+- Landing page, pricing, legal pages, dashboard and MCP download page.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -72,6 +73,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/account/security/regenerate-codes` | session | Regenerate backup codes |
 | GET | `/auth/account/password` | public | Redirect to security page (password is now part of security) |
 | POST | `/auth/account/password` | session | Change password (redirects back to security page) |
+| GET | `/` | public | Landing page - redirect to dashboard if logged in |
+| GET | `/legal` | public | Legal notice page |
+| GET | `/privacy` | public | Privacy policy page |
+| GET | `/terms` | public | Terms of service page |
+| GET | `/pricing` | public | Public pricing page with plans from billing API |
+| GET | `/dashboard` | session | Main dashboard with stats and recent activity |
+| GET | `/mcp` | public | Public MCP downloads page |
+| GET | `/mcp/downloads` | public | Public MCP downloads page |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

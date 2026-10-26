@@ -3,12 +3,17 @@
 
 """Tests for knowledge/auth/models.py — 100% coverage with only mocks."""
 
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
 from fastapi import HTTPException
 
-from knowledge.auth.models import User
+from knowledge.auth.models import User, WebAuthContext
+
+# =====================================================================
+# User model tests
+# =====================================================================
 
 
 class TestUser:
@@ -194,3 +199,181 @@ class TestUser:
     def test_can_delete_fails(self):
         u = self._make_user(scopes=["knowledge:read"])
         assert u.can_delete("knowledge") is False
+
+
+# =====================================================================
+# WebAuthContext tests
+# =====================================================================
+
+
+class TestWebAuthContext:
+    """Tests for the WebAuthContext model."""
+
+    def _make_user(self, uid=None, scopes=None):
+        return User(
+            id=uid or UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            email="u@e.com",
+            name="Test",
+            scopes=scopes or [],
+        )
+
+    def _make_ctx(self, user=None, tenant=None, tenant_member=None):
+        return WebAuthContext(
+            user=user or self._make_user(),
+            tenant=tenant,
+            tenant_member=tenant_member,
+        )
+
+    # ------------------------------------------------------------------
+    # user_id
+    # ------------------------------------------------------------------
+    def test_user_id(self):
+        uid = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+        ctx = self._make_ctx(user=self._make_user(uid=uid))
+        assert ctx.user_id == uid
+
+    # ------------------------------------------------------------------
+    # tenant_id
+    # ------------------------------------------------------------------
+    def test_tenant_id_with_tenant(self):
+        tenant = MagicMock()
+        tenant.id = UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+        ctx = self._make_ctx(tenant=tenant)
+        assert ctx.tenant_id == UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+
+    def test_tenant_id_no_tenant_raises(self):
+        ctx = self._make_ctx(tenant=None)
+        with pytest.raises(HTTPException) as exc_info:
+            _ = ctx.tenant_id
+        assert exc_info.value.status_code == 403
+        assert "No active tenant" in exc_info.value.detail
+
+    # ------------------------------------------------------------------
+    # scopes
+    # ------------------------------------------------------------------
+    def test_scopes(self):
+        ctx = self._make_ctx(user=self._make_user(scopes=["a", "b"]))
+        assert ctx.scopes == ["a", "b"]
+
+    # ------------------------------------------------------------------
+    # has_scope
+    # ------------------------------------------------------------------
+    def test_has_scope_delegates(self):
+        ctx = self._make_ctx(user=self._make_user(scopes=["api:read"]))
+        assert ctx.has_scope("api:read") is True
+        assert ctx.has_scope("api:write") is False
+
+    # ------------------------------------------------------------------
+    # require_scope
+    # ------------------------------------------------------------------
+    def test_require_scope_delegates(self):
+        ctx = self._make_ctx(user=self._make_user(scopes=["api:read"]))
+        # Should not raise
+        ctx.require_scope("api:read")
+
+    def test_require_scope_raises(self):
+        ctx = self._make_ctx(user=self._make_user(scopes=[]))
+        with pytest.raises(HTTPException) as exc_info:
+            ctx.require_scope("api:write")
+        assert exc_info.value.status_code == 403
+
+    # ------------------------------------------------------------------
+    # is_tenant_owner
+    # ------------------------------------------------------------------
+    def test_is_tenant_owner_true(self):
+        member = MagicMock()
+        member.is_owner = True
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.is_tenant_owner is True
+
+    def test_is_tenant_owner_false(self):
+        member = MagicMock()
+        member.is_owner = False
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.is_tenant_owner is False
+
+    def test_is_tenant_owner_no_member(self):
+        ctx = self._make_ctx(tenant_member=None)
+        assert ctx.is_tenant_owner is False
+
+    # ------------------------------------------------------------------
+    # is_tenant_admin
+    # ------------------------------------------------------------------
+    def test_is_tenant_admin_true(self):
+        member = MagicMock()
+        member.is_admin = True
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.is_tenant_admin is True
+
+    def test_is_tenant_admin_false(self):
+        member = MagicMock()
+        member.is_admin = False
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.is_tenant_admin is False
+
+    def test_is_tenant_admin_no_member(self):
+        ctx = self._make_ctx(tenant_member=None)
+        assert ctx.is_tenant_admin is False
+
+    # ------------------------------------------------------------------
+    # can_manage_members
+    # ------------------------------------------------------------------
+    def test_can_manage_members_true(self):
+        member = MagicMock()
+        member.can_manage_members = True
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.can_manage_members is True
+
+    def test_can_manage_members_false(self):
+        member = MagicMock()
+        member.can_manage_members = False
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.can_manage_members is False
+
+    def test_can_manage_members_no_member(self):
+        ctx = self._make_ctx(tenant_member=None)
+        assert ctx.can_manage_members is False
+
+    # ------------------------------------------------------------------
+    # can_manage_tenant
+    # ------------------------------------------------------------------
+    def test_can_manage_tenant_true(self):
+        member = MagicMock()
+        member.can_manage_tenant = True
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.can_manage_tenant is True
+
+    def test_can_manage_tenant_false(self):
+        member = MagicMock()
+        member.can_manage_tenant = False
+        ctx = self._make_ctx(tenant_member=member)
+        assert ctx.can_manage_tenant is False
+
+    def test_can_manage_tenant_no_member(self):
+        ctx = self._make_ctx(tenant_member=None)
+        assert ctx.can_manage_tenant is False
+
+    # ------------------------------------------------------------------
+    # require_tenant_admin
+    # ------------------------------------------------------------------
+    def test_require_tenant_admin_passes(self):
+        member = MagicMock()
+        member.is_admin = True
+        ctx = self._make_ctx(tenant_member=member)
+        # Should not raise
+        ctx.require_tenant_admin()
+
+    def test_require_tenant_admin_raises(self):
+        member = MagicMock()
+        member.is_admin = False
+        ctx = self._make_ctx(tenant_member=member)
+        with pytest.raises(HTTPException) as exc_info:
+            ctx.require_tenant_admin()
+        assert exc_info.value.status_code == 403
+        assert "admin" in exc_info.value.detail.lower()
+
+    def test_require_tenant_admin_no_member_raises(self):
+        ctx = self._make_ctx(tenant_member=None)
+        with pytest.raises(HTTPException) as exc_info:
+            ctx.require_tenant_admin()
+        assert exc_info.value.status_code == 403

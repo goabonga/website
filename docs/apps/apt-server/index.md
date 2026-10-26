@@ -11,3 +11,4 @@ model and how it is tested (pytest and behave).
 ## Features
 
 - [Application foundation](00-foundation.md)
+- [OIDC authentication](01-oidc-authentication.md)

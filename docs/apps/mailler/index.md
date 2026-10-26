@@ -16,6 +16,7 @@ documented on its own page.
 | [Application foundation](01-foundation.md) | Settings, logging, database sessions, health check |
 | [OAuth2 authentication](02-authentication.md) | Bearer token validation and scope checks |
 | [Email providers](03-providers.md) | Brevo, SendGrid, AWS SES and Protonmail adapters, signatures |
+| [Sending emails](04-send.md) | `POST /send`, Celery worker, first migration |
 
 ## Running the tests
 

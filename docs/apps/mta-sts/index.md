@@ -19,3 +19,5 @@ documents one feature as it exists in the code.
    `/.well-known/mta-sts.txt`.
 4. [Policy caching](04-caching.md) - `Cache-Control` header aligned on the
    policy lifetime.
+5. [Running and deployment](05-deployment.md) - local development and
+   Ansible deployment.

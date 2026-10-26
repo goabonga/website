@@ -13,8 +13,18 @@ python_app__apps: >-
      if website_apps_limit | length == 0
      else website_apps_enabled | select('in', website_apps_limit) | list }}
 
-# Catalog with the overrides applied.
-python_app__catalog: "{{ website_apps_catalog | combine(website_apps_overrides, recursive=True) }}"
+# website_apps_pins as overrides: each pin is the version of the primary
+# component of the application.
+python_app__pins: >-
+  {%- set out = {} -%}
+  {%- for app, ref in website_apps_pins.items() -%}
+  {%- set _ = out.update({app: {'version': ref}}) -%}
+  {%- endfor -%}
+  {{ out }}
+
+# Catalog with the overrides applied, then the pins: a pin wins over a version
+# set in website_apps_overrides.
+python_app__catalog: "{{ website_apps_catalog | combine(website_apps_overrides, python_app__pins, recursive=True) }}"
 
 # Component types the role knows.
 python_app__types:

@@ -5,7 +5,8 @@
 
 from fastapi import APIRouter
 
-from vpn_portal.api.routes import health
+from vpn_portal.api.routes import health, vpn
 
 router = APIRouter()
 router.include_router(health.router)
+router.include_router(vpn.router, prefix="/api/v1/vpn", tags=["vpn"])

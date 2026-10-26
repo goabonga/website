@@ -20,6 +20,7 @@ feature: what it does, how it is configured, how it is tested.
 7. [Conversation cache and background sync](07-conversation-cache.md): write-behind Redis cache and the Celery sync task.
 8. [Knowledge base](08-knowledge-base.md): pgvector entries, namespaces with scope access and semantic search.
 9. [Scoped system prompts](09-system-prompts.md): versioned prompts selected by OAuth2 scopes and cached in Redis.
+10. [LLM client and tools](10-llm-and-tools.md): OpenAI client and the scope-aware tool registry.
 
 ## Running the tests
 

@@ -31,6 +31,7 @@ directory; see `.env.example`.
 - Settings, logging, FastAPI application and the `/health` endpoint.
 - `/.well-known/security.txt` (RFC 9116).
 - PostgreSQL storage for sessions and events (SQLAlchemy models, Alembic revision `001`).
+- User agent parsing and optional MaxMind GeoIP lookups.
 
 Each feature has a page in `docs/apps/analytics/`.
 

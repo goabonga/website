@@ -134,8 +134,6 @@ website_celery_result_backend: "{{ website_celery_redis_url ~ '?db=1' if website
 website_smtp_host: localhost
 website_smtp_port: "587"
 website_smtp_tls: "true"
-website_smtp_user: ""
-website_smtp_from: ""
 
 # Issuer shared by every application that validates tokens.
 website_oauth2_issuer: "https://{{ website_hostnames.auth }}"

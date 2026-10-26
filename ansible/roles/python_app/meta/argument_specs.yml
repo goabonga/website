@@ -393,16 +393,6 @@ argument_specs:
         description:
         - website_smtp_tls
         default: 'true'
-      website_smtp_user:
-        type: str
-        description:
-        - website_smtp_user
-        default: ''
-      website_smtp_from:
-        type: str
-        description:
-        - website_smtp_from
-        default: ''
       website_oauth2_issuer:
         type: str
         description:

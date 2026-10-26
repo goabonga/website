@@ -32,4 +32,6 @@ Read from the environment (a `.env` file is loaded when present).
 
 ```bash
 uv sync --package webhooks
+uv run --package webhooks pytest apps/webhooks
+uv run --package webhooks behave apps/webhooks/features
 ```

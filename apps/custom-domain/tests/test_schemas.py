@@ -6,11 +6,68 @@
 from datetime import UTC, datetime
 
 from custom_domain.schemas import (
+    ClientCreate,
+    ClientListItem,
+    ClientResponse,
+    ClientUpdate,
     TemplateCreate,
     TemplateListItem,
     TemplateResponse,
     TemplateUpdate,
 )
+
+
+class TestClientSchemas:
+    """Tests for client schemas."""
+
+    def test_client_create(self):
+        """Test ClientCreate schema."""
+        data = ClientCreate(
+            client_id="test-client",
+            name="Test Client",
+            description="A test",
+            default_upstream_target="unix:/var/run/app.sock",
+            default_cname_target="apps.example.com",
+            max_domains=100,
+        )
+        assert data.client_id == "test-client"
+        assert data.name == "Test Client"
+
+    def test_client_update(self):
+        """Test ClientUpdate schema."""
+        data = ClientUpdate(name="Updated Name")
+        assert data.name == "Updated Name"
+        assert data.description is None
+
+    def test_client_response(self):
+        """Test ClientResponse schema."""
+        now = datetime.now(UTC)
+        data = ClientResponse(
+            id=1,
+            client_id="test",
+            name="Test",
+            default_upstream_target="unix:/var/run/app.sock",
+            default_cname_target="apps.example.com",
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        assert data.id == 1
+
+    def test_client_list_item(self):
+        """Test ClientListItem schema."""
+        now = datetime.now(UTC)
+        data = ClientListItem(
+            id=1,
+            client_id="test",
+            name="Test",
+            default_upstream_target="unix:/var/run/app.sock",
+            default_cname_target="apps.example.com",
+            is_active=True,
+            domains_count=5,
+            created_at=now,
+        )
+        assert data.domains_count == 5
 
 
 class TestTemplateSchemas:

@@ -19,6 +19,8 @@ how it is tested with pytest and behave.
 4. [Collections](03-collections.md): collection API, ownership and access
    levels.
 5. [Documents](04-documents.md): document API and OpenAI embeddings.
+6. [Semantic search](05-search.md): vector similarity search over
+   collections.
 
 ## Running the tests
 

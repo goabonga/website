@@ -77,6 +77,9 @@
     <div class="stat-card">
         <div class="stat-label">Plan</div>
         <div class="stat-value" style="text-transform: capitalize;">{{ tenant.plan.value }}</div>
+        {% if user.has_scope('*') or (tenant_member and tenant_member.is_admin) %}
+        <a href="/tenants/settings" style="color: var(--accent-blue); font-size: 0.75rem;">Manage</a>
+        {% endif %}
     </div>
 </div>
 

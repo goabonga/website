@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Workspace Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Workspace Settings</h1>
+    <div class="breadcrumb">
+        Manage your workspace settings
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">General</h2>
+    </div>
+
+    <form method="post" action="/tenants/settings">
+        <div class="form-group">
+            <label for="name">Workspace Name</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="form-control"
+                   value="{{ tenant.name }}"
+                   required>
+            <small style="color: var(--text-muted);">This is displayed in the sidebar and used to identify your workspace</small>
+        </div>
+
+        <div class="form-group">
+            <label>Slug</label>
+            <input type="text"
+                   class="form-control"
+                   value="{{ tenant.slug }}"
+                   disabled>
+            <small style="color: var(--text-muted);">URL-friendly identifier (cannot be changed)</small>
+        </div>
+
+        <div class="form-group">
+            <label>Plan</label>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="text"
+                       class="form-control"
+                       value="{{ tenant.plan.value | capitalize }}"
+                       disabled
+                       style="flex: 1;">
+                <a href="/tenants/pricing" class="btn btn-primary btn-sm">Upgrade</a>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Workspace ID</label>
+            <input type="text"
+                   class="form-control"
+                   value="{{ tenant.id }}"
+                   disabled
+                   style="font-family: monospace; font-size: 0.875rem;">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+
+{% if usage_stats %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Usage & Quotas</h2>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Current</th>
+                <th>Limit</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Collections</td>
+                <td>{{ usage_stats.collections.current }}</td>
+                <td>{{ usage_stats.collections.limit if not usage_stats.collections.is_unlimited else 'Unlimited' }}</td>
+                <td>
+                    {% if not usage_stats.collections.is_unlimited %}
+                    {% set pct = usage_stats.collections.percentage_used | round(1) %}
+                    <div class="stat-progress" style="width: 100px; display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+                    </div>
+                    {{ pct }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Total Documents</td>
+                <td>{{ usage_stats.documents_total.current }}</td>
+                <td>{{ usage_stats.documents_total.limit if not usage_stats.documents_total.is_unlimited else 'Unlimited' }}</td>
+                <td>
+                    {% if not usage_stats.documents_total.is_unlimited %}
+                    {% set pct = usage_stats.documents_total.percentage_used | round(1) %}
+                    <div class="stat-progress" style="width: 100px; display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+                    </div>
+                    {{ pct }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Storage</td>
+                <td>
+                    {% if usage_stats.storage_bytes.current < 1024 * 1024 %}
+                        {{ (usage_stats.storage_bytes.current / 1024) | round(1) }} KB
+                    {% elif usage_stats.storage_bytes.current < 1024 * 1024 * 1024 %}
+                        {{ (usage_stats.storage_bytes.current / 1024 / 1024) | round(1) }} MB
+                    {% else %}
+                        {{ (usage_stats.storage_bytes.current / 1024 / 1024 / 1024) | round(2) }} GB
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not usage_stats.storage_bytes.is_unlimited %}
+                        {% if usage_stats.storage_bytes.limit < 1024 * 1024 * 1024 %}
+                            {{ (usage_stats.storage_bytes.limit / 1024 / 1024) | round(0) }} MB
+                        {% else %}
+                            {{ (usage_stats.storage_bytes.limit / 1024 / 1024 / 1024) | round(0) }} GB
+                        {% endif %}
+                    {% else %}
+                    Unlimited
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not usage_stats.storage_bytes.is_unlimited %}
+                    {% set pct = usage_stats.storage_bytes.percentage_used | round(1) %}
+                    <div class="stat-progress" style="width: 100px; display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+                    </div>
+                    {{ pct }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>API Calls (this month)</td>
+                <td>{{ usage_stats.api_calls_month.current }}</td>
+                <td>{{ usage_stats.api_calls_month.limit if not usage_stats.api_calls_month.is_unlimited else 'Unlimited' }}</td>
+                <td>
+                    {% if not usage_stats.api_calls_month.is_unlimited %}
+                    {% set pct = usage_stats.api_calls_month.percentage_used | round(1) %}
+                    <div class="stat-progress" style="width: 100px; display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+                    </div>
+                    {{ pct }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

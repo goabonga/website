@@ -25,6 +25,8 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "team.tasks.dispatch_tasks",
+        "team.tasks.cleanup_tasks",
+        "team.tasks.memory_tasks",
         "team.tasks.webhook_tasks",
         "team.tasks.agent_runner",
         "team.tasks.auto_orchestrate",
@@ -56,6 +58,19 @@ celery_app.conf.beat_schedule = {
         "task": "team.tasks.dispatch_tasks.dispatch_tasks",
         "schedule": 300.0,  # Every 5 minutes
         "kwargs": {"batch_size": 50},
+    },
+    "cleanup-old-logs-daily": {
+        "task": "team.tasks.cleanup_tasks.cleanup_old_logs",
+        "schedule": 86400.0,  # Every 24 hours
+        "kwargs": {"days_old": 90},
+    },
+    "summarize-memory-hourly": {
+        "task": "team.tasks.memory_tasks.summarize_memory",
+        "schedule": 3600.0,  # Every hour
+    },
+    "cleanup-stale-workspaces-hourly": {
+        "task": "team.tasks.cleanup_tasks.cleanup_stale_workspaces",
+        "schedule": 3600.0,  # Every hour
     },
     "auto-orchestrate-every-15-minutes": {
         "task": "team.tasks.auto_orchestrate.auto_orchestrate",

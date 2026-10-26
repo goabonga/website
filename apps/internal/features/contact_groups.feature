@@ -198,3 +198,71 @@ Feature: Contact groups management
       | group_ids | 2     |
     Then the response status code should be 303
     And I should be redirected to a URL containing "group(s)+deleted"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the contact groups list
+    Given I am authenticated with only the scopes "contacts:* vpn:admin billing:read" granted by token exchange
+    And the contact groups list returns groups
+    When I send a GET request to "/contact-groups"
+    Then the response status code should be 200
+    And the active sidebar link should be "/contact-groups"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new contact group form
+    Given I am authenticated with only the scopes "contacts:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/contact-groups/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/contact-groups"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the contact group detail
+    Given I am authenticated with only the scopes "contacts:* vpn:admin billing:read" granted by token exchange
+    And a contact group exists with id "1"
+    When I send a GET request to "/contact-groups/1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/contact-groups"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the contact group edit form
+    Given I am authenticated with only the scopes "contacts:* vpn:admin billing:read" granted by token exchange
+    And a contact group exists with id "1"
+    When I send a GET request to "/contact-groups/1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/contact-groups"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the add contacts form
+    Given I am authenticated with only the scopes "contacts:* vpn:admin billing:read" granted by token exchange
+    And a contact group exists with id "1"
+    And contacts not in group "1" returns data
+    When I send a GET request to "/contact-groups/1/add-contacts"
+    Then the response status code should be 200
+    And the active sidebar link should be "/contact-groups"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the contact groups list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the contact groups list returns groups
+    When I send a GET request to "/contact-groups"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                            | vpn     | billing |
+      | contacts:*                        | hidden  | hidden  |
+      | contacts:* vpn:admin              | visible | hidden  |
+      | contacts:* billing:read           | hidden  | visible |
+      | contacts:* vpn:admin billing:read | visible | visible |
+      | *                                 | visible | visible |

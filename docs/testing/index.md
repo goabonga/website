@@ -30,3 +30,5 @@ one feature as it exists in the code.
    flow, PKCE, login and consent pages.
 9. [Token endpoint](09-oidc-token.md) - authorization code, refresh token,
    client credentials and token exchange.
+10. [Introspection, revocation and userinfo](10-oidc-introspection.md) -
+    token status, revocation and the profile of the user.

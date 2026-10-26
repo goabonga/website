@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+[project]
+name = "website"
+version = "0.0.0"
+description = "Monorepo of the platform services and the Ansible collection that deploys them."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Chris", email = "goabonga@pm.me" }]
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["ansible"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "B008", "B904"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

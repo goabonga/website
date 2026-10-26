@@ -18,6 +18,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Identity provider federation: Login through external OIDC identity providers.
 - REST API v1: Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
 - Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
+- Background maintenance and operations scripts: Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
 
 ## Routes and scopes
 
@@ -407,6 +408,9 @@ uv run --package auth uvicorn auth.main:app --reload --port 8000
 
 # Celery worker (outbound webhooks and the other background tasks)
 uv run --package auth celery -A auth.celery:celery_app worker -Q auth --loglevel=info
+
+# Operations scripts
+uv run --package auth python apps/auth/scripts/create_user.py --help
 
 uv run --package auth --group dev pytest apps/auth
 uv run --package auth --group dev behave apps/auth/features

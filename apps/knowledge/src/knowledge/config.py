@@ -79,6 +79,15 @@ class Settings(BaseSettings):
     default_search_limit: int = 10
     max_search_limit: int = 100
 
+    # Rate limiting
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60  # seconds
+
+    # Quota limits of the plans, by plan slug ("*" applies to every other plan), for example
+    # {"free": {"max_collections": 3}, "*": {"max_collections": 1}}. A limit that is not listed
+    # is 0 (nothing allowed) and -1 means unlimited. Empty by default: the deployment decides.
+    quota_fallback_limits: dict[str, dict[str, int]] = {}
+
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {

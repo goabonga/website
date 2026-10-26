@@ -20,6 +20,7 @@ from knowledge.auth.token_exchange import get_token_exchange_client
 from knowledge.config import get_settings
 from knowledge.internal import internal_app
 from knowledge.logging import get_logger, setup_logging
+from knowledge.middleware import APITrackingMiddleware
 from knowledge.routes import (
     collaborators,
     collection_invitations,
@@ -89,6 +90,7 @@ Vector storage and semantic search platform for AI agents and applications.
 - **Semantic search**: Vector similarity search across collections
 - **Collaborators**: Share collections with team members
 - **Collection invitations**: Invite users to collaborate on collections
+- **Usage tracking**: Successful API calls are recorded per tenant
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -139,6 +141,9 @@ app.add_middleware(
     allow_methods=settings.cors_methods,
     allow_headers=settings.cors_headers,
 )
+
+# API tracking middleware (records API calls per tenant for quota management)
+app.add_middleware(APITrackingMiddleware)
 
 # =============================================================================
 # PUBLIC API ROUTES

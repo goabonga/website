@@ -7,6 +7,7 @@ from knowledge.services.collaborators import CollaboratorService
 from knowledge.services.collection_access import AccessLevel, CollectionAccessService
 from knowledge.services.collection_invitations import CollectionInvitationService
 from knowledge.services.collections import CollectionService
+from knowledge.services.quotas import QuotaService
 
 __all__ = [
     "AccessLevel",
@@ -14,4 +15,5 @@ __all__ = [
     "CollectionAccessService",
     "CollectionInvitationService",
     "CollectionService",
+    "QuotaService",
 ]

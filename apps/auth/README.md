@@ -19,6 +19,7 @@ Centralized OIDC/OAuth2 authentication service.
 - REST API v1: Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
 - Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 - Background maintenance and operations scripts: Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
+- Administration console: Server-rendered admin pages.
 
 ## Routes and scopes
 
@@ -275,6 +276,112 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/api/me/mfa/totp/disable` | bearer token (any scope) | Disable TOTP |
 | POST | `/api/me/mfa/backup-codes/regenerate` | bearer token (any scope) | Regenerate backup codes |
 
+### Administration console
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/` | session (redirect to login), PAT or bearer token; scope `users:read` | Admin dashboard with system statistics |
+| GET | `/admin/jwks` | session (redirect to login), PAT or bearer token; scope `jwks:read` | JWKS keys list page |
+| GET | `/admin/jwks/generate` | session (redirect to login), PAT or bearer token; scope `jwks:write` | JWKS key generation form page |
+| POST | `/admin/jwks/generate` | session (redirect to login), PAT or bearer token; scope `jwks:write` | Handle JWKS key generation form submission |
+| GET | `/admin/jwks/{kid}` | session (redirect to login), PAT or bearer token; scope `jwks:read` | JWKS key detail page |
+| POST | `/admin/jwks/{kid}/activate` | session (redirect to login), PAT or bearer token; scope `jwks:write` | Handle JWKS key activation |
+| POST | `/admin/jwks/{kid}/revoke` | session (redirect to login), PAT or bearer token; scope `jwks:revoke` | Handle JWKS key revocation |
+| POST | `/admin/jwks/{kid}/delete` | session (redirect to login), PAT or bearer token; scope `jwks:delete` | Handle JWKS key deletion |
+| POST | `/admin/jwks/rotate` | session (redirect to login), PAT or bearer token; scope `jwks:rotate` | Handle JWKS key rotation |
+| GET | `/admin/sessions` | session (redirect to login), PAT or bearer token; scope `sessions:read` | Sessions list page |
+| GET | `/admin/sessions/{session_id}` | session (redirect to login), PAT or bearer token; scope `sessions:read` | Session detail page |
+| POST | `/admin/sessions/{session_id}/revoke` | session (redirect to login), PAT or bearer token; scope `sessions:revoke` | Handle session revocation |
+| POST | `/admin/sessions/revoke-all` | session (redirect to login), PAT or bearer token; scope `sessions:revoke` | Handle bulk session revocation |
+| GET | `/admin/users` | session (redirect to login), PAT or bearer token; scope `users:read` | Users list page |
+| GET | `/admin/users/create` | session (redirect to login), PAT or bearer token; scope `users:write` | User creation form page |
+| POST | `/admin/users/create` | session (redirect to login), PAT or bearer token; scope `users:write` | Handle user creation form submission |
+| GET | `/admin/users/{user_id}/edit` | session (redirect to login), PAT or bearer token; scope `users:write` | User edit form page |
+| POST | `/admin/users/{user_id}/edit` | session (redirect to login), PAT or bearer token; scope `users:write` | Handle user edit form submission |
+| POST | `/admin/users/{user_id}/avatar` | session (redirect to login), PAT or bearer token; scope `users:write` | Handle user avatar upload from admin panel |
+| GET | `/admin/users/{user_id}` | session (redirect to login), PAT or bearer token; scope `users:read` | User detail page |
+| POST | `/admin/users/{user_id}/disable` | session (redirect to login), PAT or bearer token; scope `users:disable` | Handle user disable |
+| POST | `/admin/users/{user_id}/enable` | session (redirect to login), PAT or bearer token; scope `users:disable` | Handle user enable |
+| POST | `/admin/users/{user_id}/revoke-sessions` | session (redirect to login), PAT or bearer token; scope `users:write` | Handle user sessions revocation |
+| POST | `/admin/users/{user_id}/delete` | session (redirect to login), PAT or bearer token; scope `users:delete` | Handle user deletion |
+| POST | `/admin/users/bulk-delete` | session (redirect to login), PAT or bearer token; scope `users:delete` | Handle bulk user deletion |
+| GET | `/admin/clients` | session (redirect to login), PAT or bearer token; scope `clients:read` | Clients list page |
+| GET | `/admin/clients/create` | session (redirect to login), PAT or bearer token; scope `clients:write` | Client creation form page |
+| POST | `/admin/clients/create` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle client creation form submission |
+| GET | `/admin/clients/{client_id}` | session (redirect to login), PAT or bearer token; scope `clients:read` | Client detail page |
+| GET | `/admin/clients/{client_id}/edit` | session (redirect to login), PAT or bearer token; scope `clients:write` | Client edit form page |
+| POST | `/admin/clients/{client_id}/edit` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle client edit form submission |
+| POST | `/admin/clients/{client_id}/disable` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle client disable |
+| POST | `/admin/clients/{client_id}/enable` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle client enable |
+| POST | `/admin/clients/{client_id}/rotate-secret` | session (redirect to login), PAT or bearer token; scope `clients:rotate` | Handle client secret rotation |
+| POST | `/admin/clients/{client_id}/delete` | session (redirect to login), PAT or bearer token; scope `clients:delete` | Handle client deletion |
+| GET | `/admin/clients/{client_id}/tokens` | session (redirect to login), PAT or bearer token; scope `clients:read` | Client tokens list page with advanced filters |
+| POST | `/admin/clients/{client_id}/tokens/{token_id}/revoke` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle token revocation |
+| POST | `/admin/clients/{client_id}/tokens/revoke-all` | session (redirect to login), PAT or bearer token; scope `clients:write` | Handle bulk token revocation for a client |
+| GET | `/admin/roles` | session (redirect to login), PAT or bearer token; scope `roles:read` | Roles list page |
+| GET | `/admin/roles/create` | session (redirect to login), PAT or bearer token; scope `roles:write` | Role creation form page |
+| POST | `/admin/roles/create` | session (redirect to login), PAT or bearer token; scope `roles:write` | Handle role creation form submission |
+| GET | `/admin/roles/{role_id}` | session (redirect to login), PAT or bearer token; scope `roles:read` | Role detail page |
+| GET | `/admin/roles/{role_id}/edit` | session (redirect to login), PAT or bearer token; scope `roles:write` | Role edit form page (description and scopes of a custom role) |
+| POST | `/admin/roles/{role_id}/edit` | session (redirect to login), PAT or bearer token; scope `roles:write` | Handle the role edit form: replace the description and the scopes of a custom role |
+| GET | `/admin/roles/{role_id}/assign` | session (redirect to login), PAT or bearer token; scope `roles:assign` | Role assignment page |
+| POST | `/admin/roles/{role_id}/assign` | session (redirect to login), PAT or bearer token; scope `roles:assign` | Handle role assignment form submission |
+| POST | `/admin/roles/{role_id}/users/{user_id}/remove` | session (redirect to login), PAT or bearer token; scope `roles:assign` | Handle removing user from role |
+| POST | `/admin/roles/{role_id}/delete` | session (redirect to login), PAT or bearer token; scope `roles:delete` | Handle role deletion |
+| POST | `/admin/roles/seed` | session (redirect to login), PAT or bearer token; scope `roles:write` | Seed default system roles |
+| GET | `/admin/scopes` | session (redirect to login), PAT or bearer token; scope `scopes:read` | Scopes list page |
+| GET | `/admin/scopes/create` | session (redirect to login), PAT or bearer token; scope `scopes:write` | Scope creation form page |
+| POST | `/admin/scopes/create` | session (redirect to login), PAT or bearer token; scope `scopes:write` | Handle scope creation form submission |
+| GET | `/admin/scopes/{scope_id}` | session (redirect to login), PAT or bearer token; scope `scopes:read` | Scope detail page |
+| POST | `/admin/scopes/{scope_id}/toggle` | session (redirect to login), PAT or bearer token; scope `scopes:write` | Handle scope enable/disable toggle |
+| POST | `/admin/scopes/{scope_id}/delete` | session (redirect to login), PAT or bearer token; scope `scopes:delete` | Handle scope deletion |
+| POST | `/admin/scopes/seed` | session (redirect to login), PAT or bearer token; scope `scopes:write` | Seed default system scopes |
+| GET | `/admin/organisations` | session (redirect to login), PAT or bearer token; scope `org:read` | Tenants list page |
+| GET | `/admin/organisations/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Tenant creation form page |
+| POST | `/admin/organisations/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle tenant creation form submission |
+| GET | `/admin/organisations/{tenant_id}` | session (redirect to login), PAT or bearer token; scope `org:read` | Tenant detail page |
+| GET | `/admin/organisations/{tenant_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Tenant edit form page |
+| POST | `/admin/organisations/{tenant_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle tenant edit form submission |
+| POST | `/admin/organisations/{tenant_id}/disable` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle tenant disable |
+| POST | `/admin/organisations/{tenant_id}/enable` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle tenant enable |
+| POST | `/admin/organisations/{tenant_id}/delete` | session (redirect to login), PAT or bearer token; scope `org:delete` | Handle tenant deletion |
+| POST | `/admin/organisations/{tenant_id}/members/add` | session (redirect to login), PAT or bearer token; scope `org:write` | Add a member to the tenant |
+| POST | `/admin/organisations/{tenant_id}/members/{member_id}/update-role` | session (redirect to login), PAT or bearer token; scope `org:write` | Update a member's role |
+| POST | `/admin/organisations/{tenant_id}/members/{member_id}/remove` | session (redirect to login), PAT or bearer token; scope `org:write` | Remove a member from the tenant |
+| GET | `/admin/organisations/{tenant_id}/idp/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Identity provider creation form page |
+| POST | `/admin/organisations/{tenant_id}/idp/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle IdP creation form submission |
+| GET | `/admin/organisations/{tenant_id}/idp/{idp_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Identity provider edit form page |
+| POST | `/admin/organisations/{tenant_id}/idp/{idp_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle IdP edit form submission |
+| POST | `/admin/organisations/{tenant_id}/idp/{idp_id}/delete` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle IdP deletion |
+| POST | `/admin/organisations/{tenant_id}/idp/{idp_id}/toggle` | session (redirect to login), PAT or bearer token; scope `org:write` | Toggle IdP active status |
+| GET | `/admin/organisations/{tenant_id}/registration-fields` | session (redirect to login), PAT or bearer token; scope `org:read` | Registration fields configuration page |
+| POST | `/admin/organisations/{tenant_id}/registration-fields` | session (redirect to login), PAT or bearer token; scope `org:write` | Save registration fields configuration |
+| POST | `/admin/organisations/{tenant_id}/email-sender` | session (redirect to login), PAT or bearer token; scope `org:write` | Save email sender configuration |
+| GET | `/admin/organisations/{tenant_id}/profile-fields` | session (redirect to login), PAT or bearer token; scope `org:read` | Profile fields configuration page |
+| POST | `/admin/organisations/{tenant_id}/profile-fields` | session (redirect to login), PAT or bearer token; scope `org:write` | Save profile fields configuration |
+| GET | `/admin/organisations/{tenant_id}/allowed-scopes` | session (redirect to login), PAT or bearer token; scope `org:read` | Allowed scopes configuration page |
+| POST | `/admin/organisations/{tenant_id}/allowed-scopes` | session (redirect to login), PAT or bearer token; scope `org:write` | Save allowed scopes configuration |
+| GET | `/admin/organisations/{tenant_id}/branding` | session (redirect to login), PAT or bearer token; scope `org:read` | Tenant branding edit page |
+| POST | `/admin/organisations/{tenant_id}/branding` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle branding form submission |
+| POST | `/admin/organisations/{tenant_id}/branding/reset` | session (redirect to login), PAT or bearer token; scope `org:write` | Reset branding to defaults (delete branding record) |
+| GET | `/admin/organisations/{tenant_id}/templates` | session (redirect to login), PAT or bearer token; scope `org:read` | Tenant templates list page |
+| GET | `/admin/organisations/{tenant_id}/templates/{template_name:path}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Template edit page |
+| POST | `/admin/organisations/{tenant_id}/templates/{template_name:path}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Handle template edit form submission |
+| POST | `/admin/organisations/{tenant_id}/templates/{template_name:path}/delete` | session (redirect to login), PAT or bearer token; scope `org:write` | Delete a custom template (reverts to default) |
+| POST | `/admin/organisations/{tenant_id}/templates/{template_name:path}/toggle` | session (redirect to login), PAT or bearer token; scope `org:write` | Toggle template active status |
+| POST | `/admin/organisations/{tenant_id}/trust/mode` | session (redirect to login), PAT or bearer token; scope `org:write` | Update trust mode for a tenant |
+| POST | `/admin/organisations/{tenant_id}/trust/add-source` | session (redirect to login), PAT or bearer token; scope `org:write` | Add a trusted source tenant |
+| POST | `/admin/organisations/{tenant_id}/trust/remove-source/{source_id}` | session (redirect to login), PAT or bearer token; scope `org:write` | Remove a trusted source |
+| GET | `/admin/organisations/{tenant_id}/roles/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Role creation form page |
+| POST | `/admin/organisations/{tenant_id}/roles/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Create a new role |
+| GET | `/admin/organisations/{tenant_id}/roles/{role_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Role edit form page |
+| POST | `/admin/organisations/{tenant_id}/roles/{role_id}/edit` | session (redirect to login), PAT or bearer token; scope `org:write` | Update a role |
+| POST | `/admin/organisations/{tenant_id}/roles/{role_id}/delete` | session (redirect to login), PAT or bearer token; scope `org:write` | Delete a role |
+| GET | `/admin/pats` | session (redirect to login), PAT or bearer token; scope `pats:read` | PATs list page |
+| GET | `/admin/pats/{token_id}` | session (redirect to login), PAT or bearer token; scope `pats:read` | PAT detail page |
+| POST | `/admin/pats/{token_id}/revoke` | session (redirect to login), PAT or bearer token; scope `pats:revoke` | Handle PAT revocation |
+| POST | `/admin/pats/revoke-all` | session (redirect to login), PAT or bearer token; scope `pats:revoke` | Handle bulk PAT revocation for a user |
+
 Static files are served publicly under `/static` (favicon and Swagger UI assets) and `/uploads` (uploaded files).
 
 ### Scopes and roles
@@ -287,40 +394,40 @@ Platform scopes (`ADMIN_SCOPES` in `apps/auth/src/auth/db/models/rbac.py`) are t
 | --- | --- | --- |
 | `*` | Full access to all operations (super admin) | 0 |
 | `users:*` | All user operations | 0 |
-| `users:read` | View user information (list, details) | 2 |
-| `users:write` | Create and update users | 5 |
-| `users:delete` | Delete users permanently | 1 |
-| `users:disable` | Enable/disable user accounts | 0 |
+| `users:read` | View user information (list, details) | 5 |
+| `users:write` | Create and update users | 11 |
+| `users:delete` | Delete users permanently | 3 |
+| `users:disable` | Enable/disable user accounts | 2 |
 | `clients:*` | All OAuth2 client operations | 0 |
-| `clients:read` | View OAuth2 client information | 2 |
-| `clients:write` | Create and update OAuth2 clients | 2 |
-| `clients:delete` | Delete OAuth2 clients | 1 |
-| `clients:rotate` | Rotate OAuth2 client secrets | 1 |
+| `clients:read` | View OAuth2 client information | 5 |
+| `clients:write` | Create and update OAuth2 clients | 10 |
+| `clients:delete` | Delete OAuth2 clients | 2 |
+| `clients:rotate` | Rotate OAuth2 client secrets | 2 |
 | `sessions:*` | All session operations | 0 |
-| `sessions:read` | View active sessions | 2 |
-| `sessions:revoke` | Revoke user sessions | 2 |
+| `sessions:read` | View active sessions | 4 |
+| `sessions:revoke` | Revoke user sessions | 4 |
 | `jwks:*` | All JWKS key operations | 0 |
-| `jwks:read` | View JWKS keys (public key info) | 2 |
-| `jwks:write` | Create and activate JWKS keys | 2 |
-| `jwks:revoke` | Revoke JWKS keys | 1 |
-| `jwks:delete` | Delete JWKS keys permanently | 1 |
-| `jwks:rotate` | Rotate JWKS keys automatically | 1 |
+| `jwks:read` | View JWKS keys (public key info) | 4 |
+| `jwks:write` | Create and activate JWKS keys | 5 |
+| `jwks:revoke` | Revoke JWKS keys | 2 |
+| `jwks:delete` | Delete JWKS keys permanently | 2 |
+| `jwks:rotate` | Rotate JWKS keys automatically | 2 |
 | `roles:*` | All role operations | 0 |
-| `roles:read` | View roles and available scopes | 2 |
-| `roles:write` | Create and update custom roles | 5 |
-| `roles:delete` | Delete custom roles | 1 |
-| `roles:assign` | Assign/remove roles to/from users | 2 |
+| `roles:read` | View roles and available scopes | 4 |
+| `roles:write` | Create and update custom roles | 10 |
+| `roles:delete` | Delete custom roles | 2 |
+| `roles:assign` | Assign/remove roles to/from users | 5 |
 | `scopes:*` | All scope operations | 0 |
-| `scopes:read` | View available scopes | 2 |
-| `scopes:write` | Create and update scopes | 2 |
-| `scopes:delete` | Delete scopes | 1 |
+| `scopes:read` | View available scopes | 4 |
+| `scopes:write` | Create and update scopes | 6 |
+| `scopes:delete` | Delete scopes | 2 |
 | `org:*` | All organisation operations | 0 |
-| `org:read` | View organisations, their members and identity providers | 2 |
-| `org:write` | Create and update organisations, their members and identity providers | 4 |
-| `org:delete` | Delete organisations and identity providers | 1 |
+| `org:read` | View organisations, their members and identity providers | 9 |
+| `org:write` | Create and update organisations, their members and identity providers | 37 |
+| `org:delete` | Delete organisations and identity providers | 2 |
 | `pats:*` | All PAT management operations (admin) | 0 |
-| `pats:read` | View all users' personal access tokens | 2 |
-| `pats:revoke` | Revoke any user's personal access tokens | 2 |
+| `pats:read` | View all users' personal access tokens | 4 |
+| `pats:revoke` | Revoke any user's personal access tokens | 4 |
 
 Platform roles (`DEFAULT_ROLES`, system roles):
 

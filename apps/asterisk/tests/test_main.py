@@ -80,6 +80,22 @@ class TestMain:
 
     @patch("asterisk.main.AudioSocketServer")
     @patch("asterisk.main.config")
+    async def test_registers_call_handler(self, mock_config, MockServer):
+        from asterisk.call_handler import handle_call
+        from asterisk.main import main
+
+        mock_config.AUDIOSOCKET_HOST = "127.0.0.1"
+        mock_config.AUDIOSOCKET_PORT = 9092
+
+        mock_server_instance = MagicMock()
+        mock_server_instance.start = AsyncMock(side_effect=asyncio.CancelledError)
+        MockServer.return_value = mock_server_instance
+
+        await main()
+        mock_server_instance.set_handler.assert_called_once_with(handle_call)
+
+    @patch("asterisk.main.AudioSocketServer")
+    @patch("asterisk.main.config")
     async def test_handles_cancelled_error(self, mock_config, MockServer):
         from asterisk.main import main
 

@@ -16,10 +16,10 @@ For every HTTP request it tries, in order:
 2. **Subdomain**: `{slug}.<TENANT_BASE_DOMAIN>`. The subdomain must be a valid
    slug (lowercase letters, digits and dashes, 1 to 63 characters, not starting
    or ending with a dash), otherwise it is ignored.
-3. **Custom domain**: when `TENANT_CUSTOM_DOMAIN_LOOKUP` is true and the host is
-   neither the base domain nor a subdomain of it, the host is matched against
-   `custom_domain` of active organizations whose domain status is `active` (see
-   the custom domains feature).
+3. **Custom domain**: when `TENANT_CUSTOM_DOMAIN_LOOKUP` is true, the host is not
+   the base domain and the previous steps found no tenant, the host is matched
+   against `custom_domain` of active organizations whose domain status is
+   `active` (see [Custom domains](13-custom-domains.md)).
 4. Otherwise no tenant is attached (main domain).
 
 Lookups only consider active organizations. A subdomain that does not match

@@ -17,7 +17,7 @@ applications. It is a member of the `website` uv workspace.
 - Documents REST API with OpenAI embeddings stored in pgvector.
 - Semantic similarity search (cosine, L2 and inner product) over
   collections.
-- Collection sharing with collaborators and email invitations.
+- Collection sharing with collaborators and token-based invitations.
 - Plan-based quotas and per-tenant API call tracking.
 - Multi-tenant resolution from path prefix, subdomain or custom domain.
 - Billing client and subscription webhook that keep organization plans in

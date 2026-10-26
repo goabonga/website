@@ -161,3 +161,62 @@ class TestPublicHeader:
     def test_the_documentation_is_linked_only_when_it_is_served(self, page, docs_enabled):
         html = _render_public(page, docs_enabled=docs_enabled)
         assert ('href="/docs"' in html) is docs_enabled
+
+
+def _sidebar(active_section, is_admin=True, tenants=(), scopes=()):
+    """The sidebar of a signed-in page, rendered through the 403 page that extends the layout."""
+    from uuid import uuid4
+
+    from knowledge.auth.models import User
+
+    user = User(id=uuid4(), name="Ada", scopes=list(scopes))
+    with patch.object(templating, "get_settings", return_value=_settings()):
+        return (
+            create_templates()
+            .get_template("errors/403.html")
+            .render(
+                user=user,
+                tenant=NS(id="a", name="Acme"),
+                tenant_member=NS(is_admin=is_admin),
+                tenants=[NS(id=str(i), name=name) for i, name in enumerate(tenants)],
+                active_section=active_section,
+                required_scope="x",
+            )
+        )
+
+
+class TestSidebar:
+    def test_administrators_see_the_workspace_section(self):
+        html = _sidebar("dashboard")
+        assert 'href="/tenants/settings"' in html and 'href="/tenants/pricing"' in html
+
+    def test_members_do_not(self):
+        html = _sidebar("dashboard", is_admin=False)
+        assert "/tenants/settings" not in html and "/tenants/pricing" not in html
+
+    def test_a_user_with_every_scope_sees_it_whatever_the_role(self):
+        html = _sidebar("dashboard", is_admin=False, scopes=["*"])
+        assert 'href="/tenants/settings"' in html
+
+    @pytest.mark.parametrize(
+        ("section", "href"),
+        [
+            ("dashboard", "/dashboard"),
+            ("collections", "/collections"),
+            ("search", "/search"),
+            ("organization_settings", "/tenants/settings"),
+            ("pricing", "/tenants/pricing"),
+            ("account_profile", "/auth/account"),
+            ("account_security", "/auth/account/security"),
+        ],
+    )
+    def test_the_page_section_is_the_active_item(self, section, href):
+        import re
+
+        html = _sidebar(section)
+        active = re.findall(r'<a href="([^"]+)" class="nav-item active"', html)
+        assert active == [href]
+
+    def test_the_switcher_needs_several_workspaces(self):
+        assert 'action="/tenants/switch"' not in _sidebar("dashboard", tenants=["Acme"])
+        assert 'action="/tenants/switch"' in _sidebar("dashboard", tenants=["Acme", "Beta"])

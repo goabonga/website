@@ -1,0 +1,133 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}New{% endif %} Knowledge Entry{% endblock %}
+
+{% block head %}
+<style>
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+        font-family: inherit;
+    }
+    .metadata-textarea {
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        min-height: 120px;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .char-count {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{% if is_edit %}Edit Knowledge Entry{% else %}New Knowledge Entry{% endif %}</h1>
+    <a href="/knowledge" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="{% if is_edit %}/knowledge/{{ entry.id }}/edit{% else %}/knowledge/new{% endif %}">
+        <div class="form-group">
+            <label for="namespace_id">Namespace *</label>
+            <select id="namespace_id" name="namespace_id" class="form-control" required>
+                {% for ns in namespaces %}
+                <option value="{{ ns.id }}"
+                    {% if entry and entry.namespace_id == ns.id %}selected
+                    {% elif not entry and ns.id == default_namespace_id %}selected
+                    {% endif %}
+                >{{ ns.name }} ({{ ns.slug }})</option>
+                {% endfor %}
+            </select>
+            <p class="form-help">The namespace/category for this knowledge entry.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="question">Question *</label>
+            <textarea
+                id="question"
+                name="question"
+                class="form-control"
+                required
+                placeholder="Enter the question users might ask..."
+            >{{ entry.question if entry else '' }}</textarea>
+            <p class="form-help">The question or query that this knowledge entry answers.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="answer">Answer *</label>
+            <textarea
+                id="answer"
+                name="answer"
+                class="form-control"
+                required
+                placeholder="Enter the answer to the question..."
+                style="min-height: 200px;"
+            >{{ entry.answer if entry else '' }}</textarea>
+            <p class="form-help">The response that should be returned when the question is matched.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="metadata_json">Metadata (JSON)</label>
+            <textarea
+                id="metadata_json"
+                name="metadata_json"
+                class="form-control metadata-textarea"
+                placeholder='{"category": "general", "tags": ["faq"]}'
+            >{{ entry.metadata_ | tojson(indent=2) if entry and entry.metadata_ else '{}' }}</textarea>
+            <p class="form-help">Optional JSON metadata for categorization and filtering.</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Save Changes{% else %}Create Entry{% endif %}
+            </button>
+            <a href="/knowledge" class="btn btn-secondary">Cancel</a>
+            {% if is_edit %}
+            {# formaction: a form cannot be nested in this one, the button posts to the delete route #}
+            <button type="submit" class="btn btn-danger" style="margin-left: auto;"
+                    formaction="/knowledge/{{ entry.id }}/delete" formnovalidate
+                    onclick="return confirm('Are you sure you want to delete this entry?')">
+                Delete
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // JSON validation for metadata
+    const metadataField = document.getElementById('metadata_json');
+
+    metadataField.addEventListener('blur', function() {
+        try {
+            if (this.value.trim()) {
+                const parsed = JSON.parse(this.value);
+                this.value = JSON.stringify(parsed, null, 2);
+                this.style.borderColor = '#0f3460';
+            }
+        } catch (e) {
+            this.style.borderColor = '#d63031';
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Validation Details - Entry #{{ entry.id }}{% endblock %}
+
+{% block head %}
+<style>
+    .validation-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .status-badge-lg {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        display: inline-block;
+        font-weight: 500;
+    }
+    .status-accepted { background-color: rgba(0, 184, 148, 0.2); color: #00b894; }
+    .status-pending, .status-validating { background-color: rgba(253, 203, 110, 0.2); color: #fdcb6e; }
+    .status-rejected { background-color: rgba(214, 48, 49, 0.2); color: #d63031; }
+    .status-needs_review { background-color: rgba(9, 132, 227, 0.2); color: #0984e3; }
+    .step-card {
+        background: #1a1a2e;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-left: 3px solid #6c757d;
+    }
+    .step-card.step-accept { border-left-color: #00b894; }
+    .step-card.step-reject { border-left-color: #d63031; }
+    .step-card.step-needs_review { border-left-color: #0984e3; }
+    .step-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .step-name {
+        font-weight: 500;
+        font-size: 0.95rem;
+        text-transform: capitalize;
+    }
+    .step-verdict {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+    }
+    .verdict-accept { background-color: rgba(0, 184, 148, 0.2); color: #00b894; }
+    .verdict-reject { background-color: rgba(214, 48, 49, 0.2); color: #d63031; }
+    .verdict-needs_review { background-color: rgba(9, 132, 227, 0.2); color: #0984e3; }
+    .step-details {
+        font-size: 0.85rem;
+        color: #a0a0a0;
+        margin-top: 0.5rem;
+    }
+    .step-details pre {
+        background: #16213e;
+        padding: 0.75rem;
+        border-radius: 4px;
+        overflow-x: auto;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .step-score {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .summary-card {
+        background: #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .entry-preview-text {
+        background: #1a1a2e;
+        border-radius: 4px;
+        padding: 0.75rem;
+        font-size: 0.85rem;
+        max-height: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Validation Details</h1>
+    <a href="/knowledge/{{ entry.id }}" class="btn btn-secondary">&larr; Back to Entry</a>
+</div>
+
+<div class="admin-card">
+    <div class="validation-header">
+        <span>Entry #{{ entry.id }}</span>
+        <span class="status-badge-lg status-{{ entry.status or 'accepted' }}">
+            {{ (entry.status or 'accepted').replace('_', ' ').title() }}
+        </span>
+    </div>
+
+    <div class="entry-preview-text">
+        <strong>Q:</strong> {{ entry.question[:200] }}{% if entry.question|length > 200 %}...{% endif %}
+    </div>
+    <div class="entry-preview-text" style="color: #a0a0a0;">
+        <strong>A:</strong> {{ entry.answer[:200] }}{% if entry.answer|length > 200 %}...{% endif %}
+    </div>
+
+    {% if entry.validation_details %}
+    <div class="summary-card" style="margin-top: 1rem;">
+        <strong>Summary:</strong> {{ entry.validation_details.get('summary', 'No summary available') }}
+    </div>
+
+    <h3 style="margin-bottom: 1rem; color: #a0a0a0; font-size: 0.85rem; text-transform: uppercase;">Pipeline Steps</h3>
+
+    {% for step in entry.validation_details.get('steps', []) %}
+    <div class="step-card step-{{ step.get('verdict', 'accept') }}">
+        <div class="step-header">
+            <span class="step-name">{{ loop.index }}. {{ step.get('step', 'unknown') }}</span>
+            <div>
+                {% if step.get('score') is not none %}
+                <span class="step-score">Score: {{ '%.2f'|format(step.get('score', 0)) }}</span>
+                {% endif %}
+                <span class="step-verdict verdict-{{ step.get('verdict', 'accept') }}">
+                    {% if step.get('passed') %}PASSED{% else %}FAILED{% endif %}
+                    ({{ step.get('verdict', 'accept').replace('_', ' ').upper() }})
+                </span>
+            </div>
+        </div>
+        {% if step.get('error') %}
+        <div class="step-details" style="color: #d63031;">
+            Error: {{ step.get('error') }}
+        </div>
+        {% endif %}
+        {% if step.get('details') %}
+        <div class="step-details">
+            <details>
+                <summary style="cursor: pointer;">Show details</summary>
+                <pre>{{ step.get('details') | tojson(indent=2) }}</pre>
+            </details>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="empty-state" style="margin-top: 1rem;">
+        <p>No validation details available.</p>
+        {% if entry.status == 'pending' %}
+        <p class="text-muted">Validation is pending. Details will appear after the Celery worker processes this entry.</p>
+        {% elif entry.status == 'validating' %}
+        <p class="text-muted">Validation is currently in progress.</p>
+        {% elif entry.status == 'accepted' and not entry.validation_details %}
+        <p class="text-muted">This entry was created before validation was enabled, or validation is disabled.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

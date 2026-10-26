@@ -11,6 +11,7 @@ from internal.routes.contact_groups import router as contact_groups_router
 from internal.routes.contacts import router as contacts_router
 from internal.routes.email_campaigns import router as email_campaigns_router
 from internal.routes.email_templates import router as email_templates_router
+from internal.routes.knowledge import router as knowledge_router
 from internal.routes.mailler import router as mailler_router
 from internal.routes.namespaces import router as namespaces_router
 from internal.routes.prompts import router as prompts_router
@@ -26,6 +27,7 @@ __all__ = [
     "contacts_router",
     "email_campaigns_router",
     "email_templates_router",
+    "knowledge_router",
     "mailler_router",
     "namespaces_router",
     "prompts_router",

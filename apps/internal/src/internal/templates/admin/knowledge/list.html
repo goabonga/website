@@ -1,0 +1,338 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Knowledge Base{% endblock %}
+
+{% block head %}
+<style>
+    .search-form {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .search-form input {
+        flex: 1;
+        max-width: 400px;
+    }
+    .entry-preview {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+    .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .col-namespace { width: 100px; }
+    .col-question { width: 25%; }
+    .col-answer { width: 30%; }
+    .col-embedding { width: 70px; }
+    .col-metadata { width: 70px; }
+    .col-updated { width: 100px; }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    .pagination a,
+    .pagination span {
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #a0a0a0;
+        background-color: #16213e;
+        border: 1px solid #0f3460;
+    }
+    .pagination a:hover {
+        background-color: #0f3460;
+        color: #e0e0e0;
+    }
+    .pagination .active {
+        background-color: #e94560;
+        color: white;
+        border-color: #e94560;
+    }
+    .pagination .disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .bulk-actions {
+        display: none;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .bulk-actions.visible {
+        display: flex;
+    }
+    .select-all-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .entry-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .metadata-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    .status-accepted { background-color: rgba(0, 184, 148, 0.2); color: #00b894; }
+    .status-pending, .status-validating { background-color: rgba(253, 203, 110, 0.2); color: #fdcb6e; }
+    .status-rejected { background-color: rgba(214, 48, 49, 0.2); color: #d63031; }
+    .status-needs_review { background-color: rgba(9, 132, 227, 0.2); color: #0984e3; }
+    .col-status { width: 90px; }
+    .namespace-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        background-color: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+        border-radius: 3px;
+        display: inline-block;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .filter-row {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-row select {
+        max-width: 200px;
+    }
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .btn-magic {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-magic:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Knowledge Base</h1>
+    <div class="header-actions">
+        {% if user.can_write('knowledge') %}
+            {% if openai_configured %}
+            <a href="/knowledge/generate" class="btn btn-magic">&#10024; Generate</a>
+            {% endif %}
+            <a href="/knowledge/new" class="btn btn-primary">+ New Entry</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form class="search-form" method="get" action="/knowledge">
+        <div class="filter-row">
+            <input type="text" name="search" class="form-control" placeholder="Search questions or answers..." value="{{ search or '' }}">
+            <select name="namespace" class="form-control">
+                <option value="">All Namespaces</option>
+                {% for ns in namespaces %}
+                <option value="{{ ns.slug }}" {% if namespace_filter == ns.slug %}selected{% endif %}>{{ ns.name }}</option>
+                {% endfor %}
+            </select>
+            {% if validation_enabled %}
+            <select name="status" class="form-control">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s.replace('_', ' ').title() }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <button type="submit" class="btn btn-secondary">Search</button>
+            {% if search or namespace_filter or status_filter %}
+            <a href="/knowledge" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if user.can_delete('knowledge') %}
+    <div class="bulk-actions" id="bulkActions">
+        <span><span id="selectedCount">0</span> selected</span>
+        <form method="post" action="/knowledge/bulk-delete" id="bulkDeleteForm" style="display: inline;">
+            <input type="hidden" name="entry_ids" id="entryIds">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected entries?')">
+                Delete Selected
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if entries %}
+    <table class="table">
+        <thead>
+            <tr>
+                {% if user.can_delete('knowledge') %}<th width="40"><input type="checkbox" id="selectAll" class="entry-checkbox" title="Select all"></th>{% endif %}
+                <th class="col-namespace">Namespace</th>
+                <th class="col-question">Question</th>
+                <th class="col-answer">Answer</th>
+                <th class="col-embedding">Embed</th>
+                {% if validation_enabled %}<th class="col-status">Status</th>{% endif %}
+                <th class="col-metadata">Meta</th>
+                <th class="col-updated">Updated</th>
+                {% if user.can_write('knowledge') %}<th width="80">Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                {% if user.can_delete('knowledge') %}
+                <td>
+                    <input type="checkbox" class="entry-checkbox row-checkbox" data-id="{{ entry.id }}">
+                </td>
+                {% endif %}
+                <td>
+                    {% if entry.namespace %}
+                    <a href="/knowledge?namespace={{ entry.namespace.slug }}">
+                        <span class="namespace-badge">{{ entry.namespace.name }}</span>
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/knowledge/{{ entry.id }}">
+                        <span class="entry-preview">{{ entry.question }}</span>
+                    </a>
+                </td>
+                <td>
+                    <span class="entry-preview text-muted">{{ entry.answer[:60] }}{% if entry.answer|length > 60 %}...{% endif %}</span>
+                </td>
+                <td>
+                    {% if entry.embedding is not none %}
+                    <span class="badge badge-success">Ready</span>
+                    {% else %}
+                    <span class="badge badge-warning">Missing</span>
+                    {% endif %}
+                </td>
+                {% if validation_enabled %}
+                <td>
+                    <a href="/knowledge/{{ entry.id }}/validation">
+                        <span class="status-badge status-{{ entry.status or 'accepted' }}">{{ (entry.status or 'accepted').replace('_', ' ').title() }}</span>
+                    </a>
+                </td>
+                {% endif %}
+                <td>
+                    {% if entry.metadata_ and entry.metadata_.keys()|list|length > 0 %}
+                    <span class="badge badge-info metadata-badge">{{ entry.metadata_.keys()|list|length }} key(s)</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.8rem;">
+                    {{ entry.updated_at.strftime('%Y-%m-%d') if entry.updated_at else '-' }}
+                </td>
+                {% if user.can_write('knowledge') %}
+                <td>
+                    <a href="/knowledge/{{ entry.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/knowledge?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if namespace_filter %}&namespace={{ namespace_filter | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}">&laquo; Prev</a>
+        {% else %}
+        <span class="disabled">&laquo; Prev</span>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+            <a href="/knowledge?page={{ p }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if namespace_filter %}&namespace={{ namespace_filter | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}">{{ p }}</a>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/knowledge?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if namespace_filter %}&namespace={{ namespace_filter | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}">Next &raquo;</a>
+        {% else %}
+        <span class="disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <p class="text-muted" style="margin-top: 1rem; text-align: center;">
+        Showing {{ entries|length }} of {{ total }} entries
+    </p>
+    {% else %}
+    <div class="empty-state">
+        <p>No knowledge entries found.</p>
+        {% if search %}
+        <p><a href="/knowledge">Clear search</a></p>
+        {% elif user.can_write('knowledge') %}
+        <p><a href="/knowledge/new">Create your first entry</a></p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const entryIds = document.getElementById('entryIds');
+
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const count = checked.length;
+        selectedCount.textContent = count;
+        bulkActions.classList.toggle('visible', count > 0);
+        entryIds.value = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    }
+
+    selectAll.addEventListener('change', function() {
+        rowCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkActions();
+    });
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const allChecked = document.querySelectorAll('.row-checkbox:checked').length === rowCheckboxes.length;
+            selectAll.checked = allChecked;
+            updateBulkActions();
+        });
+    });
+});
+</script>
+{% endblock %}

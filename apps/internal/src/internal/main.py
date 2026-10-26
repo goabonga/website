@@ -26,6 +26,7 @@ from internal.routes import (
     contacts_router,
     email_campaigns_router,
     email_templates_router,
+    knowledge_router,
     mailler_router,
     namespaces_router,
     prompts_router,
@@ -110,6 +111,7 @@ Internal Admin Dashboard for managing platform services.
 - **Contact management**: Manage contacts and contact groups
 - **Email campaigns**: Create, send, and track email campaigns
 - **Email templates**: Design and manage email templates
+- **Knowledge base**: Manage knowledge base collections and documents
 - **Analytics**: View and manage analytics data
 - **Billing**: Manage billing and subscriptions
 - **VPN**: Manage VPN configurations
@@ -128,6 +130,7 @@ Access is controlled per resource via scoped permissions.
 - `contacts:write`, `contacts:delete` - Manage contacts
 - `email_templates:write`, `email_templates:delete` - Manage email templates
 - `email_campaigns:write`, `email_campaigns:send`, `email_campaigns:delete` - Manage campaigns
+- `knowledge:write`, `knowledge:delete` - Manage knowledge base
 - `analytics:write`, `analytics:delete` - Manage analytics
 - `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
@@ -175,6 +178,7 @@ app.include_router(contacts_router)
 app.include_router(contact_groups_router)
 app.include_router(email_campaigns_router)
 app.include_router(email_templates_router)
+app.include_router(knowledge_router)
 app.include_router(mailler_router)
 app.include_router(namespaces_router)
 app.include_router(prompts_router)

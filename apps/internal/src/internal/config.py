@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     redis_key_prefix: str = "internal"
 
+    # Celery
+    celery_broker_url: str = ""
+    celery_result_backend: str = ""
+
     # Session signing key (read from systemd credentials in production)
     secret_key: str = "change-me-in-production"
 
@@ -64,6 +68,20 @@ class Settings(BaseSettings):
 
     # OpenAI settings
     openai_api_key: str = ""
+
+    rag_embedding_model: str = "text-embedding-3-small"
+
+    # Knowledge validation pipeline
+    validation_enabled: bool = True
+    validation_quality_min_score: float = 0.4
+    validation_dedup_similarity_threshold: float = 0.92
+    validation_answer_min_tokens: int = 30
+    validation_answer_max_tokens: int = 800
+    validation_answer_warn_min_tokens: int = 50
+    validation_answer_warn_max_tokens: int = 600
+    validation_semantic_model: str = "gpt-4o-mini"
+    validation_semantic_confidence_threshold: float = 0.7
+    validation_retrievability_min_hits: int = 1
 
     # Analytics API
     analytics_api_url: str = "https://ua.goabonga.com"

@@ -3,13 +3,23 @@
 
 """Steps shared by every feature file."""
 
-from behave import then, when
-from environment import http_request
+from behave import given, then, when
+from environment import authenticate, http_request
 
 
 @when('I send a {method} request to "{path}"')
 def step_send_request(context, method, path):
     http_request(context, method, path)
+
+
+@given('I am authenticated as client "{client_id}" with scopes "{scopes}"')
+def step_authenticated(context, client_id, scopes):
+    authenticate(context, scopes.split(), client_id=client_id)
+
+
+@given("I am not authenticated")
+def step_not_authenticated(context):
+    context.token = None
 
 
 @then("the response status is {status:d}")
@@ -20,6 +30,16 @@ def step_response_status(context, status):
 @then('the JSON field "{field}" equals "{value}"')
 def step_json_field_equals(context, field, value):
     assert str(context.response.json()[field]) == value
+
+
+@then('the JSON field "{field}" is true')
+def step_json_field_true(context, field):
+    assert context.response.json()[field] is True
+
+
+@then('the JSON field "{field}" is false')
+def step_json_field_false(context, field):
+    assert context.response.json()[field] is False
 
 
 @then('the JSON field "{field}" is null')

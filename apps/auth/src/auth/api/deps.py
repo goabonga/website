@@ -13,9 +13,12 @@ from fastapi.security import HTTPBearer
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.config import settings
 from auth.core.database import async_session_factory
+from auth.core.security import AESEncryption
 from auth.db.models.rbac import Role
 from auth.db.models.user import User
+from auth.services.jwks import JWKSService
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +66,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+@lru_cache
+def get_encryption() -> AESEncryption:
+    """Get AES encryption instance (cached)."""
+    return AESEncryption.from_base64(settings.jwks_encryption_key)
+
+
+def get_jwks_service() -> JWKSService:
+    """Get JWKS service instance."""
+    return JWKSService(get_encryption())
 
 
 @lru_cache

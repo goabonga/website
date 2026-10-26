@@ -5,9 +5,10 @@
 
 from fastapi import APIRouter
 
-from auth.api.routes import health
+from auth.api.routes import health, jwks
 
 router = APIRouter()
 
 
 router.include_router(health.router, tags=["health"])
+router.include_router(jwks.router, tags=["oidc"])

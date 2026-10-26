@@ -49,8 +49,18 @@ class Settings(BaseSettings):
     database_max_overflow: int = 10
     database_echo: bool = False
 
+    # JWKS
+    jwks_encryption_key: str = ""  # Base64-encoded 32-byte key for AES-256-GCM
+    jwks_key_size: int = 2048  # RSA key size in bits
+    jwks_rotation_days: int = 90  # Rotate keys every N days
+    jwks_grace_period_days: int = 30  # Keep revoked keys for validation
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
 # Load settings with credential overrides for secrets
-settings = Settings()
+settings = Settings(
+    jwks_encryption_key=get_credential(
+        "JWKS_ENCRYPTION_KEY", os.environ.get("JWKS_ENCRYPTION_KEY", "")
+    ),
+)

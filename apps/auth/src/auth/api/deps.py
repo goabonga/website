@@ -4,7 +4,7 @@
 """FastAPI dependencies for dependency injection."""
 
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,7 @@ from auth.services.par import PARService
 from auth.services.password import PasswordService
 from auth.services.pat import PAT_PREFIX, PersonalAccessTokenService
 from auth.services.profile import ProfileService
+from auth.services.role import role_service as _role_service
 from auth.services.session import SessionService
 from auth.services.token import TokenService
 from auth.services.token_exchange import TokenExchangeService
@@ -231,6 +232,32 @@ async def get_current_user(
     return session.user
 
 
+async def get_current_user_with_roles(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> tuple[User, list[Role]] | None:
+    """Get the current authenticated user with their roles.
+
+    Args:
+        request: The HTTP request.
+        db: Database session.
+
+    Returns:
+        Tuple of (user, roles) or None if not authenticated.
+    """
+    user = await get_current_user(request, db)
+
+    if not user:
+        return None
+
+    # Delegate to RoleService (via RoleRepository) — this mirrors
+    # ``list_user_roles_with_scopes`` which already eager-loads
+    # ``role_scopes.scope`` and scopes to ``user.id``.
+    roles = await _role_service.list_user_roles_with_scopes(db, user.id)
+
+    return (user, roles)
+
+
 async def validate_bearer_token(
     request: Request,
     db: AsyncSession,
@@ -417,6 +444,231 @@ def user_has_scope(roles: list[Role], required_scope: str) -> bool:
         True if user has the scope.
     """
     return any(role.has_scope(required_scope) for role in roles)
+
+
+def require_scope(scope: str, redirect_to_login: bool = False) -> Callable:
+    """Create a dependency that requires a specific scope.
+
+    Supports three authentication methods:
+    1. Personal Access Token (for user API access with PAT prefix)
+    2. Bearer JWT token (for machine-to-machine API access)
+    3. Session cookie (for web UI users)
+
+    Args:
+        scope: The required scope (e.g., "users:read", "jwks:write").
+        redirect_to_login: If True, redirect to login page instead of 401/403.
+
+    Returns:
+        A FastAPI dependency function.
+    """
+
+    async def dependency(
+        request: Request,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)] = None,
+    ) -> AuthResult:
+        # Try PAT authentication first (check for PAT prefix)
+        if credentials and credentials.credentials.startswith(PAT_PREFIX):
+            pat_auth = await validate_pat_token(request, db, credentials)
+            if pat_auth:
+                if not token_has_scope(pat_auth.scopes, scope):
+                    logger.warning(
+                        "PAT (user=%s) attempted access without scope %s (has: %s)",
+                        pat_auth.user_id,
+                        scope,
+                        pat_auth.scopes,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Missing required permission: {scope}",
+                    )
+                logger.debug(
+                    "PAT authenticated: user=%s, pat=%s, scopes=%s",
+                    pat_auth.user_id,
+                    pat_auth.pat_id,
+                    pat_auth.scopes,
+                )
+                return pat_auth
+            # PAT prefix present but validation failed
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired personal access token",
+            )
+
+        # Try Bearer JWT token authentication (for OAuth2 API access)
+        if credentials:
+            bearer_auth = await validate_bearer_token(request, db, credentials)
+            if bearer_auth:
+                if not token_has_scope(bearer_auth.scopes, scope):
+                    logger.warning(
+                        "Bearer token (client=%s) attempted access without scope %s (has: %s)",
+                        bearer_auth.client_id,
+                        scope,
+                        bearer_auth.scopes,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Missing required permission: {scope}",
+                    )
+                logger.debug(
+                    "Bearer token authenticated: client=%s, scopes=%s",
+                    bearer_auth.client_id,
+                    bearer_auth.scopes,
+                )
+                return bearer_auth
+
+        # Fall back to session cookie authentication (for web UI)
+        user_data = await get_current_user_with_roles(request, db)
+
+        if not user_data:
+            logger.warning("Admin access attempted without authentication")
+            if redirect_to_login:
+                # Store the original URL to redirect back after login
+                return_url = str(request.url)
+                raise HTTPException(
+                    status_code=status.HTTP_303_SEE_OTHER,
+                    headers={"Location": f"/auth/login?next={return_url}"},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
+
+        user, roles = user_data
+
+        if not user.is_active:
+            logger.warning("Disabled user %s attempted admin access", user.id)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is disabled",
+            )
+
+        if not user_has_scope(roles, scope):
+            logger.warning("User %s attempted admin access without scope %s", user.id, scope)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission: {scope}",
+            )
+
+        return user, roles
+
+    return dependency
+
+
+def require_any_scope(*scopes: str, redirect_to_login: bool = False) -> Callable:
+    """Create a dependency that requires any of the specified scopes.
+
+    Supports three authentication methods:
+    1. Personal Access Token (for user API access with PAT prefix)
+    2. Bearer JWT token (for machine-to-machine API access)
+    3. Session cookie (for web UI users)
+
+    Args:
+        *scopes: The scopes to check (user needs at least one).
+        redirect_to_login: If True, redirect to login page instead of 401/403.
+
+    Returns:
+        A FastAPI dependency function.
+    """
+
+    async def dependency(
+        request: Request,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)] = None,
+    ) -> AuthResult:
+        # Try PAT authentication first (check for PAT prefix)
+        if credentials and credentials.credentials.startswith(PAT_PREFIX):
+            pat_auth = await validate_pat_token(request, db, credentials)
+            if pat_auth:
+                has_any = any(token_has_scope(pat_auth.scopes, scope) for scope in scopes)
+                if not has_any:
+                    logger.warning(
+                        "PAT (user=%s) attempted access without any of scopes %s (has: %s)",
+                        pat_auth.user_id,
+                        scopes,
+                        pat_auth.scopes,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Missing required permission: one of {', '.join(scopes)}",
+                    )
+                logger.debug(
+                    "PAT authenticated: user=%s, pat=%s, scopes=%s",
+                    pat_auth.user_id,
+                    pat_auth.pat_id,
+                    pat_auth.scopes,
+                )
+                return pat_auth
+            # PAT prefix present but validation failed
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired personal access token",
+            )
+
+        # Try Bearer JWT token authentication (for OAuth2 API access)
+        if credentials:
+            bearer_auth = await validate_bearer_token(request, db, credentials)
+            if bearer_auth:
+                has_any = any(token_has_scope(bearer_auth.scopes, scope) for scope in scopes)
+                if not has_any:
+                    logger.warning(
+                        "Bearer token (client=%s) attempted access "
+                        "without any of scopes %s (has: %s)",
+                        bearer_auth.client_id,
+                        scopes,
+                        bearer_auth.scopes,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Missing required permission: one of {', '.join(scopes)}",
+                    )
+                logger.debug(
+                    "Bearer token authenticated: client=%s, scopes=%s",
+                    bearer_auth.client_id,
+                    bearer_auth.scopes,
+                )
+                return bearer_auth
+
+        # Fall back to session cookie authentication (for web UI)
+        user_data = await get_current_user_with_roles(request, db)
+
+        if not user_data:
+            logger.warning("Admin access attempted without authentication")
+            if redirect_to_login:
+                return_url = str(request.url)
+                raise HTTPException(
+                    status_code=status.HTTP_303_SEE_OTHER,
+                    headers={"Location": f"/auth/login?next={return_url}"},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
+
+        user, roles = user_data
+
+        if not user.is_active:
+            logger.warning("Disabled user %s attempted admin access", user.id)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is disabled",
+            )
+
+        has_any = any(user_has_scope(roles, scope) for scope in scopes)
+        if not has_any:
+            logger.warning(
+                "User %s attempted admin access without any of scopes %s",
+                user.id,
+                scopes,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission: one of {', '.join(scopes)}",
+            )
+
+        return user, roles
+
+    return dependency
 
 
 def get_user_admin_permissions(roles: list[Role]) -> dict[str, bool]:

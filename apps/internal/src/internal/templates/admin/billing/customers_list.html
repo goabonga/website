@@ -1,0 +1,73 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Customers - {{ saas_app.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}" class="text-muted" style="text-decoration: none;">&larr; Back to {{ saas_app.name }}</a>
+        <h1 style="margin-top: 0.5rem;">Customers</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    {% if customers %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>External ID</th>
+                <th>Stripe Customer ID</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/customers/{{ customer.id }}" style="color: #e94560;">
+                        {{ customer.email }}
+                    </a>
+                </td>
+                <td>{{ customer.name or '-' }}</td>
+                <td><code class="mono" style="font-size: 0.8rem;">{{ customer.external_id }}</code></td>
+                <td><code class="mono" style="font-size: 0.75rem;">{{ customer.stripe_customer_id }}</code></td>
+                <td>{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/customers/{{ customer.id }}" class="btn btn-secondary btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/billing/saas/{{ saas_app.id }}/customers?page={{ page - 1 }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }}</span>
+        {% if customers | length == per_page %}
+        <a href="/billing/saas/{{ saas_app.id }}/customers?page={{ page + 1 }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128100;</p>
+        <p>No customers yet.</p>
+        <p class="text-muted">
+            Customers are created automatically when they subscribe to a product.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

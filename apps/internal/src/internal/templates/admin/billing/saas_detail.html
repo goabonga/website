@@ -1,0 +1,232 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ saas_app.name }} - Billing{% endblock %}
+
+{% block head %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #e94560;
+    }
+    .stat-card .label {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .section-header h3 {
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing" class="text-muted" style="text-decoration: none;">&larr; Back to Dashboard</a>
+        <h1 style="margin-top: 0.5rem;">{{ saas_app.name }}</h1>
+    </div>
+    {% if user.has_scope('billing:write') %}
+    <a href="/billing/saas/{{ saas_app.id }}/edit" class="btn btn-secondary">Edit</a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value">{{ products | length }}</div>
+            <div class="label">Products</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ customers | length }}</div>
+            <div class="label">Customers</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ subscriptions | length }}</div>
+            <div class="label">Subscriptions</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">
+                {% if saas_app.is_active %}
+                <span style="color: #00b894;">Active</span>
+                {% else %}
+                <span style="color: #fdcb6e;">Inactive</span>
+                {% endif %}
+            </div>
+            <div class="label">Status</div>
+        </div>
+    </div>
+
+    <table class="table" style="margin-top: 1rem;">
+        <tr>
+            <th style="width: 150px;">Slug</th>
+            <td><code class="mono">{{ saas_app.slug }}</code></td>
+        </tr>
+        <tr>
+            <th>Description</th>
+            <td>{{ saas_app.description or '-' }}</td>
+        </tr>
+        <tr>
+            <th>Webhook URL</th>
+            <td>
+                {% if saas_app.webhook_url %}
+                <code class="mono" style="font-size: 0.8rem;">{{ saas_app.webhook_url }}</code>
+                {% else %}
+                <span class="text-muted">Not configured</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Created</th>
+            <td>{{ saas_app.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+    </table>
+</div>
+
+<!-- Products Section -->
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <div class="section-header">
+        <h3>Products</h3>
+        <div>
+            <a href="/billing/saas/{{ saas_app.id }}/products" class="btn btn-secondary btn-sm">View All</a>
+            {% if user.has_scope('billing:write') %}
+            <a href="/billing/saas/{{ saas_app.id }}/products/new" class="btn btn-primary btn-sm">+ New Product</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if products %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Stripe ID</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products[:5] %}
+            <tr>
+                <td><a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}" style="color: #e94560;">{{ product.name }}</a></td>
+                <td><code class="mono" style="font-size: 0.8rem;">{{ product.stripe_product_id }}</code></td>
+                <td>
+                    {% if product.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if products | length > 5 %}
+    <p class="text-muted" style="margin-top: 0.5rem;">Showing 5 of {{ products | length }} products.</p>
+    {% endif %}
+    {% else %}
+    <p class="text-muted">No products yet.</p>
+    {% endif %}
+</div>
+
+<!-- Customers Section -->
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <div class="section-header">
+        <h3>Recent Customers</h3>
+        <a href="/billing/saas/{{ saas_app.id }}/customers" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+
+    {% if customers %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>External ID</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td><a href="/billing/saas/{{ saas_app.id }}/customers/{{ customer.id }}" style="color: #e94560;">{{ customer.email }}</a></td>
+                <td>{{ customer.name or '-' }}</td>
+                <td><code class="mono" style="font-size: 0.8rem;">{{ customer.external_id }}</code></td>
+                <td>{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No customers yet.</p>
+    {% endif %}
+</div>
+
+<!-- Subscriptions Section -->
+<div class="admin-card">
+    <div class="section-header">
+        <h3>Recent Subscriptions</h3>
+        <a href="/billing/saas/{{ saas_app.id }}/subscriptions" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+
+    {% if subscriptions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Stripe ID</th>
+                <th>Status</th>
+                <th>Period End</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td><a href="/billing/saas/{{ saas_app.id }}/subscriptions/{{ sub.id }}" style="color: #e94560;"><code class="mono">{{ sub.stripe_subscription_id[:20] }}...</code></a></td>
+                <td>
+                    {% if sub.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif sub.status == 'trialing' %}
+                    <span class="badge badge-info">Trial</span>
+                    {% elif sub.status == 'past_due' %}
+                    <span class="badge badge-warning">Past Due</span>
+                    {% elif sub.status == 'canceled' %}
+                    <span class="badge badge-danger">Canceled</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ sub.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ sub.current_period_end.strftime('%Y-%m-%d') if sub.current_period_end else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No subscriptions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

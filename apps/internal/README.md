@@ -28,6 +28,29 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/analytics/reset` | session; scope `analytics:delete` | Reset all analytics data |
 | GET | `/vpn/sessions` | session; scope `vpn:admin` | List all VPN sessions with pagination |
 | POST | `/vpn/sessions/{serial_number}/revoke` | session; scope `vpn:admin` | Revoke a VPN session by certificate serial number |
+| GET | `/billing` | session; scope `billing:read` | Billing dashboard - overview of all SaaS apps |
+| GET | `/billing/saas/new` | session; scope `billing:write` | New SaaS app form |
+| POST | `/billing/saas/new` | session; scope `billing:write` | Create a new SaaS app |
+| GET | `/billing/saas/{saas_id}` | session; scope `billing:read` | SaaS app detail view with products and customers |
+| GET | `/billing/saas/{saas_id}/edit` | session; scope `billing:write` | Edit SaaS app form |
+| POST | `/billing/saas/{saas_id}/edit` | session; scope `billing:write` | Update a SaaS app (an unchecked "Active" box is not submitted: it deactivates) |
+| GET | `/billing/saas/{saas_id}/products` | session; scope `billing:read` | List all products for a SaaS app |
+| GET | `/billing/saas/{saas_id}/products/new` | session; scope `billing:write` | New product form |
+| POST | `/billing/saas/{saas_id}/products/new` | session; scope `billing:write` | Create a new product in Stripe with features, limits, and trial settings |
+| GET | `/billing/saas/{saas_id}/products/{product_id}` | session; scope `billing:read` | Product detail with prices |
+| GET | `/billing/saas/{saas_id}/products/{product_id}/edit` | session; scope `billing:write` | Edit product form with features and limits |
+| POST | `/billing/saas/{saas_id}/products/{product_id}/edit` | session; scope `billing:write` | Update a product with features, limits, and trial settings |
+| GET | `/billing/saas/{saas_id}/products/{product_id}/prices/new` | session; scope `billing:write` | New price form |
+| POST | `/billing/saas/{saas_id}/products/{product_id}/prices/new` | session; scope `billing:write` | Create a new price in Stripe |
+| POST | `/billing/saas/{saas_id}/products/{product_id}/prices/{price_id}/toggle` | session; scope `billing:write` | Toggle a price active/inactive status |
+| GET | `/billing/saas/{saas_id}/customers` | session; scope `billing:read` | List customers for a SaaS app |
+| GET | `/billing/saas/{saas_id}/customers/{customer_id}` | session; scope `billing:read` | Customer detail with subscriptions |
+| POST | `/billing/saas/{saas_id}/customers/{customer_id}/portal` | session; scope `billing:read` | Redirect to Stripe Customer Portal |
+| GET | `/billing/saas/{saas_id}/subscriptions` | session; scope `billing:read` | List subscriptions for a SaaS app |
+| GET | `/billing/saas/{saas_id}/subscriptions/{subscription_id}` | session; scope `billing:read` | Subscription detail view |
+| POST | `/billing/saas/{saas_id}/subscriptions/{subscription_id}/cancel` | session; scope `billing:write` | Cancel a subscription |
+| POST | `/billing/saas/{saas_id}/subscriptions/{subscription_id}/reactivate` | session; scope `billing:write` | Undo a cancellation scheduled for the end of the period |
+| POST | `/billing/saas/{saas_id}/subscriptions/{subscription_id}/sync` | session; scope `billing:write` | Sync a subscription from Stripe |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -41,3 +64,5 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
 - `vpn:admin` - checked by 2 routes
+- `billing:read` - checked by 9 routes
+- `billing:write` - checked by 14 routes

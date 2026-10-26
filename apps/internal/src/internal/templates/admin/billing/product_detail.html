@@ -1,0 +1,203 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ product.name }} - Billing{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}/products" class="text-muted" style="text-decoration: none;">&larr; Back to Products</a>
+        <h1 style="margin-top: 0.5rem;">{{ product.name }}</h1>
+    </div>
+    {% if user.has_scope('billing:write') %}
+    <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}/edit" class="btn btn-primary">Edit Product</a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <h3>Product Details</h3>
+    <table class="table" style="margin-top: 1rem;">
+        <tr>
+            <th style="width: 180px;">Stripe Product ID</th>
+            <td><code class="mono">{{ product.stripe_product_id }}</code></td>
+        </tr>
+        <tr>
+            <th>Description</th>
+            <td>{{ product.description or '-' }}</td>
+        </tr>
+        {% if product.extra_data and product.extra_data.slug %}
+        <tr>
+            <th>Slug</th>
+            <td><code class="mono">{{ product.extra_data.slug }}</code></td>
+        </tr>
+        {% endif %}
+        <tr>
+            <th>Status</th>
+            <td>
+                {% if product.is_active %}
+                <span class="badge badge-success">Active</span>
+                {% else %}
+                <span class="badge badge-warning">Inactive</span>
+                {% endif %}
+                {% if product.extra_data and product.extra_data.is_recommended %}
+                <span class="badge badge-info" style="margin-left: 0.5rem;">Recommended</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Sort Order</th>
+            <td>{{ product.extra_data.sort_order if product.extra_data and product.extra_data.sort_order is defined else 0 }}</td>
+        </tr>
+        <tr>
+            <th>Default Trial Period</th>
+            <td>
+                {% if product.extra_data and product.extra_data.default_trial_days %}
+                <span class="badge badge-info">{{ product.extra_data.default_trial_days }} days</span>
+                {% else %}
+                <span class="text-muted">No trial</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Created</th>
+            <td>{{ product.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+    </table>
+</div>
+
+{% if product.extra_data and product.extra_data.features %}
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <h3>Features</h3>
+    <ul style="margin-top: 1rem; list-style: none; padding: 0;">
+        {% for feature in product.extra_data.features %}
+        <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.5rem;">
+            {% if feature.disabled %}
+            <span style="color: var(--text-muted); text-decoration: line-through;">{{ feature.label }}</span>
+            <span class="badge badge-secondary" style="font-size: 0.7rem;">Disabled</span>
+            {% elif feature.highlight %}
+            <strong style="color: var(--primary);">{{ feature.label }}</strong>
+            <span class="badge badge-info" style="font-size: 0.7rem;">Highlight</span>
+            {% else %}
+            <span>{{ feature.label }}</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if product.extra_data and product.extra_data.limits %}
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <h3>Limits</h3>
+    {% set limits = product.extra_data.limits %}
+    <table class="table" style="margin-top: 1rem;">
+        {% for key, value in limits.items() %}
+        <tr>
+            <th style="width: 250px;"><code class="mono">{{ key }}</code></th>
+            <td>
+                {% if value == -1 %}
+                <span class="badge badge-info">Unlimited</span>
+                {% elif key.endswith('_bytes') and value >= 1073741824 %}
+                {{ '{:,}'.format(value) }} <span class="text-muted">({{ (value / 1073741824) | round(1) }} GB)</span>
+                {% elif key.endswith('_bytes') and value >= 1048576 %}
+                {{ '{:,}'.format(value) }} <span class="text-muted">({{ (value / 1048576) | round(1) }} MB)</span>
+                {% elif value is number %}
+                {{ '{:,}'.format(value) }}
+                {% else %}
+                {{ value }}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Prices</h3>
+        {% if user.has_scope('billing:write') %}
+        <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}/prices/new" class="btn btn-primary btn-sm">+ New Price</a>
+        {% endif %}
+    </div>
+
+    {% if prices %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nickname</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Interval</th>
+                <th>Stripe Price ID</th>
+                <th>Status</th>
+                {% if user.has_scope('billing:write') %}
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for price in prices %}
+            <tr>
+                <td>{{ price.nickname or '-' }}</td>
+                <td>
+                    {% if price.unit_amount %}
+                    <strong>{{ (price.unit_amount / 100) | round(2) }} {{ price.currency | upper }}</strong>
+                    {% else %}
+                    <span class="text-muted">Metered</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if price.billing_type == 'recurring' %}
+                    <span class="badge badge-info">Recurring</span>
+                    {% else %}
+                    <span class="badge badge-secondary">One-time</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if price.recurring_interval %}
+                    {{ price.recurring_interval_count }}x {{ price.recurring_interval }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td><code class="mono" style="font-size: 0.75rem;">{{ price.stripe_price_id }}</code></td>
+                <td>
+                    {% if price.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+                {% if user.has_scope('billing:write') %}
+                <td style="white-space: nowrap;">
+                    <form method="post" action="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}/prices/{{ price.id }}/toggle" style="display: inline;">
+                        <button type="submit" class="btn btn-sm {% if price.is_active %}btn-warning{% else %}btn-success{% endif %}" title="{{ 'Deactivate' if price.is_active else 'Activate' }}">
+                            {% if price.is_active %}Deactivate{% else %}Activate{% endif %}
+                        </button>
+                    </form>
+                    <a href="https://dashboard.stripe.com/prices/{{ price.stripe_price_id }}" target="_blank" class="btn btn-sm btn-secondary" title="View in Stripe">Stripe</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128176;</p>
+        <p>No prices configured for this product.</p>
+        {% if user.has_scope('billing:write') %}
+        <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}/prices/new" class="btn btn-primary" style="margin-top: 1rem;">Create Price</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

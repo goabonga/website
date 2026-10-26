@@ -21,6 +21,7 @@ from internal.routes import (
     admin_router,
     analytics_router,
     auth_router,
+    billing_router,
     vpn_router,
 )
 
@@ -99,6 +100,7 @@ Internal Admin Dashboard for managing platform services.
 ## Features
 
 - **Analytics**: View and manage analytics data
+- **Billing**: Manage billing and subscriptions
 - **VPN**: Manage VPN configurations
 - **OAuth2 authentication**: Cookie-based authentication with scope validation
 
@@ -111,6 +113,7 @@ Access is controlled per resource via scoped permissions.
 ## Required Scopes
 
 - `analytics:write`, `analytics:delete` - Manage analytics
+- `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
 - `conversations:delete` - Delete conversations
     """,
@@ -150,3 +153,4 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(vpn_router)
+app.include_router(billing_router)

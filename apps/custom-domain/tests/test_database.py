@@ -6,7 +6,7 @@
 import contextlib
 
 import pytest
-from custom_domain.database import _get_async_url
+from custom_domain.database import _get_async_url, _get_sync_url
 
 
 class TestUrlConversion:
@@ -23,6 +23,36 @@ class TestUrlConversion:
         url = "postgresql:///db"
         result = _get_async_url(url)
         assert result == "postgresql+asyncpg:///db"
+
+    def test_get_sync_url(self):
+        """Test converting from async to sync URL."""
+        url = "postgresql+asyncpg://user:pass@localhost/db"
+        result = _get_sync_url(url)
+        assert result == "postgresql+psycopg2://user:pass@localhost/db"
+
+    def test_get_sync_url_already_sync(self):
+        """Test sync URL stays sync."""
+        url = "postgresql://user:pass@localhost/db"
+        result = _get_sync_url(url)
+        assert result == "postgresql+psycopg2://user:pass@localhost/db"
+
+
+class TestGetSyncDb:
+    """Tests for get_sync_db context manager."""
+
+    def test_get_sync_db_yields_session(self):
+        """Test get_sync_db yields a session."""
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+
+        with patch("custom_domain.database.SyncSessionLocal", return_value=mock_session):
+            from custom_domain.database import get_sync_db
+
+            with get_sync_db() as session:
+                assert session is mock_session
+
+            mock_session.close.assert_called_once()
 
 
 class TestGetDbAsync:

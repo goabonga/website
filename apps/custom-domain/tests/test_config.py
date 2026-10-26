@@ -108,3 +108,5 @@ class TestSettings:
         assert hasattr(settings, "redis_url")
         assert hasattr(settings, "oauth2_issuer")
         assert hasattr(settings, "nginx_sites_dir")
+        assert hasattr(settings, "certbot_enabled")
+        assert hasattr(settings, "celery_broker_url")

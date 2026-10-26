@@ -105,6 +105,7 @@ class TestSettings:
             s = Settings(
                 _env_file=None,
                 openai_api_key="",
+                anthropic_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -121,6 +122,7 @@ class TestSettings:
             s = Settings(
                 _env_file=None,
                 openai_api_key="",
+                anthropic_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -133,10 +135,24 @@ class TestSettings:
             s = Settings(
                 _env_file=None,
                 openai_api_key="",
+                anthropic_api_key="",
                 oauth2_client_secret="",
             )
 
         assert s.redis_url.startswith("redis://")
+
+    def test_empty_api_keys_by_default(self):
+        """API keys should be empty strings by default."""
+        with patch.dict(os.environ, {}, clear=False):
+            s = Settings(
+                _env_file=None,
+                openai_api_key="",
+                anthropic_api_key="",
+                oauth2_client_secret="",
+            )
+
+        assert s.openai_api_key == ""
+        assert s.anthropic_api_key == ""
 
     def test_empty_oauth2_by_default(self):
         """OAuth2 settings should be empty strings by default."""
@@ -144,6 +160,7 @@ class TestSettings:
             s = Settings(
                 _env_file=None,
                 openai_api_key="",
+                anthropic_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -166,6 +183,7 @@ class TestSettings:
             s = Settings(
                 _env_file=None,
                 openai_api_key="sk-test-123",
+                anthropic_api_key="",
                 oauth2_client_secret="",
             )
 

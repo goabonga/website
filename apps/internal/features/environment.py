@@ -175,3 +175,9 @@ def after_all(context):
         context.loop.close()
 
     app.dependency_overrides.clear()
+
+
+# The @browser scenarios (features/browser) drive a real Chromium: wrap the hooks above
+import browser_support  # noqa: E402
+
+browser_support.install(globals())

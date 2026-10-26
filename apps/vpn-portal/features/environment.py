@@ -12,8 +12,10 @@ import os
 import sys
 from pathlib import Path
 
-# The in-memory database session lives with the pytest helpers.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tests"))
+# The in-memory database session lives with the pytest helpers; the hook script lives in scripts/.
+APP_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(APP_DIR / "tests"))
+sys.path.insert(0, str(APP_DIR))
 
 # The OAuth2 scheme is built when the application is imported.
 os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.example.com")

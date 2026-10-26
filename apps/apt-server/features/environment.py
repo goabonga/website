@@ -9,15 +9,20 @@ real schema, injected in place of the PostgreSQL session dependency.
 
 import asyncio
 import shutil
+import sys
 import tempfile
 from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest import mock
 
+from apt_server.config import settings
 from apt_server.database import get_db
 from apt_server.db.models import Base
 from apt_server.main import app
+
+# Helpers shared with pytest, kept out of the installed package
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tests"))
 from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import JSONB
@@ -44,6 +49,9 @@ event.listen(Base, "refresh", _make_datetimes_aware, propagate=True)
 
 def _setup_database(context):
     context.workdir = Path(tempfile.mkdtemp(prefix="apt-server-behave-"))
+    context.repo_root = context.workdir / "repo"
+    context.repo_root.mkdir()
+    context.patch(settings, "apt_repo_root", str(context.repo_root))
     context.engine = create_async_engine(
         f"sqlite+aiosqlite:///{context.workdir / 'test.db'}", poolclass=NullPool
     )

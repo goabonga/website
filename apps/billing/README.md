@@ -22,6 +22,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Cancel and reactivate actions for subscriptions
 - Public pricing plans per SaaS application
 - Stripe Checkout sessions
+- Metered usage events
 
 ## Routes and scopes
 
@@ -60,6 +61,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade` | scope `billing:platform:write` | Upgrade a subscription to a new plan with proration |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/cancel` | scope `billing:platform:write` | Cancel a subscription, at the end of the paid period by default |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/reactivate` | scope `billing:platform:write` | Undo a cancellation scheduled for the end of the period |
+| POST | `/usage/{saas_id}/report` | scope `billing:usage:write` | Report a single usage event |
+| POST | `/usage/{saas_id}/batch` | scope `billing:usage:write` | Report multiple usage events in a batch |
 | GET | `/plans/{app_slug}` | public | List all plans for a SaaS application |
 | POST | `/checkout/session` | scope `billing:checkout:write` | Create a Stripe Checkout Session |
 
@@ -71,6 +74,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `billing:platform:write` - checked by 16 routes
 - `billing:platform:read` - checked by 14 routes
+- `billing:usage:write` - checked by 2 routes
 - `billing:checkout:write` - checked by 1 route
 
 ## Usage

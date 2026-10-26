@@ -60,6 +60,42 @@ class TestRequireScopesViaEndpoint:
         response = await auth_client.get("/api/v1/emails")
         assert response.status_code == 200
 
+    async def test_insufficient_scopes_returns_403(self):
+        claims = {
+            "sub": str(uuid4()),
+            "email": "test@example.com",
+            "scope": "mailler:stats",
+            "client_id": "test-client",
+        }
+        with (
+            patch("mailler.auth.dependencies.settings") as mock_settings,
+            patch("mailler.auth.dependencies.jwks_manager") as mock_jwks,
+            patch("mailler.auth.dependencies.introspection_client") as mock_introspection,
+            patch("mailler.auth.dependencies.token_exchange_client") as mock_exchange,
+        ):
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger"
+            mock_jwks.is_configured = True
+            mock_introspection.validate_token_with_introspection = AsyncMock(return_value=claims)
+            mock_exchange.is_configured = False
+
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": "Bearer header.payload.signature"},
+            ) as client:
+                # mailler:write scope required, user only has mailler:stats
+                response = await client.post(
+                    "/api/v1/templates",
+                    json={
+                        "slug": "test",
+                        "name": "Test",
+                        "subject_template": "Subject",
+                        "mjml_source": "<mjml></mjml>",
+                    },
+                )
+                assert response.status_code == 403
+
     async def test_revoked_token_returns_401(self):
         with (
             patch("mailler.auth.dependencies.settings") as mock_settings,
@@ -311,6 +347,42 @@ class TestRequireScopesOpaqueToken:
             mock_introspection.validate_opaque_token.assert_awaited_once()
 
         app.dependency_overrides.clear()
+
+    async def test_opaque_token_insufficient_scopes_returns_403(self):
+        """Opaque token with wrong scopes should get 403."""
+        claims = {
+            "sub": str(uuid4()),
+            "email": "service@example.com",
+            "scope": "mailler:stats",
+            "client_id": "my-service",
+        }
+        with (
+            patch("mailler.auth.dependencies.settings") as mock_settings,
+            patch("mailler.auth.dependencies.jwks_manager") as mock_jwks,
+            patch("mailler.auth.dependencies.introspection_client") as mock_introspection,
+            patch("mailler.auth.dependencies.token_exchange_client") as mock_exchange,
+        ):
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger"
+            mock_jwks.is_configured = True
+            mock_exchange.is_configured = True
+            mock_introspection.validate_opaque_token = AsyncMock(return_value=claims)
+
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": "Bearer ory_pat_abc123"},
+            ) as client:
+                response = await client.post(
+                    "/api/v1/templates",
+                    json={
+                        "slug": "test",
+                        "name": "Test",
+                        "subject_template": "Subject",
+                        "mjml_source": "<mjml></mjml>",
+                    },
+                )
+                assert response.status_code == 403
 
     async def test_opaque_token_revoked_returns_401(self):
         """Revoked opaque token should get 401."""

@@ -87,6 +87,19 @@ def test_user() -> User:
 
 
 @pytest.fixture
+def writer_user() -> User:
+    """Create a regular (non administrator) client user allowed to write."""
+    return User(
+        id=uuid4(),
+        email="writer@example.com",
+        name="Writer User",
+        scopes=["mailler:send", "mailler:read", "mailler:write", "mailler:stats"],
+        is_machine_client=False,
+        client_id="test-client-id",
+    )
+
+
+@pytest.fixture
 def admin_user() -> User:
     """Create an admin user with wildcard mailler scope."""
     return User(
@@ -179,6 +192,28 @@ async def auth_client(mock_db_session, test_user: User) -> AsyncGenerator[AsyncC
 
     app.dependency_overrides[get_db] = override_get_db
     patchers = _setup_auth_mocks(test_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer header.payload.signature"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def writer_client(mock_db_session, writer_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client allowed to write, restricted to its own client."""
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(writer_user)
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),

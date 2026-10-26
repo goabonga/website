@@ -42,6 +42,13 @@ def step_response_contains_text(context, text):
     assert text in context.response.text, f"Expected '{text}' in response: {context.response.text}"
 
 
+@then('the response header "{header}" should contain "{value}"')
+def step_check_response_header(context, header, value):
+    """Check that a response header contains a value."""
+    actual = context.response.headers.get(header.lower(), "")
+    assert value in actual, f"Expected '{value}' in header '{header}', got '{actual}'"
+
+
 @then("the response should be valid JSON")
 def step_response_is_json(context):
     """Check that the response body is valid JSON."""

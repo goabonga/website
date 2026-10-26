@@ -1,0 +1,9 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Settings of the custom_domain application.
+
+# Celery queue of the three processes (CELERY_QUEUE); the worker consumes it
+# (--queues), the API and beat publish to it.
+website_custom_domain_celery_queue: custom-domain

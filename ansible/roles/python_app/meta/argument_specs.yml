@@ -541,3 +541,9 @@ argument_specs:
         type: str
         description:
         - Group that owns the Asterisk configuration (follows the asterisk role).
+      website_custom_domain_celery_queue:
+        type: str
+        description:
+        - Celery queue of the three custom_domain processes (CELERY_QUEUE); the worker consumes it
+          (--queues), the API and beat publish to it.
+        default: custom-domain

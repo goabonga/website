@@ -34,6 +34,7 @@ from knowledge.models import (
     Organization,
     OrganizationInvitation,
     OrganizationMember,
+    WorkspaceDeletionRequest,
 )
 from knowledge.models.enums import CollaboratorPermission, OwnerType
 from knowledge.schemas.search import SearchResponse, SearchResult
@@ -62,6 +63,7 @@ class Store:
         self.organizations: dict[UUID, Organization] = {}
         self.members: dict[UUID, OrganizationMember] = {}
         self.org_invitations: dict[UUID, OrganizationInvitation] = {}
+        self.deletion_requests: dict[UUID, WorkspaceDeletionRequest] = {}
 
     def tables(self):
         """In-memory tables by SQL table name."""
@@ -75,6 +77,7 @@ class Store:
             "tenants": self.organizations,
             "tenant_members": self.members,
             "invitations": self.org_invitations,
+            "workspace_deletion_requests": self.deletion_requests,
         }
 
     def bucket_for(self, obj):
@@ -89,6 +92,7 @@ class Store:
             (Organization, self.organizations),
             (OrganizationMember, self.members),
             (OrganizationInvitation, self.org_invitations),
+            (WorkspaceDeletionRequest, self.deletion_requests),
         ):
             if isinstance(obj, cls):
                 return bucket
@@ -219,6 +223,14 @@ class FakeSession:
         bucket = self.store.bucket_for(obj)
         if bucket is not None:
             bucket.pop(obj.id, None)
+        if isinstance(obj, Organization):
+            for table in (self.store.members, self.store.org_invitations):
+                for key in [k for k, v in table.items() if v.organization_id == obj.id]:
+                    del table[key]
+            for key in [
+                k for k, v in self.store.collections.items() if v.organization_id == obj.id
+            ]:
+                await self.delete(self.store.collections[key])
         if isinstance(obj, Collection):
             for table in (self.store.documents, self.store.collaborators, self.store.invitations):
                 for key in [k for k, v in table.items() if v.collection_id == obj.id]:

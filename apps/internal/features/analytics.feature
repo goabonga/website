@@ -108,3 +108,45 @@ Feature: Analytics dashboard and campaigns management
     When I send a POST request to "/analytics/reset"
     Then the response status code should be 303
     And I should be redirected to a URL containing "error=Failed+to+reset"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the analytics dashboard
+    Given I am authenticated with only the scopes "analytics:*" granted by token exchange
+    And the analytics overview returns data
+    When I send a GET request to "/analytics"
+    Then the response status code should be 200
+    And the active sidebar link should be "/analytics"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the campaigns list
+    Given I am authenticated with only the scopes "analytics:*" granted by token exchange
+    And the campaigns list returns data
+    When I send a GET request to "/analytics/campaigns"
+    Then the response status code should be 200
+    And the active sidebar link should be "/analytics"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the campaign detail
+    Given I am authenticated with only the scopes "analytics:*" granted by token exchange
+    And a campaign exists with id "11111111-1111-1111-1111-111111111111"
+    When I send a GET request to "/analytics/campaigns/11111111-1111-1111-1111-111111111111"
+    Then the response status code should be 200
+    And the active sidebar link should be "/analytics"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the IP addresses list
+    Given I am authenticated with only the scopes "analytics:*" granted by token exchange
+    And the IP stats returns data
+    When I send a GET request to "/analytics/ips"
+    Then the response status code should be 200
+    And the active sidebar link should be "/analytics"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the IP address detail
+    Given I am authenticated with only the scopes "analytics:*" granted by token exchange
+    And IP detail exists for "192.168.1.1"
+    When I send a GET request to "/analytics/ips/192.168.1.1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/analytics"
+    And the sidebar should show the user "admin@test.local"

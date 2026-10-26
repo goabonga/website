@@ -48,6 +48,7 @@ def test_all_models_registered_in_metadata():
         "conversations",
         "memory_entries",
         "messages",
+        "skills",
         "teams",
     }
     assert expected.issubset(table_names)

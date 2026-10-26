@@ -82,6 +82,19 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/10"
     redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/10"
+    celery_result_backend: str = "redis://localhost:6379/11"
+    celery_queue: str = "billing"  # Queue of the tasks and of the worker that consumes it
+    celery_timezone: str = "UTC"
+    celery_task_time_limit: int = 3600  # seconds, hard limit of one task
+    # Periodic tasks (seconds), batch size and retention
+    usage_report_interval: float = 300.0
+    usage_report_batch_size: int = 100
+    usage_cleanup_interval: float = 86400.0
+    usage_retention_days: int = 90  # Reported usage events older than this are deleted
+    stripe_sync_interval: float = 3600.0
+
     # Stripe
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""

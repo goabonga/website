@@ -20,6 +20,11 @@ class TestAllRoutersImportable:
 
         assert auth_router is not None
 
+    def test_vpn_router(self):
+        from internal.routes import vpn_router
+
+        assert vpn_router is not None
+
     def test_all_exports(self):
         from internal.routes import __all__
 
@@ -27,10 +32,11 @@ class TestAllRoutersImportable:
             "admin_router",
             "analytics_router",
             "auth_router",
+            "vpn_router",
         ]
         assert set(expected) <= set(__all__)
 
     def test_all_exports_count(self):
         from internal.routes import __all__
 
-        assert len(__all__) >= 3
+        assert len(__all__) >= 4

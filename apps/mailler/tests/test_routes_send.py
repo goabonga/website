@@ -229,3 +229,83 @@ class TestSendIsLimited:
         client_record.daily_quota = 1
         self._counting(mock_db_session)
         assert (await self._send(admin_client)).status_code == 200
+
+
+class TestSendFromATemplate:
+    """POST /send renders one of the templates of the client."""
+
+    @staticmethod
+    def _template(**fields):
+        template = MagicMock()
+        template.slug = "workspace_invitation"
+        template.status = "active"
+        template.subject_template = "Join {{ workspace }}"
+        template.html_compiled = "<p>Join {{ workspace }}: {{ link }}</p>"
+        template.plain_text = "Join %workspace%"
+        template.variables = ["workspace", "link"]
+        for key, value in fields.items():
+            setattr(template, key, value)
+        return template
+
+    @staticmethod
+    def _found(mock_db_session, template):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = template
+        mock_db_session.execute = AsyncMock(return_value=result)
+
+    async def _send(self, client, **body):
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-1")
+            return await client.post(
+                "/api/v1/send",
+                json={
+                    "to_email": "recipient@example.com",
+                    "template_slug": "workspace_invitation",
+                    **body,
+                },
+            )
+
+    async def test_the_rendered_email_is_stored(self, auth_client: AsyncClient, mock_db_session):
+        self._found(mock_db_session, self._template())
+        response = await self._send(
+            auth_client, variables={"workspace": "Acme", "link": "https://app.example/join?a=1&b=2"}
+        )
+        assert response.status_code == 200
+        assert response.json()["missing_variables"] == []
+        email = mock_db_session.add.call_args[0][0]
+        assert email.subject == "Join Acme"
+        assert email.html_content == "<p>Join Acme: https://app.example/join?a=1&amp;b=2</p>"
+        assert email.text_content == "Join Acme"
+        assert email.metadata_ == {"template_slug": "workspace_invitation"}
+        assert (email.from_email, email.provider) == ("app@client.example", "brevo")
+
+    async def test_missing_variables_are_listed(self, auth_client: AsyncClient, mock_db_session):
+        self._found(mock_db_session, self._template())
+        response = await self._send(auth_client, variables={"workspace": "Acme"})
+        assert response.status_code == 200
+        assert response.json()["missing_variables"] == ["link"]
+
+    async def test_unknown_template(self, auth_client: AsyncClient, mock_db_session):
+        self._found(mock_db_session, None)
+        response = await self._send(auth_client)
+        assert response.status_code == 404
+        mock_db_session.add.assert_not_called()
+
+    async def test_draft_template(self, auth_client: AsyncClient, mock_db_session):
+        self._found(mock_db_session, self._template(status="draft"))
+        response = await self._send(auth_client)
+        assert response.status_code == 422
+        mock_db_session.add.assert_not_called()
+
+    async def test_content_and_template_are_exclusive(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        response = await self._send(auth_client, subject="Hi")
+        assert response.status_code == 422
+        mock_db_session.add.assert_not_called()
+
+    async def test_the_sender_rules_still_apply(self, auth_client: AsyncClient, mock_db_session):
+        self._found(mock_db_session, self._template())
+        response = await self._send(auth_client, from_email="ceo@bank.example")
+        assert response.status_code == 403
+        mock_db_session.add.assert_not_called()

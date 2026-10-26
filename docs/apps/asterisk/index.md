@@ -22,6 +22,7 @@ each feature builds on the previous ones.
 1. [Application foundation](01-foundation.md): package, settings and logging.
 2. [AudioSocket server](02-audiosocket.md): the Asterisk-facing TCP server.
 3. [Audio resampling](03-audio-resampling.md): 8 kHz to 24 kHz conversion and buffering.
+4. [OpenAI Realtime client](04-openai-realtime.md): WebSocket client, tools and barge-in.
 
 ## Testing
 

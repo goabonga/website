@@ -1,0 +1,211 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Master toggle. When false the role does nothing.
+nginx_enabled: true
+
+# Refresh the apt cache before installing packages.
+nginx_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+nginx_apt_cache_valid_time: 3600
+
+# Packages to install.
+nginx_packages:
+- nginx
+
+# systemd unit name.
+nginx_service_name: nginx
+
+# State of the service after configuration.
+nginx_service_state: started
+
+# Enable the service at boot.
+nginx_service_enabled: true
+
+# User the worker processes run as, also owner of the web roots.
+nginx_user: www-data
+
+# Group owning the web roots.
+nginx_group: www-data
+
+# Nginx configuration directory.
+nginx_config_dir: /etc/nginx
+
+# Directory of the access and error logs.
+nginx_log_dir: /var/log/nginx
+
+# Document root: the default and hostname pages, the error pages and the ACME
+# webroot live below it.
+nginx_root: /var/www/html
+
+# Validate the configuration with nginx -t before starting the service.
+nginx_test_config: true
+
+# Value of worker_processes (auto or a number).
+nginx_worker_processes: auto
+
+# Maximum connections per worker.
+nginx_worker_connections: 1024
+
+# Let a worker accept all new connections at once.
+nginx_multi_accept: true
+
+# Show the nginx version in responses and error pages.
+nginx_server_tokens: false
+
+# Keep-alive timeout in seconds.
+nginx_keepalive_timeout: 65
+
+# Maximum accepted request body size.
+nginx_client_max_body_size: 1m
+
+# Severity of the error log.
+nginx_error_log_level: error
+
+# Compress text responses.
+nginx_gzip_enabled: true
+
+# Gzip compression level (1 to 9).
+nginx_gzip_comp_level: 6
+
+# MIME types compressed in addition to text/html.
+nginx_gzip_types:
+- text/plain
+- text/css
+- text/xml
+- application/json
+- application/javascript
+- application/rss+xml
+- application/atom+xml
+- image/svg+xml
+
+# Accepted TLS protocol versions.
+nginx_ssl_protocols:
+- TLSv1.2
+- TLSv1.3
+
+# TLS cipher list of the HTTPS virtual host.
+nginx_ssl_ciphers: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+
+# TLS session cache.
+nginx_ssl_session_cache: shared:SSL:10m
+
+# TLS session lifetime.
+nginx_ssl_session_timeout: 1d
+
+# Send the Strict-Transport-Security header on the HTTPS virtual host.
+nginx_hsts_enabled: false
+
+# max-age of the HSTS header in seconds.
+nginx_hsts_max_age: 31536000
+
+# Raw lines added to the http block of nginx.conf.
+nginx_extra_http_config: []
+
+# Remove the distribution default site from sites-enabled.
+nginx_remove_distribution_site: true
+
+# Deploy the catch-all default virtual host.
+nginx_default_vhost_enabled: true
+
+# File name of the default virtual host. It must sort last so the catch-all
+# never wins over a named host.
+nginx_default_vhost_name: 999-default
+
+# IPv4 address to listen on. Every IPv4 address when empty.
+nginx_listen_ipv4: ''
+
+# IPv6 address to listen on. Every IPv6 address when empty.
+nginx_listen_ipv6: ''
+
+# Add IPv6 listen directives.
+nginx_ipv6_enabled: true
+
+# Write a landing page for the default virtual host.
+nginx_default_page_enabled: true
+
+# Heading of the default landing page. The inventory host name is used when
+# empty.
+nginx_default_page_title: ''
+
+# Text of the landing pages.
+nginx_default_page_message: Server is running
+
+# Answer requests that do not match a host name with a 301 redirect to
+# nginx_hostname instead of the landing page.
+nginx_redirect_ip_to_hostname: false
+
+# Raw lines added to the server block of the default virtual host.
+nginx_default_vhost_extra_config: []
+
+# Host name served by the hostname virtual host. The virtual host is not
+# created when empty.
+nginx_hostname: ''
+
+# Deploy the hostname virtual host when nginx_hostname is set.
+nginx_hostname_vhost_enabled: true
+
+# Raw lines added to the server blocks of the hostname virtual host.
+nginx_hostname_vhost_extra_config: []
+
+# Directory served at /.well-known/acme-challenge/ by the hostname virtual
+# host. It must match the certbot webroot.
+nginx_acme_webroot: /var/www/html
+
+# Obtain a certificate for nginx_hostname with certbot and serve the host over
+# HTTPS.
+nginx_https_enabled: false
+
+# Redirect HTTP to HTTPS once a certificate exists.
+nginx_https_redirect: true
+
+# Account e-mail used to obtain the certificate. Required when
+# nginx_https_enabled is true.
+nginx_certbot_email: ''
+
+# Accept the certificate authority terms of service. Must be true when
+# nginx_https_enabled is true.
+nginx_certbot_agree_tos: false
+
+# Use the staging environment of the certificate authority.
+nginx_certbot_staging: false
+
+# Additional certbot command line arguments.
+nginx_certbot_extra_args: []
+
+# Certbot configuration directory holding the live certificates.
+nginx_letsencrypt_dir: /etc/letsencrypt
+
+# Deploy the custom HTML error pages.
+nginx_error_pages_enabled: true
+
+# Error pages to deploy.
+# Item keys: code, title, message, icon.
+nginx_error_pages:
+- code: 403
+  title: Forbidden
+  message: You don't have permission to access this resource.
+  icon: '&#x1F6AB;'
+- code: 404
+  title: Not Found
+  message: The page you're looking for doesn't exist or has been moved.
+  icon: '&#x1F50D;'
+- code: 500
+  title: Internal Server Error
+  message: Something went wrong on our end. Please try again later.
+  icon: '&#x1F525;'
+- code: 502
+  title: Bad Gateway
+  message: The server is temporarily unable to handle your request. Please try again in a
+    moment.
+  icon: '&#x1F6A7;'
+- code: 503
+  title: Service Unavailable
+  message: We're currently performing maintenance. Please check back shortly.
+  icon: '&#x1F527;'
+- code: 504
+  title: Gateway Timeout
+  message: The server took too long to respond. Please try again later.
+  icon: '&#x23F3;'

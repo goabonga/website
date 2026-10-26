@@ -1,0 +1,82 @@
+{{ ansible_managed | comment }}
+{% set v4 = (nginx_listen_ipv4 ~ ':') if nginx_listen_ipv4 | length > 0 else '' %}
+{% set v6 = nginx_listen_ipv6 if nginx_listen_ipv6 | length > 0 else '::' %}
+{% set tls = nginx_https_enabled | bool and nginx__has_certificate | bool %}
+
+server {
+    listen {{ v4 }}80;
+{% if nginx_ipv6_enabled | bool %}
+    listen [{{ v6 }}]:80;
+{% endif %}
+
+    server_name {{ nginx_hostname }};
+
+    include {{ nginx_config_dir }}/snippets/error-pages.conf;
+
+    # ACME http-01 challenges, kept ahead of the redirect and the hidden files rule
+    location ^~ /.well-known/acme-challenge/ {
+        root {{ nginx_acme_webroot }};
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+{% for line in nginx_hostname_vhost_extra_config %}
+    {{ line }}
+{% endfor %}
+{% if tls and nginx_https_redirect | bool %}
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+{% else %}
+
+    root {{ nginx_root }}/hostname;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+{% endif %}
+}
+{% if tls %}
+
+server {
+    listen {{ v4 }}443 ssl;
+{% if nginx_ipv6_enabled | bool %}
+    listen [{{ v6 }}]:443 ssl;
+{% endif %}
+
+    server_name {{ nginx_hostname }};
+
+    ssl_certificate {{ nginx_letsencrypt_dir }}/live/{{ nginx_hostname }}/fullchain.pem;
+    ssl_certificate_key {{ nginx_letsencrypt_dir }}/live/{{ nginx_hostname }}/privkey.pem;
+
+    ssl_protocols {{ nginx_ssl_protocols | join(' ') }};
+    ssl_ciphers {{ nginx_ssl_ciphers }};
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache {{ nginx_ssl_session_cache }};
+    ssl_session_timeout {{ nginx_ssl_session_timeout }};
+{% if nginx_hsts_enabled | bool %}
+    add_header Strict-Transport-Security "max-age={{ nginx_hsts_max_age }}" always;
+{% endif %}
+
+    include {{ nginx_config_dir }}/snippets/error-pages.conf;
+{% for line in nginx_hostname_vhost_extra_config %}
+    {{ line }}
+{% endfor %}
+
+    root {{ nginx_root }}/hostname;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+{% endif %}

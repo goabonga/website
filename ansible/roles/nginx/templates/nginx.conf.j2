@@ -1,0 +1,63 @@
+{{ ansible_managed | comment }}
+
+user {{ nginx_user }};
+worker_processes {{ nginx_worker_processes }};
+pid /run/nginx.pid;
+error_log {{ nginx_log_dir }}/error.log {{ nginx_error_log_level }};
+include {{ nginx_config_dir }}/modules-enabled/*.conf;
+
+events {
+    worker_connections {{ nginx_worker_connections }};
+    multi_accept {{ 'on' if nginx_multi_accept | bool else 'off' }};
+}
+
+http {
+    ##
+    # Basic settings
+    ##
+    sendfile on;
+    tcp_nopush on;
+    types_hash_max_size 2048;
+    server_tokens {{ 'on' if nginx_server_tokens | bool else 'off' }};
+    keepalive_timeout {{ nginx_keepalive_timeout }};
+    client_max_body_size {{ nginx_client_max_body_size }};
+
+    include {{ nginx_config_dir }}/mime.types;
+    default_type application/octet-stream;
+
+    ##
+    # SSL settings
+    ##
+    ssl_protocols {{ nginx_ssl_protocols | join(' ') }};
+    ssl_prefer_server_ciphers on;
+
+    ##
+    # Logging
+    ##
+    access_log {{ nginx_log_dir }}/access.log;
+
+{% if nginx_gzip_enabled | bool %}
+    ##
+    # Gzip
+    ##
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level {{ nginx_gzip_comp_level }};
+{% if nginx_gzip_types | length > 0 %}
+    gzip_types {{ nginx_gzip_types | join(' ') }};
+{% endif %}
+
+{% endif %}
+{% for line in nginx_extra_http_config %}
+    {{ line }}
+{% endfor %}
+{% if nginx_extra_http_config | length > 0 %}
+
+{% endif %}
+    ##
+    # Virtual hosts
+    ##
+    include {{ nginx_config_dir }}/conf.d/*.conf;
+    include {{ nginx_config_dir }}/sites-enabled/*;
+}

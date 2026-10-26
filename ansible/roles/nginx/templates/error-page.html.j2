@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ item.code }} - {{ item.title }}</title>
+    <!-- {{ ansible_managed }} -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #e4e4e4; }
+        .container { text-align: center; padding: 2rem; max-width: 600px; }
+        .icon { font-size: 4rem; margin-bottom: 1rem; }
+        .error-code { font-size: 8rem; font-weight: 700; color: #e94560; line-height: 1; margin-bottom: 1rem; }
+        .error-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: #fff; }
+        .error-message { color: #a0a0a0; line-height: 1.6; margin-bottom: 2rem; }
+        .back { display: inline-block; padding: 0.75rem 2rem; background: #e94560; color: #fff; text-decoration: none; border-radius: 50px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">{{ item.icon }}</div>
+        <div class="error-code">{{ item.code }}</div>
+        <h1 class="error-title">{{ item.title }}</h1>
+        <p class="error-message">{{ item.message }}</p>
+        <a href="/" class="back">Back to Home</a>
+    </div>
+</body>
+</html>

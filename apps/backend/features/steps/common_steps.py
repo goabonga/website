@@ -50,3 +50,23 @@ def step_check_body_contains(context, text):
 def step_check_body_empty(context):
     body = context.response.text.strip()
     assert body == "", f"Expected empty body, got: {body[:200]}"
+
+
+@then('the response JSON "{key}" should not be null')
+def step_check_json_not_null(context, key):
+    data = context.response.json()
+    assert key in data, f"Key '{key}' not in response"
+    assert data[key] is not None, f"Expected '{key}' to not be null"
+
+
+@then('the response JSON "{key}" should be null')
+def step_check_json_null(context, key):
+    data = context.response.json()
+    assert key in data, f"Key '{key}' not in response"
+    assert data[key] is None, f"Expected '{key}' to be null, got {data[key]}"
+
+
+@then('the response header "{header}" should be "{value}"')
+def step_check_response_header(context, header, value):
+    actual = context.response.headers.get(header)
+    assert actual == value, f"Expected header '{header}' to be '{value}', got '{actual}'"

@@ -212,3 +212,21 @@ async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[Asyn
         for p in patchers:
             p.stop()
         app.dependency_overrides.clear()
+
+
+# Sample data fixtures
+@pytest.fixture
+def sample_saas_app_data():
+    """Sample SaaS application data for testing."""
+    return {
+        "id": str(uuid4()),
+        "name": "Test App",
+        "slug": "test-app",
+        "description": "A test app",
+        "webhook_url": "https://example.com/webhook",
+        "webhook_secret": "whsec_test123",
+        "branding": {"color": "#000"},
+        "is_active": True,
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }

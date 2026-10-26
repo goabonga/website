@@ -3,11 +3,15 @@
 
 """Business logic services."""
 
+from knowledge.services.collaborators import CollaboratorService
 from knowledge.services.collection_access import AccessLevel, CollectionAccessService
+from knowledge.services.collection_invitations import CollectionInvitationService
 from knowledge.services.collections import CollectionService
 
 __all__ = [
     "AccessLevel",
+    "CollaboratorService",
     "CollectionAccessService",
+    "CollectionInvitationService",
     "CollectionService",
 ]

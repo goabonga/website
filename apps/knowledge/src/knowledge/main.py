@@ -20,7 +20,13 @@ from knowledge.auth.token_exchange import get_token_exchange_client
 from knowledge.config import get_settings
 from knowledge.internal import internal_app
 from knowledge.logging import get_logger, setup_logging
-from knowledge.routes import collections, documents, search
+from knowledge.routes import (
+    collaborators,
+    collection_invitations,
+    collections,
+    documents,
+    search,
+)
 
 settings = get_settings()
 
@@ -81,6 +87,8 @@ Vector storage and semantic search platform for AI agents and applications.
 - **Collections**: Create and manage document collections with vector embeddings
 - **Documents**: Add, list, and delete documents within collections
 - **Semantic search**: Vector similarity search across collections
+- **Collaborators**: Share collections with team members
+- **Collection invitations**: Invite users to collaborate on collections
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -109,6 +117,11 @@ For internal routes (health checks), see [/internal/docs](/internal/docs)
         {"name": "Collections", "description": "Manage document collections"},
         {"name": "Documents", "description": "Add and manage documents within collections"},
         {"name": "Search", "description": "Semantic search across collections"},
+        {"name": "Collaborators", "description": "Manage collection collaborators"},
+        {
+            "name": "Collection Invitations",
+            "description": "Invite users to collaborate on collections",
+        },
     ],
     lifespan=lifespan,
     **swagger_config,
@@ -132,6 +145,13 @@ app.add_middleware(
 # =============================================================================
 
 app.include_router(collections.router, prefix="/api/v1", tags=["Collections"])
+app.include_router(collaborators.router, prefix="/api/v1", tags=["Collaborators"])
+app.include_router(
+    collection_invitations.collection_router, prefix="/api/v1", tags=["Collection Invitations"]
+)
+app.include_router(
+    collection_invitations.public_router, prefix="/api/v1", tags=["Collection Invitations"]
+)
 app.include_router(documents.router, prefix="/api/v1", tags=["Documents"])
 app.include_router(search.router, prefix="/api/v1", tags=["Search"])
 

@@ -9,6 +9,7 @@ from team.schemas import (
     AgentCreate,
     AgentUpdate,
     ConversationCreate,
+    MemoryEntryCreate,
     MessageCreate,
     TeamCreate,
     TeamUpdate,
@@ -54,3 +55,10 @@ class TestConversationSchemas:
         data = ConversationCreate(slug="general", title="General Chat")
         assert data.slug == "general"
         assert data.type == "general"
+
+
+class TestMemorySchemas:
+    def test_memory_entry_create_valid(self):
+        data = MemoryEntryCreate(content="Important fact")
+        assert data.content == "Important fact"
+        assert data.agent_id is None

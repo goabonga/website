@@ -104,6 +104,7 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                openai_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -119,6 +120,7 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                openai_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -130,6 +132,7 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                openai_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -140,6 +143,7 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                openai_api_key="",
                 oauth2_client_secret="",
             )
 
@@ -155,11 +159,13 @@ class TestSettings:
             "DOCS_ENABLED": "true",
             "DATABASE_ECHO": "true",
             "LOG_LEVEL": "DEBUG",
+            "OPENAI_API_KEY": "sk-test-123",
         }
 
         with patch.dict(os.environ, env, clear=False):
             s = Settings(
                 _env_file=None,
+                openai_api_key="sk-test-123",
                 oauth2_client_secret="",
             )
 
@@ -167,3 +173,4 @@ class TestSettings:
         assert s.docs_enabled is True
         assert s.database_echo is True
         assert s.log_level == "DEBUG"
+        assert s.openai_api_key == "sk-test-123"

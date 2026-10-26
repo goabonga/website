@@ -25,6 +25,7 @@ from auth.middlewares.tenant import get_session_cookie_name
 from auth.services.auth import AuthService
 from auth.services.email import EmailService
 from auth.services.jwks import JWKSService
+from auth.services.mfa import MFAService
 from auth.services.password import PasswordService
 from auth.services.profile import ProfileService
 from auth.services.session import SessionService
@@ -113,6 +114,11 @@ def get_auth_service() -> AuthService:
 def get_session_service() -> SessionService:
     """Get session service instance."""
     return SessionService()
+
+
+def get_mfa_service() -> MFAService:
+    """Get MFA service instance."""
+    return MFAService(get_encryption())
 
 
 def get_profile_service() -> ProfileService:

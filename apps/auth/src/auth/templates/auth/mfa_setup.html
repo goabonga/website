@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}MFA Setup - Auth{% endblock %}
+
+{% block content %}
+<h1>Two-Factor Authentication Setup</h1>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+{% if already_enabled %}
+<div class="success">
+    <p>Two-factor authentication is already enabled on your account.</p>
+</div>
+<p style="margin: 1rem 0;">You can reconfigure it by generating a new QR code. This will invalidate your current authenticator setup.</p>
+<form method="post" action="{{ tenant_prefix }}/auth/mfa/setup/reconfigure" style="display: inline;">
+    <button type="submit" class="btn-warning" style="padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">Reconfigure 2FA</button>
+</form>
+<p class="link" style="margin-top: 1rem;">
+    <a href="{{ tenant_prefix }}/auth/settings/security">Back to security settings</a>
+</p>
+{% elif qr_code %}
+<div class="mfa-setup">
+    <p>Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+
+    <div class="qr-code">
+        <img src="{{ qr_code }}" alt="TOTP QR Code">
+    </div>
+
+    <p class="manual-entry">
+        <strong>Manual entry:</strong> If you can't scan the QR code, enter this secret manually:
+        <code class="secret">{{ secret }}</code>
+    </p>
+
+    <div class="error" id="setup-error" role="alert" style="display: none;"></div>
+    <form method="post" action="{{ tenant_prefix }}/auth/mfa/totp/verify" id="verify-form">
+        <div class="form-group">
+            <label for="code">Enter the 6-digit code from your authenticator app:</label>
+            <input type="text" id="code" name="code" required pattern="[0-9]{6}"
+                   maxlength="6" autocomplete="one-time-code" inputmode="numeric"
+                   placeholder="000000">
+        </div>
+
+        <button type="submit">Verify and Enable</button>
+    </form>
+</div>
+{% else %}
+<p>Unable to set up two-factor authentication. Please try again.</p>
+{% endif %}
+
+<p class="link">
+    <a href="{{ tenant_prefix }}/auth/settings/security">Back to security settings</a>
+</p>
+
+<style>
+.mfa-setup {
+    max-width: 400px;
+    margin: 0 auto;
+}
+.qr-code {
+    text-align: center;
+    margin: 20px 0;
+}
+.qr-code img {
+    max-width: 200px;
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+}
+.manual-entry {
+    font-size: 0.9em;
+    background: var(--surface-color);
+    padding: 10px;
+    border-radius: 8px;
+    word-break: break-all;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted-color);
+}
+.manual-entry strong {
+    color: var(--text-color);
+}
+.secret {
+    display: block;
+    margin-top: 5px;
+    font-family: monospace;
+    font-size: 1.1em;
+    letter-spacing: 2px;
+    color: var(--primary-color);
+}
+input#code {
+    font-size: 1.5em;
+    text-align: center;
+    letter-spacing: 8px;
+    font-family: monospace;
+}
+</style>
+{% if qr_code %}
+<script>
+// The verification endpoint expects JSON, so the form is submitted with fetch and the
+// backup codes it returns are shown in place of the form.
+document.getElementById('verify-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const errorBox = document.getElementById('setup-error');
+    const submitBtn = this.querySelector('button[type="submit"]');
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+
+    try {
+        const response = await fetch(this.action, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({code: document.getElementById('code').value}),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            errorBox.textContent = data.detail || 'Invalid code';
+            errorBox.style.display = 'block';
+            submitBtn.disabled = false;
+            return;
+        }
+
+        const panel = document.querySelector('.mfa-setup');
+        panel.replaceChildren();
+        const title = document.createElement('div');
+        title.className = 'success';
+        title.id = 'setup-success';
+        title.textContent = 'Two-factor authentication is now enabled!';
+        const intro = document.createElement('p');
+        intro.textContent = 'Save these backup codes in a safe place. Each code can only be used once.';
+        const list = document.createElement('ul');
+        list.id = 'backup-codes';
+        for (const backupCode of data.backup_codes) {
+            const item = document.createElement('li');
+            item.textContent = backupCode;
+            list.appendChild(item);
+        }
+        panel.append(title, intro, list);
+    } catch (error) {
+        errorBox.textContent = 'Failed to verify the code. Please try again.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

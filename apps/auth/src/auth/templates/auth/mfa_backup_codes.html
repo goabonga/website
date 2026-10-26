@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Codes - Auth{% endblock %}
+
+{% block content %}
+<h1>Backup Codes</h1>
+
+<div class="success">
+    <p><strong>Two-factor authentication is now enabled!</strong></p>
+</div>
+
+<div class="backup-codes-container">
+    <h2>Save Your Backup Codes</h2>
+
+    <p class="warning">
+        <strong>Important:</strong> Save these backup codes in a safe place.
+        Each code can only be used once. If you lose access to your authenticator app,
+        you can use one of these codes to log in.
+    </p>
+
+    <div class="backup-codes">
+        {% for code in backup_codes %}
+        <div class="code">{{ code }}</div>
+        {% endfor %}
+    </div>
+
+    <p class="codes-count">
+        You have <strong>{{ backup_codes|length }}</strong> backup codes.
+    </p>
+
+    <div class="actions">
+        <button onclick="copyToClipboard()" class="secondary">Copy All Codes</button>
+        <a href="/auth/login" class="button">Continue to Login</a>
+    </div>
+</div>
+
+<style>
+.backup-codes-container {
+    max-width: 500px;
+    margin: 0 auto;
+}
+.warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.backup-codes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+.backup-codes .code {
+    font-family: monospace;
+    font-size: 1.2em;
+    letter-spacing: 1px;
+    padding: 8px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-align: center;
+}
+.codes-count {
+    text-align: center;
+    color: var(--text-muted-color);
+}
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+.button, button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+button.secondary {
+    background: #6c757d;
+    color: white;
+}
+.button {
+    background: #007bff;
+    color: white;
+}
+</style>
+
+<script>
+function copyToClipboard() {
+    const codes = [{% for code in backup_codes %}'{{ code }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const text = 'Backup Codes:\\n' + codes.join('\\n');
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Backup codes copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

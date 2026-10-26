@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     session_cookie_name: str = "session"  # Session cookie name
     session_cookie_secure: bool = True  # Secure cookie (HTTPS only)
 
+    # MFA
+    mfa_issuer_name: str = "Auth"  # Issuer name shown in authenticator apps
+    mfa_email_code_expiry_minutes: int = 10  # MFA email code validity in minutes
+
     # Multi-tenancy
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
     tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup

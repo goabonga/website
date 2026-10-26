@@ -26,3 +26,5 @@ one feature as it exists in the code.
    vocabulary of a user.
 7. [Fake OpenID provider](07-fake-openid-provider.md) - users, clients,
    discovery, keys and recorded requests.
+8. [Authorization endpoint](08-oidc-authorization.md) - authorization code
+   flow, PKCE, login and consent pages.

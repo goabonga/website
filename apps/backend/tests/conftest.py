@@ -5,6 +5,7 @@
 
 import os
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,6 +23,18 @@ from backend.auth.models import User
 def user_id():
     """Return a fixed user UUID."""
     return uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+
+@pytest.fixture
+def session_id():
+    """Return a fixed session ID."""
+    return "abcdef12-3456-7890-abcd-ef1234567890"
+
+
+@pytest.fixture
+def conversation_id():
+    """Return a fixed conversation UUID."""
+    return uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
 
 @pytest.fixture
@@ -51,6 +64,20 @@ def sample_jwt_claims(user_id):
 
 
 @pytest.fixture
+def mock_db_session():
+    """Return a mocked AsyncSession."""
+    session = AsyncMock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = MagicMock()
+    session.delete = AsyncMock()
+    session.flush = AsyncMock()
+    session.close = AsyncMock()
+    return session
+
+
+@pytest.fixture
 def mock_redis():
     """Return a mocked Redis client."""
     r = AsyncMock()
@@ -74,6 +101,31 @@ def mock_redis():
     r.pipeline.return_value = pipe
 
     return r
+
+
+@pytest.fixture
+def sample_conversation():
+    """Return a mock Conversation object."""
+    conv = MagicMock()
+    conv.id = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    conv.user_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    conv.session_id = None
+    conv.title = "Test Conversation"
+    conv.summary = "A test conversation summary."
+    conv.archived_at = None
+    conv.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    conv.updated_at = datetime(2024, 1, 1, tzinfo=UTC)
+    conv.messages = []
+    return conv
+
+
+@pytest.fixture
+def sample_messages():
+    """Return sample conversation history."""
+    return [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there! How can I help you?"},
+    ]
 
 
 @pytest.fixture

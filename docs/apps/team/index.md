@@ -22,6 +22,7 @@ is tested with pytest and behave.
 | [Usage reporting](10-usage.md) | execution events reported by services |
 | [Tool registry](11-tools.md) | tool catalog and the platform tools |
 | [Service tools](12-service-tools.md) | tools calling the other platform services |
+| [Workspace tools](13-workspace-tools.md) | files, git, GitHub and SQL tools |
 
 ## Running the tests
 

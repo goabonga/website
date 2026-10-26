@@ -21,6 +21,7 @@ from internal.routes import (
     admin_router,
     analytics_router,
     auth_router,
+    vpn_router,
 )
 
 # Configure logging
@@ -98,6 +99,7 @@ Internal Admin Dashboard for managing platform services.
 ## Features
 
 - **Analytics**: View and manage analytics data
+- **VPN**: Manage VPN configurations
 - **OAuth2 authentication**: Cookie-based authentication with scope validation
 
 
@@ -109,6 +111,7 @@ Access is controlled per resource via scoped permissions.
 ## Required Scopes
 
 - `analytics:write`, `analytics:delete` - Manage analytics
+- `vpn:admin` - Manage VPN configurations
 - `conversations:delete` - Delete conversations
     """,
     version=__version__,
@@ -146,3 +149,4 @@ async def health_check() -> HealthResponse:
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
+app.include_router(vpn_router)

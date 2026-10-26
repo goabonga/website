@@ -26,6 +26,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/analytics/ips` | session; scope `analytics:read` | List IP addresses with their statistics |
 | GET | `/analytics/ips/{ip_address:path}` | session; scope `analytics:read` | View detailed statistics for a specific IP address |
 | POST | `/analytics/reset` | session; scope `analytics:delete` | Reset all analytics data |
+| GET | `/vpn/sessions` | session; scope `vpn:admin` | List all VPN sessions with pagination |
+| POST | `/vpn/sessions/{serial_number}/revoke` | session; scope `vpn:admin` | Revoke a VPN session by certificate serial number |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -38,3 +40,4 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:read` - checked by 5 routes
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
+- `vpn:admin` - checked by 2 routes

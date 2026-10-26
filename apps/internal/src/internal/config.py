@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Analytics API
     analytics_api_url: str = "https://ua.goabonga.com"
 
+    # VPN Portal API
+    vpn_portal_api_url: str = "https://vpn-portal.internal"
+
     # Web UI
     app_base_url: str = "https://admin.internal"  # Application URL (for OAuth2 redirect URI)
     cookie_secure: bool = True  # Set to False for local development without HTTPS

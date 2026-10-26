@@ -1,0 +1,247 @@
+{% extends "admin/base.html" %}
+
+{% block title %}VPN Sessions{% endblock %}
+
+{% block head %}
+<style>
+    .session-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .status-dot.active {
+        background-color: #00b894;
+    }
+    .status-dot.expired {
+        background-color: #fdcb6e;
+    }
+    .status-dot.revoked {
+        background-color: #d63031;
+    }
+    .routes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .route-badge {
+        background-color: rgba(116, 185, 255, 0.15);
+        color: #74b9ff;
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    }
+    .scopes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .scope-badge {
+        background-color: rgba(0, 184, 148, 0.15);
+        color: #00b894;
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.7rem;
+    }
+    .confirm-revoke {
+        background-color: #1a1a2e;
+        border: 1px solid #d63031;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 0.5rem;
+        display: none;
+    }
+    .confirm-revoke.visible {
+        display: block;
+    }
+    .confirm-revoke p {
+        margin-bottom: 0.75rem;
+        color: #ff6b6b;
+    }
+    .confirm-revoke .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>VPN Sessions</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Active Sessions <span class="text-muted">({{ total }})</span></h2>
+    </div>
+
+    {% if sessions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>User</th>
+                <th>Device</th>
+                <th>Connection</th>
+                <th>Valid Until</th>
+                <th>Scopes</th>
+                <th>Routes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr id="session-{{ session.certificate_serial }}">
+                <td>
+                    <div class="session-status">
+                        {% if session.expires_at < now %}
+                        <span class="status-dot expired"></span>
+                        <span class="badge badge-warning">Expired</span>
+                        {% else %}
+                        <span class="status-dot active"></span>
+                        <span class="badge badge-success">Active</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">{{ session.username }}</div>
+                    <div class="mono text-muted" style="font-size: 0.75rem;">
+                        {{ session.user_id | string | truncate(8, True, '') }}...
+                    </div>
+                </td>
+                <td>
+                    {% if session.device_name %}
+                    <span>{{ session.device_name }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                    <div class="mono text-muted" style="font-size: 0.7rem;" title="{{ session.certificate_serial }}">
+                        {{ session.certificate_serial | truncate(20, True, '...') }}
+                    </div>
+                </td>
+                <td>
+                    {% if session.assigned_ip and session.assigned_ip != 'N/A' %}
+                    <div class="mono" style="color: #74b9ff;">{{ session.assigned_ip }}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">
+                        {{ session.connected_at.strftime('%H:%M') if session.connected_at else '' }}
+                    </div>
+                    {% else %}
+                    <span class="text-muted">Not connected</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="text-muted" style="font-size: 0.85rem;">
+                        {{ session.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                    {% if session.expires_at >= now %}
+                    <div style="font-size: 0.7rem; color: #a0a0a0;">
+                        {% set remaining = (session.expires_at - now).total_seconds() %}
+                        {% if remaining < 60 %}
+                        {{ remaining | int }}s left
+                        {% elif remaining < 3600 %}
+                        {{ (remaining / 60) | int }}m left
+                        {% else %}
+                        {{ (remaining / 3600) | int }}h {{ ((remaining % 3600) / 60) | int }}m left
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="scopes-list">
+                        {% for scope in session.scopes %}
+                        <span class="scope-badge">{{ scope }}</span>
+                        {% endfor %}
+                    </div>
+                </td>
+                <td>
+                    <div class="routes-list">
+                        {% for route in session.routes[:3] %}
+                        <span class="route-badge">{{ route }}</span>
+                        {% endfor %}
+                        {% if session.routes | length > 3 %}
+                        <span class="route-badge" title="{{ session.routes[3:] | join(', ') }}">
+                            +{{ session.routes | length - 3 }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <button type="button"
+                            class="btn btn-danger btn-sm"
+                            onclick='showRevokeConfirm({{ session.certificate_serial | tojson }})'>
+                        Revoke
+                    </button>
+                    <div id="confirm-{{ session.certificate_serial }}" class="confirm-revoke">
+                        <p>Revoke session for <strong>{{ session.username }}</strong>?</p>
+                        <div class="actions">
+                            <form method="post" action="/vpn/sessions/{{ session.certificate_serial }}/revoke">
+                                <button type="submit" class="btn btn-danger btn-sm">Confirm</button>
+                            </form>
+                            <button type="button"
+                                    class="btn btn-secondary btn-sm"
+                                    onclick='hideRevokeConfirm({{ session.certificate_serial | tojson }})'>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/vpn/sessions?page={{ page - 1 }}"
+           class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }}
+        </span>
+        {% if page < total_pages %}
+        <a href="/vpn/sessions?page={{ page + 1 }}"
+           class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128274;</p>
+        <p>No active VPN sessions found.</p>
+        <p class="text-muted">
+            VPN sessions will appear here when users connect.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function showRevokeConfirm(serialNumber) {
+    // Hide any other open confirms
+    document.querySelectorAll('.confirm-revoke.visible').forEach(el => {
+        el.classList.remove('visible');
+    });
+    // Show this one
+    document.getElementById('confirm-' + serialNumber).classList.add('visible');
+}
+
+function hideRevokeConfirm(serialNumber) {
+    document.getElementById('confirm-' + serialNumber).classList.remove('visible');
+}
+</script>
+{% endblock %}

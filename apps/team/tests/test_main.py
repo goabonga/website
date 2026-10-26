@@ -209,3 +209,12 @@ class TestGetSwaggerOauth2Config:
 
             result = get_swagger_ui_oauth2_config()
             assert result == {}
+
+
+class TestPlatformRoutes:
+    """Tests for the registration of the platform routes."""
+
+    async def test_platform_team_route_is_registered(self, client):
+        """The /platform/team route is served and requires authentication."""
+        response = await client.get("/platform/team")
+        assert response.status_code == 401

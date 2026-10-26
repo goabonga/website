@@ -14,16 +14,29 @@ Full documentation lives in `docs/apps/billing/`.
 - OAuth2 / OIDC authentication with scope checks (`billing:*`)
 - PostgreSQL data model with Alembic migrations
 - Stripe service wrapper enforcing the `saas_id` metadata
+- Onboarding of SaaS applications
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint |
+| POST | `/platform/saas` | scope `billing:platform:write` | Create a new SaaS application |
+| GET | `/platform/saas` | scope `billing:platform:read` | List all SaaS applications |
+| GET | `/platform/saas/{saas_id}` | scope `billing:platform:read` | Get a SaaS application by ID |
+| PATCH | `/platform/saas/{saas_id}` | scope `billing:platform:write` | Update a SaaS application |
+| POST | `/platform/saas/{saas_id}/sync-stripe` | scope `billing:platform:write` | Sync products and prices to Stripe |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+### Scopes
+
+The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
+
+- `billing:platform:write` - checked by 3 routes
+- `billing:platform:read` - checked by 2 routes
 
 ## Usage
 

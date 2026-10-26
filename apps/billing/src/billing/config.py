@@ -59,6 +59,8 @@ class Settings(BaseSettings):
 
     # Catalog
     default_currency: str = "usd"  # ISO 4217 code used when a price does not give one
+    # Refuse checkout and portal redirect URLs when the SaaS app lists no allowed prefix
+    redirect_allowlist_required: bool = True
 
     # Redis
     redis_url: str = "redis://localhost:6379/10"

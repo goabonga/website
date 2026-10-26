@@ -13,6 +13,7 @@ from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
 from billing.routes import health
+from billing.routes.platform import saas
 
 settings = get_settings()
 
@@ -68,6 +69,10 @@ app = FastAPI(
     title=settings.app_name,
     description="""
 Multi-SaaS Stripe Billing Platform.
+
+## Features
+
+- **Multi-SaaS support**: Manage billing for multiple SaaS applications
 - **Stripe integration**: Products, prices, customers, subscriptions
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
@@ -104,3 +109,6 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(health.router)
+
+# Platform routes (admin operations - internal VPN only)
+app.include_router(saas.router)

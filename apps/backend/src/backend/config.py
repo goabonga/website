@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
 
+    # OpenAI configuration
+    openai_api_key: str = ""
+
+    # RAG configuration
+    rag_embedding_model: str = "text-embedding-3-small"
+    rag_similarity_threshold: float = 0.7
+    rag_max_results: int = 5
+
     # Rate limiting
     rate_limit_redis_url: str = "redis://localhost:6379/1"
     rate_limit_anon: int = 10  # requests per window for anonymous users
@@ -102,6 +110,7 @@ class Settings(BaseSettings):
 
 # Load settings with credential overrides for secrets
 settings = Settings(
+    openai_api_key=get_credential("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", "")),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",
         os.environ.get("OAUTH2_CLIENT_SECRET", ""),

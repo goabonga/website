@@ -79,6 +79,11 @@ def step_json_list(context, count: int) -> None:
     assert isinstance(data, list) and len(data) == count, data
 
 
+@then('the response JSON field "{field}" is not empty')
+def step_json_not_empty(context, field: str) -> None:
+    assert _field(context.response.json(), field), context.response.json()
+
+
 @then('the response has no field "{field}"')
 def step_no_field(context, field: str) -> None:
     try:

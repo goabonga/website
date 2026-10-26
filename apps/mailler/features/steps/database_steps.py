@@ -105,6 +105,12 @@ def step_email_client(context, to_email, client):
     assert email.client_id == client, email.client_id
 
 
+@then('the email to "{to_email}" should use provider "{provider}"')
+def step_email_provider(context, to_email, provider):
+    email = load_email(to_email=to_email)
+    assert email.provider == provider, email.provider
+
+
 @then('the email to "{to_email}" should have metadata "{key}" equal to "{value}"')
 def step_email_metadata(context, to_email, key, value):
     email = load_email(to_email=to_email)
@@ -177,3 +183,14 @@ def step_email_gone(context, to_email):
 @then('the email to "{to_email}" should still be stored')
 def step_email_still_stored(context, to_email):
     assert load_email(to_email=to_email) is not None, f"{to_email} was removed"
+
+
+@then('the email to "{to_email}" should have subject "{subject}"')
+def step_email_subject(context, to_email, subject):
+    email = load_email(to_email=to_email)
+    assert email is not None and email.subject == subject, getattr(email, "subject", None)
+
+
+@then('no email should be stored for "{to_email}"')
+def step_no_email_for(context, to_email):
+    assert load_email(to_email=to_email) is None, f"An email to {to_email} exists"

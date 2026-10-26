@@ -127,11 +127,6 @@ def step_call_with_token(context, token: str) -> None:
     )
 
 
-@then('the response detail is "{detail}"')
-def step_detail(context, detail: str) -> None:
-    assert context.response.json()["detail"] == detail, context.response.json()
-
-
 @then('the authenticated user id is "{user_id}"')
 def step_user_id(context, user_id: str) -> None:
     assert context.response.json()["user_id"] == user_id, context.response.json()

@@ -67,8 +67,8 @@ any other key is refused.
 
 - The import is idempotent: a template that exists for the client is updated,
   the others are created. Templates never cross clients.
-- Imported templates are `active`, unless the description or `--status` says
-  otherwise.
+- Imported templates are `active` (what [sending from a template](18-template-sending.md)
+  requires), unless the description or `--status` says otherwise.
 - Every source is compiled first; if one fails nothing is written.
   `--dry-run` validates and compiles without writing.
 

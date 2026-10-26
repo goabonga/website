@@ -15,6 +15,7 @@ behave.
 | [Web client](03-web-client.md) | Vite and TypeScript sources, build and template generator |
 | [SPA serving](04-spa-serving.md) | Template rendering, runtime configuration and static files |
 | [security.txt](05-security-txt.md) | RFC 9116 vulnerability disclosure contact |
+| [Server-side analytics](06-analytics.md) | Page view tracking sent to the analytics service |
 
 ## Running the tests
 

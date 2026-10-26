@@ -12,6 +12,7 @@ Full documentation lives in `docs/apps/billing/`.
 
 - Health endpoint, environment-driven settings and dual-stream logging
 - OAuth2 / OIDC authentication with scope checks (`billing:*`)
+- PostgreSQL data model with Alembic migrations
 
 ## Routes and scopes
 
@@ -30,6 +31,12 @@ All commands run from the repository root.
 ```bash
 # Install the workspace member and the dev tools
 uv sync --package billing --group dev
+
+# Start local PostgreSQL and Redis (ports 5435 and 6382)
+docker compose -f apps/billing/compose.yml up -d
+
+# Apply the database migrations
+uv run --package billing alembic -c apps/billing/alembic.ini upgrade head
 
 # Start the API
 uv run --package billing uvicorn billing.main:app --reload --port 8000

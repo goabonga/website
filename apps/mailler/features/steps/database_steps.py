@@ -194,3 +194,8 @@ def step_email_subject(context, to_email, subject):
 @then('no email should be stored for "{to_email}"')
 def step_no_email_for(context, to_email):
     assert load_email(to_email=to_email) is None, f"An email to {to_email} exists"
+
+
+@given('a "{status}" email to "{to_email}" via "{provider}" stored as "{alias}"')
+def step_seed_email_with_status(context, status, to_email, provider, alias):
+    context.created_ids[alias] = seed_email(context, to_email, provider=provider, status=status)

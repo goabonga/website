@@ -20,6 +20,7 @@ import asyncio
 import shutil
 import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends
@@ -31,7 +32,7 @@ from mailler.database import AsyncSessionLocal, SyncSessionLocal
 from mailler.main import app
 from mailler.models import Base
 from mailler.services.providers import factory
-from sqlalchemy import JSON, Uuid, create_engine, delete
+from sqlalchemy import CHAR, JSON, TypeDecorator, create_engine, delete
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -55,6 +56,21 @@ async def probe_send(auth: AuthContext = Depends(require_scopes("mailler:send"))
     return {"user_id": auth.user_id, "scopes": auth.scopes}
 
 
+class PortableUuid(TypeDecorator):
+    """UUID column for SQLite that, like the PostgreSQL drivers, also accepts strings."""
+
+    impl = CHAR(32)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return (value if isinstance(value, UUID) else UUID(str(value))).hex
+
+    def process_result_value(self, value, dialect):
+        return None if value is None else UUID(value)
+
+
 def _make_metadata_portable():
     """Swap PostgreSQL-only column types for portable ones so SQLite can host them."""
     for table in Base.metadata.tables.values():
@@ -62,7 +78,7 @@ def _make_metadata_portable():
             if isinstance(column.type, postgresql.JSONB | postgresql.ARRAY):
                 column.type = JSON()
             elif isinstance(column.type, postgresql.UUID):
-                column.type = Uuid(as_uuid=True)
+                column.type = PortableUuid()
 
 
 def _delayed_task(context, name):

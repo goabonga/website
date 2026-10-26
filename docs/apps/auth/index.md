@@ -14,6 +14,7 @@ a Celery worker for background work.
 The application is documented feature by feature, in the order in which each feature builds on the previous ones.
 
 1. [Application foundation](01-foundation.md): Package, settings, logging, health check and Swagger UI.
+2. [Data model and migrations](02-data-model.md): SQLAlchemy models and the Alembic migration chain.
 
 ## Testing
 

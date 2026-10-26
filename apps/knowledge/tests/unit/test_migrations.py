@@ -22,6 +22,7 @@ EXPECTED_REVISIONS = [
     "006_mcp_releases",
     "007_workspace_deletion_scheduled",
     "008_add_custom_domain_fields",
+    "009_custom_domain_service",
 ]
 
 EXPECTED_TABLES = {
@@ -49,7 +50,7 @@ class TestMigrationChain:
     """The migration history is a single linear chain."""
 
     def test_single_head(self, script):
-        assert script.get_heads() == ["008_add_custom_domain_fields"]
+        assert script.get_heads() == ["009_custom_domain_service"]
 
     def test_chain_is_linear_and_ordered(self, script):
         revisions = [rev.revision for rev in script.walk_revisions()]

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 
 from knowledge import __version__
 from knowledge.config import get_settings
-from knowledge.routes import billing_webhooks, github_webhooks, health
+from knowledge.routes import billing_webhooks, custom_domain_webhooks, github_webhooks, health
 
 settings = get_settings()
 
@@ -45,4 +45,5 @@ This documentation covers internal routes only.
 # Health and webhooks
 internal_app.include_router(health.router, tags=["Health"])
 internal_app.include_router(billing_webhooks.router, tags=["Webhooks"])
+internal_app.include_router(custom_domain_webhooks.router, tags=["Webhooks"])
 internal_app.include_router(github_webhooks.router, tags=["Webhooks"])

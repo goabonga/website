@@ -119,6 +119,18 @@ class Settings(BaseSettings):
     # Calls to the platform services (billing, mailler, custom domains)
     service_timeout: float = 10.0  # seconds
 
+    # Custom domains (Enterprise plan): registered in the custom-domain service, which owns
+    # DNS verification, certificates and the web server configuration
+    custom_domain_service_url: str = ""  # HTTP URL of the custom-domain service
+    custom_domain_service_socket_path: str = ""  # Unix socket of the service (alternative)
+    custom_domain_client_id: str = ""  # OAuth2 client registered there; empty = oauth2_client_id
+    custom_domain_client_secret: str = ""  # its secret; empty = oauth2_client_secret
+    custom_domain_cname_target: str = ""  # CNAME shown before a domain is registered (hint)
+    custom_domain_webhook_secret: str = ""  # signs the status webhooks: required to accept them
+    custom_domain_webhook_tolerance: int = 300  # seconds a signed timestamp may be off (replay)
+    custom_domain_event_ttl: int = 604800  # seconds a processed delivery id is remembered
+    custom_domain_reconcile_interval: float = 300.0  # seconds between two status polls
+
     # GitHub Webhooks
     github_webhook_secret: str = ""  # Secret for verifying GitHub webhook signatures
 
@@ -143,6 +155,8 @@ CREDENTIAL_FIELDS = {
     "billing_webhook_secret": "BILLING_WEBHOOK_SECRET",
     "mailler_client_secret": "MAILLER_CLIENT_SECRET",
     "github_webhook_secret": "GITHUB_WEBHOOK_SECRET",
+    "custom_domain_client_secret": "CUSTOM_DOMAIN_CLIENT_SECRET",
+    "custom_domain_webhook_secret": "CUSTOM_DOMAIN_WEBHOOK_SECRET",
 }
 
 

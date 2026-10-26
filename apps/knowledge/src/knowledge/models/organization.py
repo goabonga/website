@@ -79,6 +79,11 @@ class Organization(Base):
     custom_domain_checked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Id of the domain in the custom-domain service, and the CNAME it asks the customer for
+    custom_domain_service_id: Mapped[str | None] = mapped_column(
+        String(64), unique=True, nullable=True, index=True
+    )
+    custom_domain_cname_target: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

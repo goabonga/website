@@ -10,7 +10,8 @@ the OpenVPN server.
 
 - **Process**: `gunicorn vpn_portal.main:app` with the
   `uvicorn.workers.UvicornWorker` worker class, two workers, listening on a
-  Unix socket. Gunicorn is a dependency of the package. Older deployments referenced the code as
+  Unix socket. Gunicorn is a dependency of the package, installed in the application
+  environment. Older deployments referenced the code as
   `app.main:app`; from this repository the import package is `vpn_portal`.
 - **Reverse proxy**: nginx terminates TLS for the public domain of the
   portal and proxies to the socket. `/health` is the probe endpoint. The
@@ -110,16 +111,37 @@ Points specific to this deployment:
 
 ## Ansible
 
-The `ansible/` collection of this repository provides the surrounding
-infrastructure: [step_ca](../../ansible/roles/step_ca.md) (including the
-short-lived VPN portal provisioner and its password file readable by the
-`step` group), [openvpn](../../ansible/roles/openvpn.md),
-[postgres](../../ansible/roles/postgres.md),
-[redis](../../ansible/roles/redis.md), [nginx](../../ansible/roles/nginx.md)
-and [certbot](../../ansible/roles/certbot.md). It does not yet contain a
-role that deploys this application or its hook scripts, so the service unit,
-the environment files and the wrappers are currently installed by the
-production inventory outside this repository.
+The [python_app](../../ansible/roles/python_app.md) role deploys both parts
+from the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable
+`vpn_portal` in `website_apps_enabled` and it brings the components
+`vpn_portal` and `vpn_portal_openvpn`. The role starts gunicorn from the application
+environment, where the package installs it.
+
+- `vpn_portal` runs gunicorn on the socket `/run/vpn-portal/vpn-portal.sock`
+  as a member of the `step` group, with a `/health` probe, a `vpn_portal`
+  database migrated with Alembic on each release, an nginx virtual host on the
+  `vpn_portal` host name and `REDIS_URL` on database 8. The Step-CA settings
+  are the ones the [step_ca](../../ansible/roles/step_ca.md) role provides
+  (provisioner `vpn-portal`, password file under `/etc/step-ca/secrets`,
+  certificates of 10 minutes by default), and the OpenVPN settings follow the
+  [openvpn](../../ansible/roles/openvpn.md) role files.
+- `vpn_portal_openvpn` has no unit. It writes the wrappers `openvpn-connect`,
+  `openvpn-disconnect` and `openvpn-reneg` in `/opt/vpn-portal/bin`, which run
+  `scripts/openvpn.py` with the Python of the portal environment (the
+  `requirements-openvpn.txt` file is not used). It then adds `script-security
+  2`, the loopback `management` directive and the three hooks to the OpenVPN
+  server configuration, with `reneg-sec 30`, creates the token cache
+  directory `/run/vpn-portal-openvpn` for `nobody`, allows the wrappers in the
+  AppArmor profile of OpenVPN and adds a systemd drop-in that gives the
+  OpenVPN unit the environment file and the credential. Applying it restarts
+  OpenVPN and disconnects every client.
+- Secrets ([Secrets](../../ansible/03-secrets.md)): `OAUTH2_CLIENT_SECRET`
+  and `STEPCA_PROVISIONER_PASSWORD` for the API, `OPENVPN_OAUTH2_CLIENT_SECRET`
+  for the hooks.
+- The OAuth client of the hooks is not in the catalog: set
+  `website_oauth2_clients.vpn_portal.openvpn_client_id`, otherwise the run
+  fails ([OpenVPN hooks](../../ansible/roles/python_app.md#openvpn-hooks)).
 
 ## Local development
 

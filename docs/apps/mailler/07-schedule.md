@@ -14,8 +14,10 @@ The body is the [send](04-send.md) request plus a required `scheduled_at`
 response with `status` set to `scheduled`. The email is stored as `pending`
 with `scheduled_at` set and is not queued: the beat task below picks it up
 when it is due. A missing or invalid `scheduled_at` gives `422`, and so does
-a request without any sender (neither `from_email` nor `DEFAULT_FROM`). The
-email is owned by the client of the token, like an email sent immediately.
+a request for which no sender or provider can be determined. The sender and
+the provider follow the rules of the [client registry](15-authorized-clients.md),
+and the email is owned by the client of the token, like an email sent
+immediately.
 
 ## Periodic tasks
 

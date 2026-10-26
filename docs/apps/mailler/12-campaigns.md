@@ -33,9 +33,15 @@ and may override the subject (`subject_override`), sender (`from_email`,
 that belongs to another client, gives `404`, and so does a campaign of
 another client.
 
-The sender defaults to `DEFAULT_FROM` / `DEFAULT_FROM_NAME` and the provider
-to `DEFAULT_PROVIDER`; there is no built-in provider. A campaign that ends up
-with neither a sender address nor a provider is marked `failed` by the worker.
+The overrides of a regular client are checked against its record when the
+campaign is created or updated (`403`, see the
+[client registry](15-authorized-clients.md)). The worker takes the missing
+values from the record of the campaign's client; a campaign of a client
+without a record (an administrator) falls back to `DEFAULT_FROM`,
+`DEFAULT_FROM_NAME` and `DEFAULT_PROVIDER`, and there is no built-in
+provider. A campaign that ends up with neither a sender address nor a
+provider is marked `failed` by the worker, and so is the campaign of a
+deactivated client.
 
 ## Lifecycle
 
@@ -93,7 +99,7 @@ webhooks feature.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `CAMPAIGN_BATCH_SIZE` | `50` | Contacts processed between two checks for a pause |
-| `DEFAULT_PROVIDER` | empty | Optional platform provider used when a campaign names none |
+| `DEFAULT_PROVIDER` | empty | Optional platform provider, only used for campaigns of clients that have no [client record](15-authorized-clients.md) |
 
 The sender defaults are the `DEFAULT_FROM` settings of the
 [providers](03-providers.md) page.

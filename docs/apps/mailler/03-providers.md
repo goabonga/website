@@ -56,8 +56,8 @@ accepted unsigned, whereas unsubscribe signatures are always rejected.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `DEFAULT_FROM` | empty | Optional platform sender address, used only when a caller provides none |
-| `DEFAULT_FROM_NAME` | empty | Optional platform sender name |
+| `DEFAULT_FROM` | empty | Optional platform sender address, only used for administrators who have no [client record](15-authorized-clients.md) |
+| `DEFAULT_FROM_NAME` | empty | Optional platform sender name, same use |
 | `BREVO_API_KEY` | empty | Brevo API key (secret) |
 | `SENDGRID_API_KEY` | empty | SendGrid API key (secret) |
 | `SES_REGION` | empty | AWS SES region (SES is not available until it is set) |

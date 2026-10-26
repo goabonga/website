@@ -19,7 +19,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import inspect
 from sqlalchemy.sql import functions as sql_functions
 from sqlalchemy.sql.elements import False_, True_
-from sqlalchemy.sql.operators import in_op
+from sqlalchemy.sql.operators import desc_op, in_op
 
 from knowledge.auth.dependencies import AuthContext
 from knowledge.auth.models import User
@@ -156,8 +156,11 @@ class FakeSession:
         if is_count:
             return rows, len(rows)
         for clause in statement._order_by_clauses[:1]:
-            key = clause.element.key
-            rows.sort(key=lambda r: (getattr(r, key) is not None, getattr(r, key)), reverse=True)
+            key = getattr(clause, "element", clause).key
+            descending = getattr(clause, "modifier", None) is desc_op
+            rows.sort(
+                key=lambda r: (getattr(r, key) is not None, getattr(r, key)), reverse=descending
+            )
         if statement._offset_clause is not None:
             rows = rows[statement._offset_clause.value :]
         if statement._limit_clause is not None:

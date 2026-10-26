@@ -122,3 +122,53 @@ class DomainActionResponse(BaseModel):
     id: UUID
     status: DomainStatus
     message: str
+
+
+class ProgressStep(BaseModel):
+    """Progress step information."""
+
+    current_step: str | None = None
+    steps_completed: list[str] = []
+    steps_remaining: list[str] = []
+    percentage: int = 0
+    started_at: datetime | None = None
+    estimated_completion: datetime | None = None
+
+
+class LastEvent(BaseModel):
+    """Last event information."""
+
+    type: str
+    step: str | None = None
+    message: str
+    timestamp: datetime
+
+
+class DomainStatusResponse(BaseModel):
+    """Response schema for domain status polling."""
+
+    id: UUID
+    domain: str
+    status: DomainStatus
+    progress: ProgressStep | None = None
+    last_event: LastEvent | None = None
+    error: str | None = None
+    retry_count: int = 0
+    next_retry_at: datetime | None = None
+
+
+class EventHistoryItem(BaseModel):
+    """Event history item."""
+
+    type: str
+    step: str | None = None
+    message: str
+    timestamp: datetime
+
+
+class EventHistoryResponse(BaseModel):
+    """Response schema for event history."""
+
+    events: list[EventHistoryItem]
+    has_more: bool
+    oldest_timestamp: datetime | None = None

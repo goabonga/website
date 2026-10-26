@@ -15,7 +15,7 @@ from custom_domain.auth import introspection_client, jwks_manager, token_exchang
 from custom_domain.config import settings
 from custom_domain.database import engine
 from custom_domain.logging import get_logger
-from custom_domain.routes import domains, health
+from custom_domain.routes import domains, events, health
 from custom_domain.routes.admin import clients, templates
 
 logger = get_logger(__name__)
@@ -110,6 +110,7 @@ app.include_router(health.router)
 
 # Domain routes
 app.include_router(domains.router, prefix="/api/v1")
+app.include_router(events.router, prefix="/api/v1")
 
 # Admin routes
 app.include_router(clients.router, prefix="/api/v1")

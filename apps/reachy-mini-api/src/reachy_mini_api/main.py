@@ -3,10 +3,13 @@
 
 """Reachy Mini API application."""
 
+import contextlib
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -14,7 +17,7 @@ from reachy_mini_api import __version__
 from reachy_mini_api.api import router as api_router
 from reachy_mini_api.auth import jwks_manager
 from reachy_mini_api.config import settings
-from reachy_mini_api.logging import get_logger, setup_logging
+from reachy_mini_api.logging import get_logger, log_action, setup_logging
 from reachy_mini_api.middleware import RequestLoggingMiddleware
 
 logger = get_logger(__name__)
@@ -46,6 +49,30 @@ def get_swagger_ui_oauth2_config() -> dict:
     }
 
 
+class ConnectionManager:
+    """Manage WebSocket connections for real-time robot communication."""
+
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        await websocket.send_json(message)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            with contextlib.suppress(Exception):
+                await connection.send_json(message)
+
+
+manager = ConnectionManager()
+
 swagger_config = get_swagger_ui_oauth2_config()
 
 
@@ -59,6 +86,7 @@ Internal API for the Reachy Mini robot to fetch reports and data.
 - **Reports**: Fetch daily briefings and quick updates
 - **Notifications**: Pending notification feed
 - **Status**: Server and monitored services status
+- **WebSocket**: Bidirectional communication with robot
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -106,3 +134,111 @@ async def health_check() -> HealthResponse:
 
 
 app.include_router(api_router, prefix="/api")
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time robot communication.
+
+    Messages are JSON objects with a ``type`` field. Every reply carries a
+    ``timestamp``.
+
+    Supported incoming message types:
+    - ping: Returns a pong response
+    - status: Returns the number of active connections
+    - broadcast: Sends ``data`` to every connected client
+    - anything else: Returns an ack echoing the received message
+
+    Text that is not valid JSON returns an error message.
+    """
+    # Get client info for logging
+    client_host = websocket.client.host if websocket.client else "unknown"
+    connection_id = id(websocket)
+
+    await manager.connect(websocket)
+    log_action(logger, "websocket_connect", client_id=client_host, connection_id=connection_id)
+
+    try:
+        # Send welcome message
+        await manager.send_personal_message(
+            {
+                "type": "connected",
+                "message": "Connected to Reachy Mini API",
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+            websocket,
+        )
+
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                msg_type = message.get("type", "unknown")
+
+                # Log all WebSocket messages
+                log_action(
+                    logger,
+                    "websocket_message",
+                    client_id=client_host,
+                    message_type=msg_type,
+                    connection_id=connection_id,
+                )
+
+                if msg_type == "ping":
+                    await manager.send_personal_message(
+                        {
+                            "type": "pong",
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
+                        websocket,
+                    )
+                elif msg_type == "status":
+                    await manager.send_personal_message(
+                        {
+                            "type": "status",
+                            "connections": len(manager.active_connections),
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
+                        websocket,
+                    )
+                elif msg_type == "broadcast":
+                    log_action(
+                        logger,
+                        "websocket_broadcast",
+                        client_id=client_host,
+                        connection_id=connection_id,
+                    )
+                    # Broadcast message to all connected clients
+                    await manager.broadcast(
+                        {
+                            "type": "broadcast",
+                            "data": message.get("data", {}),
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        }
+                    )
+                else:
+                    # Echo back unknown messages with acknowledgment
+                    await manager.send_personal_message(
+                        {
+                            "type": "ack",
+                            "received": message,
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
+                        websocket,
+                    )
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON from client {client_host}")
+                await manager.send_personal_message(
+                    {
+                        "type": "error",
+                        "message": "Invalid JSON",
+                        "timestamp": datetime.now(UTC).isoformat(),
+                    },
+                    websocket,
+                )
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        log_action(
+            logger, "websocket_disconnect", client_id=client_host, connection_id=connection_id
+        )

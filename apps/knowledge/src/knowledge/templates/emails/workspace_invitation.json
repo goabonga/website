@@ -1,0 +1,5 @@
+{
+  "name": "Workspace invitation",
+  "description": "Invites someone to join a workspace.",
+  "subject_template": "You're invited to join {{ workspace_name }} on Knowledge"
+}

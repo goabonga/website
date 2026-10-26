@@ -110,6 +110,15 @@ class Settings(BaseSettings):
     # Calls to the platform services (billing, mailler, custom domains)
     service_timeout: float = 10.0  # seconds
 
+    # Mailler service (platform email service): every email is sent through it, with a
+    # template that the deployment imported for this application's client
+    mailler_url: str = ""  # HTTP base URL of the mailler service; empty = not configured
+    mailler_socket_path: str = ""  # Unix socket of the mailler service (alternative to the URL)
+    mailler_client_id: str = ""  # OAuth2 client registered in mailler; empty = oauth2_client_id
+    mailler_client_secret: str = ""  # its secret; empty = oauth2_client_secret
+    mailler_max_retries: int = 3  # retries of an email task after a failure that can pass
+    mailler_retry_delay: int = 60  # seconds before the first retry, doubled each time
+
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {
@@ -117,6 +126,7 @@ CREDENTIAL_FIELDS = {
     "oauth2_client_secret": "OAUTH2_CLIENT_SECRET",
     "billing_client_secret": "BILLING_CLIENT_SECRET",
     "billing_webhook_secret": "BILLING_WEBHOOK_SECRET",
+    "mailler_client_secret": "MAILLER_CLIENT_SECRET",
 }
 
 

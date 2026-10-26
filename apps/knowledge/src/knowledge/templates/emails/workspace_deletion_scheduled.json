@@ -1,0 +1,5 @@
+{
+  "name": "Workspace deletion scheduled",
+  "description": "Tells the owner when the confirmed deletion will happen.",
+  "subject_template": "Workspace deletion scheduled: {{ workspace_name }}"
+}

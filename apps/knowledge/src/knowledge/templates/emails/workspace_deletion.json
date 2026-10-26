@@ -1,0 +1,5 @@
+{
+  "name": "Workspace deletion confirmation",
+  "description": "Asks the owner to confirm the deletion of a workspace.",
+  "subject_template": "Confirm deletion of workspace: {{ workspace_name }}"
+}

@@ -26,6 +26,7 @@ repos:
         name: SPDX license headers
         entry: >-
           bash -c 'python3 scripts/add_license_header.py --path apps --types py --check
+          && python3 scripts/add_license_header.py --path libs --types py --check
           && python3 scripts/add_license_header.py --path scripts --types py,sh --check
           && python3 scripts/add_license_header.py --path .github --types yml --check
           && python3 scripts/add_license_header.py --path . --types toml --check'

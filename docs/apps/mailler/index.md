@@ -23,6 +23,7 @@ documented on its own page.
 | [MJML email templates](08-templates.md) | Template CRUD, compilation and rendering |
 | [Contacts](09-contacts.md) | Recipients, bulk import and unsubscribe |
 | [Contact groups](10-contact-groups.md) | Named sets of contacts and memberships |
+| [Public unsubscribe](11-unsubscribe.md) | Signed unsubscribe links and pages |
 
 ## Running the tests
 

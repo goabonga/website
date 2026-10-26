@@ -92,3 +92,15 @@
       without website_domain and website_internal_domain.
     quiet: true
   when: "'internal' in python_app__apps"
+
+- name: Check the OAuth client of the OpenVPN hooks
+  ansible.builtin.assert:
+    that:
+      - (website_oauth2_clients.get('vpn_portal') or {}).get('openvpn_client_id', '') | string | length > 0
+    fail_msg: >-
+      The OpenVPN hooks of vpn_portal need website_oauth2_clients.vpn_portal.openvpn_client_id (or
+      disable the vpn_portal_openvpn component).
+    quiet: true
+  when:
+    - "'vpn_portal' in python_app__apps"
+    - python_app__all | selectattr('id', 'equalto', 'vpn_portal_openvpn') | selectattr('enabled') | list | length > 0

@@ -12,6 +12,8 @@ from billing.config import Settings, get_credential
 
 def _settings(**overrides) -> Settings:
     """Build Settings ignoring any .env file and keeping secrets explicit."""
+    overrides.setdefault("stripe_secret_key", "")
+    overrides.setdefault("stripe_webhook_secret", "")
     overrides.setdefault("oauth2_client_secret", "")
     with patch.dict(os.environ, {}, clear=False):
         return Settings(_env_file=None, **overrides)
@@ -167,6 +169,14 @@ class TestSettings:
         assert _settings().oauth2_http_timeout == 10.0
         assert _settings(oauth2_http_timeout=2.5).oauth2_http_timeout == 2.5
 
+    def test_empty_stripe_keys_by_default(self):
+        """Stripe keys should be empty strings by default."""
+        s = _settings()
+
+        assert s.stripe_secret_key == ""
+        assert s.stripe_publishable_key == ""
+        assert s.stripe_webhook_secret == ""
+
     def test_settings_from_env_vars(self):
         """Settings should load from environment variables."""
         env = {
@@ -179,6 +189,8 @@ class TestSettings:
         with patch.dict(os.environ, env, clear=False):
             s = Settings(
                 _env_file=None,
+                stripe_secret_key="",
+                stripe_webhook_secret="",
                 oauth2_client_secret="",
             )
 

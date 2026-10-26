@@ -9,16 +9,34 @@ needed.
 
 Token validation is faked: every bearer token used by the scenarios maps to
 a set of claims registered in ``context.token_claims``.
+
+The database is an in-memory SQLite engine that replaces the PostgreSQL one
+(PostgreSQL ``JSONB`` columns are rendered as plain ``JSON``).
 """
 
 import asyncio
+import sys
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import httpx
 from billing.auth.models import User
+from billing.database import get_db
 from billing.main import app
+from billing.models import Base
 from httpx import ASGITransport
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.pool import StaticPool
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(type_, compiler, **kw):
+    """Render PostgreSQL JSONB columns as plain JSON on SQLite."""
+    return "JSON"
+
 
 DEFAULT_TOKEN = "bdd.mock.token"
 
@@ -49,6 +67,19 @@ def _create_jwt_claims(user):
 def register_token(context, token, scopes):
     """Make the fake token validation accept ``token`` with the given scopes."""
     context.token_claims[token] = _create_jwt_claims(_create_test_user(scopes))
+
+
+async def _create_schema(engine):
+    """Create every table on the in-memory SQLite engine."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def _cleanup_db(engine):
+    """Empty all tables between scenarios for isolation."""
+    async with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(text(f"DELETE FROM {table.name}"))
 
 
 async def _create_async_client(headers=None):
@@ -84,6 +115,32 @@ def before_all(context):
     mock_introspection.validate_opaque_token = AsyncMock(side_effect=_validate)
     context.register_token = lambda token, scopes: register_token(context, token, scopes)
 
+    # In-memory SQLite database replacing PostgreSQL.
+    context.engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    context.session_factory = async_sessionmaker(
+        context.engine, class_=AsyncSession, expire_on_commit=False
+    )
+    context.loop.run_until_complete(_create_schema(context.engine))
+
+    async def _override_get_db():
+        async with context.session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = _override_get_db
+    # Modules that open their own sessions use the factory directly.
+    for name, module in list(sys.modules.items()):
+        if name.startswith("billing.") and hasattr(module, "async_session_factory"):
+            patch.object(module, "async_session_factory", context.session_factory).start()
+
     context.anon_client = context.loop.run_until_complete(_create_async_client())
     context.client = context.loop.run_until_complete(
         _create_async_client(headers={"Authorization": f"Bearer {DEFAULT_TOKEN}"})
@@ -96,9 +153,16 @@ def before_scenario(context, scenario):
     context.created_ids = {}  # Track created entity IDs for cross-step reference
 
 
+def after_scenario(context, scenario):
+    """Clean up database after each scenario."""
+    context.loop.run_until_complete(_cleanup_db(context.engine))
+
+
 def after_all(context):
     """Tear down clients, patches and event loop."""
     context.loop.run_until_complete(context.anon_client.aclose())
     context.loop.run_until_complete(context.client.aclose())
     patch.stopall()
+    app.dependency_overrides.clear()
+    context.loop.run_until_complete(context.engine.dispose())
     context.loop.close()

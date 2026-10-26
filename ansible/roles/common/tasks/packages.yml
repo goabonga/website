@@ -1,0 +1,26 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Update the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ common_apt_cache_valid_time }}"
+  when: common_apt_update_cache | bool
+
+- name: Upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: "{{ common_upgrade }}"
+  when: common_upgrade != 'none'
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+  when: common_packages | length > 0
+
+- name: Remove unwanted packages
+  ansible.builtin.apt:
+    name: "{{ common_packages_absent }}"
+    state: absent
+  when: common_packages_absent | length > 0

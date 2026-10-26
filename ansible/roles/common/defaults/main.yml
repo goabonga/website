@@ -1,0 +1,101 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Refresh the apt package index.
+common_apt_update_cache: true
+
+# Seconds during which the apt cache is considered fresh.
+common_apt_cache_valid_time: 3600
+
+# How installed packages are upgraded (none skips the upgrade).
+common_upgrade: safe
+
+# Packages installed on every host.
+common_packages:
+- ca-certificates
+- curl
+- git
+- htop
+- unzip
+- vim
+- wget
+
+# Packages removed from every host.
+common_packages_absent: []
+
+# Host name to set. Left untouched when empty.
+common_hostname: ''
+
+# System time zone.
+common_timezone: UTC
+
+# Default system locale (LANG).
+common_locale: en_US.UTF-8
+
+# Additional locales to generate.
+common_locales_extra: []
+
+# Install a shared bash prompt for interactive shells.
+common_bash_prompt_enabled: true
+
+# Show the host name in the prompt.
+common_bash_prompt_show_host: true
+
+# Show the current git branch in the prompt.
+common_bash_prompt_show_git: true
+
+# ANSI foreground color code of the user name.
+common_bash_prompt_user_color: 32
+
+# ANSI foreground color code of the user name for root.
+common_bash_prompt_root_color: 31
+
+# ANSI foreground color code of the host name.
+common_bash_prompt_host_color: 36
+
+# ANSI foreground color code of the working directory.
+common_bash_prompt_path_color: 34
+
+# ANSI foreground color code of the git branch.
+common_bash_prompt_git_color: 33
+
+# Install tmux and a system-wide configuration.
+common_tmux_enabled: true
+
+# Path of the system-wide tmux configuration.
+common_tmux_config_path: /etc/tmux.conf
+
+# tmux prefix key.
+common_tmux_prefix: C-a
+
+# Enable mouse support.
+common_tmux_mouse: true
+
+# Scrollback lines kept per pane.
+common_tmux_history_limit: 50000
+
+# Index of the first window and pane.
+common_tmux_base_index: 1
+
+# Value of default-terminal.
+common_tmux_default_terminal: tmux-256color
+
+# Status bar background color.
+common_tmux_status_bg: colour235
+
+# Status bar foreground color.
+common_tmux_status_fg: colour250
+
+# Accent color of the active window and pane border.
+common_tmux_accent: colour33
+
+# Extra raw tmux configuration lines appended to the file.
+common_tmux_extra_config: []
+
+# Attach interactive SSH logins to a tmux session (skipped when already inside
+# tmux).
+common_tmux_autoattach: false
+
+# Name of the session created by auto-attach.
+common_tmux_session_name: main

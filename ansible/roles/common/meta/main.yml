@@ -1,0 +1,25 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  author: Chris
+  description: 'Baseline host configuration: packages, time zone, locale, bash prompt and
+    tmux.'
+  company: goabonga
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - common
+  - packages
+  - locale
+  - tmux
+dependencies: []

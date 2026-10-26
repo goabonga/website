@@ -56,5 +56,16 @@ class Settings(BaseSettings):
     social_github: str = ""
     social_huggingface: str = ""
 
+    # security.txt (RFC 9116)
+    security_contact: str = ""
+    security_expires: str = ""
+    security_encryption: str = ""
+    security_acknowledgments: str = ""
+    security_preferred_languages: str = ""
+    security_canonical: str = ""
+    security_policy: str = ""
+    security_hiring: str = ""
+    security_csaf: str = ""
+
 
 settings = Settings()

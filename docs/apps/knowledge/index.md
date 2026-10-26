@@ -43,6 +43,8 @@ how it is tested with pytest and behave.
     account pages.
 16. [Landing and dashboard](15-web-dashboard.md): public pages, dashboard and
     MCP download page.
+17. [Collection and document pages](16-web-collections-documents.md):
+    managing the knowledge base from the browser.
 
 ## Running the tests
 

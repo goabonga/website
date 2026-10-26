@@ -17,3 +17,5 @@ documents one feature as it exists in the code.
    problems on stderr, and the application lifespan.
 3. [OAuth2 client credentials](03-oauth2.md) - bearer tokens for calls to
    internal services.
+4. [Brevo webhook proxy](04-brevo.md) - raw proxy for Brevo events with
+   optional HMAC verification.

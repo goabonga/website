@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Device Authorization{% endblock %}
+
+{% block content %}
+<div class="device-container">
+    <h1>Device Authorization</h1>
+
+    <p class="instructions">
+        Enter the code displayed on your device to authorize access.
+    </p>
+
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ tenant_prefix }}/oauth2/device/verify" class="device-form">
+        <div class="form-group">
+            <label for="user_code">Device Code</label>
+            <input
+                type="text"
+                id="user_code"
+                name="user_code"
+                value="{{ user_code }}"
+                placeholder="XXXX-XXXX"
+                required
+                autocomplete="off"
+                autofocus
+                class="code-input"
+            >
+            <p class="help-text">Enter the code shown on your device (e.g., ABCD-EFGH)</p>
+        </div>
+
+        <button type="submit" class="btn-submit">Continue</button>
+    </form>
+</div>
+
+<style>
+.device-container {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+.device-container h1 {
+    margin-bottom: 10px;
+}
+.instructions {
+    color: var(--text-muted-color);
+    margin-bottom: 30px;
+}
+.error-message {
+    background: rgba(214, 48, 49, 0.2);
+    color: var(--error-color);
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(214, 48, 49, 0.3);
+}
+.device-form {
+    margin: 20px 0;
+}
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.code-input {
+    width: 100%;
+    padding: 16px;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-family: monospace;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.code-input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+}
+.help-text {
+    font-size: 0.85em;
+    color: var(--text-muted-color);
+    margin-top: 8px;
+}
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    background: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.btn-submit:hover {
+    background: var(--primary-color);
+    color: var(--background-color);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Authorize Device - {{ client_name }}{% endblock %}
+
+{% block content %}
+<div class="consent-container">
+    <h1>Authorize Device</h1>
+
+    <div class="device-info">
+        <p>A device is requesting access to your account.</p>
+        <div class="code-display">
+            <span class="label">Device Code:</span>
+            <span class="code">{{ user_code }}</span>
+        </div>
+    </div>
+
+    <div class="client-info">
+        <h2>{{ client_name }}</h2>
+    </div>
+
+    <div class="permissions">
+        <p>This application is requesting access to:</p>
+        <ul class="scopes-list">
+            {% for scope in scopes %}
+            <li class="scope">
+                {% if scope == "openid" %}
+                <strong>OpenID</strong> - Verify your identity
+                {% elif scope == "profile" %}
+                <strong>Profile</strong> - Your name and profile information
+                {% elif scope == "email" %}
+                <strong>Email</strong> - Your email address
+                {% elif scope == "offline_access" %}
+                <strong>Offline Access</strong> - Access your data when you're not using the app
+                {% else %}
+                <strong>{{ scope }}</strong>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <form method="post" action="{{ tenant_prefix }}/oauth2/device/complete" class="consent-form">
+        <input type="hidden" name="user_code" value="{{ user_code }}">
+
+        <div class="buttons">
+            <button type="submit" name="consent" value="deny" class="btn-deny">Deny</button>
+            <button type="submit" name="consent" value="allow" class="btn-allow">Allow</button>
+        </div>
+    </form>
+
+    <p class="info">
+        By clicking "Allow", you authorize this device to access your account
+        with the permissions listed above.
+    </p>
+</div>
+
+<style>
+.consent-container {
+    max-width: 500px;
+    margin: 0 auto;
+}
+.device-info {
+    background: var(--surface-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    border: 1px solid var(--primary-color);
+}
+.device-info p {
+    margin: 0 0 15px 0;
+    color: var(--text-color);
+}
+.code-display {
+    font-size: 1.2em;
+}
+.code-display .label {
+    color: var(--text-muted-color);
+}
+.code-display .code {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.4em;
+    color: var(--primary-color);
+    letter-spacing: 2px;
+}
+.client-info {
+    background: var(--surface-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+.client-info h2 {
+    margin: 0;
+    color: var(--text-color);
+}
+.permissions {
+    margin: 20px 0;
+}
+.scopes-list {
+    list-style: none;
+    padding: 0;
+}
+.scope {
+    padding: 12px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    margin-bottom: 8px;
+    border-radius: 8px;
+}
+.scope strong {
+    color: var(--primary-color);
+}
+.consent-form {
+    margin: 30px 0;
+}
+.buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+.btn-deny, .btn-allow {
+    padding: 12px 30px;
+    font-size: 16px;
+    border: 1px solid;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.btn-deny {
+    background: transparent;
+    color: var(--text-muted-color);
+    border-color: var(--border-color);
+}
+.btn-deny:hover {
+    background: var(--border-color);
+    color: var(--text-color);
+}
+.btn-allow {
+    background: transparent;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.btn-allow:hover {
+    background: var(--primary-color);
+    color: var(--background-color);
+}
+.info {
+    font-size: 0.9em;
+    color: var(--text-muted-color);
+    text-align: center;
+}
+</style>
+{% endblock %}

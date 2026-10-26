@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Device Authorization {% if success %}Complete{% else %}Denied{% endif %}{% endblock %}
+
+{% block content %}
+<div class="complete-container">
+    {% if success %}
+    <div class="success-icon">&#10003;</div>
+    {% else %}
+    <div class="denied-icon">&#10005;</div>
+    {% endif %}
+
+    <h1>{% if success %}Authorization Complete{% else %}Authorization Denied{% endif %}</h1>
+
+    <p class="message">{{ message }}</p>
+
+    <a href="/auth/settings/" class="btn-home">Return to Settings</a>
+</div>
+
+<style>
+.complete-container {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px 20px;
+}
+.success-icon {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    font-size: 48px;
+    background: var(--success-color);
+    color: var(--background-color);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+}
+.denied-icon {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    font-size: 48px;
+    background: var(--error-color);
+    color: var(--background-color);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+}
+.complete-container h1 {
+    margin-bottom: 20px;
+}
+.message {
+    color: var(--text-muted-color);
+    font-size: 1.1em;
+    margin-bottom: 30px;
+}
+.btn-home {
+    display: inline-block;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: var(--background-color);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: opacity 0.2s ease;
+}
+.btn-home:hover {
+    opacity: 0.9;
+}
+</style>
+{% endblock %}

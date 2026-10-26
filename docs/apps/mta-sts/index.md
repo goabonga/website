@@ -15,3 +15,5 @@ documents one feature as it exists in the code.
    application and health endpoint.
 2. [Dual-stream logging](02-logging.md) - informational logs on stdout,
    problems on stderr.
+3. [MTA-STS policy](03-policy.md) - the RFC 8461 policy served at
+   `/.well-known/mta-sts.txt`.

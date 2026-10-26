@@ -12,6 +12,7 @@ behave.
 |------|---------|
 | [Foundation](01-foundation.md) | settings, application factory, health check, CORS |
 | [Logging](02-logging.md) | stdout/stderr split and request context in log lines |
+| [Web client](03-web-client.md) | Vite and TypeScript sources, build and template generator |
 
 ## Running the tests
 

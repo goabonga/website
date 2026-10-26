@@ -60,6 +60,7 @@ paths = [
     "apps/frontend/src/**",
     "apps/frontend/features/**",
     "apps/frontend/tests/**",
+    "apps/frontend/web/**",
     "apps/frontend/pyproject.toml",
 ]
 bump_files = [

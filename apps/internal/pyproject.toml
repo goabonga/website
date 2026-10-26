@@ -27,3 +27,6 @@ packages = ["src/internal"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.behave]
+paths = ["features"]

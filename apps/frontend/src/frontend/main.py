@@ -3,9 +3,12 @@
 
 """FastAPI application entry point."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -15,6 +18,7 @@ from pydantic import BaseModel
 
 from frontend import __version__
 
+from .analytics import AnalyticsTracker, get_client_ip
 from .config import Settings, settings
 from .logging import get_logger, setup_logging
 from .security_txt import create_router as create_security_txt_router
@@ -60,9 +64,22 @@ def template_context(cfg: Settings) -> dict[str, Any]:
     }
 
 
-def create_app(app_settings: Settings | None = None) -> FastAPI:
-    """Build the FastAPI application from the given settings."""
+def create_app(
+    app_settings: Settings | None = None,
+    analytics_transport: httpx.AsyncBaseTransport | None = None,
+) -> FastAPI:
+    """Build the FastAPI application from the given settings.
+
+    ``analytics_transport`` replaces the network transport used to deliver
+    analytics events (tests and scenarios pass an in-memory one).
+    """
     cfg = app_settings or settings
+    tracker = AnalyticsTracker(cfg.analytics_url, transport=analytics_transport)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        await tracker.close()  # deliver the events still queued
 
     app = FastAPI(
         title=cfg.app_name,
@@ -72,6 +89,7 @@ Frontend application server.
 ## Features
 
 - **Single Page Application**: Vite-built frontend served via FastAPI
+- **Server-side analytics**: page view tracking middleware
 - **Health check**: liveness endpoint for monitoring
 - **security.txt**: RFC 9116 compliant security contact information
 - **Logging**: INFO/DEBUG to stdout, WARNING and above to stderr
@@ -79,11 +97,13 @@ Frontend application server.
         """,
         version=__version__,
         debug=cfg.debug,
+        lifespan=lifespan,
         docs_url="/docs" if cfg.docs_enabled else None,
         redoc_url="/redoc" if cfg.docs_enabled else None,
         openapi_url="/openapi.json" if cfg.docs_enabled else None,
     )
     app.state.settings = cfg
+    app.state.analytics = tracker
 
     app.add_middleware(
         CORSMiddleware,
@@ -92,6 +112,18 @@ Frontend application server.
         allow_methods=cfg.cors_methods,
         allow_headers=cfg.cors_headers,
     )
+
+    @app.middleware("http")
+    async def analytics_middleware(request: Request, call_next):
+        """Track all requests for analytics."""
+        # Skip static files
+        if not request.url.path.startswith("/static"):
+            tracker.track(
+                event_type="page_view_server",
+                page_url=request.url.path,
+                ip_address=get_client_ip(request),
+            )
+        return await call_next(request)
 
     @app.get("/health", response_model=HealthResponse, include_in_schema=False)
     async def health() -> HealthResponse:

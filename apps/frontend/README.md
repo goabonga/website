@@ -4,9 +4,9 @@ Frontend application server (FastAPI) for the website, with its Vite and
 TypeScript web client in `web/`. The server renders the generated template
 `src/frontend/templates/index.html` for every page, injecting its runtime
 configuration from environment variables, and serves the client build under
-`/static`. It also exposes `/.well-known/security.txt` (RFC 9116), a health
-endpoint, a configurable CORS policy and logging split between stdout and
-stderr.
+`/static`. It also exposes `/.well-known/security.txt` (RFC 9116), reports
+page views to an analytics service, and provides a health endpoint, a
+configurable CORS policy and logging split between stdout and stderr.
 
 ## Routes and scopes
 

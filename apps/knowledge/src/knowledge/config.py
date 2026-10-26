@@ -110,6 +110,9 @@ class Settings(BaseSettings):
     # Calls to the platform services (billing, mailler, custom domains)
     service_timeout: float = 10.0  # seconds
 
+    # GitHub Webhooks
+    github_webhook_secret: str = ""  # Secret for verifying GitHub webhook signatures
+
     # Mailler service (platform email service): every email is sent through it, with a
     # template that the deployment imported for this application's client
     mailler_url: str = ""  # HTTP base URL of the mailler service; empty = not configured
@@ -127,6 +130,7 @@ CREDENTIAL_FIELDS = {
     "billing_client_secret": "BILLING_CLIENT_SECRET",
     "billing_webhook_secret": "BILLING_WEBHOOK_SECRET",
     "mailler_client_secret": "MAILLER_CLIENT_SECRET",
+    "github_webhook_secret": "GITHUB_WEBHOOK_SECRET",
 }
 
 

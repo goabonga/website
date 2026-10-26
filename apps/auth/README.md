@@ -8,6 +8,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Data model and migrations: SQLAlchemy models and the Alembic migration chain.
 - Signing keys: Encrypted RSA signing keys and the public JWKS endpoint.
 - Multi-tenancy and OIDC discovery: Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
+- Outbound webhooks and Celery: Signed webhook deliveries to tenant endpoints through a Celery worker.
 
 ## Routes and scopes
 
@@ -153,6 +154,9 @@ DATABASE_URL=postgresql://auth:auth@localhost:5437/auth \
 
 uv sync --package auth
 uv run --package auth uvicorn auth.main:app --reload --port 8000
+
+# Celery worker (outbound webhooks and the other background tasks)
+uv run --package auth celery -A auth.celery:celery_app worker -Q auth --loglevel=info
 
 uv run --package auth --group dev pytest apps/auth
 uv run --package auth --group dev behave apps/auth/features

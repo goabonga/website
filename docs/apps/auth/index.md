@@ -17,6 +17,7 @@ The application is documented feature by feature, in the order in which each fea
 2. [Data model and migrations](02-data-model.md): SQLAlchemy models and the Alembic migration chain.
 3. [Signing keys](03-signing-keys.md): Encrypted RSA signing keys and the public JWKS endpoint.
 4. [Multi-tenancy and OIDC discovery](04-tenancy.md): Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
+5. [Outbound webhooks and Celery](05-webhooks.md): Signed webhook deliveries to tenant endpoints through a Celery worker.
 
 ## Testing
 

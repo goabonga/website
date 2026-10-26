@@ -101,6 +101,7 @@ stdout, `WARNING`, `ERROR` and `CRITICAL` go to stderr. The level comes from
 
 ```bash
 uv sync --package webhooks
+uv run --package webhooks uvicorn webhooks.main:app --reload --port 8001
 uv run --package webhooks pytest apps/webhooks
 uv run --package webhooks behave apps/webhooks/features
 ```

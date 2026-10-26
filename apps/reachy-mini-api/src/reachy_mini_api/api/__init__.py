@@ -6,7 +6,9 @@
 from fastapi import APIRouter
 
 from reachy_mini_api.api.reports import router as reports_router
+from reachy_mini_api.api.status import router as status_router
 
 router = APIRouter()
 
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
+router.include_router(status_router, prefix="/status", tags=["status"])

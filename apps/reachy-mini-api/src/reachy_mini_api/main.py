@@ -58,6 +58,7 @@ Internal API for the Reachy Mini robot to fetch reports and data.
 
 - **Reports**: Fetch daily briefings and quick updates
 - **Notifications**: Pending notification feed
+- **Status**: Server and monitored services status
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -70,6 +71,7 @@ token against the issuer JWKS and check the scopes it carries.
 
 - `reachy:reports:read` - Read robot reports
 - `reachy:notifications:read` - Read notifications
+- `reachy:status:read` - Read status information
 """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,

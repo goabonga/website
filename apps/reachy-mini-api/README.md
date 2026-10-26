@@ -14,6 +14,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/reports/daily` | scope `reachy:reports:read` | Get today's daily report for Reachy to announce |
 | GET | `/api/reports/quick` | scope `reachy:reports:read` | Get a quick update for immediate announcement |
 | GET | `/api/reports/notifications` | scope `reachy:notifications:read` | Get pending notifications |
+| GET | `/api/status/server` | scope `reachy:status:read` | Get server status information |
+| GET | `/api/status/services` | scope `reachy:status:read` | Get status of monitored services |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -23,6 +25,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `reachy:reports:read` - checked by 2 routes
 - `reachy:notifications:read` - checked by 1 route
+- `reachy:status:read` - checked by 2 routes
 
 ## Development
 

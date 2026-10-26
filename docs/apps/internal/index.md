@@ -18,6 +18,7 @@ feature, in the order they were introduced.
 5. [VPN session management](05-vpn.md)
 6. [Billing administration](06-billing.md)
    - [SaaS client bindings](06a-billing-client-bindings.md)
+   - [Checkout URL allow-list and branding](06b-billing-checkout-urls.md)
 
 ## Running locally
 

@@ -60,8 +60,9 @@ in the exchange (it is not one of the `read`, `write` and `delete` scopes of the
 - **Customers** (`/billing/saas/{id}/customers...`): list and detail with all the customer's
   subscriptions. `POST .../portal` redirects the operator to a Stripe customer-portal session
   created by the billing service. Stripe sends the operator back to the `return_url` of the
-  form or, by default, to the first entry of the SaaS app's checkout URL allow-list: the billing
-  service refuses any other URL, so an app without allow-list has no portal and the page says so.
+  form or, by default, to the first entry of the SaaS app's checkout URL allow-list (see
+  [Checkout URL allow-list and branding](06b-billing-checkout-urls.md)): the billing service
+  refuses any other URL, so an app without allow-list has no portal and the page says so.
 - **Subscriptions** (`/billing/saas/{id}/subscriptions...`): list (filtered by any billing
   status) and detail, cancel a subscription (at the end of the period, or immediately),
   reactivate one that is scheduled for cancellation, or re-synchronise it from Stripe.

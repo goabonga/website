@@ -8,7 +8,7 @@ It has its own OpenAPI documentation at /internal/docs.
 
 Internal routes include health checks, webhook receivers, authentication pages and
 the web pages (landing page, dashboard, pricing, legal pages, MCP downloads,
-collections and documents).
+collections, documents and search).
 """
 
 from fastapi import FastAPI
@@ -22,6 +22,7 @@ from knowledge.routes.web import (
     documents_router,
     downloads_router,
     home_router,
+    search_router,
 )
 
 settings = get_settings()
@@ -69,3 +70,4 @@ internal_app.include_router(home_router, tags=["Web"])
 internal_app.include_router(downloads_router, tags=["Web"])
 internal_app.include_router(collections_router, prefix="/collections", tags=["Web"])
 internal_app.include_router(documents_router, prefix="/documents", tags=["Web"])
+internal_app.include_router(search_router, prefix="/search", tags=["Web"])

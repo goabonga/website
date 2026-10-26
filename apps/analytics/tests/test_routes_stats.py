@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from analytics.routes.stats import (
     BrowserStats,
+    CampaignStats,
     CountryStats,
     DailyStats,
     DeviceStats,
@@ -20,6 +21,7 @@ from analytics.routes.stats import (
     IPStats,
     OverviewStats,
     PageStats,
+    PixelStats,
     ReferrerStats,
     StatsResponse,
     get_date_range,
@@ -138,6 +140,37 @@ class TestResponseModels:
     def test_stats_response(self):
         stats = StatsResponse(success=True, data={"key": "value"})
         assert stats.success is True
+
+
+class TestCampaignResponseModels:
+    """Tests for campaign response models."""
+
+    def test_campaign_stats(self):
+        stats = CampaignStats(
+            id=uuid.uuid4(),
+            name="Test",
+            tracking_key="abc",
+            is_active=True,
+            click_count=10,
+            unique_click_count=5,
+            pixel_count=3,
+            total_opens=20,
+            created_at=datetime.now(UTC),
+        )
+        assert stats.name == "Test"
+
+    def test_pixel_stats(self):
+        stats = PixelStats(
+            id=uuid.uuid4(),
+            pixel_key="pxl123",
+            recipient_email="test@example.com",
+            recipient_id=None,
+            open_count=5,
+            first_opened_at=None,
+            last_opened_at=None,
+            created_at=datetime.now(UTC),
+        )
+        assert stats.pixel_key == "pxl123"
 
 
 def _mock_user():
@@ -664,3 +697,195 @@ class TestGetEventStats:
         data = resp.json()
         assert len(data) == 2
         assert data[0]["event_type"] == "pageview"
+
+
+class TestGetCampaigns:
+    """Tests for GET /api/v1/stats/campaigns endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_campaigns(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+        mock_campaign = MagicMock()
+        mock_campaign.id = campaign_id
+        mock_campaign.name = "Test Campaign"
+        mock_campaign.tracking_key = "tk-test"
+        mock_campaign.is_active = True
+        mock_campaign.click_count = 10
+        mock_campaign.unique_click_count = 5
+        mock_campaign.created_at = now
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([mock_campaign]),  # campaigns
+                _make_scalar_result(3),  # pixel count
+                _make_scalar_result(20),  # total opens
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/campaigns")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Test Campaign"
+        assert data[0]["pixel_count"] == 3
+        assert data[0]["total_opens"] == 20
+
+    @pytest.mark.asyncio
+    async def test_get_campaigns_include_inactive(self, patched_app, mock_db):
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([]),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/campaigns?include_inactive=true")
+
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    @pytest.mark.asyncio
+    async def test_get_campaigns_null_opens(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        mock_campaign = MagicMock()
+        mock_campaign.id = uuid.uuid4()
+        mock_campaign.name = "No Opens"
+        mock_campaign.tracking_key = "tk-no"
+        mock_campaign.is_active = True
+        mock_campaign.click_count = 0
+        mock_campaign.unique_click_count = 0
+        mock_campaign.created_at = now
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([mock_campaign]),
+                _make_scalar_result(None),  # no pixels
+                _make_scalar_result(None),  # no opens
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/campaigns")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[0]["pixel_count"] == 0
+        assert data[0]["total_opens"] == 0
+
+
+class TestGetCampaignDetail:
+    """Tests for GET /api/v1/stats/campaigns/{campaign_id} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_campaign_detail(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+        mock_campaign = MagicMock()
+        mock_campaign.id = campaign_id
+        mock_campaign.name = "Detail Campaign"
+        mock_campaign.description = "A test campaign"
+        mock_campaign.tracking_key = "tk-detail"
+        mock_campaign.destination_url = "https://example.com"
+        mock_campaign.is_active = True
+        mock_campaign.click_count = 100
+        mock_campaign.unique_click_count = 60
+        mock_campaign.created_at = now
+        mock_campaign.updated_at = now
+
+        daily_rows = [
+            _make_row(date="2025-01-01", sessions=10, unique_visitors=8),
+        ]
+        country_rows = [
+            _make_row(country="US", sessions=50),
+        ]
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(mock_campaign),  # campaign lookup
+                _make_rows_result(daily_rows),  # clicks by day
+                _make_scalar_result(50),  # total clicks
+                _make_rows_result(country_rows),  # clicks by country
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/stats/campaigns/{campaign_id}")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Detail Campaign"
+        assert len(data["clicks_by_day"]) == 1
+        assert len(data["clicks_by_country"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_campaign_detail_not_found(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(None),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/stats/campaigns/{campaign_id}")
+
+        assert resp.status_code == 404
+
+
+class TestGetCampaignPixels:
+    """Tests for GET /api/v1/stats/campaigns/{campaign_id}/pixels endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_campaign_pixels(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+
+        mock_pixel = MagicMock()
+        mock_pixel.id = uuid.uuid4()
+        mock_pixel.pixel_key = "pxl-1"
+        mock_pixel.recipient_email = "user@example.com"
+        mock_pixel.recipient_id = None
+        mock_pixel.open_count = 3
+        mock_pixel.first_opened_at = now
+        mock_pixel.last_opened_at = now
+        mock_pixel.created_at = now
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(campaign_id),  # campaign exists
+                _make_scalars_result([mock_pixel]),  # pixels
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/stats/campaigns/{campaign_id}/pixels")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["pixel_key"] == "pxl-1"
+        assert data[0]["open_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_campaign_pixels_not_found(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(None),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/stats/campaigns/{campaign_id}/pixels")
+
+        assert resp.status_code == 404

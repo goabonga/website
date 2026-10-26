@@ -12,9 +12,10 @@ from pathlib import Path
 import pytest
 
 FEATURES = Path(__file__).parent / "behave_project" / "features"
+HOOK_FEATURES = ("hooks.feature", "tagged_feature.feature")
 
 
-def run_behave(tmp_path, *args, **env):
+def run_behave(tmp_path, *args, features=HOOK_FEATURES, **env):
     """Run behave on the test project and return (process, scenario counts)."""
     environment = {
         **os.environ,
@@ -23,7 +24,16 @@ def run_behave(tmp_path, *args, **env):
         **env,
     }
     process = subprocess.run(
-        [sys.executable, "-m", "behave", str(FEATURES), "--no-color", "-f", "plain", *args],
+        [
+            sys.executable,
+            "-m",
+            "behave",
+            *(str(FEATURES / name) for name in features),
+            "--no-color",
+            "-f",
+            "plain",
+            *args,
+        ],
         capture_output=True,
         text=True,
         env=environment,

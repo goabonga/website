@@ -38,3 +38,18 @@ types = ["fix"]
 [[project.changelog_sections]]
 title = "Performance"
 types = ["perf"]
+
+[components.mta-sts]
+tag_format = "mta-sts-v{version}"
+paths = [
+    "apps/mta-sts/src/**",
+    "apps/mta-sts/features/**",
+    "apps/mta-sts/tests/**",
+    "apps/mta-sts/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/mta-sts/pyproject.toml", key = "project.version" },
+    { file = "apps/mta-sts/src/mta_sts/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/mta-sts/CHANGELOG.md"
+post_bump = ["uv lock"]

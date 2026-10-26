@@ -22,6 +22,7 @@ from internal.routes import (
     analytics_router,
     auth_router,
     billing_router,
+    team_router,
     vpn_router,
 )
 
@@ -102,6 +103,7 @@ Internal Admin Dashboard for managing platform services.
 - **Analytics**: View and manage analytics data
 - **Billing**: Manage billing and subscriptions
 - **VPN**: Manage VPN configurations
+- **Team**: Manage AI agent teams
 - **OAuth2 authentication**: Cookie-based authentication with scope validation
 
 
@@ -115,6 +117,7 @@ Access is controlled per resource via scoped permissions.
 - `analytics:write`, `analytics:delete` - Manage analytics
 - `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
+- `team:write` - Manage AI agent teams
 - `conversations:delete` - Delete conversations
     """,
     version=__version__,
@@ -152,5 +155,6 @@ async def health_check() -> HealthResponse:
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
+app.include_router(team_router)
 app.include_router(vpn_router)
 app.include_router(billing_router)

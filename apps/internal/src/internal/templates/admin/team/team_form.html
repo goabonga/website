@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit Team{% else %}New Team{% endif %}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{% if is_edit %}Edit Team{% else %}New Team{% endif %}</h1>
+    <a href="{% if is_edit %}/team/{{ team.id }}{% else %}/team{% endif %}" class="btn btn-secondary">Back</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="{% if is_edit %}/team/{{ team.id }}/edit{% else %}/team/new{% endif %}">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" class="form-control"
+                   value="{{ team.name if team else '' }}" required>
+        </div>
+
+        {% if not is_edit %}
+        <div class="form-group">
+            <label for="slug">Slug</label>
+            <input type="text" id="slug" name="slug" class="form-control"
+                   value="{{ team.slug if team else '' }}" required
+                   pattern="[a-z0-9\-]+" title="Lowercase letters, numbers and hyphens only">
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control"
+                      rows="3">{{ team.description if team else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="config_json">Config (JSON)</label>
+            <textarea id="config_json" name="config_json" class="form-control mono"
+                      rows="5">{{ team.config | tojson(indent=2) if team and team.config else '{}' }}</textarea>
+        </div>
+
+        {% if is_edit %}
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_active" value="true"
+                       {% if team.is_active %}checked{% endif %}>
+                Active
+            </label>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">
+            {% if is_edit %}Update Team{% else %}Create Team{% endif %}
+        </button>
+    </form>
+</div>
+{% endblock %}

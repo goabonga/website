@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     billing_recent_limit: int = 10  # Rows of the "recent" tables of a SaaS app page
     billing_socket_path: str = ""  # Unix socket path (e.g., /run/billing/billing.sock)
 
+    # Team API
+    team_api_url: str = "https://team.internal"
+    team_socket_path: str = ""  # Unix socket path (e.g., /run/team/team.sock)
+
     # Web UI
     app_base_url: str = "https://admin.internal"  # Application URL (for OAuth2 redirect URI)
     cookie_secure: bool = True  # Set to False for local development without HTTPS

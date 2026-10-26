@@ -1,0 +1,109 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Team AI Dashboard{% endblock %}
+
+{% block head %}
+<style>
+    .team-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .team-card {
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        padding: 1.25rem;
+        transition: border-color 0.2s;
+    }
+    .team-card:hover {
+        border-color: #e94560;
+    }
+    .team-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+    }
+    .team-card h3 a {
+        color: #e94560;
+        text-decoration: none;
+    }
+    .team-card h3 a:hover {
+        text-decoration: underline;
+    }
+    .team-card .slug {
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 0.8rem;
+        color: #74b9ff;
+        margin-bottom: 0.75rem;
+    }
+    .team-card .description {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        min-height: 2.5em;
+    }
+    .team-card .meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Team AI Dashboard</h1>
+    {% if user.has_scope('team:write') %}
+    <a href="/team/new" class="btn btn-primary">+ New Team</a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Teams <span class="text-muted">({{ teams | length }})</span></h2>
+
+    {% if teams %}
+    <div class="team-grid">
+        {% for t in teams %}
+        <div class="team-card">
+            <h3>
+                <a href="/team/{{ t.id }}">{{ t.name }}</a>
+                {% if not t.is_active %}
+                <span class="badge badge-warning" style="margin-left: 0.5rem;">Inactive</span>
+                {% endif %}
+            </h3>
+            <div class="slug">{{ t.slug }}</div>
+            <div class="description">
+                {{ t.description or 'No description' }}
+            </div>
+            <div class="meta">
+                <span>Created {{ t.created_at.strftime('%Y-%m-%d') }}</span>
+                {% if t.is_active %}
+                <span class="badge badge-success">Active</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#129302;</p>
+        <p>No teams configured.</p>
+        <p class="text-muted">Create your first team to start managing AI agents.</p>
+        {% if user.has_scope('team:write') %}
+        <a href="/team/new" class="btn btn-primary" style="margin-top: 1rem;">Create Team</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

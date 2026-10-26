@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Skill: {{ skill.name }} - {{ agent.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .tool-selection {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #2d2d4a;
+        border-radius: 6px;
+        padding: 0.5rem;
+        background: rgba(26, 26, 46, 0.6);
+    }
+    .tool-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.4rem 0.25rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(45, 45, 74, 0.4);
+    }
+    .tool-checkbox:last-child {
+        border-bottom: none;
+    }
+    .tool-checkbox input[type="checkbox"] {
+        margin-top: 0.2rem;
+        flex-shrink: 0;
+    }
+    .tool-name {
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #74b9ff;
+        flex-shrink: 0;
+    }
+    .tool-desc {
+        font-size: 0.8rem;
+        color: #888;
+        margin-left: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Edit Skill: {{ skill.name }}</h1>
+    <a href="/team/{{ team.id }}/agents/{{ agent.id }}/edit" class="btn btn-secondary">Back to Agent</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="/team/{{ team.id }}/agents/{{ agent.id }}/skills/{{ skill.id }}/edit">
+        <div class="form-group">
+            <label for="skill_name">Name</label>
+            <input type="text" id="skill_name" name="skill_name" class="form-control"
+                   value="{{ skill.name }}" required pattern="^[a-z0-9]+(-[a-z0-9]+)*$">
+            <small style="color: #666; font-size: 0.75rem;">Lowercase alphanumeric with hyphens only</small>
+        </div>
+
+        <div class="form-group">
+            <label for="skill_description">Description</label>
+            <input type="text" id="skill_description" name="skill_description" class="form-control"
+                   value="{{ skill.description }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="skill_content">Instructions (Markdown)</label>
+            <textarea id="skill_content" name="skill_content" class="form-control mono"
+                      rows="10">{{ skill.content }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Allowed Tools</label>
+            <div class="tool-selection">
+                {% if available_tools %}
+                {% for tool in available_tools %}
+                <label class="tool-checkbox">
+                    <input type="checkbox" name="skill_allowed_tools" value="{{ tool.name }}"
+                           {% if tool.name in skill.allowed_tools %}checked{% endif %}>
+                    <span class="tool-name">{{ tool.name }}</span>
+                    {% if tool.description %}
+                    <span class="tool-desc">{{ tool.description }}</span>
+                    {% endif %}
+                </label>
+                {% endfor %}
+                {% else %}
+                <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0;">No tools available from the platform catalog.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_active" value="true"
+                       {% if skill.is_active %}checked{% endif %}>
+                Active
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Skill</button>
+    </form>
+</div>
+{% endblock %}

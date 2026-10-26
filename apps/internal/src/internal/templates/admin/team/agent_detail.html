@@ -1,0 +1,267 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ agent.name }} - {{ team.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 0.5rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .detail-label {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+    .detail-value {
+        color: #e0e0e0;
+    }
+    .prompt-box {
+        background: #1a1a2e;
+        padding: 1rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #0f3460;
+    }
+    .skill-card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+    }
+    .skill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .skill-name {
+        font-weight: 600;
+        color: #74b9ff;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+    }
+    .skill-desc {
+        color: #b0b0b0;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    .skill-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .skill-tool-tag, .tool-tag {
+        background: rgba(116, 185, 255, 0.1);
+        color: #74b9ff;
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    }
+    .tool-tag {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        font-size: 0.8rem;
+        margin: 0.15rem 0;
+    }
+    .config-section {
+        margin-bottom: 1.25rem;
+    }
+    .config-section:last-child {
+        margin-bottom: 0;
+    }
+    .config-section-title {
+        color: #a0a0a0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    .credential-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.35rem 0;
+        border-bottom: 1px solid rgba(45, 45, 74, 0.4);
+    }
+    .credential-row:last-child {
+        border-bottom: none;
+    }
+    .credential-key {
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #74b9ff;
+        min-width: 150px;
+    }
+    .credential-value {
+        color: #888;
+        font-size: 0.85rem;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    }
+    .skill-content-preview summary {
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 0.5rem;
+    }
+    .skill-content-preview pre {
+        margin-top: 0.25rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #b0b0b0;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ agent.name }}</h1>
+    <div>
+        {% if user.has_scope('team:write') %}
+        <a href="/team/{{ team.id }}/agents/{{ agent.id }}/edit" class="btn btn-secondary">Edit</a>
+        {% endif %}
+        <a href="/team/{{ team.id }}/agents" class="btn btn-secondary">Back to Agents</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Agent Details</h2>
+    <div class="detail-grid">
+        <div class="detail-label">Role</div>
+        <div class="detail-value"><span class="badge badge-info">{{ agent.role }}</span></div>
+        <div class="detail-label">Model</div>
+        <div class="detail-value mono">{{ agent.model }}</div>
+        <div class="detail-label">Provider</div>
+        <div class="detail-value">{{ agent.provider }}</div>
+        <div class="detail-label">Status</div>
+        <div class="detail-value">
+            <span class="badge {% if agent.is_active %}badge-success{% else %}badge-warning{% endif %}">
+                {{ 'Active' if agent.is_active else 'Inactive' }}
+            </span>
+        </div>
+        <div class="detail-label">Description</div>
+        <div class="detail-value">{{ agent.description or 'No description' }}</div>
+        <div class="detail-label">Created</div>
+        <div class="detail-value">{{ agent.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    </div>
+</div>
+
+{% if agent.system_prompt %}
+<div class="admin-card">
+    <h2>System Prompt</h2>
+    <div class="prompt-box">{{ agent.system_prompt }}</div>
+</div>
+{% endif %}
+
+{% if agent.config %}
+{% set agent_tools = agent.config.get('tools', []) %}
+{% set max_iter = agent.config.get('max_iterations', 10) %}
+{% set credentials = agent.config.get('credentials', {}) %}
+{% set extra_config = {} %}
+{% for k, v in agent.config.items() if k not in ('tools', 'max_iterations', 'credentials') %}
+{% if extra_config.update({k: v}) %}{% endif %}
+{% endfor %}
+<div class="admin-card">
+    <h2>Config</h2>
+
+    <div class="config-section">
+        <div class="config-section-title">Tools</div>
+        {% if agent_tools %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            {% for tool in agent_tools %}
+            <span class="tool-tag">{{ tool }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #666; font-size: 0.85rem; margin: 0;">No tools configured</p>
+        {% endif %}
+    </div>
+
+    <div class="config-section">
+        <div class="config-section-title">Max Iterations</div>
+        <span class="mono" style="font-size: 0.9rem;">{{ max_iter }}</span>
+    </div>
+
+    {% if credentials %}
+    <div class="config-section">
+        <div class="config-section-title">Credentials</div>
+        {% for key, value in credentials.items() %}
+        <div class="credential-row">
+            <span class="credential-key">{{ key }}</span>
+            <span class="credential-value">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;{{ value[-4:] if value|length > 4 else '&#8226;&#8226;&#8226;&#8226;' }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if extra_config %}
+    <div class="config-section">
+        <div class="config-section-title">Advanced</div>
+        <pre class="mono" style="background: #1a1a2e; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.8rem; margin: 0;">{{ extra_config | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Skills <span class="text-muted">({{ skills | length }})</span></h2>
+    {% if skills %}
+    {% for skill in skills %}
+    <div class="skill-card">
+        <div class="skill-header">
+            <span class="skill-name">{{ skill.name }}</span>
+            <span class="badge {% if skill.is_active %}badge-success{% else %}badge-secondary{% endif %}">
+                {{ 'active' if skill.is_active else 'inactive' }}
+            </span>
+        </div>
+        <div class="skill-desc">{{ skill.description }}</div>
+        {% if skill.allowed_tools %}
+        <div class="skill-tools">
+            {% for tool in skill.allowed_tools %}
+            <span class="skill-tool-tag">{{ tool }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if skill.content %}
+        <details class="skill-content-preview">
+            <summary>View instructions</summary>
+            <pre>{{ skill.content }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color: #666;">No skills configured.</p>
+    {% endif %}
+</div>
+
+{% if user.has_scope('team:delete') %}
+<div class="admin-card" style="border-color: rgba(214, 48, 49, 0.3);">
+    <h2 class="text-danger">Danger Zone</h2>
+    <form method="post" action="/team/{{ team.id }}/agents/{{ agent.id }}/delete"
+          onsubmit="return confirm('Are you sure you want to delete this agent?')">
+        <button type="submit" class="btn btn-danger">Delete Agent</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

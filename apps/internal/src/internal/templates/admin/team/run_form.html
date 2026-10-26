@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Launch Agent - {{ team.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Launch Agent</h1>
+    <a href="/team/{{ team.id }}" class="btn btn-secondary">Back to Team</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if not agents %}
+<div class="admin-card">
+    <div class="empty-state">
+        <p>No agents available for this team. Create an agent first.</p>
+        <a href="/team/{{ team.id }}/agents/new" class="btn btn-primary" style="margin-top: 1rem;">Create Agent</a>
+    </div>
+</div>
+{% else %}
+<div class="admin-card">
+    <form method="post" action="/team/{{ team.id }}/run">
+        <div class="form-group">
+            <label for="agent_id">Agent</label>
+            <select id="agent_id" name="agent_id" class="form-control" required>
+                {% for agent in agents %}
+                <option value="{{ agent.id }}">{{ agent.name }} ({{ agent.role }}) - {{ agent.model }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="title">Task Title</label>
+            <input type="text" id="title" name="title" class="form-control" required
+                   placeholder="e.g. Review the latest deployment logs">
+        </div>
+
+        <div class="form-group">
+            <label for="message">Message / Prompt</label>
+            <textarea id="message" name="message" class="form-control mono"
+                      rows="8" required
+                      placeholder="Write the prompt that the agent will execute..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority" class="form-control">
+                <option value="0">Normal (0)</option>
+                <option value="50">High (50)</option>
+                <option value="100">Urgent (100)</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Launch Agent</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -68,6 +68,18 @@ seconds pass.
 the events page. It opens its own `httpx.stream` connection with the bearer
 token instead of reusing the client's connection.
 
+### Receiving webhooks
+
+`custom_domain.client.webhooks` (re-exported by `custom_domain.client`) is the
+receiving side of the client status webhooks, so an application does not have to
+poll `get_status`: `construct_event(body, signature_header, secret)` verifies the
+HMAC signature of a delivery on the raw body (with a five-minute replay window) and
+returns a `WebhookEvent` (`id`, `event`, `created_at`, `domain`, `data`, `status`);
+`verify_webhook_signature` only checks. Both raise `WebhookSignatureError` (a
+`CustomDomainError`) on a bad delivery. The events and the request format are on the
+client status webhooks page. `ClientsAPI.create` and `update` take `webhook_url` and
+`webhook_secret`, and `Client` carries `webhook_url` and `has_webhook_secret`.
+
 ### Errors
 
 HTTP errors become exceptions that carry `status_code` and `detail`:

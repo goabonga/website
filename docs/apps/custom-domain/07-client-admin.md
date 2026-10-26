@@ -36,8 +36,9 @@ OAuth2 `client_id`.
 | `default_nginx_template_id` | no | Template used for the client's domains that have none of their own; the SSL provisioning task honours it (domain template, then this one, then the global default). |
 | `max_domains` | no | Quota of live domains; omitted or null means unlimited. |
 | `metadata` | no | Free-form JSON object. |
+| `webhook_url`, `webhook_secret` | no | Callback for status changes (client status webhooks page). The URL needs the secret; the secret is never returned (`has_webhook_secret` tells whether one is set). |
 
-Responses also carry `id`, `is_active`, `created_at` and `updated_at`.
+Responses also carry `id`, `is_active`, `has_webhook_secret`, `created_at` and `updated_at`.
 
 ### Errors
 

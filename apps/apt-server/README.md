@@ -17,6 +17,7 @@ access control.
 - User cache kept in sync by signed webhooks from the auth service
 - Web login with OAuth2 Authorization Code and PKCE
 - Web pages: package list, client setup instructions, package detail
+- Dashboard to upload, share, change visibility and delete packages
 
 ## Routes and scopes
 
@@ -51,6 +52,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/login` | public | Redirect the user to the auth service's OAuth2 authorize endpoint |
 | GET | `/callback` | public | Handle the OAuth2 callback: exchange code for token, set session cookie |
 | GET | `/logout` | public | Clear the session cookie and redirect to the landing page |
+| GET | `/dashboard` | web session or token (redirects to `/login` otherwise) | List the caller's own packages with filters and pagination |
+| GET | `/dashboard/upload` | web session or token (redirects to `/login` otherwise) | Render the upload form |
+| POST | `/dashboard/upload` | web session or token (redirects to `/login` otherwise) | Handle the upload form submission |
+| POST | `/dashboard/{package_id}/delete` | web session or token (redirects to `/login` otherwise); package owner, `write` ACL entry or `apt:admin` | Delete a package (POST from the dashboard) |
+| POST | `/dashboard/{package_id}/visibility` | web session or token (redirects to `/login` otherwise); package owner, `write` ACL entry or `apt:admin` | Change visibility of a package |
+| GET | `/dashboard/{package_id}/share` | web session or token (redirects to `/login` otherwise); package owner, `write` ACL entry or `apt:admin` | Render the share/ACL management page for a package |
+| POST | `/dashboard/{package_id}/share` | web session or token (redirects to `/login` otherwise); package owner, `write` ACL entry or `apt:admin` | Grant access to a user or group |
+| POST | `/dashboard/{package_id}/revoke/{acl_id}` | web session or token (redirects to `/login` otherwise); package owner, `write` ACL entry or `apt:admin` | Revoke an ACL entry |
 | POST | `/webhooks/auth` | public; `X-Webhook-Signature` HMAC checked when `WEBHOOK_SECRET` is set | Receive and process auth service webhook events |
 | GET | `/` | public; the package list is filtered by the caller's access | Home page: filtered + paginated package list |
 | GET | `/setup` | public | Dedicated setup documentation page |
@@ -64,7 +73,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `apt:write` - checked by 2 routes
 - `apt:write:<component>` - write access limited to one component; checked by 2 routes
-- `apt:admin` - checked by 7 routes
+- `apt:admin` - checked by 12 routes
 
 ## Development
 

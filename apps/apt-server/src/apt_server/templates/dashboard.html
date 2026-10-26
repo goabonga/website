@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}My Packages · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>My Packages</h1>
+    <a href="/dashboard/upload" class="btn btn-primary">Upload</a>
+</div>
+
+<div class="admin-card">
+    <form style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;" method="get" action="/dashboard">
+        <div class="form-group" style="margin-bottom: 0;">
+            <select name="suite" class="form-control" style="width: auto; min-width: 120px;">
+                <option value="">All suites</option>
+                {% for s in suites %}
+                <option value="{{ s }}" {% if s == selected_suite %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <select name="component" class="form-control" style="width: auto; min-width: 120px;">
+                <option value="">All components</option>
+                {% for c in components %}
+                <option value="{{ c }}" {% if c == selected_component %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" name="q" class="form-control" placeholder="Search by name" value="{{ query or '' }}" style="width: auto; min-width: 200px;">
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+
+    {% if packages %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Arch</th>
+                <th>Suite / Component</th>
+                <th>Visibility</th>
+                <th>Shared</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in packages %}
+            <tr>
+                <td><a href="/packages/{{ p.id }}">{{ p.name }}</a></td>
+                <td class="mono">{{ p.version }}</td>
+                <td>{{ p.architecture }}</td>
+                <td>{{ p.suite }} / <span class="badge badge-info">{{ p.component }}</span></td>
+                <td>
+                    {% if p.visibility.value == 'public' %}
+                    <span class="badge badge-success">public</span>
+                    {% else %}
+                    <span class="badge badge-danger">{{ p.visibility.value }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted">{{ p.acl | length }} grant{{ 's' if p.acl | length != 1 else '' }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        {% if p.visibility.value == 'public' %}
+                        <a class="btn btn-secondary btn-sm" style="opacity: 0.4; pointer-events: none;" aria-disabled="true">Share</a>
+                        {% else %}
+                        <a href="/dashboard/{{ p.id }}/share" class="btn btn-secondary btn-sm">Share</a>
+                        {% endif %}
+                        <form method="post" action="/dashboard/{{ p.id }}/delete" style="display:inline" onsubmit="return confirm('Delete {{ p.name }} {{ p.version }}?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+    {% else %}
+    <div class="empty-state">
+        <p>You have no packages{% if query or selected_suite or selected_component %} matching these filters{% endif %}.</p>
+        <p><a href="/dashboard/upload" class="btn btn-primary" style="margin-top: 1rem;">Upload a .deb</a></p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

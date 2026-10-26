@@ -19,6 +19,7 @@ feature, in the order they were introduced.
 6. [Billing administration](06-billing.md)
    - [SaaS client bindings](06a-billing-client-bindings.md)
    - [Checkout URL allow-list and branding](06b-billing-checkout-urls.md)
+   - [Plan slug and free-form limits](06c-billing-plans.md)
 
 ## Running locally
 

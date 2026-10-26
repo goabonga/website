@@ -20,6 +20,8 @@ applications. It is a member of the `website` uv workspace.
 - Collection sharing with collaborators and email invitations.
 - Plan-based quotas and per-tenant API call tracking.
 - Multi-tenant resolution from path prefix, subdomain or custom domain.
+- Billing client and subscription webhook that keep organization plans in
+  sync.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -30,6 +32,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint |
+| POST | `/webhooks/billing` | public; HMAC signature required (`BILLING_WEBHOOK_SECRET`) | Receive billing webhook events |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

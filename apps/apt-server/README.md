@@ -13,6 +13,7 @@ access control.
 - Per-caller `Packages` and `Release` index rendering with a database cache
 - APT client endpoints: `dists/`, `pool/`, `pubkey.gpg`, Basic or Bearer auth
 - Package API: `.deb` upload, listing, update, delete, ACL management, reindex
+- Chunked upload sessions for large packages
 
 ## Routes and scopes
 
@@ -33,6 +34,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/api/packages/{package_id}/acl` | bearer token; package owner or `apt:admin` | Grant a user or group a role on a package |
 | DELETE | `/api/packages/{package_id}/acl/{acl_id}` | bearer token; package owner or `apt:admin` | Revoke an ACL entry |
 | POST | `/api/reindex` | bearer token; scope `apt:admin` | Drop every cached `Packages` rendering |
+| POST | `/api/upload/init` | bearer token or web session; scope `apt:write` or `apt:write:<component>` for tokens | Create a chunked upload session |
+| POST | `/api/upload/{upload_id}/chunk` | bearer token or web session; owner of the upload | Upload a single chunk |
+| POST | `/api/upload/{upload_id}/complete` | bearer token or web session; owner of the upload | Assemble chunks and finalize the package |
+| DELETE | `/api/upload/{upload_id}` | bearer token or web session; owner of the upload | Cancel and clean up an in-progress upload |
 | GET | `/pubkey.gpg` | public | Export the GPG public key used to sign `Release` |
 | GET | `/dists/{suite}/Release` | public components, else credentials (token or session) | Serve the `Release` file of a suite |
 | GET | `/dists/{suite}/InRelease` | public components, else credentials (token or session) | Serve the signed `InRelease` file of a suite |
@@ -47,8 +52,8 @@ The built web client and other static files are served publicly under `/static`.
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `apt:write` - checked by 1 route
-- `apt:write:<component>` - write access limited to one component; checked by 1 route
+- `apt:write` - checked by 2 routes
+- `apt:write:<component>` - write access limited to one component; checked by 2 routes
 - `apt:admin` - checked by 7 routes
 
 ## Development

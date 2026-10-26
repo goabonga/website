@@ -6,6 +6,9 @@
 from team.models import (
     Agent,
     Base,
+    Conversation,
+    ConversationParticipant,
+    Message,
     Team,
 )
 
@@ -22,12 +25,24 @@ class TestModelsImport:
     def test_agent_tablename(self):
         assert Agent.__tablename__ == "agents"
 
+    def test_conversation_tablename(self):
+        assert Conversation.__tablename__ == "conversations"
+
+    def test_message_tablename(self):
+        assert Message.__tablename__ == "messages"
+
+    def test_conversation_participant_tablename(self):
+        assert ConversationParticipant.__tablename__ == "conversation_participants"
+
 
 def test_all_models_registered_in_metadata():
     """All model tables should be registered in Base.metadata."""
     table_names = set(Base.metadata.tables.keys())
     expected = {
         "agents",
+        "conversation_participants",
+        "conversations",
+        "messages",
         "teams",
     }
     assert expected.issubset(table_names)

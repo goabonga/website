@@ -20,6 +20,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 - Background maintenance and operations scripts: Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
 - Administration console: Server-rendered admin pages.
+- Account and organisation settings pages: Self-service settings, personal access tokens and organisation settings.
 
 ## Routes and scopes
 
@@ -31,6 +32,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/docs` | public | Serve Swagger UI with local static assets (no external CDN dependency) |
 | GET | `/docs/oauth2-redirect` | public | OAuth2 redirect page for Swagger UI |
+| GET | `/` | public (redirects to `/auth/settings`) | Redirect root to user settings page |
 | GET | `/health` | public | Return a liveness signal for load balancers and container probes |
 | GET | `/.well-known/openid-configuration` | public | Return the OpenID Connect Discovery metadata document |
 | GET | `/.well-known/jwks.json` | public | Return the authorization server's public JSON Web Key Set |
@@ -91,6 +93,112 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/mfa/email/send` | session | Generate and email a time-limited OTP to the current user's primary address |
 | POST | `/auth/mfa/email/verify` | session | Validate the email OTP submitted by the current user |
 | GET | `/auth/mfa/email` | session | Render the email OTP verification page for browser-based MFA flows |
+
+### Account settings pages and API
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/settings` | public (redirect only) | Redirect the settings root to the profile page |
+| GET | `/auth/settings/profile` | session (redirects to the login page otherwise) | Render the user profile settings page |
+| POST | `/auth/settings/profile` | session (redirects to the login page otherwise) | Process the profile update form submission |
+| POST | `/auth/settings/profile/avatar` | session (redirects to the login page otherwise) | Process a profile avatar upload via multipart form |
+| POST | `/auth/settings/profile/avatar/api` | session | Upload a profile avatar and return the new URL as JSON |
+| GET | `/auth/settings/profile/api` | session | Return the current user's profile as a JSON object |
+| PUT | `/auth/settings/profile/api` | session | Update the current user's profile via JSON body |
+| GET | `/auth/settings/password` | session (redirects to the login page otherwise) | Render the password change settings page |
+| POST | `/auth/settings/password` | session (redirects to the login page otherwise) | Process the password change form submission |
+| PUT | `/auth/settings/password/api` | session | Change the current user's password via JSON body |
+| GET | `/auth/settings/security` | session (redirects to the login page otherwise) | Render the security settings page showing MFA status |
+| GET | `/auth/settings/sessions` | session (redirects to the login page otherwise) | Render the active sessions management page |
+| POST | `/auth/settings/sessions/{session_id}/revoke` | session (redirects to the login page otherwise) | Revoke a specific session by ID |
+| POST | `/auth/settings/sessions/revoke-all` | session (redirects to the login page otherwise) | Revoke all sessions except the one making this request |
+| GET | `/auth/settings/sessions/api` | session | Return all active sessions for the current user as JSON |
+| DELETE | `/auth/settings/sessions/{session_id}/api` | session | Revoke a specific session via JSON API |
+| GET | `/auth/settings/applications` | session (redirects to the login page otherwise) | Render the connected applications (OAuth2 consents) page |
+| POST | `/auth/settings/applications/{client_id}/revoke` | session (redirects to the login page otherwise) | Revoke all tokens granted to a specific OAuth2 client |
+| GET | `/auth/settings/applications/api` | session | Return all OAuth2 applications the current user has authorised as JSON |
+| DELETE | `/auth/settings/applications/{client_id}/api` | session | Revoke all tokens granted to a specific OAuth2 client via JSON API |
+| GET | `/auth/settings/emails` | session (redirects to the login page otherwise) | Render the email addresses management page |
+| GET | `/auth/settings/emails/add` | public (redirect only) | Redirect GET requests for the add-email form to the emails page |
+| POST | `/auth/settings/emails/add` | session (redirects to the login page otherwise) | Add a new email address and send a verification email |
+| POST | `/auth/settings/emails/{email_id}/remove` | session (redirects to the login page otherwise) | Remove a secondary email address from the account |
+| POST | `/auth/settings/emails/{email_id}/set-primary` | session (redirects to the login page otherwise) | Promote a verified email address to be the primary address |
+| GET | `/auth/settings/emails/{email_id}/verify` | public (redirect only) | Redirect GET requests for the verify-email form to the emails page |
+| POST | `/auth/settings/emails/{email_id}/verify` | session (redirects to the login page otherwise) | Verify an email address using the one-time code sent by email |
+| POST | `/auth/settings/emails/{email_id}/resend-verification` | session (redirects to the login page otherwise) | Resend the verification email for an unverified address |
+| GET | `/auth/settings/tokens` | session | Render the Personal Access Token management settings page |
+| GET | `/auth/settings/tokens/api` | session | List all Personal Access Tokens belonging to the current user |
+| POST | `/auth/settings/tokens/api` | session | Create a new Personal Access Token for the current user |
+| GET | `/auth/settings/tokens/api/{token_id}` | session | Retrieve metadata for a single Personal Access Token |
+| PATCH | `/auth/settings/tokens/api/{token_id}` | session | Update the scope set assigned to an existing Personal Access Token |
+| DELETE | `/auth/settings/tokens/api/{token_id}` | session | Permanently revoke a single Personal Access Token |
+| POST | `/auth/settings/tokens/api/{token_id}/regenerate` | session | Regenerate a Personal Access Token, preserving its name and scopes |
+| DELETE | `/auth/settings/tokens/api` | session | Revoke all Personal Access Tokens belonging to the current user |
+
+### Organisation settings pages
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/settings/organisations` | session (redirects to the login page otherwise) | Render the organisations (tenant memberships) page |
+| POST | `/auth/settings/organisations/{tenant_id}/leave` | session (redirects to the login page otherwise) | Remove the current user from an organisation |
+| POST | `/auth/settings/organisations/{tenant_id}/unlink-idp/{idp_id}` | session (redirects to the login page otherwise) | Remove the federated identity link between the user and an org IdP |
+| POST | `/auth/settings/organisations/create` | session (redirect to login), PAT or bearer token; scope `org:write` | Create a new organisation and grant the creator owner role |
+| GET | `/auth/settings/org/{tenant_id}` | session; organisation member with scope `settings:read` | Render the organisation detail dashboard for members with access |
+| GET | `/auth/settings/org/{tenant_id}/edit` | session; organisation member with scope `settings:read` | Render the organisation edit form for settings managers |
+| POST | `/auth/settings/org/{tenant_id}/edit` | session; organisation member with scope `settings:write` | Process the organisation edit form submission |
+| POST | `/auth/settings/org/{tenant_id}/domain` | session; organisation member with scope `domain:write` | Set, change or remove the custom domain of an organisation |
+| POST | `/auth/settings/org/{tenant_id}/email-sender` | session; organisation member with scope `settings:write` | Save the outbound email sender address and name for an organisation |
+| POST | `/auth/settings/org/{tenant_id}/allowed-scopes` | session; organisation member with scope `settings:write` | Save the list of allowed OAuth2 scopes for an organisation |
+| GET | `/auth/settings/org/{tenant_id}/verify-domain` | session; organisation member with scope `domain:write` | Trigger DNS verification for the organisation's custom domain |
+| GET | `/auth/settings/org/{tenant_id}/domain-status` | session; organisation member with scope `domain:read` | Return the custom domain verification status for polling |
+| POST | `/auth/settings/org/{tenant_id}/members/add` | session; organisation member with scope `members:invite` | Add an existing user to the organisation by email address |
+| POST | `/auth/settings/org/{tenant_id}/members/{member_id}/update-role` | session; organisation member with scope `members:update` | Update an organisation member's assigned role |
+| POST | `/auth/settings/org/{tenant_id}/members/{member_id}/remove` | session; organisation member with scope `members:remove` | Remove a member from the organisation |
+| GET | `/auth/settings/org/{tenant_id}/roles` | session; organisation member with scope `roles:read` | Render the organisation roles management page |
+| GET | `/auth/settings/org/{tenant_id}/roles/create` | session; organisation member with scope `roles:write` | Render the new-role creation form for the organisation |
+| POST | `/auth/settings/org/{tenant_id}/roles/create` | session; organisation member with scope `roles:write` | Process the new-role creation form submission |
+| GET | `/auth/settings/org/{tenant_id}/roles/{role_id}/edit` | session; organisation member with scope `roles:write` | Render the role edit form for an existing custom role |
+| POST | `/auth/settings/org/{tenant_id}/roles/{role_id}/edit` | session; organisation member with scope `roles:write` | Process the role edit form submission |
+| POST | `/auth/settings/org/{tenant_id}/roles/{role_id}/delete` | session; organisation member with scope `roles:delete` | Permanently delete a custom role from the organisation |
+| GET | `/auth/settings/org/{tenant_id}/idp/create` | session; organisation member with scope `idp:write` | Render the identity provider creation form for org owners |
+| POST | `/auth/settings/org/{tenant_id}/idp/create` | session; organisation member with scope `idp:write` | Process the identity provider creation form submission |
+| GET | `/auth/settings/org/{tenant_id}/idp/{idp_id}/edit` | session; organisation member with scope `idp:write` | Render the identity provider edit form for org owners |
+| POST | `/auth/settings/org/{tenant_id}/idp/{idp_id}/edit` | session; organisation member with scope `idp:write` | Process the identity provider edit form submission |
+| POST | `/auth/settings/org/{tenant_id}/idp/{idp_id}/toggle` | session; organisation member with scope `idp:write` | Toggle an identity provider's active status |
+| POST | `/auth/settings/org/{tenant_id}/idp/{idp_id}/delete` | session; organisation member with scope `idp:delete` | Permanently delete an identity provider and all its federated identities |
+| GET | `/auth/settings/org/{tenant_id}/branding` | session; organisation member with scope `branding:read` | Render the branding customisation page for org owners |
+| POST | `/auth/settings/org/{tenant_id}/branding` | session; organisation member with scope `branding:write` | Process the branding customisation form submission |
+| POST | `/auth/settings/org/{tenant_id}/branding/reset` | session; organisation member with scope `branding:write` | Delete the organisation's custom branding and revert to platform defaults |
+| GET | `/auth/settings/org/{tenant_id}/registration-fields` | session; organisation member with scope `settings:read` | Render the registration fields configuration page for org owners |
+| POST | `/auth/settings/org/{tenant_id}/registration-fields` | session; organisation member with scope `settings:write` | Save the registration fields configuration for an organisation |
+| GET | `/auth/settings/org/{tenant_id}/profile-fields` | session; organisation member with scope `settings:read` | Render the profile fields visibility configuration page for org owners |
+| POST | `/auth/settings/org/{tenant_id}/profile-fields` | session; organisation member with scope `settings:write` | Save the profile fields visibility configuration for an organisation |
+| GET | `/auth/settings/org/{tenant_id}/clients` | session; organisation member with scope `clients:read` | Render the OAuth2 clients list page for the organisation |
+| GET | `/auth/settings/org/{tenant_id}/clients/create` | session; organisation member with scope `clients:write` | Render the OAuth2 client creation form for the organisation |
+| POST | `/auth/settings/org/{tenant_id}/clients/create` | session; organisation member with scope `clients:write` | Process the OAuth2 client creation form submission |
+| GET | `/auth/settings/org/{tenant_id}/clients/{client_uuid}` | session; organisation member with scope `clients:read` | Render the OAuth2 client detail page |
+| GET | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/edit` | session; organisation member with scope `clients:write` | Render the OAuth2 client edit form |
+| POST | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/edit` | session; organisation member with scope `clients:write` | Process the OAuth2 client edit form submission |
+| POST | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/disable` | session; organisation member with scope `clients:write` | Disable an OAuth2 client, blocking all new token issuance |
+| POST | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/enable` | session; organisation member with scope `clients:write` | Re-enable a previously disabled OAuth2 client |
+| POST | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/rotate-secret` | session; organisation member with scope `clients:rotate` | Rotate the client secret for a confidential OAuth2 client |
+| POST | `/auth/settings/org/{tenant_id}/clients/{client_uuid}/delete` | session; organisation member with scope `clients:delete` | Permanently delete an OAuth2 client from the organisation |
+| GET | `/auth/settings/org/{tenant_id}/templates` | session; organisation member with scope `templates:read` | Render the Jinja2/MJML templates management page for org owners |
+| GET | `/auth/settings/org/{tenant_id}/templates/{template_name:path}/edit` | session; organisation member with scope `templates:write` | Render the template editor for a specific customisable template |
+| POST | `/auth/settings/org/{tenant_id}/templates/{template_name:path}/edit` | session; organisation member with scope `templates:write` | Save a custom template override for the organisation |
+| POST | `/auth/settings/org/{tenant_id}/templates/{template_name:path}/delete` | session; organisation member with scope `templates:write` | Delete the tenant's custom template override, reverting to the platform default |
+| POST | `/auth/settings/org/{tenant_id}/templates/{template_name:path}/toggle` | session; organisation member with scope `templates:write` | Toggle a custom template's active status |
+| GET | `/auth/settings/org/{tenant_id}/trust` | session; organisation member with scope `trust:read` | Render the trust policy management page for org owners |
+| POST | `/auth/settings/org/{tenant_id}/trust/mode` | session; organisation member with scope `trust:write` | Update the trust mode for the organisation |
+| POST | `/auth/settings/org/{tenant_id}/trust/add-source` | session; organisation member with scope `trust:write` | Add a trusted source organisation to the allowlist |
+| POST | `/auth/settings/org/{tenant_id}/trust/remove-source/{source_id}` | session; organisation member with scope `trust:write` | Remove a trusted source organisation from the allowlist |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/create` | session; organisation member with scope `webhooks:write` | Create a new outbound webhook subscription for the organisation |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/update` | session; organisation member with scope `webhooks:write` | Update a webhook's name, URL, and subscribed event list |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/toggle` | session; organisation member with scope `webhooks:write` | Pause or resume a webhook by toggling its active flag |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/rotate-secret` | session; organisation member with scope `webhooks:write` | Rotate the HMAC signing secret for a webhook |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/test` | session; organisation member with scope `webhooks:write` | Send a test ping through the webhook delivery pipeline |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/delete` | session; organisation member with scope `webhooks:delete` | Permanently delete a webhook and cascade-delete all its delivery records |
+| POST | `/auth/settings/org/{tenant_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/replay` | session; organisation member with scope `webhooks:write` | Replay a previous webhook delivery by cloning it into a new delivery row |
 
 ### REST API v1
 
@@ -423,7 +531,7 @@ Platform scopes (`ADMIN_SCOPES` in `apps/auth/src/auth/db/models/rbac.py`) are t
 | `scopes:delete` | Delete scopes | 2 |
 | `org:*` | All organisation operations | 0 |
 | `org:read` | View organisations, their members and identity providers | 9 |
-| `org:write` | Create and update organisations, their members and identity providers | 37 |
+| `org:write` | Create and update organisations, their members and identity providers | 38 |
 | `org:delete` | Delete organisations and identity providers | 2 |
 | `pats:*` | All PAT management operations (admin) | 0 |
 | `pats:read` | View all users' personal access tokens | 4 |
@@ -449,44 +557,44 @@ Organisation scopes (`TENANT_SCOPES` in `apps/auth/src/auth/db/models/tenant.py`
 | `*` | Full access to all tenant operations | 0 |
 | `members:*` | All member operations | 0 |
 | `members:read` | View tenant members | 2 |
-| `members:invite` | Invite new members | 2 |
-| `members:update` | Update member roles | 2 |
-| `members:remove` | Remove members from tenant | 2 |
+| `members:invite` | Invite new members | 3 |
+| `members:update` | Update member roles | 3 |
+| `members:remove` | Remove members from tenant | 3 |
 | `settings:*` | All settings operations | 0 |
-| `settings:read` | View tenant settings | 10 |
-| `settings:write` | Modify tenant settings (name, e-mail sender, allowed scopes, fields) | 10 |
+| `settings:read` | View tenant settings | 14 |
+| `settings:write` | Modify tenant settings (name, e-mail sender, allowed scopes, fields) | 15 |
 | `domain:*` | All custom domain operations | 0 |
-| `domain:read` | View the custom domain and its verification status | 0 |
-| `domain:write` | Set, remove and verify the custom domain | 0 |
+| `domain:read` | View the custom domain and its verification status | 1 |
+| `domain:write` | Set, remove and verify the custom domain | 2 |
 | `roles:*` | All role operations | 0 |
-| `roles:read` | View tenant roles | 2 |
-| `roles:write` | Create and modify custom roles | 4 |
-| `roles:delete` | Delete custom roles | 2 |
+| `roles:read` | View tenant roles | 3 |
+| `roles:write` | Create and modify custom roles | 8 |
+| `roles:delete` | Delete custom roles | 3 |
 | `idp:*` | All identity provider operations | 0 |
 | `idp:read` | View identity provider configurations | 2 |
-| `idp:write` | Configure identity providers | 4 |
-| `idp:delete` | Delete identity providers | 2 |
+| `idp:write` | Configure identity providers | 9 |
+| `idp:delete` | Delete identity providers | 3 |
 | `branding:*` | All branding operations | 0 |
-| `branding:read` | View branding settings | 2 |
-| `branding:write` | Modify branding (colors, logos, CSS) | 4 |
+| `branding:read` | View branding settings | 3 |
+| `branding:write` | Modify branding (colors, logos, CSS) | 6 |
 | `templates:*` | All template operations | 0 |
-| `templates:read` | View custom templates | 4 |
-| `templates:write` | Modify custom templates | 6 |
+| `templates:read` | View custom templates | 5 |
+| `templates:write` | Modify custom templates | 10 |
 | `clients:*` | All OAuth2 client operations | 0 |
-| `clients:read` | View organization's OAuth2 clients | 4 |
-| `clients:write` | Create and modify OAuth2 clients | 4 |
-| `clients:delete` | Delete OAuth2 clients | 2 |
-| `clients:rotate` | Rotate OAuth2 client secrets | 2 |
+| `clients:read` | View organization's OAuth2 clients | 6 |
+| `clients:write` | Create and modify OAuth2 clients | 10 |
+| `clients:delete` | Delete OAuth2 clients | 3 |
+| `clients:rotate` | Rotate OAuth2 client secrets | 3 |
 | `trust:*` | All trust policy operations | 0 |
-| `trust:read` | View trust policy settings | 2 |
-| `trust:write` | Modify trust policy | 6 |
+| `trust:read` | View trust policy settings | 3 |
+| `trust:write` | Modify trust policy | 9 |
 | `billing:*` | All billing operations | 0 |
 | `billing:read` | View billing information | 0 |
 | `billing:write` | Modify billing settings | 0 |
 | `webhooks:*` | All webhook operations | 0 |
 | `webhooks:read` | View webhook configurations and deliveries | 4 |
-| `webhooks:write` | Create and modify webhooks | 5 |
-| `webhooks:delete` | Delete webhooks | 1 |
+| `webhooks:write` | Create and modify webhooks | 11 |
+| `webhooks:delete` | Delete webhooks | 2 |
 
 Default organisation roles (`DEFAULT_TENANT_ROLES`):
 

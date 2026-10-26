@@ -71,11 +71,18 @@ class Settings(BaseSettings):
     oauth2_client_cache_ttl: int = 300
     jwks_cache_ttl: int = 3600
 
+    # LLM API keys
+    openai_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings(
+        openai_api_key=get_credential(
+            "OPENAI_API_KEY",
+            os.environ.get("OPENAI_API_KEY", ""),
+        ),
         oauth2_client_secret=get_credential(
             "OAUTH2_CLIENT_SECRET",
             os.environ.get("OAUTH2_CLIENT_SECRET", ""),

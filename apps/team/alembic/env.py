@@ -21,6 +21,7 @@ from team.models import (  # noqa: F401
     Base,
     Conversation,
     ConversationParticipant,
+    MemoryEntry,
     Message,
     Team,
 )

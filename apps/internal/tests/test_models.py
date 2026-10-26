@@ -381,3 +381,28 @@ class TestContactStatusEnum:
 
         values = [s.value for s in ContactStatus]
         assert sorted(values) == ["active", "bounced", "complained", "unsubscribed"]
+
+
+class TestKnowledgeModelsImport:
+    """Test knowledge models can be imported (triggers module coverage).
+
+    Requires pgvector to be installed; tests are skipped otherwise.
+    """
+
+    def test_knowledge_namespace_import(self):
+        pytest.importorskip("pgvector")
+        from internal.models.knowledge import KnowledgeNamespace
+
+        assert KnowledgeNamespace.__tablename__ == "knowledge_namespaces"
+
+    def test_knowledge_entry_import(self):
+        pytest.importorskip("pgvector")
+        from internal.models.knowledge import KnowledgeEntry
+
+        assert KnowledgeEntry.__tablename__ == "knowledge_base"
+
+    def test_knowledge_entry_has_namespace_relationship(self):
+        pytest.importorskip("pgvector")
+        from internal.models.knowledge import KnowledgeEntry
+
+        assert "namespace" in KnowledgeEntry.__mapper__.relationships

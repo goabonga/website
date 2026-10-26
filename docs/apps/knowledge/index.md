@@ -46,6 +46,8 @@ how it is tested with pytest and behave.
 17. [Collection and document pages](16-web-collections-documents.md):
     managing the knowledge base from the browser.
 18. [Search page](17-web-search.md): searching the workspace from the browser.
+19. [Workspace settings and plans](18-workspace-settings.md): switching,
+    upgrading and renaming workspaces.
 
 ## Running the tests
 

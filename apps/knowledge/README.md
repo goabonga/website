@@ -37,6 +37,8 @@ applications. It is a member of the `website` uv workspace.
 - Collection and document management pages, with chunked and uploaded
   documents.
 - Search page over the documents of the active workspace.
+- Workspace switching, plan upgrade through the billing service and
+  workspace settings pages.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -100,6 +102,13 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/documents/{document_id}/delete` | session | Delete a document |
 | GET | `/search` | session | Search interface page |
 | POST | `/search` | session | Handle search form submission - redirect to GET with query params |
+| POST | `/organizations/switch`, `/tenants/switch` | session | Switch active organization |
+| GET | `/organizations/pricing`, `/tenants/pricing` | session | Pricing page with plan comparison |
+| POST | `/organizations/checkout`, `/tenants/checkout` | session | Create a Stripe Checkout session and redirect to payment |
+| GET | `/organizations/upgrade/preview`, `/tenants/upgrade/preview` | session | Get proration preview for upgrading to a new plan |
+| POST | `/organizations/upgrade`, `/tenants/upgrade` | session | Upgrade to a new plan with proration |
+| GET | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Organization settings page |
+| POST | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Update organization settings |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |
@@ -129,6 +138,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/mcp/download/{version}/{platform}` | public | Download a specific release for a platform |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+`/tenants/...` serves the same routes as `/organizations/...` (kept for backward compatibility); each pair is listed on one row.
 
 The API routes also apply the per-collection access rules of the handlers (owner, collaborator permission, organization membership) on top of the scope.
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from mta_sts import __version__
 from mta_sts.config import settings
 from mta_sts.logging import setup_logging
+from mta_sts.mta_sts import router as mta_sts_router
 
 # Configure logging
 setup_logging(level=settings.log_level)
@@ -32,3 +33,6 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy")
+
+
+app.include_router(mta_sts_router)

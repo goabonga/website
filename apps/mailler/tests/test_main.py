@@ -233,3 +233,12 @@ class TestContactGroupsRoutes:
         from mailler.main import app
 
         assert app.url_path_for("list_contact_groups") == "/api/v1/contact-groups"
+
+
+class TestUnsubscribeRoutes:
+    """Unsubscribe router registration."""
+
+    def test_unsubscribe_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("unsubscribe_confirm") == "/api/v1/unsubscribe"

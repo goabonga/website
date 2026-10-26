@@ -27,6 +27,7 @@ import httpx
 from internal.auth.models import User
 from internal.database import Base, get_db
 from internal.models.conversation import Conversation, Message
+from internal.models.knowledge import KnowledgeNamespace
 from internal.services.token_exchange import TokenExchangeClient, TokenExchangeError
 from internal.services.vpn_portal_client import VPNSession, VPNSessionsResponse
 from sqlalchemy import JSON, Uuid
@@ -70,6 +71,7 @@ class Section:
 SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
+    "namespaces": Section("/namespaces", "namespaces:*"),
     "analytics": Section("/analytics", "analytics:*"),
     "email_templates": Section("/email-templates", "email_templates:*"),
     "email_campaigns": Section("/email-campaigns", "email_campaigns:*"),
@@ -261,6 +263,13 @@ async def seed_conversation(env: "Env") -> dict:
         "name": "Owner",
     }
     return {"conversation": conversation.id}
+
+
+async def seed_namespace(env: "Env") -> dict:
+    """Create a knowledge namespace."""
+    namespace = KnowledgeNamespace(slug="docs", name="Docs", is_public=True)
+    await env.add(namespace)
+    return {"namespace": namespace.id}
 
 
 CAMPAIGN_ID = "11111111-1111-1111-1111-111111111111"
@@ -801,6 +810,12 @@ PAGES: dict[str, list[Page]] = {
         Page("/email-campaigns/new", "email_campaigns", configure_email_campaigns),
         Page("/email-campaigns/1", "email_campaigns", configure_email_campaigns),
         Page("/email-campaigns/1/edit", "email_campaigns", configure_email_campaigns),
+    ],
+    "namespaces": [
+        Page("/namespaces", "namespaces"),
+        Page("/namespaces/new", "namespaces"),
+        Page("/namespaces/{namespace}", "namespaces", seed_namespace),
+        Page("/namespaces/{namespace}/edit", "namespaces", seed_namespace),
     ],
 }
 

@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from backend import __version__
 from backend.config import settings
 from backend.logging import setup_logging
+from backend.routes.security_txt import router as security_txt_router
 
 
 @asynccontextmanager
@@ -49,3 +50,6 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint for monitoring and load balancer probes."""
     return HealthResponse(status="healthy")
+
+
+app.include_router(security_txt_router)

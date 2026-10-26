@@ -177,6 +177,13 @@ class TestSettings:
         assert s.stripe_publishable_key == ""
         assert s.stripe_webhook_secret == ""
 
+    def test_default_celery_urls(self):
+        """Settings should have default Celery broker and result backend URLs."""
+        s = _settings()
+
+        assert s.celery_broker_url.startswith("redis://")
+        assert s.celery_result_backend.startswith("redis://")
+
     def test_settings_from_env_vars(self):
         """Settings should load from environment variables."""
         env = {

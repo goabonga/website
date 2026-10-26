@@ -26,6 +26,7 @@ from billing.schemas import SubscriptionCreate, SubscriptionResponse, Subscripti
 from billing.schemas.subscription import (
     ProrationBehavior,
     ProrationLineItem,
+    SubscriptionCancelRequest,
     SubscriptionUpgradePreview,
     SubscriptionUpgradeRequest,
     SubscriptionUpgradeResponse,
@@ -686,3 +687,129 @@ async def upgrade_subscription(
         amount_due=amount_due,
         invoice_id=invoice_id,
     )
+
+
+# =============================================================================
+# Cancel / reactivate actions
+# =============================================================================
+
+# Statuses from which a subscription can never come back: a new one must be created.
+_FINAL_STATUSES = (SubscriptionStatus.CANCELED, SubscriptionStatus.INCOMPLETE_EXPIRED)
+
+
+async def _get_tenant_subscription(
+    saas_id: str, subscription_id: str, db: AsyncSession
+) -> Subscription:
+    """Load a subscription through its customer so that another tenant's one is a 404."""
+    await get_saas_app_or_404(saas_id, db)
+    result = await db.execute(
+        select(Subscription)
+        .join(Customer)
+        .where(
+            Subscription.id == subscription_id,
+            Customer.saas_app_id == saas_id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if not subscription:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription not found",
+        )
+    return subscription
+
+
+@router.post("/subscriptions/{subscription_id}/cancel", response_model=SubscriptionResponse)
+async def cancel_subscription_action(
+    saas_id: str,
+    subscription_id: str,
+    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    data: SubscriptionCancelRequest | None = None,
+) -> Subscription:
+    """Cancel a subscription, at the end of the paid period by default.
+
+    With ``cancel_at_period_end`` true (the default) Stripe stops renewing the
+    subscription but keeps it ``active`` until the period ends; the local
+    record only gets ``cancel_at_period_end=true`` and the final ``canceled``
+    status arrives later through the Stripe webhook. With ``false`` the
+    subscription is canceled immediately. Repeating the call is harmless.
+    A subscription that is already canceled gives ``409``.
+    """
+    subscription = await _get_tenant_subscription(saas_id, subscription_id, db)
+    if subscription.status in _FINAL_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Subscription is already {subscription.status.value}",
+        )
+
+    at_period_end = data.cancel_at_period_end if data else True
+    stripe_service = get_stripe_service()
+    try:
+        stripe_subscription = stripe_service.cancel_subscription(
+            stripe_subscription_id=subscription.stripe_subscription_id,
+            immediately=not at_period_end,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to cancel subscription in Stripe: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to cancel subscription in Stripe: {e}",
+        )
+
+    subscription.status = SubscriptionStatus(stripe_subscription.status)
+    subscription.cancel_at_period_end = bool(stripe_subscription.cancel_at_period_end)
+    if not at_period_end:
+        subscription.canceled_at = datetime.now(UTC)
+
+    await db.flush()
+    await db.refresh(subscription)
+
+    logger.info(f"Canceled subscription: {subscription.id} (at_period_end={at_period_end})")
+    return subscription
+
+
+@router.post("/subscriptions/{subscription_id}/reactivate", response_model=SubscriptionResponse)
+async def reactivate_subscription_action(
+    saas_id: str,
+    subscription_id: str,
+    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Subscription:
+    """Undo a cancellation scheduled for the end of the period.
+
+    Only a subscription that is still running can be reactivated: it stops
+    being scheduled for cancellation and keeps renewing. A subscription that
+    is already ``canceled`` (or ``incomplete_expired``) cannot come back, a
+    new checkout is needed: ``409``. Reactivating a subscription that is not
+    scheduled for cancellation changes nothing and answers ``200``.
+    """
+    subscription = await _get_tenant_subscription(saas_id, subscription_id, db)
+    if subscription.status in _FINAL_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Subscription is {subscription.status.value} and cannot be reactivated, "
+            "create a new subscription",
+        )
+
+    if subscription.cancel_at_period_end:
+        stripe_service = get_stripe_service()
+        try:
+            stripe_subscription = stripe_service.update_subscription(
+                stripe_subscription_id=subscription.stripe_subscription_id,
+                cancel_at_period_end=False,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to reactivate subscription in Stripe: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to reactivate subscription in Stripe: {e}",
+            )
+        subscription.cancel_at_period_end = bool(stripe_subscription.cancel_at_period_end)
+        subscription.status = SubscriptionStatus(stripe_subscription.status)
+
+        await db.flush()
+        await db.refresh(subscription)
+        logger.info(f"Reactivated subscription: {subscription.id}")
+
+    return subscription

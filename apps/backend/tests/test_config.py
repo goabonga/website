@@ -132,6 +132,11 @@ class TestSettingsDefaults:
         assert s.prompt_cache_redis_url == "redis://localhost:6379/4"
         assert s.prompt_cache_ttl == 300
 
+    def test_openai_model_default(self, monkeypatch):
+        """The chat model defaults to gpt-4o-mini."""
+        monkeypatch.delenv("OPENAI_MODEL", raising=False)
+        assert Settings(_env_file=None).openai_model == "gpt-4o-mini"
+
 
 class TestGetCredential:
     """Tests for get_credential."""

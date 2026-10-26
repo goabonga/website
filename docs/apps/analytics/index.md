@@ -16,3 +16,4 @@ file and the page listed below.
 - [Visitor enrichment](03-enrichment.md): user agent parsing and optional GeoIP lookups.
 - [Event collection](04-collection.md): `/collect` endpoints and session cookies.
 - [Campaigns and pixels](05-pixels.md): email tracking pixels, Alembic revision `002`.
+- [Campaign links](06-links.md): redirects with click tracking.

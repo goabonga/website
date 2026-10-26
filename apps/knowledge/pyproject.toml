@@ -25,6 +25,7 @@ dependencies = [
     "pgvector>=0.3.6",
     "alembic>=1.14.0",
     "redis>=5.2.0",
+    "celery[redis]>=5.4.0",
     "httpx>=0.28.0",
     "PyJWT[crypto]>=2.9.0",
     "openai>=1.57.0",

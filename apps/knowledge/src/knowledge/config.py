@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6387/0"
     redis_key_prefix: str = "knowledge"
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6387/0"
+    celery_result_backend: str = "redis://localhost:6387/1"
+    celery_queue: str = "knowledge"  # queue the application publishes to; workers must consume it
+    celery_timezone: str = "UTC"
+    celery_task_time_limit: int = 300  # seconds a task may run
+    deletion_check_interval: float = 3600.0  # seconds between the scheduled deletion passes
+
     # OAuth2/OIDC (via auth service)
     oauth2_issuer: str = ""  # e.g., https://auth.example.com
 
@@ -122,6 +130,9 @@ class Settings(BaseSettings):
     mailler_client_secret: str = ""  # its secret; empty = oauth2_client_secret
     mailler_max_retries: int = 3  # retries of an email task after a failure that can pass
     mailler_retry_delay: int = 60  # seconds before the first retry, doubled each time
+
+    # Web UI settings
+    app_base_url: str = ""  # Public URL of the application, e.g. https://knowledge.example.com
 
 
 # Secrets that can be delivered as systemd credentials or environment variables.

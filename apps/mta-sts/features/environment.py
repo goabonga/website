@@ -6,6 +6,7 @@
 import asyncio
 import sys
 
+from mta_sts.config import settings
 from mta_sts.logging import setup_logging
 from mta_sts.main import app
 
@@ -25,10 +26,13 @@ def after_all(context):
 def before_scenario(context, scenario):
     """Reset per-scenario state."""
     context.response = None
+    context.setting_backup = {}
 
 
 def after_scenario(context, scenario):
-    """Restore the standard streams replaced by logging scenarios."""
+    """Restore overridden settings and the standard streams."""
+    for name, value in context.setting_backup.items():
+        setattr(settings, name, value)
     saved = getattr(context, "saved_streams", None)
     if saved:
         sys.stdout, sys.stderr = saved

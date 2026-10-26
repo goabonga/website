@@ -29,6 +29,19 @@ def step_check_status_code(context, status_code):
     assert actual == status_code, f"Expected {status_code}, got {actual}: {context.response.text}"
 
 
+@then('the response content type should be "{content_type}"')
+def step_check_content_type(context, content_type):
+    """Check the response content type."""
+    actual = context.response.headers.get("content-type", "")
+    assert content_type in actual, f"Expected '{content_type}', got '{actual}'"
+
+
+@then('the response should contain "{text}"')
+def step_response_contains_text(context, text):
+    """Check that the response body contains specific text."""
+    assert text in context.response.text, f"Expected '{text}' in response: {context.response.text}"
+
+
 @then("the response should be valid JSON")
 def step_response_is_json(context):
     """Check that the response body is valid JSON."""

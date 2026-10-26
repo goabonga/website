@@ -14,10 +14,14 @@ def before_scenario(context, scenario):
     context.loop = asyncio.new_event_loop()
     asyncio.set_event_loop(context.loop)
     context.run = context.loop.run_until_complete
+    # Coroutine functions awaited at the end of the scenario, before the loop closes.
+    context.async_cleanups = []
 
 
 def after_scenario(context, scenario):
-    """Cancel leftover tasks and close the scenario event loop."""
+    """Run async cleanups, cancel leftover tasks and close the scenario event loop."""
+    for cleanup in reversed(context.async_cleanups):
+        context.loop.run_until_complete(cleanup())
     pending = asyncio.all_tasks(context.loop)
     for task in pending:
         task.cancel()

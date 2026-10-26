@@ -22,6 +22,7 @@ applications. It is a member of the `website` uv workspace.
 - Multi-tenant resolution from path prefix, subdomain or custom domain.
 - Billing client and subscription webhook that keep organization plans in
   sync.
+- Quota limits read from the billing plans, with a configured fail-safe.
 - Transactional emails (MJML templates) sent through the mailler service.
 - MCP executable releases imported from GitHub and served through a public
   download API.

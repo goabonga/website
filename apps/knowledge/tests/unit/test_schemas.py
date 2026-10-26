@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from knowledge.models import Collection
 from knowledge.models.enums import OwnerType
 from knowledge.schemas.collection import CollectionCreate, CollectionResponse, CollectionUpdate
+from knowledge.schemas.document import DocumentCreate, DocumentsCreate
 
 
 class TestCollectionCreate:
@@ -102,3 +103,41 @@ class TestCollectionResponse:
         )
         response = CollectionResponse.model_validate(collection)
         assert response.tenant_id == org_id
+
+
+class TestDocumentCreate:
+    def test_valid(self):
+        d = DocumentCreate(content="hello world")
+        assert d.content == "hello world"
+        assert d.metadata == {}
+        assert d.source_type is None
+
+    def test_empty_content_fails(self):
+        with pytest.raises(ValidationError):
+            DocumentCreate(content="")
+
+    def test_with_metadata(self):
+        d = DocumentCreate(content="test", metadata={"key": "value"})
+        assert d.metadata == {"key": "value"}
+
+    def test_with_source(self):
+        d = DocumentCreate(content="test", source_type="url", source_ref="https://example.com")
+        assert d.source_type == "url"
+        assert d.source_ref == "https://example.com"
+
+
+# ============================================================
+# DocumentsCreate (batch)
+# ============================================================
+
+
+class TestDocumentsCreate:
+    def test_valid_batch(self):
+        batch = DocumentsCreate(
+            documents=[DocumentCreate(content="doc1"), DocumentCreate(content="doc2")]
+        )
+        assert len(batch.documents) == 2
+
+    def test_empty_batch_fails(self):
+        with pytest.raises(ValidationError):
+            DocumentsCreate(documents=[])

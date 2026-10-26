@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-"""Test configuration and fixtures. Pure mocks, no real infrastructure."""
+"""Test configuration and fixtures. Pure mocks, no aiosqlite."""
 
 from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -76,12 +76,31 @@ def _make_auth_context() -> AuthContext:
 
 
 # ============================================================
+# Mock embedding service
+# ============================================================
+
+
+@pytest.fixture
+def mock_embedding_service():
+    """Mock the embedding service."""
+    with patch("knowledge.services.documents.get_embedding_service") as mock:
+        service = AsyncMock()
+        service.embed_text = AsyncMock(return_value=[0.1] * 1536)
+        service.embed_texts = AsyncMock(side_effect=lambda texts: [[0.1] * 1536 for _ in texts])
+        mock.return_value = service
+        yield service
+
+
+# ============================================================
 # Test client (mock DB + mock auth)
 # ============================================================
 
 
 @pytest.fixture
-async def client(mock_db) -> AsyncGenerator[AsyncClient, None]:
+async def client(
+    mock_db,
+    mock_embedding_service,
+) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client with mocked DB and auth."""
 
     async def override_get_db():

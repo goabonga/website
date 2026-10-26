@@ -29,3 +29,4 @@ feature adds, its settings and how it is tested.
 | [Command line interface](12-cli.md) | Seed, client and template commands |
 | [Python client SDK](13-python-sdk.md) | Typed sync and async client for the API |
 | [TCP upstream targets](14-upstream-targets.md) | Host and port upstreams next to Unix sockets, strict validation |
+| [Per-client template ownership](15-template-ownership.md) | Shared and client-owned nginx templates |

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Collections{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Collections</h1>
+    <div class="breadcrumb">
+        Manage your document collections
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">All Collections ({{ total }})</h2>
+        <a href="/collections/new" class="btn btn-primary btn-sm">New Collection</a>
+    </div>
+
+    {% if collections %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Documents</th>
+                <th>Updated</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for collection in collections %}
+            <tr>
+                <td>
+                    <a href="/collections/{{ collection.id }}" style="color: var(--accent-blue); text-decoration: none; font-weight: 500;">
+                        {{ collection.name }}
+                    </a>
+                </td>
+                <td style="color: var(--text-secondary);">{{ collection.description or '-' }}</td>
+                <td>
+                    <span class="badge badge-blue">{{ collection_stats.get(collection.id, 0) }}</span>
+                </td>
+                <td style="color: var(--text-muted); font-size: 0.875rem;">
+                    {{ collection.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="/collections/{{ collection.id }}" class="btn btn-secondary btn-sm">View</a>
+                        <a href="/collections/{{ collection.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/collections?page={{ page - 1 }}">&laquo; Previous</a>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+            <a href="/collections?page={{ p }}">{{ p }}</a>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/collections?page={{ page + 1 }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">&#128451;</div>
+        <h3>No collections yet</h3>
+        <p>Create your first collection to start organizing your knowledge.</p>
+        <a href="/collections/new" class="btn btn-primary" style="margin-top: 16px;">Create Collection</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

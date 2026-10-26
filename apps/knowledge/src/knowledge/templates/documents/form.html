@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}New{% endif %} Document{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if is_edit %}Edit Document{% else %}New Document{% endif %}</h1>
+    <div class="breadcrumb">
+        <a href="/collections">Collections</a> /
+        <a href="/collections/{{ collection.id }}">{{ collection.name }}</a> /
+        {% if is_edit %}
+        <a href="/documents/{{ document.id }}">Document</a> / Edit
+        {% else %}
+        New Document
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <form method="post"
+          enctype="multipart/form-data"
+          action="{% if is_edit %}/documents/{{ document.id }}/edit{% else %}/documents/{{ collection.id }}/new{% endif %}">
+        <div class="form-group">
+            <label for="content">Content</label>
+            <textarea id="content"
+                      name="content"
+                      class="form-control"
+                      style="min-height: 200px; font-family: monospace;"
+                      placeholder="Enter the document content (or upload a file below)...">{{ form_content if form_content is defined else (document.content if document else '') }}</textarea>
+        </div>
+
+        {% if not is_edit %}
+        <div class="form-group">
+            <label for="file">Upload File (optional)</label>
+            <input type="file"
+                   id="file"
+                   name="file"
+                   class="form-control"
+                   accept=".md,.txt,.rst,.csv,.json,.yaml,.yml,.xml">
+            <small style="color: var(--text-muted);">If provided, file content is used for document creation.</small>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <input type="checkbox"
+                       id="enable_chunking"
+                       name="enable_chunking"
+                       value="true"
+                       {% if form_enable_chunking %}checked{% endif %}>
+                Enable chunking
+            </label>
+            <div id="chunk-options"
+                 style="display: {% if form_enable_chunking %}block{% else %}none{% endif %}; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="radio"
+                           name="chunk_mode"
+                           value="markdown_sections"
+                           {% if form_chunk_mode == 'markdown_sections' %}checked{% endif %}>
+                    Chunk markdown per sections
+                </label>
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="radio"
+                           name="chunk_mode"
+                           value="split_5"
+                           {% if form_chunk_mode == 'split_5' %}checked{% endif %}>
+                    Chunk file into 5 splits
+                </label>
+                <label style="display: block;">
+                    <input type="radio"
+                           name="chunk_mode"
+                           value="split_10"
+                           {% if form_chunk_mode == 'split_10' %}checked{% endif %}>
+                    Chunk file into 10 splits
+                </label>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="source_type">Source Type</label>
+            <input type="text"
+                   id="source_type"
+                   name="source_type"
+                   class="form-control"
+                   placeholder="e.g., file, url, manual"
+                   value="{{ form_source_type if form_source_type is defined else (document.source_type if document and document.source_type else '') }}">
+            <small style="color: var(--text-muted);">Optional identifier for the type of source</small>
+        </div>
+
+        <div class="form-group">
+            <label for="source_ref">Source Reference</label>
+            <input type="text"
+                   id="source_ref"
+                   name="source_ref"
+                   class="form-control"
+                   placeholder="e.g., /path/to/file.txt, https://example.com/page"
+                   value="{{ form_source_ref if form_source_ref is defined else (document.source_ref if document and document.source_ref else '') }}">
+            <small style="color: var(--text-muted);">Optional reference to the original source</small>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Save Changes{% else %}Create Document{% endif %}
+            </button>
+            <a href="{% if is_edit %}/documents/{{ document.id }}{% else %}/collections/{{ collection.id }}{% endif %}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% if not is_edit %}
+<script>
+(() => {
+    const checkbox = document.getElementById("enable_chunking");
+    const options = document.getElementById("chunk-options");
+    if (!checkbox || !options) return;
+
+    const toggle = () => {
+        options.style.display = checkbox.checked ? "block" : "none";
+    };
+
+    checkbox.addEventListener("change", toggle);
+})();
+</script>
+{% endif %}
+{% endblock %}

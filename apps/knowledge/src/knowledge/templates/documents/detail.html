@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Document{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Document</h1>
+    <div class="breadcrumb">
+        <a href="/collections">Collections</a> /
+        <a href="/collections/{{ collection.id }}">{{ collection.name }}</a> /
+        Document
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Document Details</h2>
+        <div style="display: flex; gap: 8px;">
+            <a href="/documents/{{ document.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+            <form method="post" action="/documents/{{ document.id }}/delete" style="display: inline;"
+                  onsubmit="return confirm('Are you sure you want to delete this document?');">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Collection</div>
+            <a href="/collections/{{ collection.id }}" style="color: var(--accent-blue);">{{ collection.name }}</a>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Content Size</div>
+            <div>
+                {% if display_content_size < 1024 %}
+                    {{ display_content_size }} B
+                {% elif display_content_size < 1024 * 1024 %}
+                    {{ (display_content_size / 1024) | round(1) }} KB
+                {% else %}
+                    {{ (display_content_size / 1024 / 1024) | round(1) }} MB
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Source Type</div>
+            <div>
+                {% if document.source_type %}
+                <span class="badge badge-blue">{{ document.source_type }}</span>
+                {% else %}
+                <span style="color: var(--text-muted);">-</span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Source Ref</div>
+            <div style="color: var(--text-secondary); word-break: break-all;">{{ document.source_ref or '-' }}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Created</div>
+            <div style="color: var(--text-secondary);">{{ document.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Updated</div>
+            <div style="color: var(--text-secondary);">{{ document.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+    </div>
+
+    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">ID</div>
+    <div style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; margin-bottom: 24px;">{{ document.id }}</div>
+
+    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Content Hash</div>
+    <div style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; margin-bottom: 24px;">{{ document.content_hash }}</div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Content</h2>
+    </div>
+    <div style="background-color: var(--bg-input); padding: 16px; border-radius: 6px; white-space: pre-wrap; font-family: monospace; font-size: 0.875rem; max-height: 500px; overflow-y: auto;">{{ document.content }}</div>
+</div>
+
+{% if document.doc_metadata %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Metadata</h2>
+    </div>
+    <pre style="background-color: var(--bg-input); padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 0.875rem;">{{ document.doc_metadata | tojson(indent=2) }}</pre>
+</div>
+{% endif %}
+{% endblock %}

@@ -13,4 +13,7 @@ uv sync --package team --group dev
 
 # Run the API
 uv run --package team uvicorn team.main:app --reload --port 8000
+
+# Tests
+uv run --package team --group dev pytest apps/team
 ```

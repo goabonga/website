@@ -255,3 +255,46 @@ class TestTemplateService:
             result = service.validate_template("server {}")
             assert result.valid is False
             assert any("Unexpected error" in e for e in result.errors)
+
+
+class TestValidateNginxSyntaxInWorker:
+    """The API delegates the privileged check to a worker and waits for the answer."""
+
+    @pytest.mark.asyncio
+    async def test_returns_the_worker_answer(self):
+        pending = MagicMock()
+        pending.get.return_value = {"valid": False, "error": "unexpected }"}
+        with patch("custom_domain.tasks.validation.validate_nginx_template") as mock_task:
+            mock_task.delay.return_value = pending
+            valid, error = await template_service.validate_nginx_syntax_in_worker("server {}")
+
+        mock_task.delay.assert_called_once_with("server {}")
+        assert (valid, error) == (False, "unexpected }")
+
+    @pytest.mark.asyncio
+    async def test_waits_for_the_configured_time(self, monkeypatch):
+        monkeypatch.setattr(settings, "template_validation_timeout_seconds", 3)
+        pending = MagicMock()
+        pending.get.return_value = {"valid": True, "error": ""}
+        with patch("custom_domain.tasks.validation.validate_nginx_template") as mock_task:
+            mock_task.delay.return_value = pending
+            await template_service.validate_nginx_syntax_in_worker("server {}")
+        pending.get.assert_called_once_with(timeout=3)
+
+    @pytest.mark.asyncio
+    async def test_no_worker_is_reported_not_raised(self):
+        pending = MagicMock()
+        pending.get.side_effect = TimeoutError("no worker")
+        with patch("custom_domain.tasks.validation.validate_nginx_template") as mock_task:
+            mock_task.delay.return_value = pending
+            valid, error = await template_service.validate_nginx_syntax_in_worker("server {}")
+        assert valid is False
+        assert "Nginx validation unavailable" in error
+
+    @pytest.mark.asyncio
+    async def test_broker_failure_is_reported_not_raised(self):
+        with patch("custom_domain.tasks.validation.validate_nginx_template") as mock_task:
+            mock_task.delay.side_effect = ConnectionError("broker down")
+            valid, error = await template_service.validate_nginx_syntax_in_worker("server {}")
+        assert valid is False
+        assert "broker down" in error

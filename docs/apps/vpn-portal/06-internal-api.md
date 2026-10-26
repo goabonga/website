@@ -4,7 +4,7 @@ The OpenVPN server does not issue or check certificates itself. It calls
 the portal through a small internal API, so that revoked or expired
 certificates are refused, the routes pushed to a client follow the portal's
 RBAC decision, and every session is recorded. The calls are made by the
-OpenVPN `client-connect` and `client-disconnect` hooks.
+OpenVPN hooks of the [hook scripts](08-openvpn-hook-scripts.md).
 
 ## What it does
 

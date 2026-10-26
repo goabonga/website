@@ -1,0 +1,19 @@
+# Managed by Ansible (goabonga.website.python_app)
+# HTTP-only virtual host that answers the ACME challenge of {{ python_app__domain }}.
+# It is replaced by the complete virtual host once the certificate exists.
+server {
+{% for addr in python_app__listen_addrs %}
+    listen {{ addr }}:80;
+{% endfor %}
+    server_name {{ python_app__server_names | join(' ') }}{% for name in python_app__c.nginx.redirect_domains %} {{ name }}{% endfor %};
+
+    root {{ website_acme_webroot }};
+
+    location /.well-known/acme-challenge/ {
+        allow all;
+    }
+
+    location / {
+        return 503 "Certificate being issued";
+    }
+}

@@ -7,8 +7,9 @@ argument_specs:
     description:
     - Checks out the monorepo, installs each selected application into its own virtualenv
       with uv and renders its environment file, encrypted credentials and systemd units, and
-      optionally sets up the PostgreSQL database and migrations. Applications are described
-      by a catalog of components that is merged with the user overrides.
+      optionally sets up the PostgreSQL database and migrations and an nginx virtual host
+      with its certificate. Applications are described by a catalog of components that is
+      merged with the user overrides.
     author: Chris
     options:
       website_apps_catalog:
@@ -62,6 +63,30 @@ argument_specs:
           build_commands: []
           build_chdir: ''
           build_node: false
+          nginx:
+            enabled: false
+            domain: ''
+            ssl: letsencrypt
+            ssl_wildcard: false
+            ssl_wildcard_domains: []
+            ssl_dns_provider: manual
+            dns_wildcard_cname_target: ''
+            redirect_domains: []
+            internal_domain: false
+            allowed_hosts: []
+            websocket:
+              enabled: false
+              path: /ws
+              timeout: 1h
+            custom_locations: []
+            client_max_body_size: ''
+            csp: ''
+            headers: []
+            static:
+              enabled: false
+              location: /static
+              alias: ''
+              expires: 1h
           postgres:
             database: ''
             shared: false
@@ -385,3 +410,84 @@ argument_specs:
         description:
         - Run `alembic upgrade head` for the components that enable alembic.
         default: true
+      website_listen_ipv4:
+        type: str
+        description:
+        - Address nginx listens on for public virtual hosts (empty listens on every address).
+      website_listen_ipv6:
+        type: str
+        description:
+        - website_listen_ipv6
+      website_internal_listen:
+        type: str
+        description:
+        - Address internal virtual hosts (zone website_internal_domain) listen on.
+        default: 127.0.0.1
+      website_internal_allowed_hosts:
+        type: list
+        description:
+        - Networks allowed to reach the internal virtual hosts (empty allows every client
+          that can reach website_internal_listen). A component overrides it with nginx.allowed_hosts.
+        default: []
+        elements: str
+      website_certbot_email:
+        type: str
+        description:
+        - Contact address for Let's Encrypt (admin@<domain> when empty).
+        default: ''
+      website_acme_webroot:
+        type: str
+        description:
+        - Webroot used for the ACME HTTP-01 challenges.
+        default: /var/www/html
+      website_step_ca_acme_url:
+        type: str
+        description:
+        - 'ACME directory and root certificate of the internal CA used by the virtual hosts
+          with ssl: step-ca.'
+      website_step_ca_root:
+        type: str
+        description:
+        - website_step_ca_root
+        default: /etc/step-ca/certs/root_ca.crt
+      website_letsencrypt_dir:
+        type: str
+        description:
+        - Directory of the Let's Encrypt certificates.
+        default: /etc/letsencrypt
+      website_nginx_error_pages_snippet:
+        type: str
+        description:
+        - nginx snippet with custom error pages, included only when the file exists.
+        default: /etc/nginx/snippets/error-pages.conf
+      website_nginx_ssl_protocols:
+        type: str
+        description:
+        - TLS settings of the virtual hosts.
+        default: TLSv1.2 TLSv1.3
+      website_nginx_ssl_ciphers:
+        type: str
+        description:
+        - website_nginx_ssl_ciphers
+        default: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+      website_dnsmasq_dir:
+        type: str
+        description:
+        - Directories of the dnsmasq instances that resolve internal host names. The second
+          one is optional and only used when it exists.
+        default: /etc/dnsmasq.d
+      website_dnsmasq_vpn_dir:
+        type: str
+        description:
+        - website_dnsmasq_vpn_dir
+        default: /etc/dnsmasq-vpn.d
+      website_aws_route53_access_key_id:
+        type: str
+        description:
+        - Route 53 credentials for wildcard certificates (ssl_dns_provider route53).
+        default: ''
+      website_aws_route53_secret_access_key:
+        type: str
+        description:
+        - website_aws_route53_secret_access_key
+        default: ''

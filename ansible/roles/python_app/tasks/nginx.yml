@@ -1,0 +1,145 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Virtual host of a component: the nginx and certbot roles (or an equivalent
+# installation) must be in place.
+
+- name: Check the web front settings of {{ python_app__unit }}
+  ansible.builtin.assert:
+    that:
+      - python_app__domain | length > 0
+      - python_app__c.nginx.ssl in ['letsencrypt', 'step-ca', false]
+      - python_app__c.nginx.ssl_dns_provider in ['manual', 'route53']
+      - not (python_app__wildcard and python_app__c.nginx.ssl != 'letsencrypt')
+      - not (python_app__c.nginx.redirect_domains | length > 0 and (python_app__wildcard or python_app__c.nginx.ssl != 'letsencrypt'))
+    fail_msg: >-
+      {{ python_app__unit }}: nginx.domain or website_hostnames.{{ python_app__c.app }} must be set (website_domain is
+      empty?), nginx.ssl must be letsencrypt, step-ca or false, wildcard certificates need ssl letsencrypt and
+      redirect_domains need ssl letsencrypt without wildcard.
+    quiet: true
+
+- name: Look for nginx
+  ansible.builtin.stat:
+    path: /etc/nginx/sites-available
+  register: python_app__nginx
+
+- name: Check that nginx is installed
+  ansible.builtin.assert:
+    that:
+      - python_app__nginx.stat.isdir | default(false)
+    fail_msg: "nginx is not installed (no /etc/nginx/sites-available). Run the nginx role first."
+    quiet: true
+
+- name: Read the nginx version
+  ansible.builtin.command: nginx -v
+  register: python_app__nginx_version
+  changed_when: false
+  check_mode: false
+
+- name: Look for the error pages snippet
+  ansible.builtin.stat:
+    path: "{{ website_nginx_error_pages_snippet }}"
+  register: python_app__error_snippet
+
+- name: Remember the nginx capabilities
+  ansible.builtin.set_fact:
+    python_app__http2_directive: "{{ (python_app__nginx_version.stderr | regex_search('nginx/([0-9.]+)', '\\1') | first) is version('1.25.1', '>=') }}"
+    python_app__error_pages: "{{ python_app__error_snippet.stat.exists }}"
+
+- name: Create the nginx log directory of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "{{ python_app__logs_dir }}/nginx"
+    state: directory
+    owner: www-data
+    group: adm
+    mode: "0750"
+
+- name: Create the nginx log files of {{ python_app__unit }}
+  ansible.builtin.file:
+    path: "{{ python_app__logs_dir }}/nginx/{{ python_app__unit }}-{{ item }}.log"
+    state: touch
+    owner: www-data
+    group: adm
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  loop: [access, error]
+
+- name: Let nginx reach the socket of {{ python_app__unit }}
+  ansible.builtin.user:
+    name: www-data
+    groups: "{{ python_app__group }}"
+    append: true
+  when: python_app__c.gunicorn.socket | bool
+  # A running nginx keeps the groups it started with.
+  notify: python_app | restart nginx
+
+- name: Look for the dnsmasq directories
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ website_dnsmasq_dir }}"
+    - "{{ website_dnsmasq_vpn_dir }}"
+  register: python_app__dnsmasq
+  when: python_app__c.nginx.internal_domain | bool
+
+- name: Resolve {{ python_app__domain }} on the host
+  ansible.builtin.lineinfile:
+    path: "{{ website_dnsmasq_dir }}/website_apps.conf"
+    line: "address=/{{ python_app__domain }}/127.0.0.1"
+    regexp: "^address=/{{ python_app__domain | regex_escape }}/"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: python_app | restart dnsmasq
+  when:
+    - python_app__c.nginx.internal_domain | bool
+    - python_app__dnsmasq.results[0].stat.isdir | default(false)
+
+- name: Resolve {{ python_app__domain }} for the VPN clients
+  ansible.builtin.lineinfile:
+    path: "{{ website_dnsmasq_vpn_dir }}/website_apps.conf"
+    line: "address=/{{ python_app__domain }}/{{ website_internal_listen }}"
+    regexp: "^address=/{{ python_app__domain | regex_escape }}/"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: python_app | restart dnsmasq-vpn
+  when:
+    - python_app__c.nginx.internal_domain | bool
+    - python_app__dnsmasq.results[1].stat.isdir | default(false)
+
+# The names must resolve before the certificate is requested.
+- name: Apply the DNS changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Obtain the certificate of {{ python_app__domain }}
+  ansible.builtin.include_tasks: nginx_certificate.yml
+  when: python_app__tls
+
+- name: Deploy the virtual host of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: nginx-vhost.conf.j2
+    dest: "/etc/nginx/sites-available/{{ python_app__unit }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: python_app__r_vhost
+  notify: python_app | reload nginx
+
+- name: Enable the virtual host of {{ python_app__unit }}
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ python_app__unit }}"
+    dest: "/etc/nginx/sites-enabled/{{ python_app__unit }}"
+    state: link
+  register: python_app__r_site
+  notify: python_app | reload nginx
+
+- name: Check the nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+  check_mode: false
+  when: python_app__r_vhost is changed or python_app__r_site is changed

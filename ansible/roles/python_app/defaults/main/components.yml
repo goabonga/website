@@ -81,6 +81,45 @@ python_app_component_defaults:
   # Install Node.js on the host before running build_commands.
   build_node: false
 
+  nginx:
+    enabled: false
+    # Host name served; the entry of website_hostnames when empty.
+    domain: ""
+    # letsencrypt, step-ca or false for plain HTTP.
+    ssl: letsencrypt
+    # Cover subdomains with a wildcard certificate (needs the DNS-01 challenge).
+    ssl_wildcard: false
+    ssl_wildcard_domains: []
+    # manual (the certificate must exist) or route53.
+    ssl_dns_provider: manual
+    # With route53, create the wildcard CNAME records pointing to this target.
+    dns_wildcard_cname_target: ""
+    # Alternate host names redirected (301) to the domain; they are added to
+    # the certificate (letsencrypt without wildcard only).
+    redirect_domains: []
+    # Listen on website_internal_listen instead of the public addresses and
+    # register the host name in dnsmasq.
+    internal_domain: false
+    # Networks allowed to reach the virtual host (empty allows everyone).
+    allowed_hosts: []
+    websocket:
+      enabled: false
+      path: /ws
+      timeout: 1h
+    # Extra location blocks: [{path, config}].
+    custom_locations: []
+    client_max_body_size: ""
+    csp: ""
+    # Extra add_header lines.
+    headers: []
+    # Static files served by nginx under a location, for example a Vite build.
+    static:
+      enabled: false
+      location: /static
+      # Directory relative to the release root.
+      alias: ""
+      # Cache lifetime sent with the files.
+      expires: 1h
 
   postgres:
     # Database name; the section is ignored when empty.

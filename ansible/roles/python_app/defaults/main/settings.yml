@@ -163,3 +163,50 @@ website_manage_databases: true
 # Run `alembic upgrade head` for the components that enable alembic.
 website_run_migrations: true
 
+# ---------------------------------------------------------------------------
+# Web front
+# ---------------------------------------------------------------------------
+
+# Address nginx listens on for public virtual hosts (empty listens on every
+# address).
+website_listen_ipv4: "{{ (ansible_facts.get('default_ipv4') or {}).get('address', '') }}"
+website_listen_ipv6: "{{ (ansible_facts.get('default_ipv6') or {}).get('address', '') }}"
+
+# Address internal virtual hosts (zone website_internal_domain) listen on.
+website_internal_listen: 127.0.0.1
+
+# Networks allowed to reach the internal virtual hosts (empty allows every
+# client that can reach website_internal_listen). A component overrides it with
+# nginx.allowed_hosts.
+website_internal_allowed_hosts: []
+
+# Contact address for Let's Encrypt (admin@<domain> when empty).
+website_certbot_email: ""
+
+# Webroot used for the ACME HTTP-01 challenges.
+website_acme_webroot: /var/www/html
+
+# ACME directory and root certificate of the internal CA used by the virtual
+# hosts with ssl: step-ca.
+website_step_ca_acme_url: "https://step-ca.{{ website_internal_domain }}/acme/acme/directory"
+website_step_ca_root: /etc/step-ca/certs/root_ca.crt
+
+# Directory of the Let's Encrypt certificates.
+website_letsencrypt_dir: /etc/letsencrypt
+
+# nginx snippet with custom error pages, included only when the file exists.
+website_nginx_error_pages_snippet: /etc/nginx/snippets/error-pages.conf
+
+# TLS settings of the virtual hosts.
+website_nginx_ssl_protocols: "TLSv1.2 TLSv1.3"
+website_nginx_ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+
+# Directories of the dnsmasq instances that resolve internal host names. The
+# second one is optional and only used when it exists.
+website_dnsmasq_dir: /etc/dnsmasq.d
+website_dnsmasq_vpn_dir: /etc/dnsmasq-vpn.d
+
+# Route 53 credentials for wildcard certificates (ssl_dns_provider route53).
+website_aws_route53_access_key_id: ""
+website_aws_route53_secret_access_key: ""
+

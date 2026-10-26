@@ -25,6 +25,7 @@ dependencies = [
     "mrml>=0.2.0",
     "beautifulsoup4>=4.12.0",
     "pgvector>=0.2.0",
+    "openai>=1.0.0",
 ]
 
 [build-system]

@@ -1,0 +1,349 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Prompt: {{ prompt.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .prompt-meta {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #1a1a2e;
+        border-radius: 4px;
+        flex-wrap: wrap;
+    }
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .meta-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .meta-value {
+        font-size: 0.9rem;
+        color: #e0e0e0;
+    }
+    .content-section {
+        margin-bottom: 1.5rem;
+    }
+    .content-section h3 {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+    .content-box {
+        background: #1a1a2e;
+        border-radius: 4px;
+        padding: 1rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        font-family: inherit;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .scopes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .scope-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        background-color: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+        border-radius: 4px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    .version-history {
+        margin-top: 2rem;
+    }
+    .version-history h3 {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+    }
+    .version-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .version-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background: #1a1a2e;
+        border-radius: 4px;
+    }
+    .version-item.current {
+        border: 1px solid #00b894;
+    }
+    .version-number {
+        font-weight: bold;
+        color: #e0e0e0;
+        min-width: 50px;
+    }
+    .version-date {
+        color: #6c757d;
+        font-size: 0.85rem;
+        flex: 1;
+    }
+    .version-badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
+        background-color: rgba(0, 184, 148, 0.2);
+        color: #00b894;
+        border-radius: 3px;
+    }
+    .version-preview {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .version-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .bulk-actions {
+        display: none;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .bulk-actions.visible {
+        display: flex;
+    }
+    .version-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .version-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .version-header h3 {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ prompt.name }}</h1>
+    <a href="/prompts" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div class="prompt-meta">
+        <div class="meta-item">
+            <span class="meta-label">Slug</span>
+            <span class="meta-value mono">{{ prompt.slug }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Default</span>
+            <span class="meta-value">
+                {% if prompt.is_default %}
+                <span class="badge badge-success">Yes</span>
+                {% else %}
+                <span class="badge badge-secondary">No</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Current Version</span>
+            <span class="meta-value">
+                {% if current_version %}
+                <span class="version-badge">v{{ current_version.version }}</span>
+                {% else %}
+                <span class="badge badge-warning">No version</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Total Versions</span>
+            <span class="meta-value">{{ prompt.versions | length }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Created</span>
+            <span class="meta-value">{{ prompt.created_at.strftime('%Y-%m-%d %H:%M:%S') if prompt.created_at else '-' }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Updated</span>
+            <span class="meta-value">{{ prompt.updated_at.strftime('%Y-%m-%d %H:%M:%S') if prompt.updated_at else '-' }}</span>
+        </div>
+    </div>
+
+    {% if prompt.description %}
+    <div class="content-section">
+        <h3>Description</h3>
+        <p style="color: #a0a0a0;">{{ prompt.description }}</p>
+    </div>
+    {% endif %}
+
+    <div class="content-section">
+        <h3>Required Scopes</h3>
+        {% if prompt.required_scopes %}
+        <div class="scopes-list">
+            {% for scope in prompt.required_scopes %}
+            <span class="scope-badge">{{ scope }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No scopes required (used as fallback or default).</p>
+        {% endif %}
+    </div>
+
+    {% if current_version %}
+    <div class="content-section">
+        <h3>Current Prompt Content</h3>
+        <div class="content-box">{{ current_version.content }}</div>
+    </div>
+
+    {% if current_version.metadata_ and current_version.metadata_.keys()|list|length > 0 %}
+    <div class="content-section">
+        <h3>Version Metadata</h3>
+        <pre class="content-box" style="font-family: monospace; font-size: 0.85rem;">{{ current_version.metadata_ | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="action-buttons">
+        {% if user.can_write('prompts') %}
+        <a href="/prompts/{{ prompt.id }}/edit" class="btn btn-primary">Edit Prompt</a>
+        {% endif %}
+        {% if user.can_delete('prompts') and not prompt.is_default %}
+        <form method="post" action="/prompts/{{ prompt.id }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this prompt and all its versions?')">
+                Delete Prompt
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if prompt.versions | length > 0 %}
+<div class="admin-card version-history">
+    <div class="version-header">
+        <h3>Version History</h3>
+        {% if user.can_delete('prompts') %}
+        <label style="color: #a0a0a0; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="selectAllVersions" class="version-checkbox">
+            Select all
+        </label>
+        {% endif %}
+    </div>
+
+    {% if user.can_delete('prompts') %}
+    <div class="bulk-actions" id="versionBulkActions">
+        <span><span id="selectedVersionCount">0</span> selected</span>
+        <form method="post" action="/prompts/{{ prompt.id }}/versions/bulk-delete" id="versionBulkDeleteForm" style="display: inline;">
+            <input type="hidden" name="version_ids" id="versionIds">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected versions? The current version will be skipped.')">
+                Delete Selected
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="version-list">
+        {% for version in prompt.versions %}
+        <div class="version-item {% if version.is_current %}current{% endif %}">
+            {% if user.can_delete('prompts') and not version.is_current %}
+            <input type="checkbox" class="version-checkbox version-row-checkbox" data-id="{{ version.id }}">
+            {% elif user.can_delete('prompts') %}
+            <span style="width: 18px;"></span>
+            {% endif %}
+            <span class="version-number">v{{ version.version }}</span>
+            <span class="version-date">{{ version.created_at.strftime('%Y-%m-%d %H:%M:%S') if version.created_at else '-' }}</span>
+            <span class="version-preview">{{ version.content[:60] }}{% if version.content|length > 60 %}...{% endif %}</span>
+            <div class="version-actions">
+                {% if version.is_current %}
+                <span class="version-badge">Current</span>
+                {% else %}
+                    {% if user.can_write('prompts') %}
+                    <form method="post" action="/prompts/{{ prompt.id }}/version/{{ version.id }}/activate" style="display: inline;">
+                        <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Activate version {{ version.version }}?')">
+                            Activate
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if user.can_delete('prompts') %}
+                    <form method="post" action="/prompts/{{ prompt.id }}/version/{{ version.id }}/delete" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete version {{ version.version }}?')">
+                            Delete
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if user.can_delete('prompts') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllVersions');
+    const rowCheckboxes = document.querySelectorAll('.version-row-checkbox');
+    const bulkActions = document.getElementById('versionBulkActions');
+    const selectedCount = document.getElementById('selectedVersionCount');
+    const versionIds = document.getElementById('versionIds');
+
+    if (!selectAll || rowCheckboxes.length === 0) return;
+
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.version-row-checkbox:checked');
+        const count = checked.length;
+        selectedCount.textContent = count;
+        bulkActions.classList.toggle('visible', count > 0);
+        versionIds.value = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    }
+
+    selectAll.addEventListener('change', function() {
+        rowCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkActions();
+    });
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const allChecked = document.querySelectorAll('.version-row-checkbox:checked').length === rowCheckboxes.length;
+            selectAll.checked = allChecked;
+            updateBulkActions();
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

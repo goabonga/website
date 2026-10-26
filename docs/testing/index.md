@@ -20,3 +20,5 @@ one feature as it exists in the code.
    isolated context per scenario.
 4. [Diagnostics and failure artifacts](04-diagnostics.md) - console and
    page-error capture, screenshot, trace and HTML of failed scenarios.
+5. [Behave hooks](05-behave-hooks.md) - `context.page`, `context.base_url`
+   and clean skipping for `@browser` scenarios.

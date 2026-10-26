@@ -5,12 +5,28 @@
 
 Importing this package triggers tool registration via @ToolService.register."""
 
-from team.services.tools import create_task, http_request, memory_ops, skill_ops, team_status
+from team.services.tools import (
+    analytics_ops,
+    auth_ops,
+    billing_ops,
+    create_task,
+    http_request,
+    mailler_ops,
+    memory_ops,
+    service_call,
+    skill_ops,
+    team_status,
+)
 
 __all__ = [
+    "analytics_ops",
+    "auth_ops",
+    "billing_ops",
     "create_task",
     "http_request",
+    "mailler_ops",
     "memory_ops",
+    "service_call",
     "skill_ops",
     "team_status",
 ]

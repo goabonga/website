@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
-from billing.routes import checkout, health, plans
+from billing.routes import checkout, health, plans, usage
 from billing.routes.platform import customers, prices, products, saas, subscriptions
 
 settings = get_settings()
@@ -74,6 +74,7 @@ Multi-SaaS Stripe Billing Platform.
 
 - **Multi-SaaS support**: Manage billing for multiple SaaS applications
 - **Stripe integration**: Products, prices, customers, subscriptions
+- **Usage-based billing**: Track and report usage metrics
 - **Checkout sessions**: Hosted checkout flow
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
@@ -117,6 +118,9 @@ app.include_router(products.router)
 app.include_router(prices.router)
 app.include_router(customers.router)
 app.include_router(subscriptions.router)
+
+# Usage routes (internal VPN only)
+app.include_router(usage.router)
 
 # Public routes (no auth required)
 app.include_router(plans.router)

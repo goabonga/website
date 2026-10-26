@@ -44,6 +44,11 @@ from billing.schemas.subscription import (
     SubscriptionUpgradeRequest,
     SubscriptionUpgradeResponse,
 )
+from billing.schemas.usage import (
+    UsageBatchReport,
+    UsageEventResponse,
+    UsageReport,
+)
 
 __all__ = [
     "SaasAppCreate",
@@ -73,4 +78,7 @@ __all__ = [
     "PlansResponse",
     "CheckoutSessionCreate",
     "CheckoutSessionResponse",
+    "UsageBatchReport",
+    "UsageEventResponse",
+    "UsageReport",
 ]

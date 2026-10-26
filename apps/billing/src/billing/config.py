@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     default_currency: str = "usd"  # ISO 4217 code used when a price does not give one
     max_trial_period_days: int = 730  # Upper bound of a trial period given by a caller
     checkout_max_quantity: int = 1000  # Upper bound of the quantity of a checkout line item
+    usage_batch_max_events: int = 100  # Largest batch of usage events accepted in one call
     list_default_limit: int = 100  # Page size of the list endpoints
     list_max_limit: int = 1000  # Largest page size a caller can ask for
     # Refuse checkout and portal redirect URLs when the SaaS app lists no allowed prefix

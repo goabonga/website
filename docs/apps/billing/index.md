@@ -23,6 +23,7 @@ tested.
 | 2 | [Authentication](02-authentication.md) | JWT validation, introspection, token exchange, scopes |
 | 3 | [Data model](03-data-model.md) | SQLAlchemy models and Alembic migrations |
 | 4 | [Stripe service](04-stripe-service.md) | Stripe SDK wrapper enforcing `saas_id` metadata |
+| 5 | [SaaS applications](05-saas-apps.md) | Onboarding and management of tenants |
 
 ## Running the tests
 

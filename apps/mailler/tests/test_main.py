@@ -251,3 +251,12 @@ class TestCampaignsRoutes:
         from mailler.main import app
 
         assert app.url_path_for("list_campaigns") == "/api/v1/campaigns"
+
+
+class TestWebhooksRoutes:
+    """Webhooks router registration."""
+
+    def test_webhooks_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("brevo_webhook") == "/api/v1/webhooks/brevo"

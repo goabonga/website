@@ -27,6 +27,7 @@ documented on its own page.
 | [Email campaigns](12-campaigns.md) | Campaign lifecycle and worker tasks |
 | [Brevo delivery webhooks](13-webhooks.md) | Delivery events and signature checks |
 | [Inbound email processing](14-inbound.md) | IMAP polling, storage and webhook forwarding |
+| [Authorized clients](15-authorized-clients.md) | Registry of the applications, forced sender and provider |
 
 ## Running the tests
 

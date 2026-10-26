@@ -56,6 +56,10 @@ exposes the helpers the route features use to enforce the boundary:
 | `target_client_id(requested=None)` | Client a call acts on: the caller's own, or the one named by `requested` when the caller is an administrator (`403` otherwise) |
 | `require_client_id()` | Client of the caller, `403` when the token carries none |
 
+Besides having an identity, a regular client must be registered and active
+in the [client registry](15-authorized-clients.md); the check is made by the
+same dependencies, so every protected route is covered.
+
 ## Building blocks
 
 | Module | Role |

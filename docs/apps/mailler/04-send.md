@@ -20,17 +20,19 @@ Request body (`SendEmailRequest`):
 | `subject` | yes | 1 to 500 characters |
 | `html_content` | yes | HTML body |
 | `text_content` | no | Plain text body |
-| `provider` | yes | `brevo`, `sendgrid`, `ses` or `protonmail` |
-| `from_email`, `from_name` | no | Sender; default to `DEFAULT_FROM` and `DEFAULT_FROM_NAME`. When neither the request nor `DEFAULT_FROM` provides an address the request is refused with `422` |
-| `reply_to` | no | Reply-to address |
+| `provider` | no | `brevo`, `sendgrid`, `ses` or `protonmail`, among those the client may use; defaults to the provider of its record |
+| `from_email`, `from_name` | no | Sender; must be one of the identities of the client record and default to its default identity. Administrators without a record fall back to `DEFAULT_FROM` and `DEFAULT_FROM_NAME`; when no address can be determined the request is refused with `422` |
+| `reply_to` | no | Reply-to address; fixed by the record when it has one |
 | `metadata` | no | Free-form JSON stored with the email |
 
 The response is `{"id", "status": "queued", "message", "task_id"}`. The email
 row is created with status `pending`; for machine clients (client
 credentials) `user_id` is left empty and the OAuth client id (see
 [client identity](02-authentication.md)) is recorded as the owner of the email.
-The provider name is not checked at request time: an unknown or unconfigured
-provider makes the email fail in the worker.
+The sender and the provider are forced or validated from the
+[client registry](15-authorized-clients.md) (`403` when a requested value is
+not allowed). A provider that is allowed but not configured makes the email
+fail in the worker.
 
 ## Delivery task
 

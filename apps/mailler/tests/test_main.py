@@ -215,3 +215,12 @@ class TestTemplatesRoutes:
         from mailler.main import app
 
         assert app.url_path_for("list_templates") == "/api/v1/templates"
+
+
+class TestContactsRoutes:
+    """Contacts router registration."""
+
+    def test_contacts_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("list_contacts") == "/api/v1/contacts"

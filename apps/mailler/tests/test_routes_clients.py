@@ -24,6 +24,8 @@ def _record(**fields) -> AuthorizedClient:
         "allowed_senders": [],
         "allowed_providers": ["brevo"],
         "default_provider": "brevo",
+        "rate_limit_per_minute": None,
+        "daily_quota": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -195,3 +197,47 @@ class TestUpdateClient:
         registry.return_value = None
         response = await admin_client.put("/api/v1/clients/nope", json={"name": "x"})
         assert response.status_code == 404
+
+
+class TestClientLimits:
+    async def test_limits_can_be_set_at_registration(
+        self, admin_client: AsyncClient, mock_db_session
+    ):
+        mock_db_session.refresh = AsyncMock(side_effect=_refresh)
+        response = await admin_client.post(
+            "/api/v1/clients",
+            json={"client_id": "app-one", "rate_limit_per_minute": 30, "daily_quota": 5000},
+        )
+        assert response.status_code == 201
+        assert response.json()["rate_limit_per_minute"] == 30
+        assert response.json()["daily_quota"] == 5000
+        stored = mock_db_session.add.call_args[0][0]
+        assert (stored.rate_limit_per_minute, stored.daily_quota) == (30, 5000)
+
+    async def test_clients_are_unlimited_by_default(
+        self, admin_client: AsyncClient, mock_db_session
+    ):
+        mock_db_session.refresh = AsyncMock(side_effect=_refresh)
+        response = await admin_client.post("/api/v1/clients", json={"client_id": "app-one"})
+        assert response.json()["rate_limit_per_minute"] is None
+        assert response.json()["daily_quota"] is None
+
+    async def test_limits_must_be_positive(self, admin_client: AsyncClient):
+        for body in (
+            {"client_id": "app", "rate_limit_per_minute": 0},
+            {"client_id": "app", "daily_quota": -5},
+        ):
+            assert (await admin_client.post("/api/v1/clients", json=body)).status_code == 422
+        assert (
+            await admin_client.put("/api/v1/clients/app", json={"daily_quota": 0})
+        ).status_code == 422
+
+    async def test_limits_can_be_changed_and_removed(self, admin_client: AsyncClient, registry):
+        record = _record(rate_limit_per_minute=10, daily_quota=100)
+        registry.return_value = record
+        response = await admin_client.put(
+            "/api/v1/clients/app-one", json={"rate_limit_per_minute": 20, "daily_quota": None}
+        )
+        assert response.status_code == 200
+        assert record.rate_limit_per_minute == 20
+        assert record.daily_quota is None

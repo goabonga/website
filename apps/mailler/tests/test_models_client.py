@@ -3,7 +3,7 @@
 
 """Tests for the AuthorizedClient model."""
 
-from mailler.models import AuthorizedClient, Base
+from mailler.models import AuthorizedClient, Base, Email
 
 
 class TestAuthorizedClientTable:
@@ -26,6 +26,8 @@ class TestAuthorizedClientTable:
             "allowed_senders",
             "allowed_providers",
             "default_provider",
+            "rate_limit_per_minute",
+            "daily_quota",
         ):
             assert name in columns
 
@@ -37,3 +39,17 @@ class TestAuthorizedClientTable:
     def test_repr(self):
         record = AuthorizedClient(client_id="app-one", is_active=False)
         assert repr(record) == "<AuthorizedClient(client_id=app-one, active=False)>"
+
+    def test_limits_are_optional(self):
+        columns = AuthorizedClient.__table__.columns
+        assert columns["rate_limit_per_minute"].nullable is True
+        assert columns["daily_quota"].nullable is True
+
+
+class TestEmailLimitIndex:
+    def test_recent_emails_of_a_client_are_indexed(self):
+        indexes = {
+            index.name: [column.name for column in index.columns]
+            for index in Email.__table__.indexes
+        }
+        assert indexes["ix_emails_client_id_created_at"] == ["client_id", "created_at"]

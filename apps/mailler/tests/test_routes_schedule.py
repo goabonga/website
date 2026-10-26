@@ -3,6 +3,8 @@
 
 """Tests for POST /api/v1/schedule route."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from httpx import AsyncClient
 
@@ -126,4 +128,25 @@ class TestScheduleUsesTheClientRecord:
             "/api/v1/schedule", json={**self._BODY, "provider": "sendgrid"}
         )
         assert response.status_code == 403
+        mock_db_session.add.assert_not_called()
+
+
+class TestScheduleIsLimited:
+    async def test_scheduled_emails_count_against_the_limits(
+        self, auth_client: AsyncClient, mock_db_session, client_record
+    ):
+        client_record.daily_quota = 10
+        result = MagicMock()
+        result.scalar.return_value = 10
+        mock_db_session.execute = AsyncMock(return_value=result)
+        response = await auth_client.post(
+            "/api/v1/schedule",
+            json={
+                "to_email": "recipient@example.com",
+                "subject": "Scheduled",
+                "html_content": "<p>Hello</p>",
+                "scheduled_at": "2026-06-01T10:00:00Z",
+            },
+        )
+        assert response.status_code == 429
         mock_db_session.add.assert_not_called()

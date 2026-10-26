@@ -109,6 +109,21 @@ class TestSettingsDefaults:
         assert s.conversation_cache_ttl == 1800
         assert s.conversation_sync_interval == 30
 
+    def test_openai_and_rag_defaults(self, monkeypatch):
+        """Embeddings use text-embedding-3-small with a 0.7 similarity threshold."""
+        for name in (
+            "OPENAI_API_KEY",
+            "RAG_EMBEDDING_MODEL",
+            "RAG_SIMILARITY_THRESHOLD",
+            "RAG_MAX_RESULTS",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.openai_api_key == ""
+        assert s.rag_embedding_model == "text-embedding-3-small"
+        assert s.rag_similarity_threshold == 0.7
+        assert s.rag_max_results == 5
+
 
 class TestGetCredential:
     """Tests for get_credential."""
@@ -137,3 +152,19 @@ class TestGetCredential:
         monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
         monkeypatch.setenv("MISSING_SECRET", "from-env-var")
         assert get_credential("MISSING_SECRET", default="fallback") == "from-env-var"
+
+    def test_openai_api_key_comes_from_credentials(self, tmp_path, monkeypatch):
+        """The OpenAI key is read from the systemd credentials directory first."""
+        (tmp_path / "OPENAI_API_KEY").write_text("sk-from-file\n")
+        monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-from-env")
+        import importlib
+
+        import backend.config
+
+        try:
+            reloaded = importlib.reload(backend.config)
+            assert reloaded.settings.openai_api_key == "sk-from-file"
+        finally:
+            monkeypatch.undo()
+            importlib.reload(backend.config)

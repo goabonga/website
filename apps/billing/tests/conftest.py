@@ -55,6 +55,14 @@ def mock_db_session():
                     setattr(obj, attr, default)
             except Exception:
                 pass
+        # Handle status with enum default for usage events
+        try:
+            if getattr(obj, "status", "SKIP") is None:
+                from billing.models.usage_event import UsageEventStatus
+
+                obj.status = UsageEventStatus.PENDING
+        except Exception:
+            pass
 
     session.refresh = AsyncMock(side_effect=_mock_refresh)
     return session

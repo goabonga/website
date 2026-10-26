@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # Database
+    database_url: str = "postgresql://localhost:5432/vpn_portal"
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
+    database_echo: bool = False
+
     # OAuth2 / OIDC configuration
     oauth2_issuer: str = ""  # OIDC issuer URL (e.g., https://auth.example.com)
     oauth2_swagger_client_id: str = ""  # OAuth2 PKCE client ID for Swagger UI

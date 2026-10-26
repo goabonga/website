@@ -17,6 +17,7 @@ feature, in the order they were introduced.
 4. [Admin dashboard and chat history](04-dashboard.md)
 5. [VPN session management](05-vpn.md)
 6. [Billing administration](06-billing.md)
+   - [SaaS client bindings](06a-billing-client-bindings.md)
 
 ## Running locally
 

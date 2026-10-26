@@ -44,14 +44,16 @@ It also ships 11 Jinja2 template(s) under `internal/templates/` (packaged with t
 | POST | /billing/saas/{saas_id}/subscriptions/{subscription_id}/sync | `billing:write` | Sync a subscription from Stripe. |
 
 All billing pages request the whole `billing` resource (`read`, `write`, `delete`) plus `billing:admin` in one
-exchange. A `require_billing_admin` guard is declared in the module for `billing:admin`-only
-pages but no route uses it yet.
+exchange. The `require_billing_admin` guard, for `billing:admin`-only pages, also asks for that scope
+in the exchange (it is not one of the `read`, `write` and `delete` scopes of the resource); only the
+[client binding forms](06a-billing-client-bindings.md) use it.
 
 ## Pages
 
 - **Dashboard** (`/billing`): the list of SaaS applications.
 - **SaaS application** (`/billing/saas/new`, `/billing/saas/{id}` and `/edit`): create,
-  inspect (products and customers) and update an application.
+  inspect (products and customers) and update an application. Administrators also manage the
+  OAuth clients bound to the application there, see [SaaS client bindings](06a-billing-client-bindings.md).
 - **Products and prices** (`/billing/saas/{id}/products...`): list, create and edit products
   (with feature lists, limits and trial settings that are stored as product metadata), add
   prices and toggle a price between active and inactive.

@@ -2065,17 +2065,27 @@ name = "knowledge"
 version = "0.0.0"
 source = { editable = "apps/knowledge" }
 dependencies = [
+    { name = "alembic" },
+    { name = "asyncpg" },
     { name = "fastapi" },
     { name = "gunicorn" },
+    { name = "pgvector" },
+    { name = "psycopg2-binary" },
     { name = "pydantic-settings" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", specifier = ">=1.14.0" },
+    { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "gunicorn", specifier = ">=21.2.0" },
+    { name = "pgvector", specifier = ">=0.3.6" },
+    { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "pydantic-settings", specifier = ">=2.6.0" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
 

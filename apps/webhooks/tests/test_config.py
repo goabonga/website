@@ -219,3 +219,32 @@ class TestStripeSettings:
         assert s.stripe_internal_api_url == "http://stripe-api:8000"
         assert s.stripe_internal_api_socket == "/run/stripe-internal.sock"
         assert s.stripe_internal_api_token == "stripe-token"
+
+
+class TestSendGridSettings:
+    """Tests for the SendGrid settings."""
+
+    def test_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.sendgrid_enabled is False
+        assert s.sendgrid_webhook_verification_key == ""
+        assert s.sendgrid_internal_api_url == ""
+        assert s.sendgrid_internal_api_socket == ""
+        assert s.sendgrid_internal_api_token == ""
+
+    def test_env_override(self):
+        env = {
+            "SENDGRID_ENABLED": "true",
+            "SENDGRID_INTERNAL_API_URL": "http://sendgrid-api:8000",
+            "SENDGRID_INTERNAL_API_SOCKET": "/run/sendgrid-internal.sock",
+            "SENDGRID_INTERNAL_API_TOKEN": "sendgrid-token",
+            "SENDGRID_WEBHOOK_VERIFICATION_KEY": "sendgrid-secret",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.sendgrid_enabled is True
+        assert s.sendgrid_internal_api_url == "http://sendgrid-api:8000"
+        assert s.sendgrid_internal_api_socket == "/run/sendgrid-internal.sock"
+        assert s.sendgrid_internal_api_token == "sendgrid-token"
+        assert s.sendgrid_webhook_verification_key == "sendgrid-secret"

@@ -28,6 +28,7 @@ feature, in the order they were introduced.
 12. [Email campaigns](12-email-campaigns.md)
 13. [Knowledge namespaces](13-namespaces.md)
 14. [System prompts](14-prompts.md)
+15. [Knowledge base](15-knowledge.md)
 
 ## Running locally
 
@@ -68,3 +69,28 @@ scenario file per feature, in-process unless it is tagged `@browser`: the applic
 an ASGI transport, the database is a throw-away SQLite file and every outbound
 service client is replaced by a mock. No PostgreSQL, Redis or network access is
 needed.
+
+## Deployment
+
+The application is deployed from this repository by the `goabonga.website` Ansible collection, as two processes that share
+the same code and the same system user:
+
+| Process | Entry point | Notes |
+| --- | --- | --- |
+| API | `gunicorn internal.main:app` (Uvicorn worker, one worker) | served over a Unix socket behind nginx; `GET /health` is the probe |
+| Celery worker | `celery -A internal.celery:celery_app worker -Q internal` | concurrency 2; processes knowledge generation and validation |
+
+Notes for operators:
+
+- The service user must belong to the groups of the services it reaches over Unix sockets (mailler, billing and team), because
+  `MAILLER_SOCKET_PATH`, `BILLING_SOCKET_PATH` and `TEAM_SOCKET_PATH` point at their runtime sockets.
+- The database is the platform's shared PostgreSQL database (peer authentication over the Unix socket, with the pgvector
+  extension); the worker needs `DATABASE_URL` too. Redis serves the introspection and token-exchange caches and, unless overridden,
+  the Celery broker and result backend.
+- Secrets (`SECRET_KEY`, `OAUTH2_CLIENT_SECRET`, `OPENAI_API_KEY`) are delivered as systemd credentials and read through
+  `internal.config.get_credential`; everything else is plain environment configuration. Set `COOKIE_SECURE=true` behind HTTPS.
+- The dashboard must only be reachable from the operators' private network: access control belongs in nginx, the application
+  only checks scopes.
+- The existing inventory entries (`internal` and `internal_worker`) still reference the previous layout of the source
+  repository (`app.main:app`, `app.celery:celery_app`); they must point at the import paths above when they are switched to
+  this package. There is no beat process for this application.

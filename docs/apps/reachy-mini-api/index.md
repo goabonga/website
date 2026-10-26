@@ -19,3 +19,5 @@ documents one feature as it exists in the code.
    the issuer JWKS and scope checks.
 4. [Reports and notifications](04-reports.md) - daily report, quick update
    and notification endpoints.
+5. [Server and services status](05-status.md) - host information and the
+   list of monitored services.

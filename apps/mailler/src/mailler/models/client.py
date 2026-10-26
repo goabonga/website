@@ -41,6 +41,10 @@ class AuthorizedClient(Base):
     allowed_providers: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     default_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    # Sending limits (None = unlimited): emails accepted per minute and per UTC day
+    rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    daily_quota: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

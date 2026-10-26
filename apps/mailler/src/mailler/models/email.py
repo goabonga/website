@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,6 +29,8 @@ class Email(Base):
     """Individual email record."""
 
     __tablename__ = "emails"
+    # The limits of the clients count their recent emails
+    __table_args__ = (Index("ix_emails_client_id_created_at", "client_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 

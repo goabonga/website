@@ -21,6 +21,7 @@ from sqlalchemy.pool import StaticPool
 from team.database import get_db
 from team.main import app
 from team.models import Base
+from team.services import ToolService
 
 
 class SqliteUUID(TypeDecorator):
@@ -81,6 +82,8 @@ def before_scenario(context, scenario) -> None:
     _patch_authentication(context)
     context.get_client = lambda: get_client(context)
     context.run = lambda func, *args: get_client(context).portal.call(func, *args)
+    context.tool_service = None
+    context.run_tool = lambda name, params, **extra: run_tool(context, name, params, **extra)
 
 
 def _patch_authentication(context) -> None:
@@ -102,6 +105,30 @@ def _patch_authentication(context) -> None:
         patcher = patch(f"team.auth.dependencies.{name}", fake)
         patcher.start()
         context.add_cleanup(patcher.stop)
+
+
+def run_tool(context, name: str, params: dict, **extra) -> dict:
+    """Execute a registered tool as the agent of the scenario, in a session of its own.
+
+    The tool service of the scenario (``context.tool_service``) can be prepared by a step,
+    for example with an HTTP transport that plays an external API.
+    """
+    if context.tool_service is None:
+        context.tool_service = ToolService()
+
+    async def execute() -> dict:
+        async with context.session_factory() as session:
+            tool_context = {
+                "db": session,
+                "team_id": uuid.UUID(context.vars["team_id"]),
+                "agent_id": uuid.UUID(context.vars["agent_id"]),
+                **extra,
+            }
+            result = await context.tool_service.execute_tool(name, params, tool_context)
+            await session.commit()
+            return result
+
+    return context.run(execute)
 
 
 def get_client(context) -> TestClient:

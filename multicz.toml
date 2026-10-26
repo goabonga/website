@@ -291,3 +291,15 @@ bump_files = [
 ]
 changelog = "apps/auth/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.ansible]
+tag_format = "ansible-v{version}"
+paths = [
+    "ansible/roles/**",
+    "ansible/meta/**",
+    "ansible/galaxy.yml",
+]
+bump_files = [
+    { file = "ansible/galaxy.yml", key = "version" },
+]
+changelog = "ansible/CHANGELOG.md"

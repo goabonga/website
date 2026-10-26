@@ -216,3 +216,19 @@ class TestSendGridRegistration:
             # Registered but not wired to an internal API yet: 503, not 404.
             response = await _post(app, "/webhooks/sendgrid")
         assert response.status_code == 503
+
+
+class TestGitHubRegistration:
+    """Tests for conditional registration of the GitHub route."""
+
+    async def test_route_not_registered_by_default(self):
+        from webhooks.main import app
+
+        response = await _post(app, "/webhooks/github")
+        assert response.status_code == 404
+
+    async def test_route_registered_when_enabled(self):
+        with _reloaded_app({"GITHUB_ENABLED": "true"}) as app:
+            # Registered but not wired to an internal API yet: 503, not 404.
+            response = await _post(app, "/webhooks/github")
+        assert response.status_code == 503

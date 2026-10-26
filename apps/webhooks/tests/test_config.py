@@ -248,3 +248,32 @@ class TestSendGridSettings:
         assert s.sendgrid_internal_api_socket == "/run/sendgrid-internal.sock"
         assert s.sendgrid_internal_api_token == "sendgrid-token"
         assert s.sendgrid_webhook_verification_key == "sendgrid-secret"
+
+
+class TestGitHubSettings:
+    """Tests for the GitHub settings."""
+
+    def test_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.github_enabled is False
+        assert s.github_webhook_secret == ""
+        assert s.github_internal_api_url == ""
+        assert s.github_internal_api_socket == ""
+        assert s.github_internal_api_token == ""
+
+    def test_env_override(self):
+        env = {
+            "GITHUB_ENABLED": "true",
+            "GITHUB_INTERNAL_API_URL": "http://github-api:8000",
+            "GITHUB_INTERNAL_API_SOCKET": "/run/github-internal.sock",
+            "GITHUB_INTERNAL_API_TOKEN": "github-token",
+            "GITHUB_WEBHOOK_SECRET": "github-secret",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.github_enabled is True
+        assert s.github_internal_api_url == "http://github-api:8000"
+        assert s.github_internal_api_socket == "/run/github-internal.sock"
+        assert s.github_internal_api_token == "github-token"
+        assert s.github_webhook_secret == "github-secret"

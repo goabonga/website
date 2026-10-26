@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create User{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Create New User</h1>
+    <a href="/admin/users" class="btn btn-secondary">
+        <span>&larr;</span> Back to Users
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>User Details</h2>
+
+    <form method="post" action="/admin/users/create" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="email">Email Address *</label>
+            <input type="email" name="email" id="email" class="form-control" required style="max-width: 400px;">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" name="password" id="password" class="form-control" required minlength="8" style="max-width: 400px;">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Minimum 8 characters.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" name="name" id="name" class="form-control" style="max-width: 400px;">
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="is_verified" value="true" style="width: 18px; height: 18px;">
+                <span>Mark email as verified</span>
+            </label>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Skip email verification for this user.
+            </p>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#128100;</span> Create User
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Notes</h2>
+    <ul style="margin-top: 1rem; line-height: 1.8; color: #a0a0a0;">
+        <li>The user will be created with an active account</li>
+        <li>Password is hashed with Argon2id before storage</li>
+        <li>If email is not verified, user will need to verify it on first login</li>
+        <li>Users can set up MFA after logging in</li>
+    </ul>
+</div>
+{% endblock %}

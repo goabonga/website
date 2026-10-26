@@ -1,0 +1,635 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Tenant {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Tenant Details</h1>
+    <a href="/admin/organisations" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenants
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Tenant Information</h2>
+
+    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Display Name</div>
+        <div>
+            {{ tenant.display_name }}
+            {% if tenant.is_platform %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">Platform</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Slug</div>
+        <div class="mono" style="word-break: break-all;">{{ tenant.slug }}</div>
+
+        <div class="text-muted">Custom Domain</div>
+        <div class="mono">{{ tenant.custom_domain or '-' }}</div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if tenant.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Access URLs</div>
+        <div>
+            {% if tenant.is_platform %}
+            {% if tenant_base_domain %}
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem;">
+                <span class="text-muted">Main domain:</span> {{ tenant_base_domain }}
+            </div>
+            {% endif %}
+            {% else %}
+            {% if tenant_base_domain %}
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem;">
+                <span class="text-muted">Subdomain:</span> {{ tenant.slug }}.{{ tenant_base_domain }}
+            </div>
+            {% endif %}
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem;">
+                <span class="text-muted">Path:</span> /t/{{ tenant.slug }}/...
+            </div>
+            {% if tenant.custom_domain %}
+            <div class="mono" style="font-size: 0.85rem;">
+                <span class="text-muted">Custom:</span> {{ tenant.custom_domain }}
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ tenant.created_at[:19] if tenant.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Updated</div>
+        <div>{{ tenant.updated_at[:19] if tenant.updated_at else 'N/A' }}</div>
+    </div>
+</div>
+
+<!-- Members Section -->
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Members ({{ members|length }})</h2>
+        {% if permissions['org:write'] %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('add-member-form').style.display = document.getElementById('add-member-form').style.display === 'none' ? 'block' : 'none'">
+            <span>+</span> Add Member
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Add Member Form (hidden by default) -->
+    {% if permissions['org:write'] %}
+    <div id="add-member-form" style="display: none; background: #1a1a2e; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        <form method="post" action="/admin/organisations/{{ tenant.id }}/members/add" style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="member_email" style="font-size: 0.8rem;">User Email</label>
+                <input type="email" id="member_email" name="email" required placeholder="user@example.com" class="form-control" style="width: 250px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="member_role" style="font-size: 0.8rem;">Role</label>
+                <select id="member_role" name="role" class="form-control">
+                    {% for role in tenant_roles %}
+                    <option value="{{ role.name }}" {% if role.name == 'member' %}selected{% endif %}>{{ role.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success btn-sm">Add</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('add-member-form').style.display = 'none'">Cancel</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if members %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>
+                    <div>
+                        <a href="/admin/users/{{ member.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                            {{ member.user_name or member.user_email or 'Unknown' }}
+                        </a>
+                    </div>
+                    {% if member.user_email and member.user_name %}
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ member.user_email }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if member.role == 'owner' %}
+                    <span class="badge badge-warning">{{ member.role_display_name or 'Owner' }}</span>
+                    {% elif member.role == 'admin' %}
+                    <span class="badge badge-info">{{ member.role_display_name or 'Admin' }}</span>
+                    {% else %}
+                    <span class="badge badge-secondary" style="background: #0f3460;">{{ member.role_display_name or 'Member' }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ member.joined_at[:10] if member.joined_at else member.created_at[:10] if member.created_at else 'N/A' }}</td>
+                <td>
+                    {% if permissions['org:write'] %}
+                    <div style="display: flex; gap: 0.25rem;">
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/members/{{ member.id }}/update-role" style="display: flex; gap: 0.25rem;">
+                            <select name="role" class="form-control" style="padding: 0.25rem; font-size: 0.8rem;">
+                                {% for role in tenant_roles %}
+                                <option value="{{ role.name }}" {% if role.name == member.role %}selected{% endif %}>{{ role.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Update</button>
+                        </form>
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/members/{{ member.id }}/remove" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Remove this member?')">Remove</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem;">
+        <p style="font-size: 1.5rem;">&#128100;</p>
+        <p class="text-muted">No members yet. Add users to this tenant.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Roles Section -->
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Roles ({{ tenant_roles|length }})</h2>
+        {% if permissions['org:write'] %}
+        <a href="/admin/organisations/{{ tenant.id }}/roles/create" class="btn btn-primary btn-sm">
+            <span>+</span> Create Role
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+        Define custom roles with specific permissions for organization members.
+    </p>
+
+    {% if tenant_roles %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Scopes</th>
+                <th>Members</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in tenant_roles %}
+            <tr>
+                <td>
+                    <div>
+                        <strong>{{ role.display_name }}</strong>
+                        {% if role.is_system %}
+                        <span class="badge badge-secondary" style="margin-left: 0.25rem; font-size: 0.65rem;">System</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted mono" style="font-size: 0.75rem;">{{ role.name }}</div>
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem; max-width: 200px;">
+                    {{ role.description or '-' }}
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 250px;">
+                        {% for scope in role.scopes[:3] %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">{{ scope }}</span>
+                        {% endfor %}
+                        {% if role.scopes|length > 3 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ role.scopes|length - 3 }} more</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ role_member_counts.get(role.id|string, 0) }}</span>
+                </td>
+                <td>
+                    {% if permissions['org:write'] %}
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/organisations/{{ tenant.id }}/roles/{{ role.id }}/edit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Edit</a>
+                        {% if not role.is_system %}
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/roles/{{ role.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Delete this role? Members with this role will need to be reassigned.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem;">
+        <p style="font-size: 1.5rem;">&#128101;</p>
+        <p class="text-muted">No roles defined. Create roles to manage member permissions.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Identity Providers Section -->
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Identity Providers ({{ identity_providers|length }})</h2>
+        {% if permissions['org:write'] %}
+        <a href="/admin/organisations/{{ tenant.id }}/idp/create" class="btn btn-primary btn-sm">
+            <span>+</span> Add IdP
+        </a>
+        {% endif %}
+    </div>
+
+    {% if identity_providers %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Client ID</th>
+                <th>Users</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for idp in identity_providers %}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        {% if idp.icon_url %}
+                        <img src="{{ idp.icon_url }}" alt="" style="width: 20px; height: 20px; border-radius: 2px;">
+                        {% endif %}
+                        <span>{{ idp.name }}</span>
+                        {% if idp.is_default %}
+                        <span class="badge badge-info" style="font-size: 0.65rem;">Default</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if idp.provider_type == 'google' %}
+                    <span class="badge badge-success">Google</span>
+                    {% elif idp.provider_type == 'github' %}
+                    <span class="badge badge-secondary" style="background: #333;">GitHub</span>
+                    {% elif idp.provider_type == 'microsoft' %}
+                    <span class="badge badge-info">Microsoft</span>
+                    {% elif idp.provider_type == 'saml' %}
+                    <span class="badge badge-warning">SAML</span>
+                    {% else %}
+                    <span class="badge badge-secondary" style="background: #0f3460;">OIDC</span>
+                    {% endif %}
+                </td>
+                <td class="mono" style="font-size: 0.8rem;">{{ idp.client_id[:25] }}{% if idp.client_id|length > 25 %}...{% endif %}</td>
+                <td>
+                    <span class="badge badge-info">{{ idp.federated_count }}</span>
+                </td>
+                <td>
+                    {% if idp.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if permissions['org:write'] %}
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/organisations/{{ tenant.id }}/idp/{{ idp.id }}/edit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Edit</a>
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/idp/{{ idp.id }}/toggle" style="display: inline;">
+                            {% if idp.is_active %}
+                            <button type="submit" class="btn btn-warning btn-sm" style="padding: 0.25rem 0.5rem;">Disable</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-success btn-sm" style="padding: 0.25rem 0.5rem;">Enable</button>
+                            {% endif %}
+                        </form>
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/idp/{{ idp.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Delete this identity provider? Users linked to it will need to re-link their accounts.')">Delete</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem;">
+        <p style="font-size: 1.5rem;">&#128273;</p>
+        <p class="text-muted">No identity providers configured. Add an IdP to enable SSO for this tenant.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Trust Policy Section -->
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Trust Policy</h2>
+        <div>
+            {% if trust_mode == 'none' %}
+            <span class="badge badge-secondary" style="background: #0f3460;">Strict</span>
+            {% elif trust_mode == 'members_only' %}
+            <span class="badge badge-info">Members Only</span>
+            {% elif trust_mode == 'specific' %}
+            <span class="badge badge-warning">Specific Tenants</span>
+            {% elif trust_mode == 'all' %}
+            <span class="badge badge-success">Open</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+        Control who can sign in to this organization.
+    </p>
+
+    {% if permissions['org:write'] %}
+    <form method="post" action="/admin/organisations/{{ tenant.id }}/trust/mode">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: #1a1a2e; border-radius: 8px; border: 2px solid {% if trust_mode == 'none' %}#74b9ff{% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="none" {% if trust_mode == 'none' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Strict (None)</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only users who registered on this tenant can sign in. Most restrictive.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: #1a1a2e; border-radius: 8px; border: 2px solid {% if trust_mode == 'members_only' %}#74b9ff{% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="members_only" {% if trust_mode == 'members_only' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Members Only</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only tenant members can sign in, regardless of registration origin.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: #1a1a2e; border-radius: 8px; border: 2px solid {% if trust_mode == 'specific' %}#74b9ff{% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="specific" {% if trust_mode == 'specific' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Specific Tenants</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only users from specific trusted tenants (or members) can sign in.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: #1a1a2e; border-radius: 8px; border: 2px solid {% if trust_mode == 'all' %}#74b9ff{% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="all" {% if trust_mode == 'all' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Open (All)</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Any authenticated user can sign in. Least restrictive.
+                    </p>
+                </div>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm">Update Trust Mode</button>
+    </form>
+    {% else %}
+    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 0.75rem;">
+        <div class="text-muted">Current Mode</div>
+        <div>
+            {% if trust_mode == 'none' %}Strict (None) — Only registered users
+            {% elif trust_mode == 'members_only' %}Members Only
+            {% elif trust_mode == 'specific' %}Specific Tenants
+            {% elif trust_mode == 'all' %}Open (All)
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Trusted Sources (visible when mode is 'specific') -->
+    {% if trust_mode == 'specific' %}
+    <div style="border-top: 1px solid #0f3460; margin-top: 1.5rem; padding-top: 1.5rem;">
+        <h3 style="font-size: 1rem; margin-bottom: 1rem;">Trusted Sources</h3>
+
+        {% if trusted_sources %}
+        <table class="table" style="margin-bottom: 1.5rem;">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Description</th>
+                    {% if permissions['org:write'] %}
+                    <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for source in trusted_sources %}
+                <tr>
+                    <td>
+                        {% if source.is_platform %}
+                        <span class="badge badge-success">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">Main domain</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">{{ source.trusted_tenant_slug }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size: 0.85rem;">{{ source.description or '-' }}</td>
+                    {% if permissions['org:write'] %}
+                    <td>
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/trust/remove-source/{{ source.id }}" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Remove this trusted source?')">Remove</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding: 1.5rem; background: #1a1a2e; border-radius: 8px; text-align: center; margin-bottom: 1.5rem;">
+            <p class="text-muted" style="margin: 0;">No trusted sources configured.</p>
+        </div>
+        {% endif %}
+
+        {% if permissions['org:write'] %}
+        <!-- Add Trusted Source -->
+        <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Add Trusted Source</h4>
+            {% if available_tenants %}
+            <form method="post" action="/admin/organisations/{{ tenant.id }}/trust/add-source" style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.8rem;">Organization</label>
+                    <select name="trusted_tenant_id" required class="form-control">
+                        <option value="">-- Select --</option>
+                        {% for t in available_tenants %}
+                        <option value="{{ t.id }}">
+                            {% if t.is_platform %}{{ t.display_name }} (Platform){% else %}{{ t.display_name }} ({{ t.slug }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.8rem;">Description (optional)</label>
+                    <input type="text" name="description" placeholder="e.g., Partner org" maxlength="255" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-success btn-sm">Add</button>
+            </form>
+            {% else %}
+            <p class="text-muted" style="font-size: 0.85rem; margin: 0;">All available organizations are already trusted.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Branding & Templates Section -->
+<div class="admin-card">
+    <h2>Customization</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">Customize the look and feel for this tenant.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <a href="/admin/organisations/{{ tenant.id }}/branding" style="text-decoration: none; color: inherit;">
+            <div style="background: #1a1a2e; border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#74b9ff';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#127912;</span>
+                    <strong>Branding</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Colors, logos, fonts, and custom CSS/JS</p>
+            </div>
+        </a>
+
+        <a href="/admin/organisations/{{ tenant.id }}/templates" style="text-decoration: none; color: inherit;">
+            <div style="background: #1a1a2e; border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#74b9ff';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128196;</span>
+                    <strong>Templates</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Custom login, register, and consent pages</p>
+            </div>
+        </a>
+
+        <a href="/admin/organisations/{{ tenant.id }}/profile-fields" style="text-decoration: none; color: inherit;">
+            <div style="background: #1a1a2e; border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#74b9ff';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128100;</span>
+                    <strong>Profile Fields</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Configure which fields are visible on the profile settings page</p>
+            </div>
+        </a>
+
+        <a href="/admin/organisations/{{ tenant.id }}/registration-fields" style="text-decoration: none; color: inherit;">
+            <div style="background: #1a1a2e; border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#74b9ff';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128221;</span>
+                    <strong>Registration Fields</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Configure which fields are visible on the registration form</p>
+            </div>
+        </a>
+
+        <a href="/admin/organisations/{{ tenant.id }}/allowed-scopes" style="text-decoration: none; color: inherit;">
+            <div style="background: #1a1a2e; border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#74b9ff';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128272;</span>
+                    <strong>Allowed Scopes</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Configure which scopes this tenant can use for custom roles</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Email Sender Section -->
+<div class="admin-card">
+    <h2>Email Sender</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">Configure the sender address and name used for emails sent by this tenant.</p>
+
+    {% set sender_address = tenant.settings.email_sender_address if tenant.settings else None %}
+    {% set sender_name = tenant.settings.email_sender_name if tenant.settings else None %}
+
+    {% if permissions['org:write'] %}
+    <form method="post" action="/admin/organisations/{{ tenant.id }}/email-sender" style="max-width: 500px;">
+        <div class="form-group">
+            <label for="email_sender_address">Sender Email Address</label>
+            <input type="email" id="email_sender_address" name="email_sender_address"
+                   value="{{ sender_address or '' }}" placeholder="noreply@yourdomain.com"
+                   class="form-control">
+            <small class="text-muted">Leave empty to use the global default</small>
+        </div>
+
+        <div class="form-group">
+            <label for="email_sender_name">Sender Display Name</label>
+            <input type="text" id="email_sender_name" name="email_sender_name"
+                   value="{{ sender_name or '' }}" placeholder="My App"
+                   class="form-control">
+            <small class="text-muted">The name shown in the "From" field</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">Save Sender</button>
+    </form>
+    {% else %}
+    <div style="margin-top: 0.5rem;">
+        <p><strong>Address:</strong> {{ sender_address or '(global default)' }}</p>
+        <p><strong>Name:</strong> {{ sender_name or '(none)' }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Actions Section -->
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+        {% if permissions['org:write'] %}
+        <a href="/admin/organisations/{{ tenant.id }}/edit" class="btn btn-primary">
+            <span>&#9998;</span> Edit Tenant
+        </a>
+
+        {% if tenant.is_active %}
+        <form method="post" action="/admin/organisations/{{ tenant.id }}/disable">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Disable this tenant? Users will not be able to authenticate via this tenant.')">
+                <span>&#10005;</span> Disable Tenant
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/organisations/{{ tenant.id }}/enable">
+            <button type="submit" class="btn btn-success">
+                <span>&#10003;</span> Enable Tenant
+            </button>
+        </form>
+        {% endif %}
+        {% endif %}
+
+        {% if permissions['org:delete'] %}
+        <form method="post" action="/admin/organisations/{{ tenant.id }}/delete">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this tenant? This will remove all members and identity providers. This cannot be undone.')">
+                <span>&#128465;</span> Delete Tenant
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

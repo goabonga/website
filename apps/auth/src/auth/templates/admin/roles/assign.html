@@ -1,0 +1,116 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Assign User to {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Assign User to Role</h1>
+    <a href="/admin/roles/{{ role.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Role
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Role: {{ role.name }}</h2>
+    <p class="text-muted" style="margin-top: 0.5rem;">{{ role.description or 'No description' }}</p>
+
+    <div style="margin-top: 1rem;">
+        <strong>Scopes:</strong>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.5rem;">
+            {% for scope in role.scopes %}
+            <span class="badge {% if scope == '*' %}badge-danger{% elif scope.endswith(':*') %}badge-warning{% else %}badge-info{% endif %}">{{ scope }}</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Select User</h2>
+
+    <form method="get" action="/admin/roles/{{ role.id }}/assign" style="margin-top: 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search by email..." class="form-control" style="max-width: 300px;">
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        </div>
+    </form>
+
+    {% if users %}
+    <form method="post" action="/admin/roles/{{ role.id }}/assign">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Current Roles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <input type="radio" name="user_id" value="{{ user.id }}" {% if user.has_role %}disabled{% endif %} style="width: 18px; height: 18px;">
+                    </td>
+                    <td>
+                        {{ user.email or 'No email' }}
+                        {% if user.has_role %}
+                        <span class="badge badge-info" style="margin-left: 0.5rem;">Already has role</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-danger">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for r in user.roles %}
+                        <span class="badge badge-secondary" style="margin-right: 0.25rem;">{{ r }}</span>
+                        {% else %}
+                        <span class="text-muted">None</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 1.5rem;">
+            <div class="form-group">
+                <label for="expires_at">Expiration (optional)</label>
+                <input type="datetime-local" name="expires_at" id="expires_at" class="form-control" style="max-width: 250px;">
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Leave empty for no expiration.
+                </p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <span>&#128101;</span> Assign Role
+            </button>
+        </div>
+    </form>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/roles/{{ role.id }}/assign?page={{ page - 1 }}&search={{ search }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/roles/{{ role.id }}/assign?page={{ page + 1 }}&search={{ search }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p class="text-muted">{% if search %}No users found matching "{{ search }}".{% else %}Search for a user to assign this role.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

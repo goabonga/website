@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Session {{ session.id[:8] }}...{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Session Details</h1>
+    <a href="/admin/sessions" class="btn btn-secondary">
+        <span>&larr;</span> Back to Sessions
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Session Information</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Session ID</div>
+        <div class="mono">{{ session.id }}</div>
+
+        <div class="text-muted">User</div>
+        <div>
+            <a href="/admin/users/{{ session.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                {{ session.user_email or 'Unknown' }}
+            </a>
+            <br>
+            <span class="mono text-muted" style="font-size: 0.8rem;">{{ session.user_id }}</span>
+        </div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if session.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% elif session.revoked_at %}
+            <span class="badge badge-danger">Revoked</span>
+            <span class="text-muted" style="margin-left: 0.5rem;">on {{ session.revoked_at[:16] }}</span>
+            {% else %}
+            <span class="badge badge-warning">Expired</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Browser</div>
+        <div>{{ session.parsed_ua.browser }}</div>
+
+        <div class="text-muted">Operating System</div>
+        <div>{{ session.parsed_ua.os }}</div>
+
+        <div class="text-muted">IP Address</div>
+        <div class="mono">{{ session.ip_address or 'N/A' }}</div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ session.created_at[:19] if session.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Expires</div>
+        <div>{{ session.expires_at[:19] if session.expires_at else 'N/A' }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>User Agent</h2>
+    <pre style="background: #1a1a2e; padding: 1rem; border-radius: 8px; overflow-x: auto; margin-top: 1rem; white-space: pre-wrap; word-break: break-all;" class="mono text-muted">{{ session.user_agent or 'Not available' }}</pre>
+</div>
+
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        {% if permissions['sessions:revoke'] and session.is_active %}
+        <form method="post" action="/admin/sessions/{{ session.id }}/revoke">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Revoke this session? The user will be logged out immediately.')">
+                <span>&#10005;</span> Revoke Session
+            </button>
+        </form>
+        {% elif not session.is_active %}
+        <p class="text-muted">This session is no longer active.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

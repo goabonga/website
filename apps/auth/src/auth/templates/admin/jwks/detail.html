@@ -1,0 +1,89 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Key {{ key.kid[:16] }}...{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Key Details</h1>
+    <a href="/admin/jwks" class="btn btn-secondary">
+        <span>&larr;</span> Back to Keys
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Key Information</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Key ID (kid)</div>
+        <div class="mono">{{ key.kid }}</div>
+
+        <div class="text-muted">Key Type</div>
+        <div>{{ key.kty }}</div>
+
+        <div class="text-muted">Algorithm</div>
+        <div><span class="badge badge-info">{{ key.alg }}</span></div>
+
+        <div class="text-muted">Use</div>
+        <div>{{ key.use }}</div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if key.revoked_at %}
+            <span class="badge badge-danger">Revoked</span>
+            <span class="text-muted" style="margin-left: 0.5rem;">on {{ key.revoked_at[:10] }}</span>
+            {% elif key.is_active %}
+            <span class="badge badge-success">Active</span>
+            <span class="text-muted" style="margin-left: 0.5rem;">(used for signing new tokens)</span>
+            {% else %}
+            <span class="badge badge-warning">Inactive</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ key.created_at[:19] if key.created_at else 'N/A' }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        {% if not key.revoked_at %}
+            {% if permissions['jwks:write'] and not key.is_active %}
+            <form method="post" action="/admin/jwks/{{ key.kid }}/activate">
+                <button type="submit" class="btn btn-success">
+                    <span>&#10003;</span> Activate This Key
+                </button>
+            </form>
+            {% endif %}
+            {% if permissions['jwks:revoke'] %}
+            <form method="post" action="/admin/jwks/{{ key.kid }}/revoke">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Revoke this key? Tokens signed with it will remain valid until expiry.')">
+                    <span>&#10005;</span> Revoke Key
+                </button>
+            </form>
+            {% endif %}
+        {% else %}
+            {% if permissions['jwks:delete'] %}
+            <form method="post" action="/admin/jwks/{{ key.kid }}/delete">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this key? This cannot be undone.')">
+                    <span>&#128465;</span> Delete Key
+                </button>
+            </form>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Public Key (JWK Format)</h2>
+    <pre style="background: #1a1a2e; padding: 1rem; border-radius: 8px; overflow-x: auto; margin-top: 1rem;" class="mono">{{ public_key_json }}</pre>
+</div>
+{% endblock %}

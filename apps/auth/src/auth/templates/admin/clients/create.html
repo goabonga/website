@@ -1,0 +1,322 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create OAuth2 Client{% endblock %}
+
+{% block head %}
+<style>
+    .scopes-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    @media (max-width: 1200px) {
+        .scopes-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @media (max-width: 768px) {
+        .scopes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .scope-group {
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    .scope-group-title {
+        font-size: 0.85rem;
+        color: #e94560;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #0f3460;
+        font-weight: 600;
+    }
+    .scope-group-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .scope-item {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        padding: 0.25rem 0;
+    }
+    .scope-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+    .scope-name {
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #e0e0e0;
+    }
+    .scope-desc {
+        font-size: 0.75rem;
+        color: #6c757d;
+        width: 100%;
+        padding-left: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Create New OAuth2 Client</h1>
+    <a href="/admin/clients" class="btn btn-secondary">
+        <span>&larr;</span> Back to Clients
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Client Details</h2>
+
+    <form method="post" action="/admin/clients/create" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="name">Client Name *</label>
+            <input type="text" name="name" id="name" class="form-control" required style="max-width: 400px;">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                A descriptive name for this client (e.g., "My Web App").
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="tenant_id">Organization</label>
+            <select name="tenant_id" id="tenant_id" class="form-control" style="max-width: 400px;">
+                <option value="">Global (no organization)</option>
+                {% for t in tenants %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
+                {% endfor %}
+            </select>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Optionally restrict this client to a specific organization.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" class="form-control" style="max-width: 400px;">
+        </div>
+
+        <div class="form-group">
+            <label for="homepage_url">Homepage URL</label>
+            <input type="url" name="homepage_url" id="homepage_url" class="form-control" style="max-width: 500px;" placeholder="https://example.com">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Optional. Link to the application's homepage (displayed in user settings).
+            </p>
+        </div>
+
+        <div class="form-group" id="redirect_uris_group">
+            <label for="redirect_uris">Redirect URIs <span id="redirect_uris_required">*</span> (one per line)</label>
+            <textarea name="redirect_uris" id="redirect_uris" class="form-control" rows="3" style="max-width: 500px;" placeholder="https://example.com/callback"></textarea>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                URLs where users will be redirected after authentication.
+                <span id="redirect_uris_hint" style="display: none; color: #4caf50;">Not required for selected grant types.</span>
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="allowed_origins">Allowed CORS Origins (one per line)</label>
+            <textarea name="allowed_origins" id="allowed_origins" class="form-control" rows="3" style="max-width: 500px;" placeholder="https://example.com"></textarea>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Origins (protocol + domain) allowed for CORS requests in browser-based OAuth2 flows (e.g., token exchange from Swagger UI). Leave empty to auto-detect from redirect URIs.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label>Allowed Scopes</label>
+            <div class="scopes-grid">
+                {% for resource, scopes in available_scopes.items() %}
+                <div class="scope-group">
+                    <h4 class="scope-group-title">{{ resource }}:*</h4>
+                    <div class="scope-group-items">
+                        {% for scope in scopes %}
+                        <label class="scope-item">
+                            <input type="checkbox" name="scope_{{ scope.name }}" value="true" {{ 'checked' if resource == 'oidc' and scope.name in ['openid', 'profile', 'email'] else '' }}>
+                            <span class="scope-name">{{ scope.name }}</span>
+                            <span class="scope-desc">{{ scope.description }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Grant Types</label>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_authorization_code" value="true" checked class="grant-type-checkbox" data-requires-redirect="true" style="width: 18px; height: 18px;">
+                    <span>Authorization Code</span>
+                    <span class="text-muted" style="font-size: 0.8rem;">(requires redirect URI)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_refresh_token" value="true" checked class="grant-type-checkbox" data-requires-redirect="false" style="width: 18px; height: 18px;">
+                    <span>Refresh Token</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_client_credentials" value="true" class="grant-type-checkbox" data-requires-redirect="false" style="width: 18px; height: 18px;">
+                    <span>Client Credentials</span>
+                    <span class="text-muted" style="font-size: 0.8rem;">(machine-to-machine)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_device_code" value="true" class="grant-type-checkbox" data-requires-redirect="false" style="width: 18px; height: 18px;">
+                    <span>Device Code</span>
+                    <span class="text-muted" style="font-size: 0.8rem;">(for devices without browsers)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_token_exchange" value="true" class="grant-type-checkbox" data-requires-redirect="false" style="width: 18px; height: 18px;">
+                    <span>Token Exchange</span>
+                    <span class="text-muted" style="font-size: 0.8rem;">(RFC 8693 - delegation/impersonation)</span>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: rgba(233, 69, 96, 0.1); border: 1px solid rgba(233, 69, 96, 0.3); border-radius: 6px; margin-top: 0.5rem;">
+                    <input type="checkbox" name="grant_password" value="true" class="grant-type-checkbox" data-requires-redirect="false" style="width: 18px; height: 18px; margin-top: 2px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>Password (ROPC)</span>
+                            <span style="background: #e94560; color: white; font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; font-weight: 600;">DEPRECATED</span>
+                        </div>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #e94560;">
+                            <strong>Strongly discouraged.</strong> This grant type is deprecated in OAuth 2.1 and exposes user credentials to the client. Use Authorization Code with PKCE instead.
+                        </p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #0f3460; margin: 1.5rem 0; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Security Options</h3>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_confidential" value="true" checked style="width: 18px; height: 18px;">
+                    <span>Confidential Client (has a secret)</span>
+                </label>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Uncheck for public clients like SPAs or mobile apps.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="require_pkce" value="true" checked style="width: 18px; height: 18px;">
+                    <span>Require PKCE</span>
+                </label>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Recommended for all clients, required for public clients.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="require_consent" value="true" checked style="width: 18px; height: 18px;">
+                    <span>Require User Consent</span>
+                </label>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Show consent screen to users before granting access.
+                </p>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #0f3460; margin: 1.5rem 0; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Token Expiry Settings</h3>
+            <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.85rem;">
+                Leave empty to use global defaults. Values are in seconds.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div class="form-group">
+                    <label for="access_token_expiry_seconds">Access Token Expiry (seconds)</label>
+                    <input type="number" name="access_token_expiry_seconds" id="access_token_expiry_seconds" class="form-control" style="max-width: 200px;" min="60" placeholder="3600 (1 hour)">
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8rem;">
+                        e.g., 3600 = 1 hour, 86400 = 1 day
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="refresh_token_expiry_seconds">Refresh Token Expiry (seconds)</label>
+                    <input type="number" name="refresh_token_expiry_seconds" id="refresh_token_expiry_seconds" class="form-control" style="max-width: 200px;" min="60" placeholder="2592000 (30 days)">
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8rem;">
+                        e.g., 604800 = 7 days, 2592000 = 30 days
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#128187;</span> Create Client
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Notes</h2>
+    <ul style="margin-top: 1rem; line-height: 1.8; color: #a0a0a0;">
+        <li>A unique client_id will be generated automatically</li>
+        <li>For confidential clients, a client_secret will be generated and shown once</li>
+        <li>Client secrets are hashed with Argon2 and cannot be retrieved</li>
+        <li>Use the "Rotate Secret" feature to generate a new secret if needed</li>
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const grantCheckboxes = document.querySelectorAll('.grant-type-checkbox');
+    const redirectUrisField = document.getElementById('redirect_uris');
+    const redirectUrisRequired = document.getElementById('redirect_uris_required');
+    const redirectUrisHint = document.getElementById('redirect_uris_hint');
+    const form = document.querySelector('form');
+
+    function updateRedirectUrisRequirement() {
+        let requiresRedirect = false;
+
+        grantCheckboxes.forEach(function(checkbox) {
+            if (checkbox.checked && checkbox.dataset.requiresRedirect === 'true') {
+                requiresRedirect = true;
+            }
+        });
+
+        if (requiresRedirect) {
+            redirectUrisRequired.style.display = 'inline';
+            redirectUrisHint.style.display = 'none';
+            redirectUrisField.required = true;
+        } else {
+            redirectUrisRequired.style.display = 'none';
+            redirectUrisHint.style.display = 'inline';
+            redirectUrisField.required = false;
+        }
+    }
+
+    grantCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateRedirectUrisRequirement);
+    });
+
+    // Initial check
+    updateRedirectUrisRequirement();
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const checkedGrants = document.querySelectorAll('.grant-type-checkbox:checked');
+        if (checkedGrants.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one grant type.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

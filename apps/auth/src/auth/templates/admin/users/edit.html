@@ -1,0 +1,337 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit User {{ user.email }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Edit User</h1>
+    <a href="/admin/users/{{ user.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to User
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>User Information</h2>
+    <p class="text-muted" style="margin-top: 0.5rem;">{{ user.email }}</p>
+
+    <!-- Profile Picture Section -->
+    <div class="form-group" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+        <label>Profile picture</label>
+        <div style="display: flex; align-items: flex-start; gap: 1.5rem; margin-top: 0.5rem;">
+            <div style="flex-shrink: 0;">
+                {% if user.profile and user.profile.picture_url %}
+                <img src="{{ user.profile.picture_url }}" alt="Profile picture" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+                {% else %}
+                <div style="width: 100px; height: 100px; border-radius: 50%; background: var(--surface-color, #f5f5f5); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--text-muted-color, #888);">
+                    {{ (user.profile.nickname or user.profile.given_name or user.email or '?')[0]|upper if user.profile else (user.email[0]|upper if user.email else '?') }}
+                </div>
+                {% endif %}
+            </div>
+            <div style="flex: 1;">
+                <form method="post" action="/admin/users/{{ user.id }}/avatar" enctype="multipart/form-data" style="margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <input type="file" name="avatar" id="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="form-control" style="flex: 1; min-width: 200px;">
+                        <button type="submit" class="btn btn-secondary" style="white-space: nowrap;">Upload</button>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted-color, #888); margin-top: 0.5rem;">
+                        Max 5MB. Supported: JPEG, PNG, GIF, WebP.
+                    </p>
+                </form>
+                <p style="font-size: 0.8rem; color: var(--text-muted-color, #888);">
+                    Or enter a URL below to use an external image.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" action="/admin/users/{{ user.id }}/edit" style="margin-top: 1.5rem;">
+        <!-- Identity Section (Always visible) -->
+        <fieldset class="admin-fieldset">
+            <legend>Identity</legend>
+
+            <div class="form-group">
+                <label for="nickname">Display Name / Nickname</label>
+                <input type="text" name="nickname" id="nickname" class="form-control"
+                       value="{{ user.profile.nickname if user.profile and user.profile.nickname else '' }}"
+                       placeholder="How the user wants to be called"
+                       style="max-width: 400px;">
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_username">Preferred Username</label>
+                <input type="text" name="preferred_username" id="preferred_username" class="form-control"
+                       value="{{ user.profile.preferred_username if user.profile and user.profile.preferred_username else '' }}"
+                       placeholder="username"
+                       style="max-width: 400px;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; max-width: 800px;">
+                <div class="form-group">
+                    <label for="given_name">First Name</label>
+                    <input type="text" name="given_name" id="given_name" class="form-control"
+                           value="{{ user.profile.given_name if user.profile and user.profile.given_name else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="middle_name">Middle Name</label>
+                    <input type="text" name="middle_name" id="middle_name" class="form-control"
+                           value="{{ user.profile.middle_name if user.profile and user.profile.middle_name else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="family_name">Last Name</label>
+                    <input type="text" name="family_name" id="family_name" class="form-control"
+                           value="{{ user.profile.family_name if user.profile and user.profile.family_name else '' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="name">Full Name (auto-generated if empty)</label>
+                <input type="text" name="name" id="name" class="form-control"
+                       value="{{ user.profile.name if user.profile and user.profile.name else '' }}"
+                       placeholder="Leave empty to auto-generate from first/last name"
+                       style="max-width: 400px;">
+            </div>
+        </fieldset>
+
+        <!-- Personal Information Section (Collapsible) -->
+        <details class="optional-section">
+            <summary>Personal Information (Optional)</summary>
+            <div class="section-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select name="gender" id="gender" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="male" {% if user.profile and user.profile.gender == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if user.profile and user.profile.gender == 'female' %}selected{% endif %}>Female</option>
+                            <option value="other" {% if user.profile and user.profile.gender == 'other' %}selected{% endif %}>Other</option>
+                            <option value="prefer_not_to_say" {% if user.profile and user.profile.gender == 'prefer_not_to_say' %}selected{% endif %}>Prefer not to say</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="birthdate">Birthdate</label>
+                        <input type="date" name="birthdate" id="birthdate" class="form-control"
+                               value="{{ user.profile.birthdate if user.profile and user.profile.birthdate else '' }}">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="locale">Locale</label>
+                        <input type="text" name="locale" id="locale" class="form-control"
+                               value="{{ user.profile.locale if user.profile and user.profile.locale else '' }}"
+                               placeholder="en-US, fr-FR, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="zoneinfo">Timezone</label>
+                        <input type="text" name="zoneinfo" id="zoneinfo" class="form-control"
+                               value="{{ user.profile.zoneinfo if user.profile and user.profile.zoneinfo else '' }}"
+                               placeholder="Europe/Paris, America/New_York">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- Contact Section (Collapsible) -->
+        <details class="optional-section">
+            <summary>Contact (Optional)</summary>
+            <div class="section-content">
+                <div class="form-group">
+                    <label for="phone_number">Phone Number</label>
+                    <input type="tel" name="phone_number" id="phone_number" class="form-control"
+                           value="{{ user.profile.phone_number if user.profile and user.profile.phone_number else '' }}"
+                           placeholder="+33 6 12 34 56 78"
+                           style="max-width: 400px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="website">Website</label>
+                    <input type="url" name="website" id="website" class="form-control"
+                           value="{{ user.profile.website if user.profile and user.profile.website else '' }}"
+                           placeholder="https://example.com"
+                           style="max-width: 400px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="profile_url">Profile URL</label>
+                    <input type="url" name="profile_url" id="profile_url" class="form-control"
+                           value="{{ user.profile.profile_url if user.profile and user.profile.profile_url else '' }}"
+                           placeholder="https://linkedin.com/in/username"
+                           style="max-width: 400px;">
+                </div>
+            </div>
+        </details>
+
+        <!-- Picture URL Section (Collapsible) -->
+        <details class="optional-section">
+            <summary>Picture URL (Optional)</summary>
+            <div class="section-content">
+                <div class="form-group">
+                    <label for="picture_url">Profile Picture URL</label>
+                    <input type="text" name="picture_url" id="picture_url" class="form-control"
+                           value="{{ user.profile.picture_url if user.profile and user.profile.picture_url else '' }}"
+                           placeholder="https://example.com/avatar.jpg or /uploads/..."
+                           style="max-width: 400px;">
+                    <p style="font-size: 0.75rem; color: var(--text-muted-color, #888); margin-top: 0.25rem;">
+                        Use this field if you prefer to link to an external image instead of uploading. Supports both full URLs and relative paths.
+                    </p>
+                </div>
+            </div>
+        </details>
+
+        <!-- Address Section (Collapsible) -->
+        <details class="optional-section">
+            <summary>Address (Optional)</summary>
+            <div class="section-content">
+                <div class="form-group">
+                    <label for="address_street">Street Address</label>
+                    <input type="text" name="address_street" id="address_street" class="form-control"
+                           value="{{ user.profile.address_street if user.profile and user.profile.address_street else '' }}"
+                           placeholder="123 Main Street"
+                           style="max-width: 400px;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="address_locality">City</label>
+                        <input type="text" name="address_locality" id="address_locality" class="form-control"
+                               value="{{ user.profile.address_locality if user.profile and user.profile.address_locality else '' }}"
+                               placeholder="Paris">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address_region">Region / State</label>
+                        <input type="text" name="address_region" id="address_region" class="form-control"
+                               value="{{ user.profile.address_region if user.profile and user.profile.address_region else '' }}"
+                               placeholder="Île-de-France">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="address_postal_code">Postal Code</label>
+                        <input type="text" name="address_postal_code" id="address_postal_code" class="form-control"
+                               value="{{ user.profile.address_postal_code if user.profile and user.profile.address_postal_code else '' }}"
+                               placeholder="75001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address_country">Country</label>
+                        <input type="text" name="address_country" id="address_country" class="form-control"
+                               value="{{ user.profile.address_country if user.profile and user.profile.address_country else '' }}"
+                               placeholder="France">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- Account Status Section -->
+        <fieldset class="admin-fieldset" style="margin-top: 1.5rem;">
+            <legend>Account Status</legend>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_active" value="true"
+                           {% if user.is_active %}checked{% endif %}
+                           style="width: 18px; height: 18px;">
+                    <span>Account active</span>
+                </label>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Inactive users cannot sign in. Uncheck to disable this account.
+                </p>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_verified" value="true"
+                           {% if user.email_verified %}checked{% endif %}
+                           style="width: 18px; height: 18px;">
+                    <span>Email verified</span>
+                </label>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Mark the user's primary email as verified.
+                </p>
+            </div>
+        </fieldset>
+
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#128190;</span> Save Changes
+            </button>
+            <a href="/admin/users/{{ user.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Notes</h2>
+    <ul style="margin-top: 1rem; line-height: 1.8; color: #a0a0a0;">
+        <li>Email address cannot be changed from this page</li>
+        <li>To change the password, use the password reset feature</li>
+        <li>To disable/enable the user, use the "Account active" checkbox above</li>
+    </ul>
+</div>
+
+<style>
+.admin-fieldset {
+    border: 1px solid var(--border-color, #0f3460);
+    border-radius: 4px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-fieldset legend {
+    font-weight: 600;
+    padding: 0 0.5rem;
+    font-size: 1rem;
+}
+
+.optional-section {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color, #0f3460);
+    border-radius: 4px;
+}
+
+.optional-section summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background-color: var(--background-color, #1a1a2e);
+    border-radius: 4px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.optional-section summary:hover {
+    background-color: var(--surface-color, #16213e);
+}
+
+.optional-section[open] summary {
+    border-bottom: 1px solid var(--border-color, #0f3460);
+    border-radius: 4px 4px 0 0;
+}
+
+.optional-section .section-content {
+    padding: 1rem 1.5rem;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

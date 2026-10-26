@@ -1,0 +1,133 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Roles{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Role Management</h1>
+    {% if permissions['roles:write'] %}
+    <a href="/admin/roles/create" class="btn btn-primary">
+        <span>+</span> Create Role
+    </a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Roles ({{ total }})</h2>
+        <form method="get" action="/admin/roles" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search by name..." class="form-control" style="width: 200px;">
+            <select name="is_system" class="form-control" style="width: 120px;" onchange="this.form.submit()">
+                <option value="">All types</option>
+                <option value="true" {% if is_system == 'true' %}selected{% endif %}>System</option>
+                <option value="false" {% if is_system == 'false' %}selected{% endif %}>Custom</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        </form>
+    </div>
+
+    {% if roles %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Scopes</th>
+                <th>Users</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in roles %}
+            <tr>
+                <td>
+                    <a href="/admin/roles/{{ role.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ role.name }}
+                    </a>
+                </td>
+                <td class="text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ role.description or '-' }}
+                </td>
+                <td>
+                    {% if '*' in role.scopes %}
+                    <span class="badge badge-danger">Full Access</span>
+                    {% else %}
+                    <span class="text-muted">{{ role.scopes|length }} scope(s)</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ role.user_count }}</span>
+                </td>
+                <td>
+                    {% if role.is_system %}
+                    <span class="badge badge-warning">System</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Custom</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/roles/{{ role.id }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if permissions['roles:delete'] and not role.is_system %}
+                        <form method="post" action="/admin/roles/{{ role.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this role? Users will lose these permissions.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/roles?page={{ page - 1 }}&search={{ search }}&is_system={{ is_system or '' }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/roles?page={{ page + 1 }}&search={{ search }}&is_system={{ is_system or '' }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128101;</p>
+        <p>No roles found.</p>
+        <p class="text-muted">{% if search %}Try a different search term.{% else %}Create a new role or seed default roles.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Default Roles</h2>
+        {% if permissions['roles:write'] %}
+        <form method="post" action="/admin/roles/seed">
+            <button type="submit" class="btn btn-secondary btn-sm">Seed Default Roles</button>
+        </form>
+        {% endif %}
+    </div>
+    <p class="text-muted" style="margin-top: 1rem; line-height: 1.6;">
+        Default system roles include:
+    </p>
+    <ul style="margin-top: 0.5rem; line-height: 1.8; color: #a0a0a0;">
+        <li><strong>super_admin</strong> - Full access to all admin operations (*)</li>
+        <li><strong>admin</strong> - Manage users, clients, and sessions (users:*, clients:*, sessions:*)</li>
+        <li><strong>jwks_admin</strong> - Manage JWKS keys (jwks:*)</li>
+        <li><strong>readonly</strong> - Read-only access to all resources</li>
+        <li><strong>operator</strong> - Read access and session management</li>
+    </ul>
+</div>
+{% endblock %}

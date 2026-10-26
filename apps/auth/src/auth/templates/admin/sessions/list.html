@@ -1,0 +1,116 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sessions{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Session Management</h1>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <form method="get" action="/admin/sessions" style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; color: #a0a0a0; font-size: 0.9rem;">
+                <input type="checkbox" name="active_only" value="true" {% if active_only %}checked{% endif %} onchange="this.form.submit()" style="width: 16px; height: 16px;">
+                Active only
+            </label>
+        </form>
+        {% if permissions['sessions:revoke'] %}
+        <form method="post" action="/admin/sessions/revoke-all" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Revoke ALL active sessions? This will log out all users.')">
+                <span>&#10005;</span> Revoke All
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Active Sessions ({{ total }})</h2>
+
+    {% if sessions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Browser / OS</th>
+                <th>IP Address</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>
+                    <a href="/admin/users/{{ session.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ session.user_email or 'Unknown' }}
+                    </a>
+                </td>
+                <td>
+                    <span>{{ session.parsed_ua.browser }}</span>
+                    <span class="text-muted"> / {{ session.parsed_ua.os }}</span>
+                </td>
+                <td class="mono">{{ session.ip_address or 'N/A' }}</td>
+                <td class="text-muted">{{ session.created_at[:16] if session.created_at else 'N/A' }}</td>
+                <td>
+                    {% if session.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif session.revoked_at %}
+                    <span class="badge badge-danger">Revoked</span>
+                    {% else %}
+                    <span class="badge badge-warning">Expired</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/sessions/{{ session.id }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if permissions['sessions:revoke'] and session.is_active %}
+                        <form method="post" action="/admin/sessions/{{ session.id }}/revoke" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke this session?')">Revoke</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/sessions?page={{ page - 1 }}&active_only={{ active_only|lower }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/sessions?page={{ page + 1 }}&active_only={{ active_only|lower }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128274;</p>
+        <p>No sessions found.</p>
+        <p class="text-muted">{% if active_only %}Try unchecking "Active only" to see all sessions.{% else %}No sessions have been created yet.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>About Sessions</h2>
+    <p class="text-muted" style="line-height: 1.6;">
+        Sessions are created when users log in to the authentication service.
+        Each session tracks the user's browser, IP address, and expiration time.
+        <strong>Revoking a session</strong> will immediately log the user out.
+        Sessions automatically expire after {{ session_expiry_days if session_expiry_days else '7' }} days.
+    </p>
+</div>
+{% endblock %}

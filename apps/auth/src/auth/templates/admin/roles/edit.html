@@ -1,0 +1,71 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Role{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Edit Role</h1>
+    <a href="/admin/roles/{{ role.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Role
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Role Details</h2>
+
+    <form method="post" action="/admin/roles/{{ role.id }}/edit" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="name">Role Name</label>
+            <input type="text" id="name" class="form-control" value="{{ role.name }}" disabled style="max-width: 400px;">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                The name of a role cannot be changed.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" class="form-control" value="{{ role.description or '' }}" style="max-width: 500px;">
+        </div>
+
+        <div style="border-top: 1px solid #0f3460; margin: 1.5rem 0; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Scopes</h3>
+            <p class="text-muted" style="margin-bottom: 1rem;">
+                The scopes checked here replace the current ones. Use wildcards (e.g., users:*) for full access to a resource.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                {% for scope, description in available_scopes.items() %}
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid #0f3460; border-radius: 8px;">
+                    <input type="checkbox" name="scopes" value="{{ scope }}" {% if scope in held_scopes %}checked{% endif %} style="width: 18px; height: 18px; margin-top: 2px;">
+                    <div>
+                        <div class="mono" style="font-size: 0.9rem;">{{ scope }}</div>
+                        {% if description %}
+                        <div class="text-muted" style="font-size: 0.8rem;">{{ description }}</div>
+                        {% endif %}
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Other Scopes</h4>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    Or enter more scopes manually (comma-separated):
+                </p>
+                <input type="text" name="wildcard_scopes" id="wildcard_scopes" class="form-control" placeholder="e.g., users:*, sessions:*" style="max-width: 400px;">
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#9998;</span> Save Role
+            </button>
+            <a href="/admin/roles/{{ role.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

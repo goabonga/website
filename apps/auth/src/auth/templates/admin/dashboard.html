@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Dashboard</h1>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold; color: #e94560;">{{ stats.total_users }}</div>
+        <div style="color: #a0a0a0; margin-top: 0.5rem;">Total Users</div>
+    </div>
+    <div class="admin-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold; color: #00b894;">{{ stats.active_users }}</div>
+        <div style="color: #a0a0a0; margin-top: 0.5rem;">Active Users</div>
+    </div>
+    <div class="admin-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold; color: #74b9ff;">{{ stats.active_sessions }}</div>
+        <div style="color: #a0a0a0; margin-top: 0.5rem;">Active Sessions</div>
+    </div>
+    <div class="admin-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; font-weight: bold; color: #fdcb6e;">{{ stats.active_clients }}</div>
+        <div style="color: #a0a0a0; margin-top: 0.5rem;">OAuth2 Clients</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+    <div class="admin-card">
+        <h2>User Statistics</h2>
+        <table class="table" style="margin-top: 1rem;">
+            <tbody>
+                <tr>
+                    <td>Total Users</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.total_users }}</td>
+                </tr>
+                <tr>
+                    <td>Active Users</td>
+                    <td style="text-align: right; font-weight: 500; color: #00b894;">{{ stats.active_users }}</td>
+                </tr>
+                <tr>
+                    <td>Inactive Users</td>
+                    <td style="text-align: right; font-weight: 500; color: #ff6b6b;">{{ stats.inactive_users }}</td>
+                </tr>
+                <tr>
+                    <td>New Today</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.new_users_today }}</td>
+                </tr>
+                <tr>
+                    <td>New This Week</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.new_users_week }}</td>
+                </tr>
+                <tr>
+                    <td>New This Month</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.new_users_month }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-card">
+        <h2>System Overview</h2>
+        <table class="table" style="margin-top: 1rem;">
+            <tbody>
+                <tr>
+                    <td>Active Sessions</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.active_sessions }}</td>
+                </tr>
+                <tr>
+                    <td>Total OAuth2 Clients</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.total_clients }}</td>
+                </tr>
+                <tr>
+                    <td>Active OAuth2 Clients</td>
+                    <td style="text-align: right; font-weight: 500; color: #00b894;">{{ stats.active_clients }}</td>
+                </tr>
+                <tr>
+                    <td>Total Roles</td>
+                    <td style="text-align: right; font-weight: 500;">{{ stats.total_roles }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-card">
+        <h2>Quick Actions</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+            {% if permissions['users:read'] %}
+            <a href="/admin/users" class="btn btn-primary" style="text-align: center;">
+                <span>&#128100;</span> Manage Users
+            </a>
+            {% endif %}
+            {% if permissions['clients:read'] %}
+            <a href="/admin/clients" class="btn btn-secondary" style="text-align: center;">
+                <span>&#128187;</span> Manage Clients
+            </a>
+            {% endif %}
+            {% if permissions['sessions:read'] %}
+            <a href="/admin/sessions" class="btn btn-secondary" style="text-align: center;">
+                <span>&#128274;</span> View Sessions
+            </a>
+            {% endif %}
+            {% if permissions['roles:read'] %}
+            <a href="/admin/roles" class="btn btn-secondary" style="text-align: center;">
+                <span>&#128101;</span> Manage Roles
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

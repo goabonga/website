@@ -1,0 +1,140 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Token Details{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Token Details</h1>
+    <a href="/admin/pats" class="btn btn-secondary">&larr; Back to list</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">{{ pat.name }}</h2>
+            <span class="mono" style="color: #a0a0a0;">****{{ pat.token_suffix }}</span>
+            {% if pat.is_revoked %}
+            <span class="badge badge-danger" style="margin-left: 0.5rem;">Revoked</span>
+            {% elif pat.is_expired %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">Expired</span>
+            {% else %}
+            <span class="badge badge-success" style="margin-left: 0.5rem;">Active</span>
+            {% endif %}
+        </div>
+        {% if permissions['pats:revoke'] and not pat.is_revoked %}
+        <form method="post" action="/admin/pats/{{ pat.id }}/revoke">
+            <input type="hidden" name="reason" value="Revoked by administrator">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to revoke this token?')">
+                Revoke Token
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if pat.description %}
+    <p style="color: #a0a0a0; margin-bottom: 1.5rem;">{{ pat.description }}</p>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <h3 style="margin-bottom: 1rem;">Owner</h3>
+    <table class="table" style="max-width: 500px;">
+        <tr>
+            <td style="color: #a0a0a0;">User</td>
+            <td>
+                <a href="/admin/users/{{ pat.user_id }}" style="color: #74b9ff;">{{ pat.user_email or 'Unknown' }}</a>
+            </td>
+        </tr>
+        <tr>
+            <td style="color: #a0a0a0;">User ID</td>
+            <td class="mono">{{ pat.user_id }}</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <h3 style="margin-bottom: 1rem;">Token Information</h3>
+    <table class="table" style="max-width: 500px;">
+        <tr>
+            <td style="color: #a0a0a0;">Token ID</td>
+            <td class="mono">{{ pat.id }}</td>
+        </tr>
+        <tr>
+            <td style="color: #a0a0a0;">Created</td>
+            <td>{{ pat.created_at if pat.created_at else 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td style="color: #a0a0a0;">Expires</td>
+            <td>
+                {% if pat.expires_at %}
+                {{ pat.expires_at }}
+                {% if pat.is_expired %}<span class="badge badge-warning" style="margin-left: 0.5rem;">Expired</span>{% endif %}
+                {% else %}
+                <span class="text-muted">Never</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% if pat.is_revoked %}
+        <tr>
+            <td style="color: #a0a0a0;">Revoked</td>
+            <td>{{ pat.revoked_at }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="divider"></div>
+
+    <h3 style="margin-bottom: 1rem;">Usage Statistics</h3>
+    <table class="table" style="max-width: 500px;">
+        <tr>
+            <td style="color: #a0a0a0;">Last Used</td>
+            <td>{{ pat.last_used_at if pat.last_used_at else 'Never' }}</td>
+        </tr>
+        <tr>
+            <td style="color: #a0a0a0;">Last IP</td>
+            <td class="mono">{{ pat.last_used_ip or 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td style="color: #a0a0a0;">Total Uses</td>
+            <td>{{ pat.use_count }}</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <h3 style="margin-bottom: 1rem;">Scopes ({{ pat.scopes|length }})</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+        {% for scope in pat.scopes %}
+        <span class="badge badge-secondary" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">{{ scope }}</span>
+        {% endfor %}
+    </div>
+
+    {% if pat.tenant_id or pat.target_client_id %}
+    <div class="divider"></div>
+
+    <h3 style="margin-bottom: 1rem;">Resource Targeting</h3>
+    <table class="table" style="max-width: 500px;">
+        {% if pat.tenant_id %}
+        <tr>
+            <td style="color: #a0a0a0;">Tenant</td>
+            <td class="mono">{{ pat.tenant_id }}</td>
+        </tr>
+        {% endif %}
+        {% if pat.target_client_id %}
+        <tr>
+            <td style="color: #a0a0a0;">Target Client</td>
+            <td class="mono">{{ pat.target_client_id }}</td>
+        </tr>
+        {% endif %}
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

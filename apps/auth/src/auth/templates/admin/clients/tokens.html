@@ -1,0 +1,262 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Tokens - {{ client.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .status-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .status-tab {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #a0a0a0;
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+    .status-tab:hover {
+        background: #0f3460;
+        color: #e0e0e0;
+    }
+    .status-tab.active {
+        background: #e94560;
+        color: white;
+        border-color: #e94560;
+    }
+    .status-tab .count {
+        margin-left: 0.5rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        background: rgba(255,255,255,0.2);
+    }
+    .filters-form {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #1a1a2e;
+        border-radius: 6px;
+        border: 1px solid #0f3460;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .filter-group label {
+        font-size: 0.8rem;
+        color: #a0a0a0;
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        background: #16213e;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        min-width: 150px;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #e94560;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Access Tokens</h1>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <a href="/admin/clients/{{ client.id }}" class="btn btn-secondary">
+            <span>&larr;</span> Back to Client
+        </a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+        <h2>{{ client.name }}</h2>
+        {% if permissions.get('clients:write') and active_count > 0 %}
+        <form method="post" action="/admin/clients/{{ client.id }}/tokens/revoke-all" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Revoke ALL active tokens for this client? Users will need to re-authenticate.')">
+                <span>&#10005;</span> Revoke All Active ({{ active_count }})
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="status-tabs">
+        <a href="/admin/clients/{{ client.id }}/tokens?user={{ user_search }}&scope={{ scope_filter }}"
+           class="status-tab {% if not status_filter %}active{% endif %}">
+            All<span class="count">{{ total_all }}</span>
+        </a>
+        <a href="/admin/clients/{{ client.id }}/tokens?status=active&user={{ user_search }}&scope={{ scope_filter }}"
+           class="status-tab {% if status_filter == 'active' %}active{% endif %}">
+            Active<span class="count">{{ active_count }}</span>
+        </a>
+        <a href="/admin/clients/{{ client.id }}/tokens?status=expired&user={{ user_search }}&scope={{ scope_filter }}"
+           class="status-tab {% if status_filter == 'expired' %}active{% endif %}">
+            Expired<span class="count">{{ expired_count }}</span>
+        </a>
+        <a href="/admin/clients/{{ client.id }}/tokens?status=revoked&user={{ user_search }}&scope={{ scope_filter }}"
+           class="status-tab {% if status_filter == 'revoked' %}active{% endif %}">
+            Revoked<span class="count">{{ revoked_count }}</span>
+        </a>
+    </div>
+
+    <!-- Filters Form -->
+    <form method="get" action="/admin/clients/{{ client.id }}/tokens" class="filters-form">
+        {% if status_filter %}
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        {% endif %}
+
+        <div class="filter-group">
+            <label for="user">User (email)</label>
+            <input type="text" id="user" name="user" value="{{ user_search }}" placeholder="Search by email...">
+        </div>
+
+        <div class="filter-group">
+            <label for="scope">Scope</label>
+            <select id="scope" name="scope">
+                <option value="">All scopes</option>
+                {% for scope in available_scopes %}
+                <option value="{{ scope }}" {% if scope_filter == scope %}selected{% endif %}>{{ scope }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        </div>
+
+        {% if user_search or scope_filter %}
+        <div class="filter-group">
+            <a href="/admin/clients/{{ client.id }}/tokens{% if status_filter %}?status={{ status_filter }}{% endif %}" class="btn btn-secondary btn-sm">Clear filters</a>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if tokens %}
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>JTI</th>
+                <th>Scopes</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in tokens %}
+            <tr>
+                <td>
+                    {% if token.user_id %}
+                    <a href="/admin/users/{{ token.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ token.user_email or 'Unknown' }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">Client Credentials</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <code class="mono" style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 0.15rem 0.35rem; border-radius: 3px;">
+                        {{ token.jti[:12] }}...
+                    </code>
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 200px;">
+                        {% for scope in token.scopes[:3] %}
+                        <span class="badge badge-info" style="font-size: 0.7rem;">{{ scope }}</span>
+                        {% endfor %}
+                        {% if token.scopes|length > 3 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ token.scopes|length - 3 }}</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ token.created_at[:16] if token.created_at else 'N/A' }}</td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ token.expires_at[:16] if token.expires_at else 'N/A' }}</td>
+                <td>
+                    {% if token.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif token.is_revoked %}
+                    <span class="badge badge-danger">Revoked</span>
+                    {% else %}
+                    <span class="badge badge-warning">Expired</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if token.is_active and permissions.get('clients:write') %}
+                    <form method="post" action="/admin/clients/{{ client.id }}/tokens/{{ token.id }}/revoke" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke this token?')">Revoke</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/clients/{{ client.id }}/tokens?page={{ page - 1 }}&status={{ status_filter }}&user={{ user_search }}&scope={{ scope_filter }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/clients/{{ client.id }}/tokens?page={{ page + 1 }}&status={{ status_filter }}&user={{ user_search }}&scope={{ scope_filter }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state" style="margin-top: 1rem;">
+        <p style="font-size: 2rem;">&#128273;</p>
+        <p>No tokens found.</p>
+        <p class="text-muted">
+            {% if status_filter or user_search or scope_filter %}
+            Try adjusting your filters to see more results.
+            {% else %}
+            No tokens have been issued for this client yet.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>About Access Tokens</h2>
+    <p class="text-muted" style="line-height: 1.6;">
+        Access tokens are issued when users authorize this client application.
+        <strong>Revoking a token</strong> immediately invalidates it, requiring users to re-authenticate.
+        Tokens automatically expire based on the server configuration.
+        <br><br>
+        <strong>Note:</strong> The JTI (JWT ID) is a unique identifier for each token.
+        The actual token value is not stored for security reasons.
+    </p>
+</div>
+{% endblock %}

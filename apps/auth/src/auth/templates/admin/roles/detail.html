@@ -1,0 +1,178 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Role {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Role Details</h1>
+    <a href="/admin/roles" class="btn btn-secondary">
+        <span>&larr;</span> Back to Roles
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Role Information</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Role ID</div>
+        <div class="mono">{{ role.id }}</div>
+
+        <div class="text-muted">Name</div>
+        <div>{{ role.name }}</div>
+
+        <div class="text-muted">Description</div>
+        <div>{{ role.description or '-' }}</div>
+
+        <div class="text-muted">Type</div>
+        <div>
+            {% if role.is_system %}
+            <span class="badge badge-warning">System</span>
+            <span class="text-muted" style="margin-left: 0.5rem;">Cannot be deleted or modified</span>
+            {% else %}
+            <span class="badge badge-secondary">Custom</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ role.created_at[:19] if role.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Updated</div>
+        <div>{{ role.updated_at[:19] if role.updated_at else 'N/A' }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Scopes ({{ role.scopes|length }})</h2>
+
+    <div style="margin-top: 1rem;">
+        {% if '*' in role.scopes %}
+        <div class="alert alert-warning" style="margin-bottom: 1rem;">
+            <strong>Full Access</strong> - This role has the wildcard scope (*) granting all permissions.
+        </div>
+        {% endif %}
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            {% for scope in role.scopes %}
+            <span class="badge {% if scope == '*' %}badge-danger{% elif scope.endswith(':*') %}badge-warning{% else %}badge-info{% endif %}" style="font-size: 0.9rem; padding: 0.4rem 0.6rem;">
+                {{ scope }}
+            </span>
+            {% endfor %}
+        </div>
+
+        {% if role.scopes|length == 0 %}
+        <p class="text-muted">No scopes assigned. This role has no permissions.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Users with this Role ({{ role.users|length }})</h2>
+        {% if permissions['roles:assign'] %}
+        <a href="/admin/roles/{{ role.id }}/assign" class="btn btn-primary btn-sm">
+            <span>+</span> Assign User
+        </a>
+        {% endif %}
+    </div>
+
+    {% if role.users %}
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Assigned</th>
+                <th>Expires</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in role.users %}
+            <tr>
+                <td>
+                    <a href="/admin/users/{{ user.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ user.email or 'No email' }}
+                    </a>
+                </td>
+                <td>
+                    {% if user.is_expired %}
+                    <span class="badge badge-danger">Expired</span>
+                    {% elif not user.is_active %}
+                    <span class="badge badge-warning">User Disabled</span>
+                    {% else %}
+                    <span class="badge badge-success">Active</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted">{{ user.assigned_at[:10] if user.assigned_at else 'N/A' }}</td>
+                <td class="text-muted">{{ user.expires_at[:10] if user.expires_at else 'Never' }}</td>
+                <td>
+                    {% if permissions['roles:assign'] %}
+                    <form method="post" action="/admin/roles/{{ role.id }}/users/{{ user.user_id }}/remove" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this user from the role?')">Remove</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="margin-top: 1rem;">
+        <p class="text-muted">No users have this role.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+        {% if not role.is_system %}
+        {% if permissions['roles:write'] %}
+        <a href="/admin/roles/{{ role.id }}/edit" class="btn btn-secondary">
+            <span>&#9998;</span> Edit Role
+        </a>
+        {% endif %}
+        {% if permissions['roles:delete'] %}
+        <form method="post" action="/admin/roles/{{ role.id }}/delete">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this role? Users will lose these permissions.')">
+                <span>&#128465;</span> Delete Role
+            </button>
+        </form>
+        {% endif %}
+        {% if not permissions['roles:write'] and not permissions['roles:delete'] %}
+        <p class="text-muted">You don't have permissions to modify or delete this role.</p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted">System roles cannot be modified or deleted.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Scope Reference</h2>
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Scope</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scope, description in available_scopes.items() %}
+            <tr>
+                <td class="mono">{{ scope }}</td>
+                <td class="text-muted">{{ description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

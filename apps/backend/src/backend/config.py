@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     rate_limit_auth: int = 60  # requests per window for authenticated users
     rate_limit_window: int = 60  # window size in seconds
 
+    # Session configuration
+    session_redis_url: str = "redis://localhost:6379/2"
+    session_redis_ttl: int = 3600  # 1 hour TTL for session data
+
     # Session creation rate limiting (anti-abuse)
     session_create_limit: int = 3  # max new sessions per IP per window
     session_create_window: int = 86400  # 24 hours window for session creation

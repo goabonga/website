@@ -27,6 +27,7 @@ feature, in the order they were introduced.
 11. [Email templates](11-email-templates.md)
 12. [Email campaigns](12-email-campaigns.md)
 13. [Knowledge namespaces](13-namespaces.md)
+14. [System prompts](14-prompts.md)
 
 ## Running locally
 

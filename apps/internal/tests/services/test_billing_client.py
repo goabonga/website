@@ -1318,6 +1318,48 @@ class TestSaasAppCheckoutSettings:
 
 
 # =========================================================================
+# Plan slug
+# =========================================================================
+
+
+class TestProductSlug:
+    @pytest.mark.asyncio
+    async def test_create_sends_the_slug(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_product_data("p")
+        ) as mock_req:
+            await client.create_product("app1", "Pro", slug="pro")
+            assert mock_req.call_args[1]["json_data"]["slug"] == "pro"
+
+    @pytest.mark.asyncio
+    async def test_create_without_slug_lets_the_service_derive_it(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_product_data("p")
+        ) as mock_req:
+            await client.create_product("app1", "Pro")
+            assert "slug" not in mock_req.call_args[1]["json_data"]
+
+    @pytest.mark.asyncio
+    async def test_update_sends_the_slug(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_product_data("p")
+        ) as mock_req:
+            await client.update_product("app1", "p", slug="business")
+            assert mock_req.call_args[1]["json_data"] == {"slug": "business"}
+
+    @pytest.mark.asyncio
+    async def test_update_without_slug_leaves_it(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_product_data("p")
+        ) as mock_req:
+            await client.update_product("app1", "p", name="Renamed")
+            assert mock_req.call_args[1]["json_data"] == {"name": "Renamed"}
+
+    def test_product_reads_the_slug(self):
+        assert BillingProduct(**_product_data()).slug == "test-product"
+
+
+# =========================================================================
 # OAuth client bindings
 # =========================================================================
 

@@ -3,6 +3,11 @@
 
 """Pydantic schemas for request/response validation."""
 
+from billing.schemas.price import (
+    PriceCreate,
+    PriceResponse,
+    PriceUpdate,
+)
 from billing.schemas.product import (
     ProductCreate,
     ProductResponse,
@@ -21,4 +26,7 @@ __all__ = [
     "ProductCreate",
     "ProductResponse",
     "ProductUpdate",
+    "PriceCreate",
+    "PriceResponse",
+    "PriceUpdate",
 ]

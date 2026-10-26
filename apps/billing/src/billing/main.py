@@ -13,7 +13,7 @@ from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
 from billing.routes import health
-from billing.routes.platform import products, saas
+from billing.routes.platform import prices, products, saas
 
 settings = get_settings()
 
@@ -113,3 +113,4 @@ app.include_router(health.router)
 # Platform routes (admin operations - internal VPN only)
 app.include_router(saas.router)
 app.include_router(products.router)
+app.include_router(prices.router)

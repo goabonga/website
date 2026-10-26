@@ -16,6 +16,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Stripe service wrapper enforcing the `saas_id` metadata
 - Onboarding of SaaS applications
 - Product catalog per SaaS application
+- One-time, recurring and metered prices
 
 ## Routes and scopes
 
@@ -33,6 +34,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/{saas_id}/products` | scope `billing:platform:read` | List all products for a SaaS app |
 | GET | `/platform/{saas_id}/products/{product_id}` | scope `billing:platform:read` | Get a product by ID |
 | PATCH | `/platform/{saas_id}/products/{product_id}` | scope `billing:platform:write` | Update a product (syncs to Stripe) |
+| POST | `/platform/{saas_id}/products/{product_id}/prices` | scope `billing:platform:write` | Create a new price for a product (syncs to Stripe) |
+| GET | `/platform/{saas_id}/products/{product_id}/prices` | scope `billing:platform:read` | List all prices for a product |
+| GET | `/platform/{saas_id}/products/{product_id}/prices/{price_id}` | scope `billing:platform:read` | Get a price by ID |
+| PATCH | `/platform/{saas_id}/products/{product_id}/prices/{price_id}` | scope `billing:platform:write` | Update a price (limited fields - Stripe prices are mostly immutable) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -40,8 +45,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `billing:platform:write` - checked by 5 routes
-- `billing:platform:read` - checked by 4 routes
+- `billing:platform:write` - checked by 7 routes
+- `billing:platform:read` - checked by 6 routes
 
 ## Usage
 

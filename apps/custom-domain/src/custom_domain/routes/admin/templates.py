@@ -37,9 +37,22 @@ ADMIN_SCOPES = (settings.admin_scope, f"{settings.admin_scope}:templates")
 async def list_templates(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(require_scopes(*ADMIN_SCOPES)),
+    client_id: str | None = None,
+    shared: bool | None = None,
 ):
-    """List all nginx templates."""
-    result = await db.execute(select(NginxTemplate).order_by(NginxTemplate.name))
+    """List nginx templates.
+
+    ``client_id`` keeps the templates owned by that client; ``shared=true`` keeps the
+    shared ones (no owner) and ``shared=false`` the client-owned ones.
+    """
+    query = select(NginxTemplate).order_by(NginxTemplate.name)
+    if client_id is not None:
+        query = query.where(NginxTemplate.client_id == client_id)
+    if shared is True:
+        query = query.where(NginxTemplate.client_id.is_(None))
+    elif shared is False:
+        query = query.where(NginxTemplate.client_id.isnot(None))
+    result = await db.execute(query)
     templates = result.scalars().all()
 
     # Get domain counts
@@ -53,6 +66,7 @@ async def list_templates(
             slug=template.slug,
             name=template.name,
             description=template.description,
+            client_id=template.client_id,
             is_default=template.is_default,
             is_active=template.is_active,
             domains_count=domains_count,
@@ -101,6 +115,7 @@ async def create_template(
         slug=data.slug,
         name=data.name,
         description=data.description,
+        client_id=data.client_id,
         http_template=data.http_template,
         https_template=data.https_template,
         available_variables=data.available_variables,
@@ -295,6 +310,12 @@ async def set_default_template(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template not found",
+        )
+
+    if template.client_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A client-owned template can not be the global default",
         )
 
     # Unset current default

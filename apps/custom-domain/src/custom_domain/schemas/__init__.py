@@ -25,6 +25,8 @@ from custom_domain.schemas.domain import (
     ProgressStep,
 )
 from custom_domain.schemas.template import (
+    AvailableTemplate,
+    AvailableTemplateListResponse,
     ReprovisionError,
     TemplateCreate,
     TemplateListItem,
@@ -38,6 +40,8 @@ from custom_domain.schemas.template import (
 )
 
 __all__ = [
+    "AvailableTemplate",
+    "AvailableTemplateListResponse",
     "ClientCreate",
     "ClientListItem",
     "ClientListResponse",

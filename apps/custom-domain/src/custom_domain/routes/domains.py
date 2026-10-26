@@ -25,7 +25,7 @@ from custom_domain.schemas import (
     DomainResponse,
     DomainUpdate,
 )
-from custom_domain.services import domain_service
+from custom_domain.services import domain_service, template_service
 from custom_domain.services.upstream import InvalidUpstreamError, parse_upstream
 
 logger = get_logger(__name__)
@@ -63,6 +63,21 @@ async def get_domain_or_404(
         )
 
     return domain
+
+
+async def ensure_template_usable(db: AsyncSession, template_id: int, client_id: str) -> None:
+    """Refuse a template that does not exist or belongs to another client.
+
+    A client may use the shared templates and the ones it owns.
+
+    Raises:
+        HTTPException: 400 when the template is not available to the client
+    """
+    if not await template_service.get_usable_template(db, template_id, client_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nginx template not found or not available to this client",
+        )
 
 
 @router.get("", response_model=DomainListResponse)
@@ -186,6 +201,9 @@ async def create_domain(
             detail="No CNAME target: provide one or set a default for the client",
         )
 
+    if data.nginx_template_id is not None:
+        await ensure_template_usable(db, data.nginx_template_id, auth.user.client_id)
+
     # Create domain
     domain = CustomDomain(
         domain=data.domain.lower(),
@@ -294,6 +312,7 @@ async def update_domain(
         domain.upstream_target = data.upstream_target
 
     if data.nginx_template_id is not None:
+        await ensure_template_usable(db, data.nginx_template_id, domain.client_id)
         domain.nginx_template_id = data.nginx_template_id
 
     if data.metadata is not None:

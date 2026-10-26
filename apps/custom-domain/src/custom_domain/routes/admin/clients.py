@@ -19,12 +19,29 @@ from custom_domain.schemas import (
     ClientResponse,
     ClientUpdate,
 )
+from custom_domain.services import template_service
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/admin/clients", tags=["admin-clients"])
 
 ADMIN_SCOPES = (settings.admin_scope, f"{settings.admin_scope}:clients")
+
+
+async def ensure_template_usable(db: AsyncSession, template_id: int | None, client_id: str) -> None:
+    """Refuse a default template that the client could not use itself.
+
+    Raises:
+        HTTPException: 400 when the template does not exist, is inactive or belongs
+            to another client
+    """
+    if template_id is None:
+        return
+    if not await template_service.get_usable_template(db, template_id, client_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nginx template not found or not available to this client",
+        )
 
 
 @router.get("", response_model=ClientListResponse)
@@ -78,6 +95,8 @@ async def create_client(
             status_code=status.HTTP_409_CONFLICT,
             detail="Client ID already exists",
         )
+
+    await ensure_template_usable(db, data.default_nginx_template_id, data.client_id)
 
     client = AuthorizedClient(
         client_id=data.client_id,
@@ -137,6 +156,7 @@ async def update_client(
         )
 
     update_data = data.model_dump(exclude_unset=True)
+    await ensure_template_usable(db, update_data.get("default_nginx_template_id"), client.client_id)
     for field, value in update_data.items():
         if field == "metadata":
             client.metadata_ = value

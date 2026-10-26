@@ -73,6 +73,22 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/email-templates/{template_id}/duplicate` | session; scope `email_templates:write` | Duplicate an email template |
 | POST | `/email-templates/bulk-delete` | session; scope `email_templates:delete` | Delete multiple email templates |
 | POST | `/email-templates/{template_id}/delete` | session; scope `email_templates:delete` | Delete an email template |
+| GET | `/knowledge` | session; scope `knowledge:read` | List all knowledge entries with pagination, search, namespace and status filter |
+| GET | `/knowledge/new` | session; scope `knowledge:write` | Show form to create a new knowledge entry |
+| GET | `/knowledge/generate` | session; scope `knowledge:write` | Show form to generate knowledge entries using AI |
+| POST | `/knowledge/generate` | session; scope `knowledge:write` | Dispatch async knowledge generation task |
+| GET | `/knowledge/generate/status/{task_id}` | session; scope `knowledge:read` | Poll generation task status |
+| POST | `/knowledge/new` | session; scope `knowledge:write` | Create a new knowledge entry with embedding |
+| GET | `/knowledge/{entry_id}` | session; scope `knowledge:read` | View knowledge entry detail |
+| GET | `/knowledge/{entry_id}/edit` | session; scope `knowledge:write` | Show form to edit a knowledge entry |
+| POST | `/knowledge/{entry_id}/edit` | session; scope `knowledge:write` | Update a knowledge entry with new embedding if question changed |
+| POST | `/knowledge/{entry_id}/regenerate-embedding` | session; scope `knowledge:write` | Regenerate embedding for an existing entry |
+| GET | `/knowledge/{entry_id}/validation` | session; scope `knowledge:read` | View validation details for a knowledge entry |
+| POST | `/knowledge/{entry_id}/revalidate` | session; scope `knowledge:write` | Re-trigger validation for an entry |
+| POST | `/knowledge/{entry_id}/approve` | session; scope `knowledge:write` | Manually approve a NEEDS_REVIEW or REJECTED entry |
+| POST | `/knowledge/{entry_id}/reject` | session; scope `knowledge:write` | Manually reject an entry |
+| POST | `/knowledge/{entry_id}/delete` | session; scope `knowledge:delete` | Delete a knowledge entry |
+| POST | `/knowledge/bulk-delete` | session; scope `knowledge:delete` | Delete multiple knowledge entries |
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
@@ -182,6 +198,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `email_templates:read` - checked by 4 routes
 - `email_templates:write` - checked by 5 routes
 - `email_templates:delete` - checked by 2 routes
+- `knowledge:read` - checked by 4 routes
+- `knowledge:write` - checked by 10 routes
+- `knowledge:delete` - checked by 2 routes
 - `mailler:read` - checked by 3 routes
 - `namespaces:read` - checked by 2 routes
 - `namespaces:write` - checked by 4 routes

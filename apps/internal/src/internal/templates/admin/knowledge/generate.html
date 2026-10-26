@@ -1,0 +1,308 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Generate Knowledge Entries{% endblock %}
+
+{% block head %}
+<style>
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+        font-family: inherit;
+    }
+    .source-textarea {
+        min-height: 300px;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    .context-textarea {
+        min-height: 80px;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-row {
+        display: flex;
+        gap: 1rem;
+    }
+    .form-row .form-group {
+        flex: 1;
+    }
+    .magic-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #0f3460;
+    }
+    .magic-icon {
+        font-size: 2rem;
+    }
+    .magic-header h2 {
+        margin: 0;
+        color: #e0e0e0;
+    }
+    .magic-header p {
+        margin: 0.25rem 0 0 0;
+        color: #a0a0a0;
+        font-size: 0.9rem;
+    }
+    .info-box {
+        background: rgba(116, 185, 255, 0.1);
+        border: 1px solid rgba(116, 185, 255, 0.3);
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .info-box h4 {
+        color: #74b9ff;
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+    }
+    .info-box ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+    .info-box li {
+        margin-bottom: 0.25rem;
+    }
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(26, 26, 46, 0.9);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .loading-overlay.visible {
+        display: flex;
+    }
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid #0f3460;
+        border-top-color: #e94560;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .loading-text {
+        color: #e0e0e0;
+        font-size: 1.1rem;
+    }
+    .char-count {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Generate Knowledge Entries</h1>
+    <a href="/knowledge" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div class="magic-header">
+        <span class="magic-icon">&#10024;</span>
+        <div>
+            <h2>AI-Powered Generation</h2>
+            <p>Generate multiple Q&A entries from source text using OpenAI</p>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h4>How it works</h4>
+        <ul>
+            <li>Paste your source text (documentation, FAQ, article, etc.)</li>
+            <li>Choose the target namespace and number of entries to generate</li>
+            <li>AI will analyze the text and create relevant question-answer pairs</li>
+            <li>Embeddings are automatically generated for semantic search</li>
+        </ul>
+    </div>
+
+    <form method="post" action="/knowledge/generate" id="generateForm">
+        <div class="form-group">
+            <label for="source_text">Source Text *</label>
+            <textarea
+                id="source_text"
+                name="source_text"
+                class="form-control source-textarea"
+                required
+                minlength="50"
+                placeholder="Paste your source text here... (documentation, FAQ, article, product description, etc.)"
+            ></textarea>
+            <div class="char-count"><span id="charCount">0</span> characters (min 50)</div>
+            <p class="form-help">The AI will analyze this text and generate question-answer pairs based on its content.</p>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="namespace_id">Namespace *</label>
+                <select id="namespace_id" name="namespace_id" class="form-control" required>
+                    {% for ns in namespaces %}
+                    <option value="{{ ns.id }}"
+                        {% if ns.id == default_namespace_id %}selected{% endif %}
+                    >{{ ns.name }} ({{ ns.slug }})</option>
+                    {% endfor %}
+                </select>
+                <p class="form-help">Target namespace for generated entries.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="num_entries">Number of Entries *</label>
+                <select id="num_entries" name="num_entries" class="form-control" required>
+                    <option value="3">3 entries</option>
+                    <option value="5" selected>5 entries</option>
+                    <option value="10">10 entries</option>
+                    <option value="20">20 entries</option>
+                    <option value="30">30 entries</option>
+                    <option value="50">50 entries (max)</option>
+                </select>
+                <p class="form-help">How many Q&A pairs to generate.</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="context">Additional Context (Optional)</label>
+            <textarea
+                id="context"
+                name="context"
+                class="form-control context-textarea"
+                placeholder="E.g., 'Focus on technical aspects', 'Generate beginner-friendly questions', 'Include troubleshooting scenarios'..."
+            ></textarea>
+            <p class="form-help">Optional instructions to guide the AI generation (tone, focus areas, audience, etc.)</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                &#10024; Generate Entries
+            </button>
+            <a href="/knowledge" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">Generating knowledge entries...</div>
+    <div class="loading-sub text-muted" id="loadingSub">Dispatching task...</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('generateForm');
+    const sourceText = document.getElementById('source_text');
+    const charCount = document.getElementById('charCount');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const loadingSub = document.getElementById('loadingSub');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Character count
+    sourceText.addEventListener('input', function() {
+        const count = this.value.length;
+        charCount.textContent = count;
+        charCount.style.color = count < 50 ? '#ff6b6b' : '#6c757d';
+    });
+
+    // Async submit + polling
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (sourceText.value.trim().length < 50) {
+            alert('Source text must be at least 50 characters long.');
+            return;
+        }
+
+        loadingOverlay.classList.add('visible');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Generating...';
+
+        const formData = new FormData(form);
+
+        fetch('/knowledge/generate', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            pollStatus(data.task_id);
+        })
+        .catch(function(err) {
+            showError('Failed to start generation: ' + err.message);
+        });
+    });
+
+    function pollStatus(taskId) {
+        loadingText.textContent = 'Generating knowledge entries...';
+        loadingSub.textContent = 'Waiting for worker...';
+
+        var pollInterval = setInterval(function() {
+            fetch('/knowledge/generate/status/' + taskId)
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (data.state === 'PROGRESS') {
+                    var p = data.progress || {};
+                    if (p.step === 'generating') {
+                        loadingText.textContent = 'Generating entries with AI...';
+                        loadingSub.textContent = 'Calling OpenAI...';
+                    } else if (p.step === 'embedding') {
+                        loadingText.textContent = 'Generating embeddings...';
+                        loadingSub.textContent = p.current + ' / ' + p.total + ' entries processed';
+                    }
+                } else if (data.state === 'SUCCESS') {
+                    clearInterval(pollInterval);
+                    var r = data.result || {};
+                    var count = r.created_count || 0;
+                    var ns = r.namespace_slug || '';
+                    var msg = count + '+entries+generated+successfully';
+                    window.location.href = '/knowledge?namespace=' + ns + '&success=' + msg;
+                } else if (data.state === 'FAILURE') {
+                    clearInterval(pollInterval);
+                    showError(data.error || 'Generation failed');
+                }
+            })
+            .catch(function() {
+                // Network error, keep polling
+            });
+        }, 2000);
+    }
+
+    function showError(message) {
+        loadingOverlay.classList.remove('visible');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '&#10024; Generate Entries';
+        alert(message);
+    }
+});
+</script>
+{% endblock %}

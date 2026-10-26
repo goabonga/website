@@ -77,6 +77,12 @@ class Settings(BaseSettings):
 
     # Notifications sent to the webhook URL of each SaaS application
     saas_webhook_timeout: float = 30.0  # seconds
+    # Delivery is retried by a Celery task: total attempts (1 disables the retries) and the
+    # delay before the second attempt, multiplied by the factor after each failure, capped
+    saas_webhook_max_attempts: int = 5
+    saas_webhook_backoff_seconds: float = 30.0
+    saas_webhook_backoff_factor: float = 2.0
+    saas_webhook_backoff_max_seconds: float = 3600.0
 
     # Redis
     redis_url: str = "redis://localhost:6379/10"

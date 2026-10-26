@@ -223,6 +223,12 @@ class _Recorder:
     def __init__(self):
         self.posts = []
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return False
+
     async def post(self, url, content, headers):
         self.posts.append({"url": url, "content": content, "headers": headers})
         response = MagicMock()
@@ -242,7 +248,7 @@ def step_webhook_endpoint(context, url, secret):
     assert response.status_code == 200, response.text
     context.webhook_secret = secret
     context.recorder = _Recorder()
-    patcher = patch("billing.services.saas_webhook.get_http_client", return_value=context.recorder)
+    patcher = patch("billing.tasks.webhook_tasks.new_http_client", return_value=context.recorder)
     patcher.start()
     context.add_cleanup(patcher.stop)
     context.real_notifications = True

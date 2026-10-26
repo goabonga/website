@@ -23,8 +23,10 @@ from uuid import uuid4
 
 import billing.tasks.stripe_sync_tasks  # noqa: F401  (loaded before the database is patched)
 import billing.tasks.usage_tasks  # noqa: F401
+import billing.tasks.webhook_tasks  # noqa: F401
 import httpx
 from billing.auth.models import User
+from billing.celery import celery_app
 from billing.config import settings
 from billing.database import get_db
 from billing.main import app
@@ -197,6 +199,9 @@ def before_all(context):
     """Set up the event loop, the fakes and the HTTP clients."""
     context.loop = asyncio.new_event_loop()
     asyncio.set_event_loop(context.loop)
+
+    # Celery tasks run in the calling process: no broker is needed.
+    celery_app.conf.task_always_eager = True
 
     # Fake token validation: the claims come from the token registry.
     context.token_claims = {}

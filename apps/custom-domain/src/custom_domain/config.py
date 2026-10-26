@@ -119,6 +119,12 @@ class Settings(BaseSettings):
     privileged_staging_dir: str = ""
     privileged_timeout_seconds: int = 120
 
+    # DNS verification
+    dns_check_interval_minutes: int = 5
+    dns_timeout_seconds: int = 10
+    dns_verification_max_retries: int = 3
+    dns_verification_retry_delay_seconds: int = 300
+
     # Templates
     templates_dir: str = "custom_domain/templates"
 

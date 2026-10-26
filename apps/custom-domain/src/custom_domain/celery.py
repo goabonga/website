@@ -4,6 +4,7 @@
 """Celery application configuration."""
 
 from celery import Celery
+from celery.schedules import crontab
 
 from custom_domain.config import settings
 
@@ -28,6 +29,24 @@ celery_app.conf.update(
     task_default_queue=settings.celery_queue,
     task_routes={"custom_domain.tasks.*": {"queue": settings.celery_queue}},
 )
+
+
+def periodic(task_name: str, schedule) -> dict:
+    """Build a beat entry that publishes to the queue the worker consumes."""
+    return {
+        "task": task_name,
+        "schedule": schedule,
+        "options": {"queue": settings.celery_queue},
+    }
+
+
+# Beat schedule for periodic tasks
+celery_app.conf.beat_schedule = {
+    "check-pending-domains": periodic(
+        "custom_domain.tasks.verification.check_pending_domains",
+        crontab(minute=f"*/{settings.dns_check_interval_minutes}"),
+    ),
+}
 
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["custom_domain.tasks"])

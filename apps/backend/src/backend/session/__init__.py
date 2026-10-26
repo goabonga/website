@@ -3,6 +3,7 @@
 
 """Session management module for anonymous and authenticated users."""
 
+from backend.session.cache import ConversationCache
 from backend.session.service import SessionService
 
-__all__ = ["SessionService"]
+__all__ = ["ConversationCache", "SessionService"]

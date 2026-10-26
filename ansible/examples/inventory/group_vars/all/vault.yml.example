@@ -1,0 +1,237 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Every variable of the vault, with a placeholder value. Nothing here is a
+# real secret.
+#
+#   cp vault.yml.example vault.yml
+#   # replace every CHANGE_ME with a real value (hints below), then encrypt:
+#   ansible-vault encrypt vault.yml
+#
+# Edit it later with `ansible-vault edit vault.yml`. Never commit it in clear.
+#
+# The variables that are not commented out are the ones the example inventory
+# needs as it is (frontend, backend, analytics and auth). The commented ones
+# belong to roles and applications that the example does not enable: uncomment
+# those of what you enable, and keep the others out of the file. "Required"
+# below means required once the application or the role is enabled.
+
+# --------------------------------------------------------------------------
+# Source repository
+# --------------------------------------------------------------------------
+
+# website_repo_token (clone of the repository). Optional: only when the
+# repository is private. Fine-grained token with read access to the
+# repository.
+vault_website_repo_token: ""
+
+
+# --------------------------------------------------------------------------
+# OAuth2 clients (identifiers)
+# --------------------------------------------------------------------------
+# Client identifiers are not secret, but the example keeps them in the vault
+# with the rest of the OAuth2 configuration. They come from the clients
+# registered on auth.
+
+vault_frontend_oauth2_client_id: CHANGE_ME
+vault_backend_oauth2_client_id: CHANGE_ME
+vault_backend_oauth2_swagger_client_id: CHANGE_ME
+vault_analytics_oauth2_client_id: CHANGE_ME
+vault_analytics_oauth2_swagger_client_id: CHANGE_ME
+# vault_apt_server_oauth2_client_id: CHANGE_ME
+# vault_billing_oauth2_client_id: CHANGE_ME
+# vault_custom_domain_oauth2_client_id: CHANGE_ME
+# vault_internal_oauth2_client_id: CHANGE_ME
+# vault_mailler_oauth2_client_id: CHANGE_ME
+# vault_reachy_mini_api_oauth2_client_id: CHANGE_ME
+# vault_team_oauth2_client_id: CHANGE_ME
+# vault_vpn_portal_oauth2_client_id: CHANGE_ME
+# website_oauth2_clients.webhooks.client_id. Required when webhooks is enabled
+# and forwards events to mailler. Client identifier shown by auth when the
+# client is registered.
+# vault_webhooks_oauth2_client_id: CHANGE_ME
+# vault_vpn_portal_openvpn_oauth2_client_id: CHANGE_ME
+
+# --------------------------------------------------------------------------
+# OAuth2 clients (secrets)
+# --------------------------------------------------------------------------
+# Secrets of the OAuth2 clients above, as shown by auth when a client is
+# registered.
+
+vault_backend_oauth2_client_secret: CHANGE_ME
+vault_analytics_oauth2_client_secret: CHANGE_ME
+# vault_apt_server_oauth2_client_secret: CHANGE_ME
+# vault_billing_oauth2_client_secret: CHANGE_ME
+# vault_custom_domain_oauth2_client_secret: CHANGE_ME
+# vault_internal_oauth2_client_secret: CHANGE_ME
+# vault_mailler_oauth2_client_secret: CHANGE_ME
+# vault_reachy_mini_api_oauth2_client_secret: CHANGE_ME
+# vault_vpn_portal_oauth2_client_secret: CHANGE_ME
+# OAUTH2_CLIENT_SECRET in website_secrets of team. Optional: team is enabled
+# and calls protected services. Client secret shown by auth when the client is
+# registered.
+# vault_team_oauth2_client_secret: CHANGE_ME
+# OAUTH2_CLIENT_SECRET in website_secrets of webhooks. Optional: webhooks
+# forwards events to mailler. Client secret shown by auth when the client is
+# registered.
+# vault_webhooks_oauth2_client_secret: CHANGE_ME
+# vault_vpn_portal_openvpn_oauth2_client_secret: CHANGE_ME
+
+# --------------------------------------------------------------------------
+# Application secrets
+# --------------------------------------------------------------------------
+# Hints: `openssl rand -hex 32` for random secrets, `openssl rand -base64 32`
+# for keys.
+
+# JWKS_ENCRYPTION_KEY in website_secrets of auth. Required when auth is
+# enabled (example inventory). openssl rand -base64 32 (base64 of 32 bytes:
+# AES-256-GCM key). Losing it makes the stored signing keys and MFA secrets
+# unreadable.
+vault_auth_jwks_encryption_key: CHANGE_ME
+
+# SMTP_PASSWORD in website_secrets of auth. Optional: mail goes through SMTP
+# (example inventory). Password of the SMTP account.
+vault_smtp_password: ""
+
+# MAILLER_CLIENT_SECRET in website_secrets of auth. Required when auth sends
+# its mail through mailler (the example sends it through SMTP instead). Secret
+# of the auth client registered in mailler.
+# vault_auth_mailler_client_secret: CHANGE_ME
+
+# OPENAI_API_KEY in website_secrets of backend, asterisk, internal, knowledge,
+# team. Required when backend is enabled (example inventory); also asterisk,
+# internal, knowledge, team. API key of the OpenAI account.
+vault_openai_api_key: CHANGE_ME
+
+# SESSION_SECRET in website_secrets of apt_server. Required when apt_server is
+# enabled. openssl rand -hex 32.
+# vault_apt_server_session_secret: CHANGE_ME
+
+# WEBHOOK_SECRET in website_secrets of apt_server. Required when apt_server is
+# enabled. openssl rand -hex 32.
+# vault_apt_server_webhook_secret: CHANGE_ME
+
+# MAILLER_CLIENT_SECRET in website_secrets of apt_server. Required when
+# apt_server is enabled. Secret of the apt_server client registered in
+# mailler.
+# vault_apt_server_mailler_client_secret: CHANGE_ME
+
+# SECRET_KEY in website_secrets of internal. Required when internal is
+# enabled. openssl rand -hex 32.
+# vault_internal_secret_key: CHANGE_ME
+
+# STRIPE_SECRET_KEY in website_secrets of billing. Required when billing is
+# enabled. Secret (or restricted) key of the Stripe account.
+# vault_stripe_secret_key: CHANGE_ME
+
+# STRIPE_WEBHOOK_SECRET in website_secrets of billing. Required when billing
+# is enabled. Signing secret of the Stripe webhook endpoint (whsec_...).
+# vault_stripe_webhook_secret: CHANGE_ME
+
+# BREVO_API_KEY in website_secrets of mailler. Required when mailler is
+# enabled. API key of the Brevo account.
+# vault_mailler_brevo_api_key: CHANGE_ME
+
+# WEBHOOK_HMAC_SECRET in website_secrets of mailler. Required when mailler is
+# enabled. openssl rand -hex 32.
+# vault_mailler_webhook_hmac_secret: CHANGE_ME
+
+# SENDGRID_API_KEY in website_secrets of mailler. Optional: SendGrid provider.
+# API key of the SendGrid account.
+# vault_mailler_sendgrid_api_key: CHANGE_ME
+
+# SES_ACCESS_KEY in website_secrets of mailler. Optional: SES provider (also
+# needs SES_REGION). Access key id of the AWS SES user.
+# vault_mailler_ses_access_key: CHANGE_ME
+
+# SES_SECRET_KEY in website_secrets of mailler. Optional: SES provider. Secret
+# access key of the AWS SES user.
+# vault_mailler_ses_secret_key: CHANGE_ME
+
+# PROTONMAIL_PASSWORD in website_secrets of mailler. Optional: Proton Mail
+# Bridge provider (also needs user and port). Bridge password shown by
+# protonmail-bridge.
+# vault_mailler_protonmail_password: CHANGE_ME
+
+# ANTHROPIC_API_KEY in website_secrets of team. Optional: team uses Anthropic
+# models. API key of the Anthropic account.
+# vault_team_anthropic_api_key: CHANGE_ME
+
+# GITHUB_TOKEN in website_secrets of team. Optional: team reads GitHub. Token
+# of a GitHub account or app.
+# vault_team_github_token: CHANGE_ME
+
+# STEPCA_PROVISIONER_PASSWORD in website_secrets of vpn_portal and
+# step_ca_vpn_portal_password. Required when vpn_portal is enabled. openssl
+# rand -base64 32 (same value on both sides).
+# vault_vpn_portal_stepca_password: CHANGE_ME
+
+
+# --------------------------------------------------------------------------
+# Host roles
+# --------------------------------------------------------------------------
+# Variables of the roles of site.yml and bootstrap.yml; each one is only read
+# when its role is enabled.
+
+# users_deploy_password_hash (users role). Required only with
+# users_deploy_sudo: password. mkpasswd --method=sha-512 (a crypt hash, not
+# the password).
+# vault_users_deploy_password_hash: CHANGE_ME
+
+# redis_password (redis role) and website_redis_password. Optional: Redis
+# listens on TCP or is shared with other hosts. openssl rand -hex 32.
+# vault_redis_password: CHANGE_ME
+
+# geoip_account_id (geoip role). Required when the geoip role is enabled.
+# MaxMind account page.
+# vault_geoip_account_id: CHANGE_ME
+
+# geoip_license_key (geoip role). Required when the geoip role is enabled.
+# MaxMind account page (License keys).
+# vault_geoip_license_key: CHANGE_ME
+
+# geoip_proxy_user_password (geoip role). Optional: downloads go through an
+# authenticated proxy. Given by the proxy; the variable holds user:password.
+# vault_geoip_proxy_user_password: CHANGE_ME
+
+# asterisk_trunk_password (asterisk role). Required when the SIP trunk of the
+# asterisk role is enabled. SIP account password of the provider.
+# vault_asterisk_trunk_password: CHANGE_ME
+
+# step_ca_password (step_ca role). Required when the step_ca role is enabled.
+# openssl rand -base64 32.
+# vault_step_ca_password: CHANGE_ME
+
+# openvpn_stepca_password (openvpn role) and password of the matching
+# provisioner of step_ca_provisioners. Required when the openvpn role uses the
+# step-ca backend. openssl rand -base64 32 (same value on both sides).
+# vault_openvpn_stepca_password: CHANGE_ME
+
+# step_ca_postgres_password (step_ca role). Optional: step-ca reaches
+# PostgreSQL with a password instead of peer authentication. openssl rand -hex
+# 32.
+# vault_step_ca_postgres_password: CHANGE_ME
+
+
+# --------------------------------------------------------------------------
+# AWS (certificates and notifications)
+# --------------------------------------------------------------------------
+# Taken by the python_app role when it requests wildcard certificates or
+# configures SES.
+
+# website_aws_route53_access_key_id. Required when wildcard certificates
+# through Route 53. IAM user limited to the hosted zone.
+# vault_aws_route53_access_key_id: CHANGE_ME
+
+# website_aws_route53_secret_access_key. Required when wildcard certificates
+# through Route 53. Secret access key of the same IAM user.
+# vault_aws_route53_secret_access_key: CHANGE_ME
+
+# website_aws_ses_access_key_id. Optional: SES/SNS notifications configured by
+# the role. IAM user limited to SES and SNS.
+# vault_aws_ses_access_key_id: CHANGE_ME
+
+# website_aws_ses_secret_access_key. Optional: SES/SNS notifications
+# configured by the role. Secret access key of the same IAM user.
+# vault_aws_ses_secret_access_key: CHANGE_ME

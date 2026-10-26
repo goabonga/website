@@ -1,0 +1,62 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Applications deployed by apps.yml. See the "Deploying applications" page for
+# the catalog of components and the override rules.
+
+website_apps_enabled:
+  - frontend
+  - backend
+  - analytics
+  - auth
+
+# Source of the applications: the monorepo, deployed from Git.
+website_repo_url: "https://github.com/goabonga/website.git"
+website_repo_version: main
+# Only for a private repository.
+website_repo_token: "{{ vault_website_repo_token | default('') }}"
+
+# OAuth2 clients registered on the authentication server, per application.
+website_oauth2_clients:
+  frontend:
+    client_id: "{{ vault_frontend_oauth2_client_id }}"
+  backend:
+    client_id: "{{ vault_backend_oauth2_client_id }}"
+    swagger_client_id: "{{ vault_backend_oauth2_swagger_client_id }}"
+  analytics:
+    client_id: "{{ vault_analytics_oauth2_client_id }}"
+    swagger_client_id: "{{ vault_analytics_oauth2_swagger_client_id }}"
+
+# Adjustments of the catalog, keyed by component. Dictionaries are merged
+# recursively, lists are replaced.
+website_apps_overrides:
+  # Pin an application to one of its releases.
+  backend:
+    version: backend-v1.0.0
+    env_vars:
+      OPENAI_MODEL: gpt-4o-mini
+  # Mail goes through SMTP instead of the mailler application.
+  auth:
+    env_vars:
+      EMAIL_BACKEND: smtp
+    secret_names: [JWKS_ENCRYPTION_KEY]
+    optional_secret_names: [SMTP_PASSWORD]
+  auth_worker:
+    secret_names: [JWKS_ENCRYPTION_KEY]
+    optional_secret_names: [SMTP_PASSWORD]
+  auth_beat:
+    enabled: false
+
+# Secrets, stored as encrypted systemd credentials. Application-level entries
+# are shared by the components that declare the name; component-level entries
+# win. The values live in the vault.
+website_secrets:
+  auth:
+    JWKS_ENCRYPTION_KEY: "{{ vault_auth_jwks_encryption_key }}"
+    SMTP_PASSWORD: "{{ vault_smtp_password | default('') }}"
+  backend:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    OAUTH2_CLIENT_SECRET: "{{ vault_backend_oauth2_client_secret }}"
+  analytics:
+    OAUTH2_CLIENT_SECRET: "{{ vault_analytics_oauth2_client_secret }}"

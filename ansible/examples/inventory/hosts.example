@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Copy to inventory/hosts. Documentation addresses are used below.
+
+[web]
+web1 ansible_host=203.0.113.10
+
+# Optional groups: turn the matching roles on in inventory/group_vars/<group>.yml
+# with site_step_ca: true, site_openvpn: true, site_asterisk: true, ...
+[internal_ca]
+
+[vpn]
+
+[telephony]
+
+[website:children]
+web
+internal_ca
+vpn
+telephony
+
+[website:vars]
+# bootstrap.yml runs once as the account created by the hosting provider
+# (-u root); every other run uses the deploy account.
+ansible_user=deploy

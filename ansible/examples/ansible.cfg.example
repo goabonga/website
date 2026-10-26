@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Copy to ansible.cfg in the root of your infrastructure project.
+
+[defaults]
+inventory = inventory/hosts
+# Collections installed by `ansible-galaxy collection install -r requirements.yml`.
+collections_path = ./collections
+# Password file of the vault. Keep it out of version control.
+vault_password_file = .vault_pass
+host_key_checking = True
+interpreter_python = auto_silent
+
+[privilege_escalation]
+become = True
+become_method = sudo
+
+[ssh_connection]
+pipelining = True

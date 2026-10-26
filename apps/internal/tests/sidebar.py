@@ -18,7 +18,7 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -27,6 +27,7 @@ from internal.auth.models import User
 from internal.database import Base, get_db
 from internal.models.conversation import Conversation, Message
 from internal.services.token_exchange import TokenExchangeClient, TokenExchangeError
+from internal.services.vpn_portal_client import VPNSession, VPNSessionsResponse
 from sqlalchemy import JSON, Uuid
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -69,6 +70,7 @@ SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
+    "vpn": Section("/vpn/sessions", "vpn:admin", "vpn:admin"),
 }
 
 # Targets of the outbound service clients replaced by mocks.
@@ -76,6 +78,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.analytics.analytics_client",
     "internal.routes.admin.analytics_client",
     "internal.routes.admin.auth_client",
+    "internal.routes.vpn.vpn_portal_client",
 )
 
 
@@ -308,6 +311,27 @@ async def configure_analytics(env: "Env") -> dict:
     return {}
 
 
+async def configure_vpn(env: "Env") -> dict:
+    """Make the VPN portal return one session."""
+    now = datetime.now(UTC)
+    session = VPNSession(
+        id="session-001",
+        user_id="user-001",
+        username="testuser",
+        device_name="laptop",
+        connected_at=now - timedelta(hours=2),
+        assigned_ip="10.8.0.2",
+        certificate_serial="ABC123DEF456",
+        expires_at=now + timedelta(hours=22),
+        scopes=["vpn:connect"],
+        routes=["10.8.0.0/24"],
+    )
+    env.client("vpn.vpn_portal_client").get_sessions.return_value = VPNSessionsResponse(
+        sessions=[session], total=1, page=1, per_page=20
+    )
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -321,6 +345,9 @@ PAGES: dict[str, list[Page]] = {
         Page("/", "dashboard"),
         Page("/conversations", "conversations"),
         Page("/conversations/{conversation}", "conversations", seed_conversation),
+    ],
+    "vpn": [
+        Page("/vpn/sessions", "vpn", configure_vpn),
     ],
 }
 

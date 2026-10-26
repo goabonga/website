@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     campaign_batch_size: int = 50  # contacts processed between two checks for a pause
     default_provider: str = ""  # optional platform provider, used when nothing else is set
 
+    # Status callbacks to the clients
+    callback_allow_http: bool = False  # accept plain http callback URLs (https only by default)
+    callback_timeout: int = 10  # seconds to wait for the client's endpoint
+    callback_max_retries: int = 5  # redeliveries of a callback that failed
+    callback_retry_delay: int = 30  # seconds before the first redelivery (then exponential)
+
     # Default sender
     default_from: str = ""  # optional platform sender, used when the caller has none
     default_from_name: str = ""

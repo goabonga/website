@@ -4,6 +4,7 @@
 """Celery tasks for Mailler."""
 
 # Import tasks explicitly so they are registered with Celery
+from mailler.tasks.callbacks import deliver_status_callback  # noqa: F401
 from mailler.tasks.inbound import (  # noqa: F401
     cleanup_expired_attachments,
     poll_inbound_emails,

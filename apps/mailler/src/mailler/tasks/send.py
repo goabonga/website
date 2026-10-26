@@ -15,6 +15,7 @@ from mailler.logging import get_logger
 from mailler.models.campaign import EmailCampaign, EmailSend, EmailSendStatus
 from mailler.models.client import AuthorizedClient
 from mailler.models.email import Email, EmailStatus, ProviderStats
+from mailler.services.callbacks import notify_status_change
 from mailler.services.providers import get_provider
 from mailler.services.rendering import convert_percent_syntax, html_template, text_template
 from mailler.services.webhook_signature import build_unsubscribe_url
@@ -195,6 +196,7 @@ def send_email_task(self, email_id: str) -> dict:
             db.commit()
             _update_provider_stats(db, email.provider, "failed")
             _update_email_send_status(db, email, "failed", error_message=email.error_message)
+            notify_status_change(db, email)
             logger.warning(
                 "Email of a deactivated client not sent",
                 extra={"email_id": email_id, "client_id": email.client_id},
@@ -230,6 +232,7 @@ def send_email_task(self, email_id: str) -> dict:
 
                 _update_provider_stats(db, email.provider, "sent")
                 _update_email_send_status(db, email, "sent", message_id=result.provider_message_id)
+                notify_status_change(db, email)
 
                 logger.info(
                     "Email sent successfully",
@@ -257,6 +260,7 @@ def send_email_task(self, email_id: str) -> dict:
                     _update_email_send_status(
                         db, email, "failed", error_message=result.error_message
                     )
+                    notify_status_change(db, email)
 
                     logger.error(
                         "Email failed after max retries",
@@ -292,6 +296,7 @@ def send_email_task(self, email_id: str) -> dict:
             db.commit()
             _update_provider_stats(db, email.provider, "failed")
             _update_email_send_status(db, email, "failed", error_message=str(e))
+            notify_status_change(db, email)
 
             logger.error(
                 "Provider error",

@@ -20,6 +20,7 @@ from mailler.logging import get_logger
 from mailler.models.campaign import EmailCampaign, EmailSend, EmailSendStatus
 from mailler.models.contact import Contact
 from mailler.models.email import Email, EmailStatus
+from mailler.services.callbacks import notify_status_change
 from mailler.services.webhook_signature import parse_mailin_custom, verify_webhook_signature
 
 logger = get_logger(__name__)
@@ -69,6 +70,7 @@ def _update_email_status(
 
             db.commit()
             db.refresh(email)
+            notify_status_change(db, email)
 
             logger.info(
                 "Email status updated | email_id=%s old=%s new=%s",

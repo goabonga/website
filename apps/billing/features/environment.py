@@ -21,6 +21,8 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import billing.tasks.stripe_sync_tasks  # noqa: F401  (loaded before the database is patched)
+import billing.tasks.usage_tasks  # noqa: F401
 import httpx
 from billing.auth.models import User
 from billing.config import settings

@@ -6,25 +6,12 @@
 import json
 
 from behave import then, when
-from httpx import ASGITransport, AsyncClient
-
-
-def send_request(context, method, path, headers=None):
-    """Send a request to the ASGI application and store the response."""
-
-    async def make_request():
-        async with AsyncClient(
-            transport=ASGITransport(app=context.app), base_url="http://test"
-        ) as client:
-            return await client.request(method, path, headers=headers)
-
-    context.response = context.loop.run_until_complete(make_request())
 
 
 @when('I send a GET request to "{path}"')
 def step_send_get_request(context, path):
     """Send a GET request to the ASGI application."""
-    send_request(context, "GET", path)
+    context.send_request("GET", path)
 
 
 @then("the response status code should be {status_code:d}")

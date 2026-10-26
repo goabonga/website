@@ -1,0 +1,102 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Data of billing that lives in its database: the SaaS applications and the
+# OAuth clients allowed to act on them. After the migrations every client is
+# unbound and therefore refused, so the bindings are part of a deployment.
+# Both steps are idempotent: an existing application is left untouched and
+# a binding that exists is not created again.
+
+- name: Check the SaaS applications and bindings of {{ python_app__app }}
+  ansible.builtin.assert:
+    that:
+      - item.slug is defined and item.slug | string | length > 0
+      - item.name is defined and item.name | string | length > 0
+    fail_msg: "Each entry of website_billing_saas_apps needs a slug and a name."
+    quiet: true
+  loop: "{{ website_billing_saas_apps }}"
+  loop_control:
+    label: "{{ item.slug | default('?') }}"
+
+- name: Check the client bindings of {{ python_app__app }}
+  ansible.builtin.assert:
+    that:
+      - item.saas is defined and item.saas | string | length > 0
+      - item.client_id is defined and item.client_id | string | length > 0
+    fail_msg: "Each entry of website_billing_client_bindings needs a saas and a client_id."
+    quiet: true
+  loop: "{{ website_billing_client_bindings }}"
+  loop_control:
+    label: "{{ item.client_id | default('?') }}"
+
+- name: Create the SaaS applications of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      cli="$VENV/bin/billing-admin"
+      if "$cli" saas list | grep -qF "\"slug\": \"$SLUG\""; then
+        echo "exists"
+        exit 0
+      fi
+      args=(--name "$SAAS_NAME" --slug "$SLUG")
+      [ -z "$DESCRIPTION" ] || args+=(--description "$DESCRIPTION")
+      [ -z "$WEBHOOK_URL" ] || args+=(--webhook-url "$WEBHOOK_URL")
+      while IFS= read -r value; do
+        [ -z "$value" ] || args+=(--checkout-url "$value")
+      done <<< "$CHECKOUT_URLS"
+      "$cli" saas create "${args[@]}" > /dev/null
+      echo "created"
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    SLUG: "{{ item.slug }}"
+    SAAS_NAME: "{{ item.name }}"
+    DESCRIPTION: "{{ item.description | default('') }}"
+    WEBHOOK_URL: "{{ item.webhook_url | default('') }}"
+    CHECKOUT_URLS: "{{ item.checkout_urls | default([]) | join('\n') }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ website_billing_saas_apps }}"
+  loop_control:
+    label: "{{ item.slug }}"
+  register: python_app__saas
+  changed_when: (python_app__saas.stdout | default('') | trim).endswith('created')
+  when: not ansible_check_mode
+
+- name: Bind the OAuth clients of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      cli="$VENV/bin/billing-admin"
+      if "$cli" client list --saas "$SAAS" --client-id "$CLIENT_ID" | grep -qF "\"client_id\""; then
+        echo "exists"
+        exit 0
+      fi
+      "$cli" client bind --saas "$SAAS" --client-id "$CLIENT_ID" > /dev/null
+      echo "bound"
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    SAAS: "{{ item.saas }}"
+    CLIENT_ID: "{{ item.client_id }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ website_billing_client_bindings }}"
+  loop_control:
+    label: "{{ item.saas }}: {{ item.client_id }}"
+  register: python_app__bindings
+  changed_when: (python_app__bindings.stdout | default('') | trim).endswith('bound')
+  when: not ansible_check_mode

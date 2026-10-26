@@ -45,6 +45,11 @@ class TestAllRoutersImportable:
 
         assert email_templates_router is not None
 
+    def test_knowledge_router(self):
+        from internal.routes import knowledge_router
+
+        assert knowledge_router is not None
+
     def test_mailler_router(self):
         from internal.routes import mailler_router
 
@@ -82,6 +87,7 @@ class TestAllRoutersImportable:
             "contacts_router",
             "email_campaigns_router",
             "email_templates_router",
+            "knowledge_router",
             "mailler_router",
             "namespaces_router",
             "prompts_router",
@@ -93,4 +99,4 @@ class TestAllRoutersImportable:
     def test_all_exports_count(self):
         from internal.routes import __all__
 
-        assert len(__all__) >= 13
+        assert len(__all__) >= 14

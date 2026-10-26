@@ -27,8 +27,10 @@ All commands run from the workspace root.
 ```bash
 uv sync --package apt-server --group dev
 
-# Tests (pytest) run in-process, no external service is needed
+# Tests (pytest) and feature scenarios (behave) run in-process, no
+# external service is needed
 uv run --package apt-server --group dev pytest apps/apt-server
+uv run --package apt-server --group dev behave apps/apt-server/features
 
 # Serve with reload
 uv run --package apt-server uvicorn apt_server.main:app --reload --port 8000

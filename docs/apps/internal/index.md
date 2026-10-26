@@ -22,6 +22,7 @@ feature, in the order they were introduced.
    - [Plan slug and free-form limits](06c-billing-plans.md)
 7. [Team AI administration](07-team.md)
 8. [Mailler statistics](08-mailler.md)
+9. [Contact management](09-contacts.md)
 
 ## Running locally
 

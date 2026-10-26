@@ -26,6 +26,7 @@ from knowledge.routes import (
     collection_invitations,
     collections,
     documents,
+    mcp_downloads,
     search,
 )
 
@@ -92,6 +93,7 @@ Vector storage and semantic search platform for AI agents and applications.
 - **Collection invitations**: Invite users to collaborate on collections
 - **Usage tracking**: Successful API calls are recorded per tenant
 - **Multi-tenant**: Subdomain and custom domain tenant resolution
+- **MCP downloads**: Download Knowledge MCP executables
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -110,7 +112,7 @@ the user has the required `knowledge:*` scopes via token exchange.
 
 ## Internal Routes
 
-For internal routes (health checks), see [/internal/docs](/internal/docs)
+For internal routes (health checks, webhooks), see [/internal/docs](/internal/docs)
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -125,6 +127,7 @@ For internal routes (health checks), see [/internal/docs](/internal/docs)
             "name": "Collection Invitations",
             "description": "Invite users to collaborate on collections",
         },
+        {"name": "MCP Downloads", "description": "Download Knowledge MCP executables"},
     ],
     lifespan=lifespan,
     **swagger_config,
@@ -168,6 +171,7 @@ app.include_router(
 )
 app.include_router(documents.router, prefix="/api/v1", tags=["Documents"])
 app.include_router(search.router, prefix="/api/v1", tags=["Search"])
+app.include_router(mcp_downloads.router, tags=["MCP Downloads"])
 
 # =============================================================================
 # MOUNT INTERNAL SUB-APPLICATION

@@ -55,3 +55,15 @@ def step_follow_sidebar_link(context, label):
 @when("I sign out from the sidebar")
 def step_sign_out_from_sidebar(context):
     context.page.locator(".admin-sidebar .logout-btn").click()
+
+
+@then("the sidebar menu should not be shown")
+def step_sidebar_not_shown(context):
+    expect(context.page.locator(".admin-sidebar")).to_have_count(0)
+
+
+@then('the sidebar menu entry "{label}" should be {state}')
+def step_sidebar_entry_state(context, label, state):
+    assert state in ("visible", "hidden"), f"Unknown state '{state}'"
+    labels = [link["label"] for link in sidebar_links(context)]
+    assert (label in labels) == (state == "visible"), f"sidebar links: {labels}"

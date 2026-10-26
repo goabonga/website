@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+---
+# Release of each deployed application, written by the deploy-plan workflow
+# (scripts/deploy-pins.sh) from the multicz tags. Do not edit by hand.
+website_apps_pins: {}

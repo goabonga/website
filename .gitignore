@@ -11,3 +11,5 @@ artifacts/
 *.retry
 .vault_pass
 site/
+# Files the playbooks fetch to the controller (profiles with private keys)
+/deploy/*/exports/

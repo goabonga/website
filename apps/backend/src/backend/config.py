@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     rag_similarity_threshold: float = 0.7
     rag_max_results: int = 5
 
+    # Prompt configuration
+    prompt_cache_redis_url: str = "redis://localhost:6379/4"
+    prompt_cache_ttl: int = 300  # Cache TTL in seconds (0 = no expiration)
+
     # Rate limiting
     rate_limit_redis_url: str = "redis://localhost:6379/1"
     rate_limit_anon: int = 10  # requests per window for anonymous users

@@ -7,6 +7,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Application foundation: Package, settings, logging, health check and Swagger UI.
 - Data model and migrations: SQLAlchemy models and the Alembic migration chain.
 - Signing keys: Encrypted RSA signing keys and the public JWKS endpoint.
+- Multi-tenancy and OIDC discovery: Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
 
 ## Routes and scopes
 
@@ -19,6 +20,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/docs` | public | Serve Swagger UI with local static assets (no external CDN dependency) |
 | GET | `/docs/oauth2-redirect` | public | OAuth2 redirect page for Swagger UI |
 | GET | `/health` | public | Return a liveness signal for load balancers and container probes |
+| GET | `/.well-known/openid-configuration` | public | Return the OpenID Connect Discovery metadata document |
 | GET | `/.well-known/jwks.json` | public | Return the authorization server's public JSON Web Key Set |
 
 Static files are served publicly under `/static` (favicon and Swagger UI assets).

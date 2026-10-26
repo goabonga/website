@@ -15,3 +15,5 @@ documents one feature as it exists in the code.
    application and health endpoint.
 2. [Dual-stream logging](02-logging.md) - informational logs on stdout,
    problems on stderr, and the application lifespan.
+3. [OAuth2 client credentials](03-oauth2.md) - bearer tokens for calls to
+   internal services.

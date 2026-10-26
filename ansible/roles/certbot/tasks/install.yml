@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The certbot role only supports Debian-family distributions.
+    quiet: true
+
+- name: Check the certificate requests
+  ansible.builtin.assert:
+    that:
+      - certbot_agree_tos | bool
+      - (item.email | default(certbot_email)) | length > 0
+    fail_msg: >-
+      Certificate {{ item.name | default(item.domains[0]) }} requires certbot_agree_tos: true
+      and an e-mail address (certbot_email or the email key of the certificate).
+    quiet: true
+  loop: "{{ certbot_certificates }}"
+  loop_control:
+    label: "{{ item.name | default(item.domains[0]) }}"
+
+- name: Install certbot
+  ansible.builtin.apt:
+    name: "{{ certbot_packages + certbot_plugin_packages }}"
+    state: present
+    update_cache: "{{ certbot_apt_update_cache }}"
+    cache_valid_time: "{{ certbot_apt_cache_valid_time }}"

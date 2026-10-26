@@ -1,0 +1,66 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Master toggle. When false the role does nothing.
+certbot_enabled: true
+
+# Refresh the apt cache before installing packages.
+certbot_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+certbot_apt_cache_valid_time: 3600
+
+# Packages installed for certbot.
+certbot_packages:
+- certbot
+
+# Extra plugin packages, for example python3-certbot-nginx or python3-certbot-
+# dns-cloudflare.
+certbot_plugin_packages: []
+
+# Certbot configuration directory.
+certbot_letsencrypt_dir: /etc/letsencrypt
+
+# Account e-mail address. Required when certbot_certificates is not empty.
+certbot_email: ''
+
+# Accept the certificate authority terms of service. Must be true to issue
+# certificates.
+certbot_agree_tos: false
+
+# Use the staging environment of the certificate authority.
+certbot_staging: false
+
+# Custom ACME directory URL. The Let's Encrypt production server is used when
+# empty.
+certbot_server: ''
+
+# Key type of new certificates. The certbot default is used when empty.
+certbot_key_type: ''
+
+# Authentication method used by certificates that do not set one.
+certbot_default_method: webroot
+
+# Web root served at /.well-known/acme-challenge/ for the webroot method. Must
+# match the web server configuration.
+certbot_webroot: /var/www/html
+
+# Certificates to obtain.
+# Item keys: domains, name, method, webroot, email, key_type, extra_args.
+certbot_certificates: []
+
+# Enable and start the systemd renewal timer. The timer is stopped and
+# disabled when false.
+certbot_auto_renew: true
+
+# Name of the renewal timer unit.
+certbot_timer: certbot.timer
+
+# Service reloaded after each renewal, for example nginx. No reload hook is
+# installed when empty.
+certbot_reload_service: ''
+
+# Additional renewal hooks.
+# Item keys: name, type, command.
+certbot_hooks: []

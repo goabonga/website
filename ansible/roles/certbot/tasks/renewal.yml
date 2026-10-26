@@ -1,0 +1,48 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the renewal hook directories
+  ansible.builtin.file:
+    path: "{{ certbot_letsencrypt_dir }}/renewal-hooks/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [pre, deploy, post]
+
+- name: Install the service reload hook
+  ansible.builtin.template:
+    src: hook.sh.j2
+    dest: "{{ certbot_letsencrypt_dir }}/renewal-hooks/deploy/reload-service.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  vars:
+    certbot__hook_command: "systemctl reload {{ certbot_reload_service | quote }}"
+  when: certbot_reload_service | length > 0
+
+- name: Remove the service reload hook
+  ansible.builtin.file:
+    path: "{{ certbot_letsencrypt_dir }}/renewal-hooks/deploy/reload-service.sh"
+    state: absent
+  when: certbot_reload_service | length == 0
+
+- name: Install custom renewal hooks
+  ansible.builtin.template:
+    src: hook.sh.j2
+    dest: "{{ certbot_letsencrypt_dir }}/renewal-hooks/{{ item.type }}/{{ item.name }}.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  vars:
+    certbot__hook_command: "{{ item.command }}"
+  loop: "{{ certbot_hooks }}"
+  loop_control:
+    label: "{{ item.type }}/{{ item.name }}"
+
+- name: Manage the renewal timer
+  ansible.builtin.systemd:
+    name: "{{ certbot_timer }}"
+    state: "{{ 'started' if certbot_auto_renew | bool else 'stopped' }}"
+    enabled: "{{ certbot_auto_renew }}"

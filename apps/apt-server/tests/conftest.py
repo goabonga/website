@@ -4,12 +4,14 @@
 """Shared pytest fixtures."""
 
 from collections.abc import AsyncIterator, Iterator
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
 from apt_server.db.models import Base
 from apt_server.main import app
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -20,6 +22,17 @@ from sqlalchemy.pool import NullPool
 def _jsonb_as_json_on_sqlite(type_, compiler, **kw) -> str:
     """Let the PostgreSQL models run on the in-process SQLite test database."""
     return "JSON"
+
+
+def _make_datetimes_aware(target, *_args) -> None:
+    """SQLite drops time zones; PostgreSQL returns aware datetimes, so mimic it."""
+    for key, value in list(target.__dict__.items()):
+        if isinstance(value, datetime) and value.tzinfo is None:
+            target.__dict__[key] = value.replace(tzinfo=UTC)
+
+
+event.listen(Base, "load", _make_datetimes_aware, propagate=True)
+event.listen(Base, "refresh", _make_datetimes_aware, propagate=True)
 
 
 @pytest.fixture

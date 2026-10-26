@@ -15,6 +15,7 @@ feature: what it does, how it is configured, how it is tested.
 2. [security.txt endpoint](02-security-txt.md): RFC 9116 disclosure file built from settings.
 3. [OAuth2 token authentication](03-oauth2-authentication.md): JWT and opaque token validation, scopes.
 4. [Redis rate limiting](04-rate-limiting.md): per-user and per-address sliding window, session creation budget.
+5. [Conversations](05-conversations.md): conversation, message and usage models, `ChatService`.
 
 ## Running the tests
 

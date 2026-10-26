@@ -1,0 +1,34 @@
+{{ ansible_managed | comment }}
+{% set v4 = (nginx_listen_ipv4 ~ ':') if nginx_listen_ipv4 | length > 0 else '' %}
+{% set v6 = nginx_listen_ipv6 if nginx_listen_ipv6 | length > 0 else '::' %}
+
+# Catch-all server: answers requests whose Host header matches no other server.
+server {
+    listen {{ v4 }}80 default_server;
+{% if nginx_ipv6_enabled | bool %}
+    listen [{{ v6 }}]:80 default_server;
+{% endif %}
+
+    server_name _;
+
+    include {{ nginx_config_dir }}/snippets/error-pages.conf;
+{% for line in nginx_default_vhost_extra_config %}
+    {{ line }}
+{% endfor %}
+{% if nginx_redirect_ip_to_hostname | bool %}
+
+    return 301 {{ 'https' if nginx_https_enabled | bool and nginx__has_certificate | bool else 'http' }}://{{ nginx_hostname }}$request_uri;
+{% else %}
+
+    root {{ nginx_root }}/default;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+{% endif %}
+}

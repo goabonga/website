@@ -1,0 +1,11 @@
+{{ ansible_managed | comment }}
+{% if nginx_error_pages_enabled | bool %}
+{% for page in nginx_error_pages %}
+error_page {{ page.code }} /errors/{{ page.code }}.html;
+{% endfor %}
+
+location ^~ /errors/ {
+    internal;
+    root {{ nginx_root }};
+}
+{% endif %}

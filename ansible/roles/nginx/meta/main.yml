@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  author: Chris
+  description: Install nginx with a hardened global configuration, default and hostname virtual
+    hosts, error pages and optional HTTPS.
+  company: goabonga
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - nginx
+  - web
+  - proxy
+dependencies: []

@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the nginx configuration
+  ansible.builtin.command:
+    cmd: nginx -t
+  changed_when: false
+  when:
+    - nginx_test_config | bool
+    - not ansible_check_mode
+
+- name: Manage the nginx service
+  ansible.builtin.systemd:
+    name: "{{ nginx_service_name }}"
+    state: "{{ nginx_service_state }}"
+    enabled: "{{ nginx_service_enabled }}"
+
+- name: Apply pending reloads
+  ansible.builtin.meta: flush_handlers

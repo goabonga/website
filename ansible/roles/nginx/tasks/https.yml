@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for the certificate
+  ansible.builtin.stat:
+    path: "{{ nginx_letsencrypt_dir }}/live/{{ nginx_hostname }}/fullchain.pem"
+  register: nginx__certificate
+
+- name: Obtain the certificate with certbot
+  ansible.builtin.command:
+    argv: >-
+      {{ ['certbot', 'certonly', '--non-interactive', '--agree-tos',
+          '--config-dir', nginx_letsencrypt_dir,
+          '--webroot', '--webroot-path', nginx_acme_webroot,
+          '--cert-name', nginx_hostname,
+          '--domain', nginx_hostname,
+          '--email', nginx_certbot_email]
+         + (['--staging'] if nginx_certbot_staging | bool else [])
+         + nginx_certbot_extra_args }}
+  when: not nginx__certificate.stat.exists
+  register: nginx__certbot
+  changed_when: true
+
+- name: Render the hostname virtual host with HTTPS
+  ansible.builtin.template:
+    src: hostname.conf.j2
+    dest: "{{ nginx_config_dir }}/sites-available/{{ nginx_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    nginx__has_certificate: true
+  when: nginx__certbot is changed
+  notify: nginx | reload
+
+- name: Apply the HTTPS configuration
+  ansible.builtin.meta: flush_handlers

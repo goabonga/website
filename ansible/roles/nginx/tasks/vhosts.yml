@@ -1,0 +1,86 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for an existing certificate
+  ansible.builtin.stat:
+    path: "{{ nginx_letsencrypt_dir }}/live/{{ nginx_hostname }}/fullchain.pem"
+  register: nginx__certificate
+  when:
+    - nginx_https_enabled | bool
+    - nginx_hostname | length > 0
+
+- name: Remove the distribution default site
+  ansible.builtin.file:
+    path: "{{ nginx_config_dir }}/sites-enabled/default"
+    state: absent
+  when: nginx_remove_distribution_site | bool
+  notify: nginx | reload
+
+- name: Write the default landing page
+  ansible.builtin.template:
+    src: index-default.html.j2
+    dest: "{{ nginx_root }}/default/index.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: "0644"
+  when:
+    - nginx_default_vhost_enabled | bool
+    - nginx_default_page_enabled | bool
+
+- name: Write the hostname landing page
+  ansible.builtin.template:
+    src: index-hostname.html.j2
+    dest: "{{ nginx_root }}/hostname/index.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: "0644"
+  when: nginx__hostname_vhost | bool
+
+- name: Render the default virtual host
+  ansible.builtin.template:
+    src: default.conf.j2
+    dest: "{{ nginx_config_dir }}/sites-available/{{ nginx_default_vhost_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    nginx__has_certificate: "{{ (nginx__certificate.stat | default({})).exists | default(false) }}"
+  when: nginx_default_vhost_enabled | bool
+  notify: nginx | reload
+
+- name: Enable the default virtual host
+  ansible.builtin.file:
+    src: "{{ nginx_config_dir }}/sites-available/{{ nginx_default_vhost_name }}"
+    dest: "{{ nginx_config_dir }}/sites-enabled/{{ nginx_default_vhost_name }}"
+    state: link
+  when: nginx_default_vhost_enabled | bool
+  notify: nginx | reload
+
+- name: Disable the default virtual host
+  ansible.builtin.file:
+    path: "{{ nginx_config_dir }}/{{ item }}/{{ nginx_default_vhost_name }}"
+    state: absent
+  loop: [sites-enabled, sites-available]
+  when: not (nginx_default_vhost_enabled | bool)
+  notify: nginx | reload
+
+- name: Render the hostname virtual host
+  ansible.builtin.template:
+    src: hostname.conf.j2
+    dest: "{{ nginx_config_dir }}/sites-available/{{ nginx_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    nginx__has_certificate: "{{ (nginx__certificate.stat | default({})).exists | default(false) }}"
+  when: nginx__hostname_vhost | bool
+  notify: nginx | reload
+
+- name: Enable the hostname virtual host
+  ansible.builtin.file:
+    src: "{{ nginx_config_dir }}/sites-available/{{ nginx_hostname }}"
+    dest: "{{ nginx_config_dir }}/sites-enabled/{{ nginx_hostname }}"
+    state: link
+  when: nginx__hostname_vhost | bool
+  notify: nginx | reload

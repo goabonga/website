@@ -1,0 +1,367 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install nginx with a hardened global configuration, default and hostname
+      virtual hosts, error pages and optional HTTPS.
+    description:
+    - Installs nginx, renders nginx.conf and a catch-all default virtual host, optionally
+      a virtual host for a host name, custom HTML error pages and, through certbot, a Let's
+      Encrypt certificate that upgrades the host name virtual host to HTTPS.
+    author: Chris
+    options:
+      nginx_enabled:
+        type: bool
+        description:
+        - Master toggle. When false the role does nothing.
+        default: true
+      nginx_apt_update_cache:
+        type: bool
+        description:
+        - Refresh the apt cache before installing packages.
+        default: true
+      nginx_apt_cache_valid_time:
+        type: int
+        description:
+        - Seconds the apt cache is considered fresh.
+        default: 3600
+      nginx_packages:
+        type: list
+        description:
+        - Packages to install.
+        default:
+        - nginx
+        elements: str
+      nginx_service_name:
+        type: str
+        description:
+        - systemd unit name.
+        default: nginx
+      nginx_service_state:
+        type: str
+        description:
+        - State of the service after configuration.
+        default: started
+        choices:
+        - started
+        - stopped
+      nginx_service_enabled:
+        type: bool
+        description:
+        - Enable the service at boot.
+        default: true
+      nginx_user:
+        type: str
+        description:
+        - User the worker processes run as, also owner of the web roots.
+        default: www-data
+      nginx_group:
+        type: str
+        description:
+        - Group owning the web roots.
+        default: www-data
+      nginx_config_dir:
+        type: path
+        description:
+        - Nginx configuration directory.
+        default: /etc/nginx
+      nginx_log_dir:
+        type: path
+        description:
+        - Directory of the access and error logs.
+        default: /var/log/nginx
+      nginx_root:
+        type: path
+        description:
+        - 'Document root: the default and hostname pages, the error pages and the ACME webroot
+          live below it.'
+        default: /var/www/html
+      nginx_test_config:
+        type: bool
+        description:
+        - Validate the configuration with nginx -t before starting the service.
+        default: true
+      nginx_worker_processes:
+        type: str
+        description:
+        - Value of worker_processes (auto or a number).
+        default: auto
+      nginx_worker_connections:
+        type: int
+        description:
+        - Maximum connections per worker.
+        default: 1024
+      nginx_multi_accept:
+        type: bool
+        description:
+        - Let a worker accept all new connections at once.
+        default: true
+      nginx_server_tokens:
+        type: bool
+        description:
+        - Show the nginx version in responses and error pages.
+        default: false
+      nginx_keepalive_timeout:
+        type: int
+        description:
+        - Keep-alive timeout in seconds.
+        default: 65
+      nginx_client_max_body_size:
+        type: str
+        description:
+        - Maximum accepted request body size.
+        default: 1m
+      nginx_error_log_level:
+        type: str
+        description:
+        - Severity of the error log.
+        default: error
+        choices:
+        - debug
+        - info
+        - notice
+        - warn
+        - error
+        - crit
+        - alert
+        - emerg
+      nginx_gzip_enabled:
+        type: bool
+        description:
+        - Compress text responses.
+        default: true
+      nginx_gzip_comp_level:
+        type: int
+        description:
+        - Gzip compression level (1 to 9).
+        default: 6
+      nginx_gzip_types:
+        type: list
+        description:
+        - MIME types compressed in addition to text/html.
+        default:
+        - text/plain
+        - text/css
+        - text/xml
+        - application/json
+        - application/javascript
+        - application/rss+xml
+        - application/atom+xml
+        - image/svg+xml
+        elements: str
+      nginx_ssl_protocols:
+        type: list
+        description:
+        - Accepted TLS protocol versions.
+        default:
+        - TLSv1.2
+        - TLSv1.3
+        elements: str
+      nginx_ssl_ciphers:
+        type: str
+        description:
+        - TLS cipher list of the HTTPS virtual host.
+        default: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+      nginx_ssl_session_cache:
+        type: str
+        description:
+        - TLS session cache.
+        default: shared:SSL:10m
+      nginx_ssl_session_timeout:
+        type: str
+        description:
+        - TLS session lifetime.
+        default: 1d
+      nginx_hsts_enabled:
+        type: bool
+        description:
+        - Send the Strict-Transport-Security header on the HTTPS virtual host.
+        default: false
+      nginx_hsts_max_age:
+        type: int
+        description:
+        - max-age of the HSTS header in seconds.
+        default: 31536000
+      nginx_extra_http_config:
+        type: list
+        description:
+        - Raw lines added to the http block of nginx.conf.
+        default: []
+        elements: str
+      nginx_remove_distribution_site:
+        type: bool
+        description:
+        - Remove the distribution default site from sites-enabled.
+        default: true
+      nginx_default_vhost_enabled:
+        type: bool
+        description:
+        - Deploy the catch-all default virtual host.
+        default: true
+      nginx_default_vhost_name:
+        type: str
+        description:
+        - File name of the default virtual host. It must sort last so the catch-all never
+          wins over a named host.
+        default: 999-default
+      nginx_listen_ipv4:
+        type: str
+        description:
+        - IPv4 address to listen on. Every IPv4 address when empty.
+        default: ''
+      nginx_listen_ipv6:
+        type: str
+        description:
+        - IPv6 address to listen on. Every IPv6 address when empty.
+        default: ''
+      nginx_ipv6_enabled:
+        type: bool
+        description:
+        - Add IPv6 listen directives.
+        default: true
+      nginx_default_page_enabled:
+        type: bool
+        description:
+        - Write a landing page for the default virtual host.
+        default: true
+      nginx_default_page_title:
+        type: str
+        description:
+        - Heading of the default landing page. The inventory host name is used when empty.
+        default: ''
+      nginx_default_page_message:
+        type: str
+        description:
+        - Text of the landing pages.
+        default: Server is running
+      nginx_redirect_ip_to_hostname:
+        type: bool
+        description:
+        - Answer requests that do not match a host name with a 301 redirect to nginx_hostname
+          instead of the landing page.
+        default: false
+      nginx_default_vhost_extra_config:
+        type: list
+        description:
+        - Raw lines added to the server block of the default virtual host.
+        default: []
+        elements: str
+      nginx_hostname:
+        type: str
+        description:
+        - Host name served by the hostname virtual host. The virtual host is not created when
+          empty.
+        default: ''
+      nginx_hostname_vhost_enabled:
+        type: bool
+        description:
+        - Deploy the hostname virtual host when nginx_hostname is set.
+        default: true
+      nginx_hostname_vhost_extra_config:
+        type: list
+        description:
+        - Raw lines added to the server blocks of the hostname virtual host.
+        default: []
+        elements: str
+      nginx_acme_webroot:
+        type: path
+        description:
+        - Directory served at /.well-known/acme-challenge/ by the hostname virtual host. It
+          must match the certbot webroot.
+        default: /var/www/html
+      nginx_https_enabled:
+        type: bool
+        description:
+        - Obtain a certificate for nginx_hostname with certbot and serve the host over HTTPS.
+        default: false
+      nginx_https_redirect:
+        type: bool
+        description:
+        - Redirect HTTP to HTTPS once a certificate exists.
+        default: true
+      nginx_certbot_email:
+        type: str
+        description:
+        - Account e-mail used to obtain the certificate. Required when nginx_https_enabled
+          is true.
+        default: ''
+      nginx_certbot_agree_tos:
+        type: bool
+        description:
+        - Accept the certificate authority terms of service. Must be true when nginx_https_enabled
+          is true.
+        default: false
+      nginx_certbot_staging:
+        type: bool
+        description:
+        - Use the staging environment of the certificate authority.
+        default: false
+      nginx_certbot_extra_args:
+        type: list
+        description:
+        - Additional certbot command line arguments.
+        default: []
+        elements: str
+      nginx_letsencrypt_dir:
+        type: path
+        description:
+        - Certbot configuration directory holding the live certificates.
+        default: /etc/letsencrypt
+      nginx_error_pages_enabled:
+        type: bool
+        description:
+        - Deploy the custom HTML error pages.
+        default: true
+      nginx_error_pages:
+        type: list
+        description:
+        - Error pages to deploy.
+        default:
+        - code: 403
+          title: Forbidden
+          message: You don't have permission to access this resource.
+          icon: '&#x1F6AB;'
+        - code: 404
+          title: Not Found
+          message: The page you're looking for doesn't exist or has been moved.
+          icon: '&#x1F50D;'
+        - code: 500
+          title: Internal Server Error
+          message: Something went wrong on our end. Please try again later.
+          icon: '&#x1F525;'
+        - code: 502
+          title: Bad Gateway
+          message: The server is temporarily unable to handle your request. Please try again
+            in a moment.
+          icon: '&#x1F6A7;'
+        - code: 503
+          title: Service Unavailable
+          message: We're currently performing maintenance. Please check back shortly.
+          icon: '&#x1F527;'
+        - code: 504
+          title: Gateway Timeout
+          message: The server took too long to respond. Please try again later.
+          icon: '&#x23F3;'
+        elements: dict
+        options:
+          code:
+            type: int
+            description:
+            - HTTP status code.
+            required: true
+          title:
+            type: str
+            description:
+            - Page heading.
+            required: true
+          message:
+            type: str
+            description:
+            - Explanation shown to the visitor.
+            required: true
+          icon:
+            type: str
+            description:
+            - HTML entity or emoji displayed above the code.
+            required: true

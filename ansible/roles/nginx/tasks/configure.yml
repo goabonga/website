@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ nginx_config_dir }}/snippets"
+    - "{{ nginx_config_dir }}/sites-available"
+    - "{{ nginx_config_dir }}/sites-enabled"
+
+- name: Create the web roots
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: "0755"
+  loop: "{{ nginx__web_roots }}"
+
+- name: Render nginx.conf
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_config_dir }}/nginx.conf"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "{{ 'nginx -t -c %s' if nginx_test_config | bool else omit }}"
+  notify: nginx | reload
+
+- name: Deploy the custom error pages
+  ansible.builtin.template:
+    src: error-page.html.j2
+    dest: "{{ nginx_root }}/errors/{{ item.code }}.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: "0644"
+  loop: "{{ nginx_error_pages }}"
+  loop_control:
+    label: "{{ item.code }}"
+  when: nginx_error_pages_enabled | bool
+
+- name: Render the error pages snippet
+  ansible.builtin.template:
+    src: snippets/error-pages.conf.j2
+    dest: "{{ nginx_config_dir }}/snippets/error-pages.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: nginx | reload

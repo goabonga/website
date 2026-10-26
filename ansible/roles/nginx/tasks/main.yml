@@ -1,0 +1,32 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install nginx
+  ansible.builtin.import_tasks: install.yml
+  when: nginx_enabled | bool
+  tags: [nginx]
+
+- name: Configure nginx
+  ansible.builtin.import_tasks: configure.yml
+  when: nginx_enabled | bool
+  tags: [nginx]
+
+- name: Configure the virtual hosts
+  ansible.builtin.import_tasks: vhosts.yml
+  when: nginx_enabled | bool
+  tags: [nginx]
+
+- name: Start nginx
+  ansible.builtin.import_tasks: service.yml
+  when: nginx_enabled | bool
+  tags: [nginx]
+
+- name: Obtain the HTTPS certificate
+  ansible.builtin.import_tasks: https.yml
+  when:
+    - nginx_enabled | bool
+    - nginx_https_enabled | bool
+    - nginx_hostname | length > 0
+    - nginx_hostname_vhost_enabled | bool
+  tags: [nginx]

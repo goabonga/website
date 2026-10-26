@@ -1,0 +1,15 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Internal values of the nginx role. Not meant to be overridden.
+
+# The hostname virtual host exists only when a host name is configured.
+nginx__hostname_vhost: "{{ nginx_hostname_vhost_enabled | bool and nginx_hostname | length > 0 }}"
+
+# Directories created below nginx_root.
+nginx__web_roots: >-
+  {{ [nginx_root]
+     + ([nginx_root ~ '/default'] if nginx_default_vhost_enabled | bool else [])
+     + ([nginx_root ~ '/hostname'] if nginx__hostname_vhost | bool else [])
+     + ([nginx_root ~ '/errors'] if nginx_error_pages_enabled | bool else [])
+     + ([nginx_acme_webroot] if nginx__hostname_vhost | bool else []) }}

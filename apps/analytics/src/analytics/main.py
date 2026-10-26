@@ -16,6 +16,7 @@ from analytics.routes.collect import router as collect_router
 from analytics.routes.health import router as health_router
 from analytics.routes.pixel import router as pixel_router
 from analytics.routes.security_txt import router as security_txt_router
+from analytics.routes.stats import router as stats_router
 from analytics.routes.track import router as track_router
 
 # Configure logging before anything else
@@ -105,3 +106,4 @@ app.include_router(security_txt_router)
 app.include_router(collect_router)
 app.include_router(pixel_router)
 app.include_router(track_router)
+app.include_router(stats_router)

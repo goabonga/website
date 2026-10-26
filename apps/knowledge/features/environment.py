@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-"""Behave environment: drives the ASGI application in-process.
+"""Behave environment: drives ASGI applications in-process.
 
 No server, database or Redis is started. Requests go straight to the ASGI
 application through httpx, and external collaborators are replaced by fakes
@@ -13,20 +13,23 @@ import asyncio
 import httpx
 
 
+def call_app(app, method, path, **kwargs):
+    """Send one request to an ASGI application and return the httpx response."""
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.request(method, path, **kwargs)
+
+    return asyncio.run(run())
+
+
 def before_all(context):
     from knowledge.main import app
 
     context.app = app
-
-    def call(method, path, **kwargs):
-        async def run():
-            transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-                return await client.request(method, path, **kwargs)
-
-        return asyncio.run(run())
-
-    context.call = call
+    context.call_app = call_app
+    context.call = lambda method, path, **kwargs: call_app(app, method, path, **kwargs)
 
 
 def before_scenario(context, scenario):

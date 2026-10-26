@@ -11,6 +11,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Outbound webhooks and Celery: Signed webhook deliveries to tenant endpoints through a Celery worker.
 - Registration and email verification: User accounts, password hashing, email delivery and verification.
 - Sessions and logout: Cookie sessions, sliding expiry middleware and logout.
+- Multi-factor authentication: TOTP, email codes and backup codes.
 
 ## Routes and scopes
 
@@ -42,6 +43,17 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/logout/api` | session | Terminate the current session and return a JSON confirmation |
 | POST | `/auth/logout/all` | public (clears the session cookie) | Revoke every active session for the user and redirect to the login page |
 | POST | `/auth/logout/all/api` | session | Revoke every active session for the user and return a JSON confirmation |
+| GET | `/auth/mfa/status` | session | Return TOTP enablement state and backup code counts for the current user |
+| POST | `/auth/mfa/totp/setup` | session | Initialise TOTP enrolment for the current user |
+| POST | `/auth/mfa/totp/verify` | session | Confirm the pending TOTP secret and activate TOTP for the current user |
+| POST | `/auth/mfa/totp/disable` | session | Deactivate TOTP for the current user after confirming the current code |
+| POST | `/auth/mfa/backup-codes/regenerate` | session | Invalidate existing backup codes and issue a new set |
+| POST | `/auth/mfa/verify` | session | Verify a TOTP code or a single-use backup code during an MFA challenge |
+| GET | `/auth/mfa/setup` | session | Render the TOTP enrolment page with a QR code for authenticator apps |
+| POST | `/auth/mfa/setup/reconfigure` | session | Replace the active TOTP secret with a newly generated one |
+| POST | `/auth/mfa/email/send` | session | Generate and email a time-limited OTP to the current user's primary address |
+| POST | `/auth/mfa/email/verify` | session | Validate the email OTP submitted by the current user |
+| GET | `/auth/mfa/email` | session | Render the email OTP verification page for browser-based MFA flows |
 
 Static files are served publicly under `/static` (favicon and Swagger UI assets) and `/uploads` (uploaded files).
 

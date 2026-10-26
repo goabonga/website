@@ -33,6 +33,8 @@ uv run --package custom-domain python -m custom_domain.cli --help
 | `--upstream` | no | Default upstream socket or URL of the client's domains. |
 | `--cname` | no | Default CNAME target. |
 | `--max-domains` | no | Domain quota. |
+| `--webhook-url` | no | `https://` URL that receives signed status notifications. |
+| `--webhook-secret` | with the URL | HMAC secret, at least 32 characters. Prefer the environment variable `CUSTOM_DOMAIN_WEBHOOK_SECRET`, which keeps it out of the process list. |
 
 Failures (a client that already exists, missing template files, a database
 error) print a message on stderr and exit with status 1.

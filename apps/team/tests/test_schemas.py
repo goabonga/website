@@ -11,6 +11,7 @@ from team.schemas import (
     ConversationCreate,
     MemoryEntryCreate,
     MessageCreate,
+    TaskCreate,
     TeamCreate,
     TeamUpdate,
     WorkflowCreate,
@@ -53,6 +54,18 @@ class TestWorkflowSchemas:
         data = WorkflowUpdate(status="active")
         dumped = data.model_dump(exclude_unset=True)
         assert dumped == {"status": "active"}
+
+
+class TestTaskSchemas:
+    def test_task_create_valid(self):
+        data = TaskCreate(title="Review PR #42")
+        assert data.title == "Review PR #42"
+        assert data.priority == 0
+
+    def test_task_create_with_agent(self):
+        agent_id = uuid4()
+        data = TaskCreate(title="Fix bug", agent_id=agent_id)
+        assert data.agent_id == agent_id
 
 
 class TestMessageSchemas:

@@ -362,6 +362,7 @@ website_apps_catalog:
       REDIS_URL: "{{ website_redis_url }}?db=13"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_custom_domain_celery_queue }}"
       TOKEN_VALIDATION_MODE: "introspection"
       TOKEN_INTROSPECTION_CACHE_TTL: "60"
       OAUTH2_CLIENT_CACHE_TTL: "300"
@@ -390,6 +391,7 @@ website_apps_catalog:
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_custom_domain_celery_queue }}"
       REDIS_URL: "{{ website_redis_url }}?db=13"
       DNS_CHECK_INTERVAL_MINUTES: "5"
       CERTIFICATE_RENEWAL_DAYS: "30"
@@ -408,13 +410,14 @@ website_apps_catalog:
       - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
       - "/usr/bin/mkdir -p /var/www/certbot"
     celery:
-      queues: ["custom-domain"]
+      queues: ["{{ website_custom_domain_celery_queue }}"]
     postgres:
       database: custom_domain
       async_db: true
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_custom_domain_celery_queue }}"
       REDIS_URL: "{{ website_redis_url }}?db=13"
       NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
       NGINX_CONFIG_PREFIX: "custom-domain-"

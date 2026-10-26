@@ -33,6 +33,12 @@ def step_not_authenticated(context):
     context.use_auth = False
 
 
+@given("I am authenticated as webhook service")
+def step_authenticated_webhook(context):
+    """Use the webhook service client (machine client with billing:webhooks scope)."""
+    context.use_auth = "webhook"
+
+
 # -- When Steps (HTTP requests) ----------------------------------------------─
 
 
@@ -41,6 +47,8 @@ def _get_client(context):
     auth = getattr(context, "use_auth", True)
     if isinstance(auth, tuple) and auth[0] == "client":
         return context.oauth_clients[auth[1]]
+    if auth == "webhook":
+        return context.webhook_client
     if auth:
         return context.client
     return context.anon_client

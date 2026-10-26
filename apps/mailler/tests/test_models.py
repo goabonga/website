@@ -5,6 +5,7 @@
 
 from unittest.mock import MagicMock
 
+from mailler.models.campaign import EmailCampaign
 from mailler.models.contact import Contact, ContactGroup, ContactStatus
 
 
@@ -138,3 +139,89 @@ class TestClientOwnership:
             column = model.__table__.columns["client_id"]
             assert column.nullable is False
             assert column.index
+
+
+class TestEmailCampaignProgressPercent:
+    """Tests for EmailCampaign.progress_percent property."""
+
+    def _make_campaign(self, **kwargs):
+        c = MagicMock(spec=[])
+        for k, v in kwargs.items():
+            setattr(c, k, v)
+        return c
+
+    def test_normal(self):
+        c = self._make_campaign(total_recipients=100, sent_count=50)
+        assert EmailCampaign.progress_percent.fget(c) == 50.0
+
+    def test_zero_recipients(self):
+        c = self._make_campaign(total_recipients=0, sent_count=0)
+        assert EmailCampaign.progress_percent.fget(c) == 0.0
+
+    def test_rounding(self):
+        c = self._make_campaign(total_recipients=3, sent_count=1)
+        assert EmailCampaign.progress_percent.fget(c) == 33.3
+
+
+class TestEmailCampaignOpenRate:
+    """Tests for EmailCampaign.open_rate property."""
+
+    def test_normal(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 100
+        c.opened_count = 25
+        assert EmailCampaign.open_rate.fget(c) == 25.0
+
+    def test_zero_delivered(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 0
+        c.opened_count = 0
+        assert EmailCampaign.open_rate.fget(c) == 0.0
+
+
+class TestEmailCampaignClickRate:
+    """Tests for EmailCampaign.click_rate property."""
+
+    def test_normal(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 200
+        c.clicked_count = 10
+        assert EmailCampaign.click_rate.fget(c) == 5.0
+
+    def test_zero_delivered(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 0
+        c.clicked_count = 0
+        assert EmailCampaign.click_rate.fget(c) == 0.0
+
+
+class TestEmailCampaignBounceRate:
+    """Tests for EmailCampaign.bounce_rate property."""
+
+    def test_normal(self):
+        c = MagicMock(spec=[])
+        c.sent_count = 100
+        c.bounced_count = 5
+        assert EmailCampaign.bounce_rate.fget(c) == 5.0
+
+    def test_zero_sent(self):
+        c = MagicMock(spec=[])
+        c.sent_count = 0
+        c.bounced_count = 0
+        assert EmailCampaign.bounce_rate.fget(c) == 0.0
+
+
+class TestEmailCampaignComplaintRate:
+    """Tests for EmailCampaign.complaint_rate property."""
+
+    def test_normal(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 1000
+        c.complained_count = 3
+        assert EmailCampaign.complaint_rate.fget(c) == 0.3
+
+    def test_zero_delivered(self):
+        c = MagicMock(spec=[])
+        c.delivered_count = 0
+        c.complained_count = 0
+        assert EmailCampaign.complaint_rate.fget(c) == 0.0

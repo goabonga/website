@@ -71,6 +71,7 @@ SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
+    "email_templates": Section("/email-templates", "email_templates:*"),
     "mailler": Section("/mailler", "mailler:*"),
     "contacts": Section("/contacts", "contacts:*"),
     "contact_groups": Section("/contact-groups", "contacts:*"),
@@ -90,6 +91,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.mailler.mailler_client",
     "internal.routes.contacts.mailler_client",
     "internal.routes.contact_groups.mailler_client",
+    "internal.routes.email_templates.mailler_client",
 )
 
 
@@ -652,6 +654,28 @@ async def configure_contact_groups(env: "Env") -> dict:
     return {}
 
 
+async def configure_email_templates(env: "Env") -> dict:
+    """Make the mailler service return one email template."""
+    template = {
+        "id": 1,
+        "slug": "welcome-email",
+        "name": "Welcome Email",
+        "description": "A welcome email template",
+        "subject_template": "Welcome %first_name%!",
+        "mjml_source": "<mjml><mj-body></mj-body></mjml>",
+        "html_compiled": "<html><body>Hello</body></html>",
+        "plain_text": "Hello",
+        "status": "active",
+        "variables": ["first_name", "email"],
+        "created_at": "2024-01-15T12:00:00Z",
+        "updated_at": "2024-01-15T12:00:00Z",
+    }
+    mailler = env.client("email_templates.mailler_client")
+    mailler.get_templates.return_value = {"items": [template], "total": 1, "pages": 1}
+    mailler.get_template.return_value = template
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -720,6 +744,12 @@ PAGES: dict[str, list[Page]] = {
         Page("/contact-groups/1", "contact_groups", configure_contact_groups),
         Page("/contact-groups/1/edit", "contact_groups", configure_contact_groups),
         Page("/contact-groups/1/add-contacts", "contact_groups", configure_contact_groups),
+    ],
+    "email_templates": [
+        Page("/email-templates", "email_templates", configure_email_templates),
+        Page("/email-templates/new", "email_templates", configure_email_templates),
+        Page("/email-templates/1", "email_templates", configure_email_templates),
+        Page("/email-templates/1/edit", "email_templates", configure_email_templates),
     ],
 }
 

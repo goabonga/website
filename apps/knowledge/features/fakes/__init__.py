@@ -32,6 +32,7 @@ from knowledge.models import (
     McpRelease,
     McpReleaseAsset,
     Organization,
+    OrganizationInvitation,
     OrganizationMember,
 )
 from knowledge.models.enums import CollaboratorPermission, OwnerType
@@ -39,6 +40,13 @@ from knowledge.schemas.search import SearchResponse, SearchResult
 from knowledge.services.collaborators import CollaboratorService
 from knowledge.services.collection_invitations import CollectionInvitationService
 from knowledge.services.documents import DocumentService
+
+COMPARISONS = {
+    operator.gt: operator.gt,
+    operator.lt: operator.lt,
+    operator.ge: operator.ge,
+    operator.le: operator.le,
+}
 
 
 class Store:
@@ -53,6 +61,7 @@ class Store:
         self.release_assets: dict[UUID, McpReleaseAsset] = {}
         self.organizations: dict[UUID, Organization] = {}
         self.members: dict[UUID, OrganizationMember] = {}
+        self.org_invitations: dict[UUID, OrganizationInvitation] = {}
 
     def tables(self):
         """In-memory tables by SQL table name."""
@@ -65,6 +74,7 @@ class Store:
             "mcp_release_assets": self.release_assets,
             "tenants": self.organizations,
             "tenant_members": self.members,
+            "invitations": self.org_invitations,
         }
 
     def bucket_for(self, obj):
@@ -78,6 +88,7 @@ class Store:
             (McpReleaseAsset, self.release_assets),
             (Organization, self.organizations),
             (OrganizationMember, self.members),
+            (OrganizationInvitation, self.org_invitations),
         ):
             if isinstance(obj, cls):
                 return bucket
@@ -199,6 +210,9 @@ class FakeSession:
             return [r for r in rows if current(r) != expected]
         if op is in_op:
             return [r for r in rows if current(r) in expected]
+        if op in COMPARISONS:
+            compare = COMPARISONS[op]
+            return [r for r in rows if compare(current(r), expected)]
         raise NotImplementedError(f"unsupported operator {op}")
 
     async def delete(self, obj):

@@ -16,6 +16,7 @@ feature: what it does, how it is configured, how it is tested.
 3. [OAuth2 token authentication](03-oauth2-authentication.md): JWT and opaque token validation, scopes.
 4. [Redis rate limiting](04-rate-limiting.md): per-user and per-address sliding window, session creation budget.
 5. [Conversations](05-conversations.md): conversation, message and usage models, `ChatService`.
+6. [Anonymous sessions](06-anonymous-sessions.md): cookie sessions and the unified chat context.
 
 ## Running the tests
 

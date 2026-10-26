@@ -13,6 +13,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Sessions and logout: Cookie sessions, sliding expiry middleware and logout.
 - Multi-factor authentication: TOTP, email codes and backup codes.
 - Login and password reset: Login form and API, password recovery.
+- OAuth2 and OIDC authorization server: Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
 
 ## Routes and scopes
 
@@ -27,6 +28,18 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/health` | public | Return a liveness signal for load balancers and container probes |
 | GET | `/.well-known/openid-configuration` | public | Return the OpenID Connect Discovery metadata document |
 | GET | `/.well-known/jwks.json` | public | Return the authorization server's public JSON Web Key Set |
+| GET | `/userinfo` | bearer token issued with the `openid` scope | Return OIDC claims for the authenticated end-user (GET) |
+| POST | `/userinfo` | bearer token issued with the `openid` scope | Return OIDC claims for the authenticated end-user (POST) |
+
+### OAuth2 and federation
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/oauth2/authorize` | session (redirects to the login page otherwise) | Initiate the OAuth2 authorization code flow |
+| POST | `/oauth2/authorize` | session (401 otherwise) | Submit the OAuth2 consent decision and obtain an authorization code |
+| POST | `/oauth2/token` | client credentials (HTTP Basic or form); public clients use PKCE with `client_id` only | Issue OAuth2 access tokens for all supported grant types |
+| POST | `/oauth2/revoke` | client credentials (HTTP Basic or form) | Revoke an OAuth2 access token or refresh token (RFC 7009) |
+| POST | `/oauth2/introspect` | client credentials (HTTP Basic or form), confidential client allowed the `introspect` scope | Validate a token and return its active state and metadata |
 
 ### Account pages and API
 

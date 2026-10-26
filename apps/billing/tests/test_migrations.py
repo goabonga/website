@@ -22,13 +22,13 @@ class TestMigrationChain:
     def test_single_head(self):
         """The history should be linear with a single head."""
         script = ScriptDirectory.from_config(_config())
-        assert script.get_heads() == ["005"]
+        assert script.get_heads() == ["006"]
 
     def test_revisions_are_chained(self):
         """Every revision except the first should have a parent."""
         script = ScriptDirectory.from_config(_config())
         chain = [rev.revision for rev in script.walk_revisions()]
-        assert chain == ["005", "004", "003", "002", "001"]
+        assert chain == ["006", "005", "004", "003", "002", "001"]
 
 
 class TestOfflineUpgrade:

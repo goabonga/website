@@ -67,6 +67,14 @@ class Settings(BaseSettings):
     # Refuse checkout and portal redirect URLs when the SaaS app lists no allowed prefix
     redirect_allowlist_required: bool = True
 
+    # Partitioning of the API between SaaS applications
+    # Scope that lets a client act on every SaaS application and manage the bindings
+    partition_admin_scope: str = "billing:admin"
+    # Let a client that has no binding at all act on any SaaS application (legacy mode)
+    partition_allow_unbound: bool = False
+    # Serve /plans/{app_slug} without a token; otherwise a bound client is required
+    plans_public: bool = False
+
     # Redis
     redis_url: str = "redis://localhost:6379/10"
     redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens

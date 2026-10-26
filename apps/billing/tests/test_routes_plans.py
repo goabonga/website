@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from billing.config import settings
 from billing.routes.plans import parse_limits
 from httpx import AsyncClient
 
@@ -136,6 +137,12 @@ def mock_product_no_metadata():
     product.created_at = datetime(2024, 1, 2, tzinfo=UTC)
     product.prices = []
     return product
+
+
+@pytest.fixture(autouse=True)
+def _public_plans(monkeypatch):
+    """These tests cover the pricing page, served without a token."""
+    monkeypatch.setattr(settings, "plans_public", True)
 
 
 def _setup_plans_db_mock(mock_db_session, saas_app, products):

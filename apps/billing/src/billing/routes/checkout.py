@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from billing.auth import AuthContext, require_scopes
 from billing.database import get_db
 from billing.models import BillingPrice, BillingProduct, Customer, SaasApp
+from billing.partition import Guard
 from billing.schemas import CheckoutSessionCreate, CheckoutSessionResponse
 from billing.services import get_stripe_service
 from billing.services.redirects import RedirectNotAllowed, ensure_allowed_redirect
@@ -24,18 +25,23 @@ router = APIRouter(prefix="/checkout", tags=["Checkout"])
 @router.post("/session", response_model=CheckoutSessionResponse)
 async def create_checkout_session(
     data: CheckoutSessionCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:checkout:write"))],
+    auth: Annotated[AuthContext, Depends(require_scopes("billing:checkout:write"))],
+    guard: Guard,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CheckoutSessionResponse:
     """Create a Stripe Checkout Session.
 
     This endpoint creates a checkout session for a customer to complete payment.
     The customer can be identified by either customer_id (internal) or external_id.
+    The client must be bound to ``saas_id`` (or hold the admin scope).
     The customer and the price must both belong to ``saas_id``; the success and
     cancel URLs must be covered by the SaaS app's ``checkout_url_allowlist``.
     The ``saas_id`` metadata of the session is set by the server and cannot be
     overridden through ``metadata``.
     """
+    # The client must be bound to the SaaS app it creates a session for
+    await guard.authorize(auth, data.saas_id, db)
+
     # Verify SaaS app exists
     result = await db.execute(select(SaasApp).where(SaasApp.id == data.saas_id))
     saas_app = result.scalar_one_or_none()

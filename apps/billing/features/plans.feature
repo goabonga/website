@@ -3,6 +3,7 @@ Feature: Public Plans
 
   Background:
     Given I am not authenticated
+    And the plans are public
 
   Scenario: List plans for an existing SaaS app
     Given a SaaS app "Test App" with slug "test-plans" exists with products and prices

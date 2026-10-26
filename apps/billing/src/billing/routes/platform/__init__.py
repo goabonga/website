@@ -3,10 +3,11 @@
 
 """Platform API routes (admin operations)."""
 
-from billing.routes.platform import customers, prices, products, saas, subscriptions
+from billing.routes.platform import clients, customers, prices, products, saas, subscriptions
 
 __all__ = [
     "saas",
+    "clients",
     "products",
     "prices",
     "customers",

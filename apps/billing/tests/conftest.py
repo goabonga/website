@@ -14,6 +14,7 @@ import pytest_asyncio
 from billing.auth.models import User
 from billing.database import get_db
 from billing.main import app
+from billing.partition import PartitionGuard, get_partition_guard
 from httpx import ASGITransport, AsyncClient
 
 
@@ -154,6 +155,24 @@ def _setup_auth_mocks(user: User):
     return jwks_patcher, introspection_patcher, exchange_patcher
 
 
+class AllowAllGuard(PartitionGuard):
+    """Partition guard that lets every client act on every SaaS application.
+
+    The route tests are about the routes, not about the partitioning: they use
+    this guard so that their mocked database sessions are not queried for
+    client bindings. The bindings have their own tests.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(admin_scope="billing:admin", allow_unbound=True)
+
+    async def authorize(self, auth, saas_id, db) -> None:
+        return None
+
+    async def authorized_saas_ids(self, auth, db):
+        return None
+
+
 @pytest_asyncio.fixture
 async def client(mock_db_session) -> AsyncGenerator[AsyncClient, None]:
     """Create an unauthenticated test client."""
@@ -178,6 +197,7 @@ async def auth_client(mock_db_session, test_user: User) -> AsyncGenerator[AsyncC
         yield mock_db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_partition_guard] = AllowAllGuard
     patchers = _setup_auth_mocks(test_user)
     try:
         async with AsyncClient(
@@ -200,6 +220,7 @@ async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[Asyn
         yield mock_db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_partition_guard] = AllowAllGuard
     patchers = _setup_auth_mocks(admin_user)
     try:
         async with AsyncClient(

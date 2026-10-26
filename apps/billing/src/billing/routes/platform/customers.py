@@ -10,10 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.auth import AuthContext, require_scopes
+from billing.auth import AuthContext
 from billing.config import settings
 from billing.database import get_db
 from billing.models import Customer, SaasApp
+from billing.partition import require_saas_scopes
 from billing.schemas import CustomerCreate, CustomerResponse, CustomerUpdate
 from billing.schemas.customer import CustomerPortalResponse
 from billing.services import get_stripe_service
@@ -39,7 +40,7 @@ async def get_saas_app_or_404(saas_id: str, db: AsyncSession) -> SaasApp:
 async def create_customer(
     saas_id: str,
     data: CustomerCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Customer:
     """Create a new customer (syncs to Stripe)."""
@@ -89,7 +90,7 @@ async def create_customer(
 @router.get("", response_model=list[CustomerResponse])
 async def list_customers(
     saas_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(settings.list_default_limit, ge=1, le=settings.list_max_limit),
     offset: int = Query(0, ge=0),
@@ -113,7 +114,7 @@ async def list_customers(
 async def get_customer(
     saas_id: str,
     customer_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Customer:
     """Get a customer by ID."""
@@ -139,7 +140,7 @@ async def update_customer(
     saas_id: str,
     customer_id: str,
     data: CustomerUpdate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Customer:
     """Update a customer (syncs to Stripe)."""
@@ -185,7 +186,7 @@ async def get_customer_portal(
     saas_id: str,
     customer_id: str,
     return_url: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CustomerPortalResponse:
     """Generate a Customer Portal URL for managing billing.

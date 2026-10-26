@@ -58,11 +58,44 @@ def _get_oauth2_scheme() -> OAuth2AuthorizationCodeBearer | None:
 oauth2_scheme = _get_oauth2_scheme() or _extract_bearer_token
 
 
-class AuthContext:
-    """Authentication context for API requests."""
+def _client_of(claims: dict) -> str | None:
+    """Identify the OAuth client of a token (``client_id`` or, for user tokens, ``azp``)."""
+    return claims.get("client_id") or claims.get("azp")
 
-    def __init__(self, user: User) -> None:
+
+def _scopes_of(claims: dict) -> list[str]:
+    """Read the scopes of a token (space separated string or list)."""
+    scope_claim = claims.get("scope", claims.get("scp", ""))
+    if isinstance(scope_claim, str):
+        return scope_claim.split()
+    if isinstance(scope_claim, list):
+        return [str(scope) for scope in scope_claim]
+    return []
+
+
+class AuthContext:
+    """Authentication context for API requests.
+
+    ``client_id`` is the OAuth client that obtained the access token, as
+    seen in the claims of the token the caller presented (never the client
+    used by this service for token exchange). ``token_scopes`` are all the
+    scopes carried by that token, whereas ``user.scopes`` may be reduced to
+    the scopes a route asked for.
+    """
+
+    def __init__(
+        self,
+        user: User,
+        client_id: str | None = None,
+        token_scopes: list[str] | None = None,
+    ) -> None:
         self.user = user
+        self.client_id = client_id if client_id is not None else user.client_id
+        self.token_scopes = list(token_scopes) if token_scopes is not None else list(user.scopes)
+
+    def has_token_scope(self, scope: str) -> bool:
+        """Check a scope against everything the presented token carries."""
+        return User(id="-", scopes=self.token_scopes).has_scope(scope)
 
     @property
     def user_id(self) -> str:
@@ -126,7 +159,7 @@ async def get_auth_context(
         request.state.user_id = str(user.id)
         request.state.client_id = client_id
 
-        return AuthContext(user=user)
+        return AuthContext(user=user, client_id=_client_of(claims), token_scopes=user.scopes)
     except TokenRevokedError:
         logger.info("Token revoked - access denied")
         raise HTTPException(
@@ -210,6 +243,18 @@ def require_scopes(*required_scopes: str) -> Callable:
                             headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
                         )
 
+                # The exchanged token belongs to this service's own client: who the caller
+                # is (and what its token carries) must come from the token it presented.
+                try:
+                    presented = await introspection_client.validate_token_with_introspection(token)
+                except Exception as e:
+                    logger.warning("Presented token validation failed after exchange: %s", e)
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token validation failed",
+                        headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+                    )
+
                 user = User.from_jwt_claims(claims)
                 user.scopes = granted_scopes
 
@@ -221,7 +266,11 @@ def require_scopes(*required_scopes: str) -> Callable:
                 request.state.user_id = str(user.id)
                 request.state.client_id = client_id
 
-                return AuthContext(user=user)
+                return AuthContext(
+                    user=user,
+                    client_id=_client_of(presented),
+                    token_scopes=_scopes_of(presented),
+                )
 
             except TokenExchangeError as e:
                 logger.info("Token exchange failed: %s", e)
@@ -297,7 +346,7 @@ def require_scopes(*required_scopes: str) -> Callable:
         request.state.user_id = str(user.id)
         request.state.client_id = client_id
 
-        return AuthContext(user=user)
+        return AuthContext(user=user, client_id=_client_of(claims), token_scopes=user.scopes)
 
     return dependency
 

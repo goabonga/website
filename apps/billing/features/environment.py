@@ -43,7 +43,7 @@ def _compile_jsonb_sqlite(type_, compiler, **kw):
 DEFAULT_TOKEN = "bdd.mock.token"
 
 
-def _create_test_user(scopes=None):
+def _create_test_user(scopes=None, client_id="bdd-test-client"):
     """Create a test user with billing:* wildcard scope by default."""
     return User(
         id=uuid4(),
@@ -51,7 +51,7 @@ def _create_test_user(scopes=None):
         name="BDD Test User",
         scopes=scopes or ["billing:*"],
         is_machine_client=False,
-        client_id="bdd-test-client",
+        client_id=client_id,
     )
 
 
@@ -66,9 +66,9 @@ def _create_jwt_claims(user):
     }
 
 
-def register_token(context, token, scopes):
-    """Make the fake token validation accept ``token`` with the given scopes."""
-    context.token_claims[token] = _create_jwt_claims(_create_test_user(scopes))
+def register_token(context, token, scopes, client_id="bdd-test-client"):
+    """Make the fake token validation accept ``token`` with the given scopes and OAuth client."""
+    context.token_claims[token] = _create_jwt_claims(_create_test_user(scopes, client_id))
 
 
 _counter = 0
@@ -209,7 +209,9 @@ def before_all(context):
     mock_jwks.is_configured = True
     mock_introspection.validate_token_with_introspection = AsyncMock(side_effect=_validate)
     mock_introspection.validate_opaque_token = AsyncMock(side_effect=_validate)
-    context.register_token = lambda token, scopes: register_token(context, token, scopes)
+    context.register_token = lambda token, scopes, client_id="bdd-test-client": register_token(
+        context, token, scopes, client_id
+    )
 
     # In-memory SQLite database replacing PostgreSQL.
     context.engine = create_async_engine(

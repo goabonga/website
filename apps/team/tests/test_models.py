@@ -8,6 +8,7 @@ from team.models import (
     Base,
     Conversation,
     ConversationParticipant,
+    MemoryEntry,
     Message,
     Team,
 )
@@ -31,6 +32,9 @@ class TestModelsImport:
     def test_message_tablename(self):
         assert Message.__tablename__ == "messages"
 
+    def test_memory_entry_tablename(self):
+        assert MemoryEntry.__tablename__ == "memory_entries"
+
     def test_conversation_participant_tablename(self):
         assert ConversationParticipant.__tablename__ == "conversation_participants"
 
@@ -42,6 +46,7 @@ def test_all_models_registered_in_metadata():
         "agents",
         "conversation_participants",
         "conversations",
+        "memory_entries",
         "messages",
         "teams",
     }

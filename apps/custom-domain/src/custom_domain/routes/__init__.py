@@ -3,10 +3,11 @@
 
 """API routes."""
 
-from custom_domain.routes.admin import templates_router
+from custom_domain.routes.admin import clients_router, templates_router
 from custom_domain.routes.health import router as health_router
 
 __all__ = [
+    "clients_router",
     "health_router",
     "templates_router",
 ]

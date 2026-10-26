@@ -10,6 +10,13 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/` | public | Root endpoint |
 | GET | `/health` | public | Health check endpoint |
+| GET | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | List all authorized clients |
+| POST | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Create a new authorized client |
+| GET | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Get client details |
+| PUT | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Update a client |
+| DELETE | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Delete a client |
+| POST | `/api/v1/admin/clients/{client_id}/deactivate` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Deactivate a client |
+| POST | `/api/v1/admin/clients/{client_id}/activate` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Activate a client |
 | GET | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | List all nginx templates |
 | POST | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Create a new nginx template |
 | GET | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Get template details |
@@ -25,5 +32,6 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `custom-domain:admin` - checked by 8 routes
+- `custom-domain:admin` - checked by 15 routes
+- `custom-domain:admin:clients` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 7 routes
 - `custom-domain:admin:templates` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 8 routes

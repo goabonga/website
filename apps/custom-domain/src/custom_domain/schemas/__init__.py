@@ -3,6 +3,13 @@
 
 """Pydantic schemas."""
 
+from custom_domain.schemas.client import (
+    ClientCreate,
+    ClientListItem,
+    ClientListResponse,
+    ClientResponse,
+    ClientUpdate,
+)
 from custom_domain.schemas.template import (
     ReprovisionError,
     TemplateCreate,
@@ -17,6 +24,11 @@ from custom_domain.schemas.template import (
 )
 
 __all__ = [
+    "ClientCreate",
+    "ClientListItem",
+    "ClientListResponse",
+    "ClientResponse",
+    "ClientUpdate",
     "ReprovisionError",
     "TemplateCreate",
     "TemplateListItem",

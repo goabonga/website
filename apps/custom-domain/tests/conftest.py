@@ -159,7 +159,12 @@ def _setup_auth_mocks(user: User):
 
     mock_exchange.is_configured = False
 
-    return jwks_patcher, introspection_patcher, exchange_patcher
+    # The caller's client is registered and active (checked on every request).
+    registry_patcher = patch("custom_domain.routes.access.domain_service")
+    mock_registry = registry_patcher.start()
+    mock_registry.get_authorized_client = AsyncMock(return_value=MagicMock(is_active=True))
+
+    return jwks_patcher, introspection_patcher, exchange_patcher, registry_patcher
 
 
 @pytest_asyncio.fixture

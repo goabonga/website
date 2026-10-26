@@ -4,12 +4,18 @@
 """Tests for custom_domain/schemas/."""
 
 from datetime import UTC, datetime
+from uuid import uuid4
 
+from custom_domain.models.enums import DomainStatus
 from custom_domain.schemas import (
     ClientCreate,
     ClientListItem,
     ClientResponse,
     ClientUpdate,
+    DomainCreate,
+    DomainListItem,
+    DomainResponse,
+    DomainUpdate,
     TemplateCreate,
     TemplateListItem,
     TemplateResponse,
@@ -68,6 +74,67 @@ class TestClientSchemas:
             created_at=now,
         )
         assert data.domains_count == 5
+
+
+class TestDomainSchemas:
+    """Tests for domain schemas."""
+
+    def test_domain_create(self):
+        """Test DomainCreate schema."""
+        data = DomainCreate(
+            domain="test.example.com",
+            owner_id="org_123",
+            owner_type="organization",
+        )
+        assert data.domain == "test.example.com"
+        assert data.owner_type == "organization"
+
+    def test_domain_create_with_optionals(self):
+        """Test DomainCreate with optional fields."""
+        data = DomainCreate(
+            domain="test.example.com",
+            owner_id="org_123",
+            upstream_target="unix:/var/run/app.sock",
+            cname_target="apps.example.com",
+            nginx_template_id=1,
+            metadata={"key": "value"},
+        )
+        assert data.upstream_target == "unix:/var/run/app.sock"
+        assert data.metadata == {"key": "value"}
+
+    def test_domain_update(self):
+        """Test DomainUpdate schema."""
+        data = DomainUpdate(upstream_target="new-upstream")
+        assert data.upstream_target == "new-upstream"
+
+    def test_domain_response(self):
+        """Test DomainResponse schema."""
+        now = datetime.now(UTC)
+        data = DomainResponse(
+            id=uuid4(),
+            domain="test.example.com",
+            status=DomainStatus.ACTIVE,
+            client_id="client",
+            owner_id="org_123",
+            owner_type="organization",
+            upstream_target="unix:/var/run/app.sock",
+            cname_target="apps.example.com",
+            created_at=now,
+            updated_at=now,
+        )
+        assert data.status == DomainStatus.ACTIVE
+
+    def test_domain_list_item(self):
+        """Test DomainListItem schema."""
+        now = datetime.now(UTC)
+        data = DomainListItem(
+            id=uuid4(),
+            domain="test.example.com",
+            status=DomainStatus.PENDING,
+            owner_id="org_123",
+            created_at=now,
+        )
+        assert data.status == DomainStatus.PENDING
 
 
 class TestTemplateSchemas:

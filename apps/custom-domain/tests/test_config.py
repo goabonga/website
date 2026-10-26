@@ -90,6 +90,7 @@ class TestSettings:
         defaults = Settings(_env_file=None)
         assert defaults.oauth2_issuer == ""
         assert defaults.admin_scope == "custom-domain:admin"
+        assert defaults.default_cname_target == ""
 
     def test_base_dir_property(self):
         """Test base_dir property returns correct path."""

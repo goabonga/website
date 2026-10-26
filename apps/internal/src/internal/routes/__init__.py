@@ -13,6 +13,7 @@ from internal.routes.email_campaigns import router as email_campaigns_router
 from internal.routes.email_templates import router as email_templates_router
 from internal.routes.mailler import router as mailler_router
 from internal.routes.namespaces import router as namespaces_router
+from internal.routes.prompts import router as prompts_router
 from internal.routes.team import router as team_router
 from internal.routes.vpn import router as vpn_router
 
@@ -27,6 +28,7 @@ __all__ = [
     "email_templates_router",
     "mailler_router",
     "namespaces_router",
+    "prompts_router",
     "team_router",
     "vpn_router",
 ]

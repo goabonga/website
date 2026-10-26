@@ -28,6 +28,7 @@ from internal.routes import (
     email_templates_router,
     mailler_router,
     namespaces_router,
+    prompts_router,
     team_router,
     vpn_router,
 )
@@ -113,6 +114,7 @@ Internal Admin Dashboard for managing platform services.
 - **Billing**: Manage billing and subscriptions
 - **VPN**: Manage VPN configurations
 - **Team**: Manage AI agent teams
+- **Prompt management**: Manage AI prompts and namespaces
 - **OAuth2 authentication**: Cookie-based authentication with scope validation
 
 
@@ -130,6 +132,7 @@ Access is controlled per resource via scoped permissions.
 - `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
 - `team:write` - Manage AI agent teams
+- `prompts:write`, `prompts:delete` - Manage prompts
 - `namespaces:write`, `namespaces:delete` - Manage namespaces
 - `conversations:delete` - Delete conversations
     """,
@@ -174,6 +177,7 @@ app.include_router(email_campaigns_router)
 app.include_router(email_templates_router)
 app.include_router(mailler_router)
 app.include_router(namespaces_router)
+app.include_router(prompts_router)
 app.include_router(team_router)
 app.include_router(vpn_router)
 app.include_router(billing_router)

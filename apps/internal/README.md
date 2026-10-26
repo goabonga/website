@@ -84,6 +84,19 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/namespaces/{namespace_id}/edit` | session; scope `namespaces:write` | Update a namespace |
 | POST | `/namespaces/bulk-delete` | session; scope `namespaces:delete` | Delete multiple namespaces |
 | POST | `/namespaces/{namespace_id}/delete` | session; scope `namespaces:delete` | Delete a namespace |
+| GET | `/prompts/generate` | session; scope `prompts:write` | Show form to generate a prompt using AI |
+| POST | `/prompts/generate` | session; scope `prompts:write` | Generate a prompt using AI from description |
+| GET | `/prompts` | session; scope `prompts:read` | List all prompts with pagination and search |
+| GET | `/prompts/new` | session; scope `prompts:write` | Show form to create a new prompt |
+| POST | `/prompts/new` | session; scope `prompts:write` | Create a new prompt with initial version |
+| GET | `/prompts/{prompt_id}` | session; scope `prompts:read` | View prompt detail with version history |
+| GET | `/prompts/{prompt_id}/edit` | session; scope `prompts:write` | Show form to edit a prompt (creates new version) |
+| POST | `/prompts/{prompt_id}/edit` | session; scope `prompts:write` | Update a prompt (creates new version if content changed) |
+| POST | `/prompts/{prompt_id}/version/{version_id}/activate` | session; scope `prompts:write` | Activate a specific version of a prompt |
+| POST | `/prompts/{prompt_id}/version/{version_id}/delete` | session; scope `prompts:delete` | Delete a specific version of a prompt |
+| POST | `/prompts/{prompt_id}/versions/bulk-delete` | session; scope `prompts:delete` | Delete multiple versions of a prompt |
+| POST | `/prompts/bulk-delete` | session; scope `prompts:delete` | Delete multiple prompts |
+| POST | `/prompts/{prompt_id}/delete` | session; scope `prompts:delete` | Delete a prompt |
 | GET | `/team` | session; scope `team:read` | Team dashboard - overview of all teams |
 | GET | `/team/new` | session; scope `team:write` | New team form |
 | POST | `/team/new` | session; scope `team:write` | Create a new team |
@@ -173,6 +186,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `namespaces:read` - checked by 2 routes
 - `namespaces:write` - checked by 4 routes
 - `namespaces:delete` - checked by 2 routes
+- `prompts:write` - checked by 7 routes
+- `prompts:read` - checked by 2 routes
+- `prompts:delete` - checked by 4 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes
 - `vpn:admin` - checked by 2 routes

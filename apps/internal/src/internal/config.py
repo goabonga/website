@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # Provider shown for a campaign that names none; empty: the one of its mailler client
     mailler_default_provider: str = ""
 
+    # OpenAI settings
+    openai_api_key: str = ""
+
     # Analytics API
     analytics_api_url: str = "https://ua.goabonga.com"
 
@@ -107,4 +110,5 @@ settings = Settings(
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET", os.environ.get("OAUTH2_CLIENT_SECRET", "")
     ),
+    openai_api_key=get_credential("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", "")),
 )

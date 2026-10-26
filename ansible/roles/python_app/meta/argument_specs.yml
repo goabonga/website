@@ -606,8 +606,7 @@ argument_specs:
       website_custom_domain_webroot:
         type: str
         description:
-        - Webroot of the HTTP-01 challenge (CERTBOT_WEBROOT). nginx must serve it on /.well-
-          known/acme-challenge/ for the customer domains; it is created when missing.
+        - Webroot of the HTTP-01 challenge (CERTBOT_WEBROOT). nginx must serve it on /.well-known/acme-challenge/ for the customer domains; it is created when missing.
         default: /var/www/certbot
       website_custom_domain_letsencrypt_dir:
         type: str

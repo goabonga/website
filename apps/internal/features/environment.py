@@ -201,6 +201,10 @@ def before_all(context):
     context.mock_auth_client = p.start()
     context._patchers.append(p)
 
+    p = patch("internal.routes.billing.billing_client", new_callable=AsyncMock)
+    context.mock_billing = p.start()
+    context._patchers.append(p)
+
     p = patch("internal.routes.vpn.vpn_portal_client", new_callable=AsyncMock)
     context.mock_vpn = p.start()
     context._patchers.append(p)
@@ -225,6 +229,7 @@ def before_scenario(context, scenario):
         context.mock_analytics,
         context.mock_analytics_admin,
         context.mock_auth_client,
+        context.mock_billing,
         context.mock_vpn,
     ]:
         p_mock.reset_mock()

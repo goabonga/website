@@ -2,6 +2,28 @@
 
 Centralized service for managing custom domains with DNS verification and SSL provisioning.
 
+A client application registers a customer domain through the HTTP API. The service
+checks the CNAME record, requests a Let's Encrypt certificate with certbot and writes
+the nginx virtual host that proxies the domain to the right upstream (a Unix socket or
+a TCP address). Progress is available by polling, as server-sent events, as an event
+history and as signed webhooks.
+
+- FastAPI API with OAuth2 bearer tokens and scopes; several applications share the
+  service, each isolated in its own authorized client.
+- Celery worker and beat for DNS verification, SSL provisioning, deletion and periodic
+  maintenance. Only the worker runs privileged commands, through one validated helper.
+- Admin endpoints for authorized clients, nginx templates (shared or client-owned) and
+  statistics.
+- `custom-domain` command line tool and a Python client SDK with a webhook
+  verification helper.
+
+The documentation of each feature is in `docs/apps/custom-domain/` of the repository.
+
+```bash
+uv run --package custom-domain --group dev pytest apps/custom-domain
+uv run --package custom-domain --group dev behave apps/custom-domain/features
+```
+
 ## Routes and scopes
 
 HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
@@ -21,6 +43,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/domains/{domain_id}/status` | scope `custom-domain:read`; client registered and active | Get current domain status for polling |
 | GET | `/api/v1/domains/{domain_id}/events` | scope `custom-domain:read`; client registered and active | Stream domain provisioning events via SSE |
 | GET | `/api/v1/domains/{domain_id}/events/history` | scope `custom-domain:read`; client registered and active | Get event history for a domain |
+| GET | `/api/v1/templates` | scope `custom-domain:read`; client registered and active | List the active templates the caller may put on its domains |
 | GET | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | List all authorized clients |
 | POST | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Create a new authorized client |
 | GET | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Get client details |
@@ -32,7 +55,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/admin/stats/top-clients` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get top clients by domain count |
 | GET | `/api/v1/admin/stats/recent-activity` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get recent domain activity |
 | GET | `/api/v1/admin/stats/dashboard` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get complete dashboard data |
-| GET | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | List all nginx templates |
+| GET | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | List nginx templates |
 | POST | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Create a new nginx template |
 | GET | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Get template details |
 | PUT | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Update a template |
@@ -49,7 +72,7 @@ Client-scoped routes also require the caller's client to be registered and activ
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `custom-domain:read` - checked by 5 routes
+- `custom-domain:read` - checked by 6 routes
 - `custom-domain:write` - checked by 5 routes
 - `custom-domain:lookup` - checked by 1 route
 - `custom-domain:admin` - checked by 19 routes

@@ -58,3 +58,33 @@ class TestQueue:
         finally:
             monkeypatch.undo()
             importlib.reload(module)
+
+
+class TestBeatSchedule:
+    """Periodic tasks are published to the worker's queue too."""
+
+    def test_every_entry_targets_the_queue(self):
+        from custom_domain.celery import celery_app
+
+        schedule = celery_app.conf.beat_schedule
+        assert "check-pending-domains" in schedule
+        for name, entry in schedule.items():
+            assert entry["options"] == {"queue": settings.celery_queue}, name
+
+    def test_dns_scan_interval_is_a_setting(self, monkeypatch):
+        module = reload_celery(monkeypatch, dns_check_interval_minutes=7)
+        try:
+            entry = module.celery_app.conf.beat_schedule["check-pending-domains"]
+            assert entry["schedule"].minute == set(range(0, 60, 7))
+        finally:
+            monkeypatch.undo()
+            importlib.reload(module)
+
+    def test_beat_entries_follow_a_custom_queue(self, monkeypatch):
+        module = reload_celery(monkeypatch, celery_queue="edge-queue")
+        try:
+            for entry in module.celery_app.conf.beat_schedule.values():
+                assert entry["options"] == {"queue": "edge-queue"}
+        finally:
+            monkeypatch.undo()
+            importlib.reload(module)

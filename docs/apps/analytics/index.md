@@ -19,3 +19,4 @@ file and the page listed below.
 - [Campaigns and pixels](05-pixels.md): email tracking pixels, Alembic revision `002`.
 - [Campaign links](06-links.md): redirects with click tracking.
 - [Authentication](07-auth.md): OAuth2/OIDC bearer tokens and scopes.
+- [Traffic statistics](08-stats-traffic.md): overview, daily, countries, devices, browsers, referrers, pages, events.

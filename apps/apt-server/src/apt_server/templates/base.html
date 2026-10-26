@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.ico">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #1a1a2e;
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+        a { color: #74b9ff; text-decoration: none; }
+        a:hover { color: #a0d0ff; }
+        .admin-layout { display: flex; min-height: 100vh; }
+        .admin-sidebar {
+            width: 250px;
+            background: #16213e;
+            border-right: 1px solid #0f3460;
+            padding: 1.5rem 0;
+            flex-shrink: 0;
+        }
+        .admin-sidebar h2 {
+            padding: 0 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #e94560;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .admin-nav { list-style: none; }
+        .admin-nav li { margin-bottom: 0.25rem; }
+        .admin-nav a {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: #a0a0a0;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .admin-nav a:hover { background-color: #1a1a2e; color: #e0e0e0; }
+        .admin-nav a.active {
+            background-color: #0f3460;
+            color: #e94560;
+            border-left-color: #e94560;
+            font-weight: 500;
+        }
+        .admin-nav .nav-icon { margin-right: 0.75rem; width: 20px; display: inline-block; text-align: center; }
+        .sidebar-user {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #0f3460;
+            background: #16213e;
+            font-size: 0.8rem;
+        }
+        .sidebar-user .user-sub { color: #a0a0a0; word-break: break-all; }
+        .admin-sidebar { position: relative; }
+        .admin-content { flex: 1; padding: 2rem; overflow-x: auto; }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .admin-header h1 { color: #e0e0e0; font-size: 1.75rem; }
+        .admin-card {
+            background: #16213e;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .admin-card h2 { color: #e0e0e0; font-size: 1.25rem; margin-bottom: 1rem; }
+        .admin-card h3 { color: #e0e0e0; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            color: white;
+        }
+        .btn-primary { background-color: #e94560; }
+        .btn-primary:hover { background-color: #d63651; color: white; }
+        .btn-secondary { background-color: #0f3460; color: #e0e0e0; }
+        .btn-secondary:hover { background-color: #1a4a7a; color: #e0e0e0; }
+        .btn-success { background-color: #00b894; }
+        .btn-success:hover { background-color: #00a382; color: white; }
+        .btn-danger { background-color: #d63031; }
+        .btn-danger:hover { background-color: #c0392b; color: white; }
+        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #0f3460; }
+        .table th { color: #a0a0a0; font-weight: 500; font-size: 0.85rem; text-transform: uppercase; }
+        .table tbody tr:hover { background-color: #1a1a2e; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-success { background-color: rgba(0, 184, 148, 0.2); color: #00b894; }
+        .badge-warning { background-color: rgba(253, 203, 110, 0.2); color: #fdcb6e; }
+        .badge-danger { background-color: rgba(214, 48, 49, 0.2); color: #ff6b6b; }
+        .badge-info { background-color: rgba(116, 185, 255, 0.2); color: #74b9ff; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-success { background-color: rgba(0, 184, 148, 0.2); color: #00b894; border: 1px solid rgba(0, 184, 148, 0.3); }
+        .alert-error { background-color: rgba(214, 48, 49, 0.2); color: #ff6b6b; border: 1px solid rgba(214, 48, 49, 0.3); }
+        .alert-info { background-color: rgba(116, 185, 255, 0.2); color: #74b9ff; border: 1px solid rgba(116, 185, 255, 0.3); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: #a0a0a0; font-size: 0.9rem; }
+        .form-control {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background-color: #1a1a2e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        .form-control:focus { outline: none; border-color: #e94560; }
+        select.form-control { cursor: pointer; }
+        input[type="file"].form-control { padding: 0.4rem; }
+        .form-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 200px; }
+        .text-muted { color: #6c757d; }
+        .text-success { color: #00b894; }
+        .text-danger { color: #ff6b6b; }
+        .mono { font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; font-size: 0.85rem; }
+        .empty-state { text-align: center; padding: 3rem; color: #6c757d; }
+        .empty-state p { margin-top: 0.5rem; }
+        pre { background: #0d1117; border: 1px solid #0f3460; border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; color: #e0e0e0; margin: 0.5rem 0 1rem; }
+        code { font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; }
+        dl { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; }
+        dt { color: #a0a0a0; font-size: 0.9rem; }
+        dd { color: #e0e0e0; }
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            padding: 1rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .mobile-header h2 { color: #e94560; font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+        .hamburger-toggle { display: none; }
+        .hamburger-btn {
+            display: flex; flex-direction: column; justify-content: space-between;
+            width: 28px; height: 20px; background: transparent; border: none; cursor: pointer; padding: 0; z-index: 110;
+        }
+        .hamburger-btn span { display: block; width: 100%; height: 3px; background-color: #e0e0e0; border-radius: 2px; transition: all 0.3s ease; }
+        .menu-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; transition: opacity 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .mobile-header { display: flex; }
+            .admin-sidebar {
+                position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+                z-index: 100; transition: left 0.3s ease; overflow-y: auto;
+            }
+            .admin-content { padding: 1rem; }
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); }
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(2) { opacity: 0; }
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); }
+            .hamburger-toggle:checked ~ .admin-layout .admin-sidebar { left: 0; }
+            .hamburger-toggle:checked ~ .menu-overlay { display: block; opacity: 1; }
+            .admin-sidebar > h2 { display: none; }
+            .form-row { flex-direction: column; }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <input type="checkbox" id="hamburger-toggle" class="hamburger-toggle">
+    <header class="mobile-header">
+        <h2>&#128230; {{ app_name }}</h2>
+        <label for="hamburger-toggle" class="hamburger-btn" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </label>
+    </header>
+    <label for="hamburger-toggle" class="menu-overlay"></label>
+
+    <div class="admin-layout">
+        <nav class="admin-sidebar" aria-label="Main">
+            <h2>&#128230; {{ app_name }}</h2>
+            <ul class="admin-nav">
+                <li><a href="/" class="{% if active_section == 'home' %}active{% endif %}"><span class="nav-icon">&#128230;</span>Packages</a></li>
+                <li><a href="/setup" class="{% if active_section == 'setup' %}active{% endif %}"><span class="nav-icon">&#128214;</span>Setup</a></li>
+            </ul>
+            {% if caller %}
+            <div class="sidebar-user">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="{{ caller.avatar_url or 'https://www.gravatar.com/avatar/?d=mp&s=80' }}"
+                         alt="" style="width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; border: 2px solid #0f3460;">
+                    <div style="min-width: 0;">
+                        {% if caller.name %}
+                        <div style="color: #e0e0e0; font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ caller.name }}</div>
+                        {% endif %}
+                        <div class="user-sub" style="font-size: 0.75rem;">{{ caller.display_name or caller.sub }}</div>
+                    </div>
+                </div>
+                <a href="/logout" style="color: #e94560; font-size: 0.8rem; margin-top: 0.5rem; display: inline-block;">Logout</a>
+            </div>
+            {% elif oauth_enabled %}
+            <div class="sidebar-user">
+                <a href="/login" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">Sign in</a>
+            </div>
+            {% endif %}
+        </nav>
+        <main class="admin-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

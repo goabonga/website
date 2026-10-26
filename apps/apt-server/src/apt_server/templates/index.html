@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Packages · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Packages</h1>
+    {% if not caller and oauth_enabled %}
+    <a href="/login" class="btn btn-primary">Sign in</a>
+    {% endif %}
+</div>
+
+{% if not caller and oauth_enabled %}
+<div class="alert alert-info">Showing public packages only. <a href="/login">Sign in</a> to see your private packages.</div>
+{% endif %}
+
+<div class="admin-card">
+    <form style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;" method="get" action="/">
+        <div class="form-group" style="margin-bottom: 0;">
+            <select name="suite" class="form-control" style="width: auto; min-width: 120px;">
+                <option value="">All suites</option>
+                {% for s in suites %}
+                <option value="{{ s }}" {% if s == selected_suite %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <select name="component" class="form-control" style="width: auto; min-width: 120px;">
+                <option value="">All components</option>
+                {% for c in components %}
+                {% if caller or c in public_components %}
+                <option value="{{ c }}" {% if c == selected_component %}selected{% endif %}>{{ c }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" name="q" class="form-control" placeholder="Search by name" value="{{ query or '' }}" style="width: auto; min-width: 200px;">
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+
+    {% if packages %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Arch</th>
+                <th>Suite</th>
+                <th>Component</th>
+                <th>Visibility</th>
+                <th>Size</th>
+                <th>Uploaded</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in packages %}
+            <tr>
+                <td><a href="/packages/{{ p.id }}">{{ p.name }}</a></td>
+                <td class="mono">{{ p.version }}</td>
+                <td>{{ p.architecture }}</td>
+                <td>{{ p.suite }}</td>
+                <td><span class="badge badge-info">{{ p.component }}</span></td>
+                <td>
+                    {% if p.visibility.value == 'public' %}
+                    <span class="badge badge-success">public</span>
+                    {% else %}
+                    <span class="badge badge-danger">{{ p.visibility.value }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ p.size | filesizeformat }}</td>
+                <td class="text-muted">{{ p.uploaded_at.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+    {% else %}
+    <div class="empty-state">
+        <p>No packages visible with the current filters.</p>
+        {% if not caller and oauth_enabled %}<p><a href="/login">Sign in</a> to see private packages.</p>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

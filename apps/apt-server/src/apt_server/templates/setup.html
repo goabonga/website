@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Setup · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Setup</h1>
+</div>
+
+<div class="admin-card">
+    <h2>Public repository</h2>
+    <p style="margin-bottom: 0.75rem;">Trust the signing key and register the repository:</p>
+    <pre><code>curl -fsSL https://{{ host }}/pubkey.gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/{{ keyring_name }}.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/{{ keyring_name }}.gpg] https://{{ host }} {{ default_suite }} {{ default_component }}" \
+  | sudo tee /etc/apt/sources.list.d/{{ keyring_name }}.list
+
+sudo apt update
+sudo apt install &lt;package-name&gt;</code></pre>
+</div>
+
+{% if caller %}
+<div class="admin-card">
+    <h2>Private repository (PAT)</h2>
+    <p style="margin-bottom: 0.75rem;">Private components require authentication. APT uses <strong>HTTP Basic Auth</strong> with your username and a <strong>Personal Access Token (PAT)</strong> as password.</p>
+
+    <h3>1. Create a PAT</h3>
+    {% if issuer %}
+    <p style="margin: 0.5rem 0;">Go to <a href="{{ issuer }}/auth/settings/tokens" target="_blank"><strong>{{ issuer }}/auth/settings/tokens</strong></a> and create a new token:</p>
+    {% else %}
+    <p style="margin: 0.5rem 0;">Go to your SSO settings page (<span class="mono">/auth/settings/tokens</span>) and create a new token:</p>
+    {% endif %}
+    <ul style="margin: 0.5rem 0 1rem 1.5rem; color: #a0a0a0;">
+        <li><strong style="color: #e0e0e0;">Name</strong>: a descriptive label, e.g. <span class="mono">laptop-apt</span></li>
+        <li><strong style="color: #e0e0e0;">Expiration</strong>: 30, 90 or 365 days</li>
+        <li><strong style="color: #e0e0e0;">Scopes</strong>: <span class="badge badge-info">apt:read</span> to install, <span class="badge badge-warning">apt:write</span> to upload</li>
+    </ul>
+    <p class="text-muted" style="margin-bottom: 1rem;">Copy the token shown <strong>once</strong> (format <span class="mono">gab_pat_&hellip;</span>). It cannot be retrieved later.</p>
+
+    <h3>2. Register credentials with APT</h3>
+    <pre><code>sudo install -m 0600 -o root -g root /dev/null /etc/apt/auth.conf.d/{{ keyring_name }}.conf
+
+sudo tee /etc/apt/auth.conf.d/{{ keyring_name }}.conf > /dev/null &lt;&lt;'EOF'
+machine {{ host }}
+login {{ caller.display_name or 'your-email@example.com' }}
+password gab_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EOF</code></pre>
+    <p class="text-muted"><strong>login</strong> = your SSO email. <strong>password</strong> = PAT. File must be <span class="mono">0600 root:root</span>.</p>
+
+    <h3>3. Add the private source</h3>
+    <pre><code>echo "deb [signed-by=/etc/apt/keyrings/{{ keyring_name }}.gpg] https://{{ host }} {{ default_suite }} &lt;private-component&gt;" \
+  | sudo tee /etc/apt/sources.list.d/{{ keyring_name }}-private.list
+
+sudo apt update</code></pre>
+
+    <h3>4. Verify</h3>
+    <pre><code>curl -u '{{ caller.display_name or 'your-email' }}:gab_pat_xxxx' -I https://{{ host }}/dists/{{ default_suite }}/&lt;component&gt;/binary-amd64/Packages
+# 200 = OK | 401 = bad PAT | 403 = wrong scope</code></pre>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <a href="/login">Sign in</a> to see the private repository setup guide with your credentials pre-filled.
+</div>
+{% endif %}
+{% endblock %}

@@ -71,6 +71,7 @@ SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
+    "mailler": Section("/mailler", "mailler:*"),
     "vpn": Section("/vpn/sessions", "vpn:admin", "vpn:admin"),
     "billing": Section("/billing", "billing:*", "billing:read"),
     "team": Section("/team", "team:*"),
@@ -84,6 +85,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.billing.billing_client",
     "internal.routes.vpn.vpn_portal_client",
     "internal.routes.team.team_client",
+    "internal.routes.mailler.mailler_client",
 )
 
 
@@ -527,6 +529,57 @@ async def configure_team(env: "Env") -> dict:
     return {}
 
 
+EMAIL_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+
+async def configure_mailler(env: "Env") -> dict:
+    """Make the mailler service return statistics and one email."""
+    mailler = env.client("mailler.mailler_client")
+    counters = {"sent": 100, "delivered": 95, "bounced": 3, "failed": 2}
+    mailler.get_stats.return_value = {
+        "total": counters,
+        "by_date": [{"date": "2024-01-15", **counters}],
+        "by_provider": {"ses": counters},
+    }
+    mailler.get_providers.return_value = ["ses", "smtp"]
+    email = {
+        "id": EMAIL_ID,
+        "to_email": "user@example.com",
+        "to_name": "User",
+        "from_email": "noreply@example.com",
+        "from_name": "Example",
+        "reply_to": "support@example.com",
+        "subject": "Test Email",
+        "status": "delivered",
+        "provider": "ses",
+        "provider_message_id": "ses-msg-001",
+        "retry_count": 0,
+        "task_id": "task-1",
+        "html_content": "<p>Hello</p>",
+        "text_content": "Hello",
+        "created_at": "2024-01-15T12:00:00Z",
+        "scheduled_at": None,
+        "queued_at": "2024-01-15T12:00:01Z",
+        "sent_at": "2024-01-15T12:00:03Z",
+        "delivered_at": "2024-01-15T12:00:05Z",
+        "bounced_at": None,
+        "failed_at": None,
+        "error_message": None,
+        "client_id": "client-001",
+        "user_id": "user-001",
+        "metadata": {"template": "welcome"},
+    }
+    mailler.get_emails.return_value = {
+        "items": [email],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "pages": 1,
+    }
+    mailler.get_email.return_value = email
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -576,6 +629,11 @@ PAGES: dict[str, list[Page]] = {
         Page("/team/team-1/conversations", "team", configure_team),
         Page("/team/team-1/conversations/conv-1", "team", configure_team),
         Page("/team/team-1/memory", "team", configure_team),
+    ],
+    "mailler": [
+        Page("/mailler", "mailler", configure_mailler),
+        Page("/mailler/emails", "mailler", configure_mailler),
+        Page(f"/mailler/emails/{EMAIL_ID}", "mailler", configure_mailler),
     ],
 }
 

@@ -3,10 +3,15 @@
 
 """Tests for Pydantic schema validation. Pure tests, no mocks needed."""
 
+from datetime import UTC, datetime
+from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
 
-from knowledge.schemas.collection import CollectionCreate, CollectionUpdate
+from knowledge.models import Collection
+from knowledge.models.enums import OwnerType
+from knowledge.schemas.collection import CollectionCreate, CollectionResponse, CollectionUpdate
 
 
 class TestCollectionCreate:
@@ -64,3 +69,36 @@ class TestCollectionUpdate:
         u = CollectionUpdate(name="New Name")
         assert u.name == "New Name"
         assert u.description is None
+
+
+class TestCollectionResponse:
+    def _collection(self, **overrides):
+        now = datetime.now(UTC)
+        attrs = {
+            "id": uuid4(),
+            "owner_type": OwnerType.USER,
+            "owner_id": uuid4(),
+            "name": "Docs",
+            "slug": "docs",
+            "description": None,
+            "embedding_model": "text-embedding-3-small",
+            "dimension": 1536,
+            "metadata_schema": None,
+            "document_count": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+        attrs.update(overrides)
+        return Collection(**attrs)
+
+    def test_personal_collection_has_no_tenant(self):
+        response = CollectionResponse.model_validate(self._collection())
+        assert response.tenant_id is None
+
+    def test_organization_collection_exposes_tenant(self):
+        org_id = uuid4()
+        collection = self._collection(
+            owner_type=OwnerType.ORGANIZATION, owner_id=org_id, organization_id=org_id
+        )
+        response = CollectionResponse.model_validate(collection)
+        assert response.tenant_id == org_id

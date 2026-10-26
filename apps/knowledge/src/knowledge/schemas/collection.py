@@ -32,7 +32,7 @@ class CollectionResponse(BaseModel):
     """Schema for collection response."""
 
     id: UUID
-    tenant_id: UUID
+    tenant_id: UUID | None
     name: str
     slug: str
     description: str | None

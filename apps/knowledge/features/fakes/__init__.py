@@ -27,6 +27,8 @@ from knowledge.models import (
     Document,
     McpRelease,
     McpReleaseAsset,
+    Organization,
+    OrganizationMember,
 )
 from knowledge.models.enums import CollaboratorPermission, OwnerType
 from knowledge.schemas.search import SearchResponse, SearchResult
@@ -45,6 +47,8 @@ class Store:
         self.invitations: dict[UUID, CollectionInvitation] = {}
         self.releases: dict[UUID, McpRelease] = {}
         self.release_assets: dict[UUID, McpReleaseAsset] = {}
+        self.organizations: dict[UUID, Organization] = {}
+        self.members: dict[UUID, OrganizationMember] = {}
 
     def bucket_for(self, obj):
         """Return the in-memory table holding objects of this type, if any."""
@@ -55,6 +59,8 @@ class Store:
             (CollectionInvitation, self.invitations),
             (McpRelease, self.releases),
             (McpReleaseAsset, self.release_assets),
+            (Organization, self.organizations),
+            (OrganizationMember, self.members),
         ):
             if isinstance(obj, cls):
                 return bucket

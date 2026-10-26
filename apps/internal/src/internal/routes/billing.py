@@ -178,6 +178,10 @@ async def saas_app_detail(
     subscriptions = await billing_client.list_subscriptions(
         saas_id, limit=settings.billing_recent_limit
     )
+    # The OAuth clients bound to the app are only shown to administrators
+    bindings = (
+        await billing_client.list_saas_clients(saas_id) if user.has_scope("billing:admin") else []
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -190,9 +194,78 @@ async def saas_app_detail(
             "products": products,
             "customers": customers,
             "subscriptions": subscriptions,
+            "bindings": bindings,
             "success": request.query_params.get("success"),
             "error": request.query_params.get("error"),
         },
+    )
+
+
+@router.post("/saas/{saas_id}/clients")
+async def saas_client_bind(
+    request: Request,
+    saas_id: str,
+    client_id: str = Form(...),
+    auth_result: User | RedirectResponse = Depends(require_billing_admin),
+):
+    """Bind an OAuth client to a SaaS app: it may then act on that app's data."""
+    if not isinstance(auth_result, User):
+        return auth_result
+
+    user = auth_result
+    client_id = client_id.strip()
+    if not client_id or any(character.isspace() for character in client_id):
+        return RedirectResponse(
+            url=f"/billing/saas/{saas_id}?error=A+client+id+has+no+spaces+and+is+not+empty",
+            status_code=303,
+        )
+
+    binding = await billing_client.bind_client(saas_id, client_id)
+
+    if binding:
+        logger.info(
+            "Client bound | user_id=%s saas_id=%s bound_client_id=%s",
+            user.id,
+            saas_id,
+            client_id,
+        )
+        return RedirectResponse(
+            url=f"/billing/saas/{saas_id}?success=Client+bound",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/billing/saas/{saas_id}?error=Failed+to+bind+client",
+        status_code=303,
+    )
+
+
+@router.post("/saas/{saas_id}/clients/unbind")
+async def saas_client_unbind(
+    request: Request,
+    saas_id: str,
+    client_id: str = Form(...),
+    auth_result: User | RedirectResponse = Depends(require_billing_admin),
+):
+    """Remove the binding of an OAuth client to a SaaS app."""
+    if not isinstance(auth_result, User):
+        return auth_result
+
+    user = auth_result
+
+    if await billing_client.unbind_client(saas_id, client_id.strip()):
+        logger.info(
+            "Client unbound | user_id=%s saas_id=%s unbound_client_id=%s",
+            user.id,
+            saas_id,
+            client_id,
+        )
+        return RedirectResponse(
+            url=f"/billing/saas/{saas_id}?success=Client+unbound",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/billing/saas/{saas_id}?error=Failed+to+unbind+client",
+        status_code=303,
     )
 
 

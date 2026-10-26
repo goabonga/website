@@ -32,7 +32,7 @@ workers, beats and scripts that run the same code:
 | `custom_domain` | `custom-domain` (gunicorn), `custom-domain-beat` (celery beat), `custom-domain-worker` (celery worker) | `custom-domain.internal` | `custom_domain` | `OAUTH2_CLIENT_SECRET` |
 | `frontend` | `frontend` (gunicorn) | `example.com` | - | - |
 | `internal` | `internal` (gunicorn), `internal-worker` (celery worker) | `admin.internal` | `application` | `OAUTH2_CLIENT_SECRET`, `OPENAI_API_KEY`, `SECRET_KEY` |
-| `knowledge` | `knowledge` (gunicorn), `knowledge-beat` (celery beat), `knowledge-worker` (celery worker) | `knowledge.example.com` | `knowledge` | `BILLING_WEBHOOK_SECRET`, `MAILLER_CLIENT_SECRET`, `OAUTH2_CLIENT_SECRET`, `OPENAI_API_KEY` |
+| `knowledge` | `knowledge` (gunicorn), `knowledge-beat` (celery beat), `knowledge-worker` (celery worker) | `knowledge.example.com` | `knowledge` | `BILLING_WEBHOOK_SECRET`, `CUSTOM_DOMAIN_WEBHOOK_SECRET`, `OAUTH2_CLIENT_SECRET`, `OPENAI_API_KEY` |
 | `mailler` | `mailler` (gunicorn), `mailler-beat` (celery beat), `mailler-worker` (celery worker) | `mailler.internal` | `mailler` | `BREVO_API_KEY`, `OAUTH2_CLIENT_SECRET`, `WEBHOOK_HMAC_SECRET` |
 | `mta_sts` | `mta-sts` (gunicorn) | `mta-sts.example.com` | - | - |
 | `reachy_mini_api` | `reachy-mini-api` (gunicorn) | `reachy.internal` | - | `OAUTH2_CLIENT_SECRET` |
@@ -210,7 +210,7 @@ it started, and nginx exposes that path to the loopback address only.
 | `nginx.enabled` | Virtual host, certificate, access and error logs. |
 | `nginx.internal_domain` | Listens on the internal address and registers the name in dnsmasq; with `ssl: step-ca` the certificate comes from the private CA. |
 | `fail2ban.routes` | A jail per route on the nginx access log. |
-| `sudoers` | Commands the account may run as root, for the custom domain provisioning of `auth`, `knowledge` and `custom_domain` workers. |
+| `sudoers` | Commands the account may run as root, for the custom domain provisioning of the `auth` worker (the `custom_domain` worker uses the privileged helper, and `knowledge` needs none). |
 | `type: audiosocket` / `fastagi` with `asterisk.enabled` | A dialplan context included from `extensions.conf`. |
 | `type: script` with `openvpn` | Wrapper scripts and the hooks of the OpenVPN server. |
 | `ses_webhook` | SNS topics and SES notifications that call the endpoint. |

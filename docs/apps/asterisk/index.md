@@ -20,6 +20,7 @@ The application is documented feature by feature, in the order in which
 each feature builds on the previous ones.
 
 1. [Application foundation](01-foundation.md): package, settings and logging.
+2. [AudioSocket server](02-audiosocket.md): the Asterisk-facing TCP server.
 
 ## Testing
 

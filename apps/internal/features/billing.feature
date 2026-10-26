@@ -465,3 +465,158 @@ Feature: Billing admin dashboard and SaaS management
     When I send a POST request to "/billing/saas/saas-1/subscriptions/sub-1/sync"
     Then the response status code should be 303
     And I should be redirected to a URL containing "error=Failed+to+sync"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the billing dashboard
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And the billing SaaS apps list returns data
+    When I send a GET request to "/billing"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new SaaS app form
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/billing/saas/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the SaaS app detail
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    When I send a GET request to "/billing/saas/saas-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the SaaS app edit form
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the products list
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And the billing products list returns data for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/products"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new product form
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/products/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the product detail
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And a billing product exists with id "prod-1" for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/products/prod-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the product edit form
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And a billing product exists with id "prod-1" for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/products/prod-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new price form
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And a billing product exists with id "prod-1" for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/products/prod-1/prices/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the customers list
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And the billing customers list returns data for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/customers"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the customer detail
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And a billing customer exists with id "cust-1" for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/customers/cust-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the subscriptions list
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And the billing subscriptions list returns data for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/subscriptions"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the subscription detail
+    Given I am authenticated with only the scopes "billing:* vpn:admin billing:read" granted by token exchange
+    And a SaaS app exists with id "saas-1"
+    And a billing subscription exists with id "sub-1" for SaaS "saas-1"
+    When I send a GET request to "/billing/saas/saas-1/subscriptions/sub-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/billing"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the billing dashboard
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the billing SaaS apps list returns data
+    When I send a GET request to "/billing"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                           | vpn     | billing |
+      | billing:*                        | hidden  | visible |
+      | billing:* vpn:admin              | visible | visible |
+      | billing:* billing:read           | hidden  | visible |
+      | billing:* vpn:admin billing:read | visible | visible |
+      | *                                | visible | visible |

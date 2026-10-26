@@ -53,8 +53,23 @@ class Settings(BaseSettings):
     oauth2_client_id: str = ""
     oauth2_client_secret: str = ""
 
+    # Brevo (Sendinblue) -> Internal API
+    brevo_enabled: bool = False
+    brevo_webhook_secret: str = ""
+    brevo_internal_api_url: str = ""
+    brevo_internal_api_socket: str = ""  # Unix socket (overrides URL)
+    brevo_internal_api_token: str = ""  # Bearer token for internal API
+
 
 settings = Settings(
+    brevo_webhook_secret=get_credential(
+        "BREVO_WEBHOOK_SECRET",
+        os.environ.get("BREVO_WEBHOOK_SECRET", ""),
+    ),
+    brevo_internal_api_token=get_credential(
+        "BREVO_INTERNAL_API_TOKEN",
+        os.environ.get("BREVO_INTERNAL_API_TOKEN", ""),
+    ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",
         os.environ.get("OAUTH2_CLIENT_SECRET", ""),

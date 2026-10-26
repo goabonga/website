@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge MCP - Download</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        .header-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 0.875rem;
+        }
+
+        .header-nav a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            background-color: var(--bg-card);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        .btn-success {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #2ea043;
+        }
+
+        .btn-lg {
+            padding: 14px 28px;
+            font-size: 1rem;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 60px 0 40px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+
+        /* Download Section */
+        .download-section {
+            padding: 40px 0;
+        }
+
+        .download-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .download-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .download-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .version-badge {
+            background-color: var(--accent-green);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .version-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .version-selector label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .version-selector select {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .platform-card {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: border-color 0.15s ease;
+        }
+
+        .platform-card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .platform-card.recommended {
+            border-color: var(--accent-green);
+        }
+
+        .platform-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .platform-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .platform-arch {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+        }
+
+        .platform-size {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+        }
+
+        .recommended-badge {
+            background-color: var(--accent-green);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.625rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+
+        /* Instructions */
+        .instructions {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .instructions h2 {
+            text-align: center;
+            font-size: 1.75rem;
+            margin-bottom: 32px;
+        }
+
+        .instructions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .instruction-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .instruction-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.125rem;
+            margin-bottom: 16px;
+        }
+
+        .instruction-card code {
+            display: block;
+            background-color: var(--bg-input);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            white-space: pre;
+            margin-bottom: 12px;
+        }
+
+        .instruction-card p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Release Notes */
+        .release-notes {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .release-notes h2 {
+            text-align: center;
+            font-size: 1.75rem;
+            margin-bottom: 32px;
+        }
+
+        .release-notes-content {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .release-notes-content h3 {
+            font-size: 1.125rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .release-notes-body {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.8;
+        }
+
+        .release-notes-body ul {
+            margin-left: 20px;
+        }
+
+        /* No Releases */
+        .no-releases {
+            text-align: center;
+            padding: 60px 0;
+        }
+
+        .no-releases-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .no-releases h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .no-releases p {
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .footer-links {
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin: 0 12px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .download-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .platform-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">Knowledge<span>.</span></a>
+            <nav class="header-nav">
+                {% if docs_enabled %}
+                <a href="/docs">API Docs</a>
+                {% endif %}
+                <a href="/mcp">MCP Downloads</a>
+                {% if request and request.cookies.get('access_token') %}
+                <a href="/dashboard">Dashboard</a>
+                {% else %}
+                <a href="/auth/signin">Sign In</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Knowledge <span>MCP Server</span></h1>
+                <p>Connect your AI assistant to your Knowledge base. Download the MCP server for your platform and unlock semantic search capabilities.</p>
+            </div>
+        </section>
+
+        {% if latest_release %}
+        <section class="download-section">
+            <div class="container">
+                <div class="download-card">
+                    <div class="download-header">
+                        <div>
+                            <h2>Download Knowledge MCP</h2>
+                            <span class="version-badge">v{{ latest_release.version }}</span>
+                        </div>
+                        {% if releases|length > 1 %}
+                        <div class="version-selector">
+                            <label for="version-select">Version:</label>
+                            <select id="version-select" onchange="changeVersion(this.value)">
+                                {% for release in releases %}
+                                <option value="{{ release.version }}" {% if release.version == latest_release.version %}selected{% endif %}>
+                                    v{{ release.version }}{% if loop.first %} (latest){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="platform-grid" id="platform-grid">
+                        {% for asset in latest_release.assets %}
+                        <div class="platform-card" data-platform="{{ asset.platform.value }}">
+                            {% if 'linux' in asset.platform.value %}
+                            <div class="platform-icon">&#128039;</div>
+                            <div class="platform-name">Linux</div>
+                            {% elif 'macos' in asset.platform.value %}
+                            <div class="platform-icon">&#127822;</div>
+                            <div class="platform-name">macOS</div>
+                            {% elif 'windows' in asset.platform.value %}
+                            <div class="platform-icon">&#128187;</div>
+                            <div class="platform-name">Windows</div>
+                            {% endif %}
+                            <div class="platform-arch">{{ asset.platform.value.split('-')[1] }}</div>
+                            {% if asset.file_size %}
+                            <div class="platform-size">{{ (asset.file_size / 1024 / 1024) | round(1) }} MB</div>
+                            {% endif %}
+                            <a href="/api/v1/mcp/download/{{ latest_release.version }}/{{ asset.platform.value }}" class="btn btn-success">
+                                Download
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if latest_release.assets %}
+                    <p style="text-align: center; color: var(--text-muted); font-size: 0.875rem;">
+                        Not sure which to download? <span id="detected-platform"></span>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="instructions">
+            <div class="container">
+                <h2>Installation</h2>
+                <div class="instructions-grid">
+                    <div class="instruction-card">
+                        <h3>&#128039; Linux / macOS</h3>
+                        <code>chmod +x knowledge-mcp
+./knowledge-mcp --help</code>
+                        <p>Make the binary executable and run it. Add to your PATH for easy access.</p>
+                    </div>
+                    <div class="instruction-card">
+                        <h3>&#128187; Windows</h3>
+                        <code>knowledge-mcp.exe --help</code>
+                        <p>Run the executable directly from Command Prompt or PowerShell.</p>
+                    </div>
+                    <div class="instruction-card">
+                        <h3>&#9881; Configuration</h3>
+                        <code>export KNOWLEDGE_API_KEY="your-api-key"
+export KNOWLEDGE_BASE_URL="{{ site().base_url or 'https://knowledge.example.com' }}"</code>
+                        <p>Set environment variables for authentication.</p>
+                    </div>
+                    <div class="instruction-card">
+                        <h3>&#128279; Claude Desktop</h3>
+                        <code>{
+  "mcpServers": {
+    "knowledge": {
+      "command": "/path/to/knowledge-mcp"
+    }
+  }
+}</code>
+                        <p>Add to your Claude Desktop config file.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if latest_release.release_notes %}
+        <section class="release-notes">
+            <div class="container">
+                <h2>Release Notes</h2>
+                <div class="release-notes-content">
+                    <h3>&#128196; v{{ latest_release.version }}</h3>
+                    <div class="release-notes-body">
+                        {{ latest_release.release_notes | safe }}
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% else %}
+        <section class="no-releases">
+            <div class="container">
+                <div class="no-releases-icon">&#128230;</div>
+                <h2>No Releases Available</h2>
+                <p>Knowledge MCP releases will appear here once published.</p>
+            </div>
+        </section>
+        {% endif %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="/">Home</a>
+                {% if docs_enabled %}
+                <a href="/docs">API Docs</a>
+                {% endif %}
+                <a href="/legal">Legal Notice</a>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+            </div>
+            <p>Knowledge API</p>
+        </div>
+    </footer>
+
+    <script>
+        // Platform detection
+        function detectPlatform() {
+            const ua = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+
+            if (ua.includes('win')) {
+                return 'windows-x86_64';
+            } else if (ua.includes('mac')) {
+                // Check for Apple Silicon
+                if (ua.includes('arm') || navigator.userAgent.includes('AppleWebKit')) {
+                    // Modern detection using userAgentData if available
+                    if (navigator.userAgentData && navigator.userAgentData.platform === 'macOS') {
+                        return 'macos-arm64'; // Default to ARM for modern Macs
+                    }
+                }
+                return 'macos-arm64'; // Default to ARM for modern Macs
+            } else if (ua.includes('linux')) {
+                // Check for ARM
+                if (ua.includes('arm') || ua.includes('aarch64')) {
+                    return 'linux-arm64';
+                }
+                return 'linux-x86_64';
+            }
+            return null;
+        }
+
+        function highlightPlatform() {
+            const detected = detectPlatform();
+            if (!detected) return;
+
+            const cards = document.querySelectorAll('.platform-card');
+            cards.forEach(card => {
+                if (card.dataset.platform === detected) {
+                    card.classList.add('recommended');
+                    const badge = document.createElement('div');
+                    badge.className = 'recommended-badge';
+                    badge.textContent = 'RECOMMENDED';
+                    card.insertBefore(badge, card.firstChild);
+                }
+            });
+
+            const detectedEl = document.getElementById('detected-platform');
+            if (detectedEl) {
+                const platformNames = {
+                    'linux-x86_64': 'Linux (x86_64)',
+                    'linux-arm64': 'Linux (ARM64)',
+                    'macos-x86_64': 'macOS (Intel)',
+                    'macos-arm64': 'macOS (Apple Silicon)',
+                    'windows-x86_64': 'Windows (x86_64)'
+                };
+                detectedEl.textContent = `We detected ${platformNames[detected] || detected}.`;
+            }
+        }
+
+        function changeVersion(version) {
+            window.location.href = `/mcp?version=${version}`;
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', highlightPlatform);
+    </script>
+</body>
+</html>

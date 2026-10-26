@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <div class="breadcrumb">
+        Welcome back, {{ user.display_name or user.email }}
+    </div>
+</div>
+
+{% if not tenant %}
+<div class="alert alert-warning">
+    No tenant selected. Please create or join a tenant to get started.
+</div>
+{% else %}
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Collections</div>
+        <div class="stat-value">{{ collections_count }}</div>
+        {% if usage_stats %}
+        <div class="stat-progress">
+            {% set pct = usage_stats.collections.percentage_used %}
+            <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+        </div>
+        <small style="color: var(--text-muted);">{{ usage_stats.collections.current }} / {{ usage_stats.collections.limit if not usage_stats.collections.is_unlimited else 'unlimited' }}</small>
+        {% endif %}
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Documents</div>
+        <div class="stat-value">{{ documents_count }}</div>
+        {% if usage_stats %}
+        <div class="stat-progress">
+            {% set pct = usage_stats.documents_total.percentage_used %}
+            <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+        </div>
+        <small style="color: var(--text-muted);">{{ usage_stats.documents_total.current }} / {{ usage_stats.documents_total.limit if not usage_stats.documents_total.is_unlimited else 'unlimited' }}</small>
+        {% endif %}
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Storage Used</div>
+        <div class="stat-value">
+            {% if storage_used < 1024 %}
+                {{ storage_used }} B
+            {% elif storage_used < 1024 * 1024 %}
+                {{ (storage_used / 1024) | round(1) }} KB
+            {% elif storage_used < 1024 * 1024 * 1024 %}
+                {{ (storage_used / 1024 / 1024) | round(1) }} MB
+            {% else %}
+                {{ (storage_used / 1024 / 1024 / 1024) | round(2) }} GB
+            {% endif %}
+        </div>
+        {% if usage_stats %}
+        <div class="stat-progress">
+            {% set pct = usage_stats.storage_bytes.percentage_used %}
+            <div class="stat-progress-bar {% if pct > 90 %}danger{% elif pct > 70 %}warning{% endif %}" style="width: {{ pct }}%"></div>
+        </div>
+        <small style="color: var(--text-muted);">
+            {% if not usage_stats.storage_bytes.is_unlimited %}
+                {% if usage_stats.storage_bytes.limit < 1024 * 1024 * 1024 %}
+                    {{ (usage_stats.storage_bytes.limit / 1024 / 1024) | round(0) }} MB limit
+                {% else %}
+                    {{ (usage_stats.storage_bytes.limit / 1024 / 1024 / 1024) | round(0) }} GB limit
+                {% endif %}
+            {% else %}
+                unlimited
+            {% endif %}
+        </small>
+        {% endif %}
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Plan</div>
+        <div class="stat-value" style="text-transform: capitalize;">{{ tenant.plan.value }}</div>
+    </div>
+</div>
+
+<!-- Recent Collections -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Recent Collections</h2>
+    </div>
+
+    {% if recent_collections %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Updated</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for collection in recent_collections %}
+            <tr>
+                <td>
+                    {{ collection.name }}
+                </td>
+                <td style="color: var(--text-secondary);">{{ collection.description or '-' }}</td>
+                <td style="color: var(--text-muted);">{{ collection.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">&#128451;</div>
+        <h3>No collections yet</h3>
+        <p>Create your first collection to start storing documents.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

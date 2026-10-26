@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Notice - Knowledge</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header .container {
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        .header-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 0.875rem;
+        }
+
+        .header-nav a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        /* Content */
+        .content {
+            padding: 60px 0;
+        }
+
+        .content h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .content .last-updated {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 40px;
+        }
+
+        .content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--accent-blue);
+        }
+
+        .content p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .content ul {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        .content li {
+            margin-bottom: 8px;
+        }
+
+        .content a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .content a:hover {
+            text-decoration: underline;
+        }
+
+        .info-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .info-card h3 {
+            font-size: 1.125rem;
+            margin-bottom: 12px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer .container {
+            max-width: 1200px;
+        }
+
+        .footer-links {
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin: 0 12px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">Knowledge<span>.</span></a>
+            <nav class="header-nav">
+                {% if docs_enabled %}
+                <a href="/docs">API Docs</a>
+                {% endif %}
+                <a href="/mcp">MCP Server</a>
+                {% if request and request.cookies.get('access_token') %}
+                <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+                {% else %}
+                <a href="/auth/signin">Sign In</a>
+                <a href="/auth/signup" class="btn btn-primary">Get Started</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="content">
+        <div class="container">
+            <h1>Legal Notice</h1>
+            <p class="last-updated">Last updated: February 2025</p>
+
+            <div class="info-card">
+                <h3>Publisher Information</h3>
+                <p>
+                    <strong>Knowledge API</strong><br>
+                    {% if site().operator_name %}A service provided by {{ site().operator_name }}<br>{% endif %}
+                    {% if site().contact_email %}Contact: <a href="mailto:{{ site().contact_email }}">{{ site().contact_email }}</a>{% endif %}
+                </p>
+            </div>
+
+            <h2>1. Service Description</h2>
+            <p>
+                Knowledge is a vector storage and semantic search platform that enables users to store,
+                index, and search content using vector embeddings. The service provides REST APIs and
+                a web interface for managing knowledge bases.
+            </p>
+
+            <h2>2. Intellectual Property</h2>
+            <p>
+                The Knowledge platform, including its design, logos, and underlying technology, is
+                protected by intellectual property laws. Users retain ownership of all content they
+                upload to the service.
+            </p>
+            <p>
+                The source code and documentation may be subject to specific licensing terms. Please
+                refer to the repository license for details.
+            </p>
+
+            <h2>3. Limitation of Liability</h2>
+            <p>
+                The service is provided "as is" without warranties of any kind, either express or implied.
+                We do not guarantee:
+            </p>
+            <ul>
+                <li>Uninterrupted or error-free service availability</li>
+                <li>The accuracy or reliability of search results</li>
+                <li>The security of stored data beyond reasonable industry standards</li>
+            </ul>
+
+            <h2>4. User Responsibilities</h2>
+            <p>
+                Users are responsible for:
+            </p>
+            <ul>
+                <li>Maintaining the confidentiality of their account credentials</li>
+                <li>Ensuring they have the right to upload and use any content</li>
+                <li>Complying with applicable laws and regulations</li>
+                <li>Not using the service for illegal or harmful purposes</li>
+            </ul>
+
+            <h2>5. Governing Law</h2>
+            <p>
+                This legal notice and any disputes arising from the use of our services shall be
+                governed by applicable laws. Any disputes shall be resolved in the competent courts.
+            </p>
+
+            <h2>6. Contact</h2>
+            <p>
+                For any questions regarding this legal notice, please contact us{% if site().legal_email %} at
+                <a href="mailto:{{ site().legal_email }}">{{ site().legal_email }}</a>{% endif %}.
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="/legal">Legal Notice</a>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+                <a href="/pricing">Pricing</a>
+                <a href="/mcp">MCP Server</a>
+            </div>
+            <p>Knowledge API</p>
+        </div>
+    </footer>
+</body>
+</html>

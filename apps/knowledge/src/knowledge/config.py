@@ -153,6 +153,14 @@ class Settings(BaseSettings):
     cookie_secure: bool = True  # Set False for local dev without HTTPS
     cookie_domain: str = ""  # Leave empty for same-domain
 
+    # The operator of the service, shown on the legal pages and the pricing page. Empty
+    # values are left out of the pages.
+    operator_name: str = ""  # who publishes the service (legal notice)
+    contact_email: str = ""  # general contact
+    sales_email: str = ""  # "contact sales" of the plans with a custom price
+    legal_email: str = ""  # legal notice and terms of service
+    privacy_email: str = ""  # privacy policy and data subject requests
+
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {

@@ -5,7 +5,7 @@
 
 This application has two parts:
 1. Public API (main app) - Customer-facing REST API with docs at /docs
-2. Internal routes (mounted sub-app) - health checks, webhooks and authentication pages
+2. Internal routes (mounted sub-app) - health checks, webhooks, authentication and web pages
    with docs at /internal/docs
 """
 
@@ -112,7 +112,7 @@ the user has the required `knowledge:*` scopes via token exchange.
 
 ## Internal Routes
 
-For internal routes (health checks, webhooks, authentication pages), see [/internal/docs](/internal/docs)
+For internal routes (health checks, webhooks, authentication and web pages), see [/internal/docs](/internal/docs)
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -176,7 +176,7 @@ app.include_router(mcp_downloads.router, tags=["MCP Downloads"])
 # =============================================================================
 # MOUNT INTERNAL SUB-APPLICATION
 # =============================================================================
-# Internal routes include: health checks, webhooks and authentication pages
+# Internal routes include: health checks, webhooks, authentication and web pages
 # These have their own OpenAPI documentation at /internal/docs
 
 app.mount("", internal_app)

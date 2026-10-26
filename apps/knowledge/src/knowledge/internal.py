@@ -6,7 +6,8 @@
 This module defines the internal routes that are mounted on the main API app.
 It has its own OpenAPI documentation at /internal/docs.
 
-Internal routes include health checks, webhook receivers and authentication pages.
+Internal routes include health checks, webhook receivers, authentication pages and
+the web pages (landing page, dashboard, pricing, legal pages, MCP downloads).
 """
 
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from knowledge import __version__
 from knowledge.config import get_settings
 from knowledge.routes import auth as auth_routes
 from knowledge.routes import billing_webhooks, custom_domain_webhooks, github_webhooks, health
+from knowledge.routes.web import downloads_router, home_router
 
 settings = get_settings()
 
@@ -33,6 +35,7 @@ This documentation covers internal routes only.
 - **Health** - Health check endpoints
 - **Webhooks** - Billing, GitHub and other webhook receivers
 - **Auth** - OAuth2 authentication callbacks and account pages
+- **Web** - HTML pages for the web application
     """.strip(),
     version=__version__,
     docs_url="/internal/docs",
@@ -42,6 +45,7 @@ This documentation covers internal routes only.
         {"name": "Health", "description": "Health check endpoints"},
         {"name": "Webhooks", "description": "Webhook receivers (billing, GitHub, etc.)"},
         {"name": "Auth", "description": "OAuth2 authentication routes"},
+        {"name": "Web", "description": "Web UI HTML pages"},
     ],
 )
 
@@ -53,3 +57,7 @@ internal_app.include_router(github_webhooks.router, tags=["Webhooks"])
 
 # Authentication routes (OAuth2 callbacks and account pages)
 internal_app.include_router(auth_routes.router, tags=["Auth"])
+
+# Web UI routers (HTML pages)
+internal_app.include_router(home_router, tags=["Web"])
+internal_app.include_router(downloads_router, tags=["Web"])

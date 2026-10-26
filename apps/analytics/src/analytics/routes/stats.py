@@ -4,17 +4,18 @@
 """Secured analytics stats API routes."""
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import CursorResult, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from analytics.auth.dependencies import require_scopes
 from analytics.auth.models import User
 from analytics.database import get_db
-from analytics.models.campaign import Campaign, CampaignClick, Pixel
+from analytics.models.campaign import Campaign, CampaignClick, Pixel, PixelOpen
 from analytics.models.event import Event
 from analytics.models.session import Session
 
@@ -1065,4 +1066,52 @@ async def create_pixels_batch(
         campaign_id=campaign_id,
         created_count=len(pixels_response),
         pixels=pixels_response,
+    )
+
+
+class ResetResponse(BaseModel):
+    """Response model for reset operation."""
+
+    success: bool
+    sessions_deleted: int
+    events_deleted: int
+    campaigns_deleted: int
+    pixels_deleted: int
+    clicks_deleted: int
+    pixel_opens_deleted: int
+
+
+@router.delete("/reset", response_model=ResetResponse)
+async def reset_all_analytics(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:delete")),
+) -> ResetResponse:
+    """Reset all analytics data. Requires analytics:delete scope (super_admin only).
+
+    WARNING: This permanently deletes ALL analytics data including:
+    - Sessions and events
+    - Campaigns, pixels, clicks, and pixel opens
+
+    This action cannot be undone.
+    """
+    from sqlalchemy import delete
+
+    # Delete in order of foreign key dependencies
+    pixel_opens_deleted = cast(CursorResult, await db.execute(delete(PixelOpen))).rowcount or 0
+    clicks_deleted = cast(CursorResult, await db.execute(delete(CampaignClick))).rowcount or 0
+    pixels_deleted = cast(CursorResult, await db.execute(delete(Pixel))).rowcount or 0
+    campaigns_deleted = cast(CursorResult, await db.execute(delete(Campaign))).rowcount or 0
+    events_deleted = cast(CursorResult, await db.execute(delete(Event))).rowcount or 0
+    sessions_deleted = cast(CursorResult, await db.execute(delete(Session))).rowcount or 0
+
+    await db.commit()
+
+    return ResetResponse(
+        success=True,
+        sessions_deleted=sessions_deleted,
+        events_deleted=events_deleted,
+        campaigns_deleted=campaigns_deleted,
+        pixels_deleted=pixels_deleted,
+        clicks_deleted=clicks_deleted,
+        pixel_opens_deleted=pixel_opens_deleted,
     )

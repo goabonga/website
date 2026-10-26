@@ -12,6 +12,7 @@ from mailler.logging import get_logger
 from mailler.models.email import Email, EmailStatus
 from mailler.schemas.email import ScheduleEmailRequest, SendEmailResponse
 from mailler.services import clients
+from mailler.services.template_content import resolve_content
 
 logger = get_logger(__name__)
 
@@ -46,6 +47,7 @@ async def schedule_email(
         provider=request.provider,
     )
     await clients.enforce_limits(db, client, is_admin=auth.is_admin)
+    content = await resolve_content(db, auth, request)
 
     # Create email record with scheduled time
     # For machine clients (client_credentials), user_id should be None
@@ -56,11 +58,11 @@ async def schedule_email(
         from_email=identity.from_email,
         from_name=identity.from_name,
         reply_to=identity.reply_to,
-        subject=request.subject,
-        html_content=request.html_content,
-        text_content=request.text_content,
+        subject=content.subject,
+        html_content=content.html,
+        text_content=content.text,
         provider=identity.provider,
-        metadata_=request.metadata or {},
+        metadata_=content.metadata,
         client_id=auth.user.client_id,
         user_id=None if auth.user.is_machine_client else auth.user.id,
         status=EmailStatus.PENDING.value,
@@ -87,4 +89,5 @@ async def schedule_email(
         status="scheduled",
         message=f"Email scheduled for {request.scheduled_at.isoformat()}",
         task_id=None,
+        missing_variables=content.missing_variables,
     )

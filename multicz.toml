@@ -209,3 +209,18 @@ bump_files = [
 ]
 changelog = "apps/apt-server/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.custom-domain]
+tag_format = "custom-domain-v{version}"
+paths = [
+    "apps/custom-domain/src/**",
+    "apps/custom-domain/features/**",
+    "apps/custom-domain/tests/**",
+    "apps/custom-domain/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/custom-domain/pyproject.toml", key = "project.version" },
+    { file = "apps/custom-domain/src/custom_domain/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/custom-domain/CHANGELOG.md"
+post_bump = ["uv lock"]

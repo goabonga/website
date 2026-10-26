@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     # this application only acts as an ordinary registered client of the service.
     mailler_admin_scope: str = "mailler:admin"
     mailler_timeout: float = 30.0  # seconds, per request to the mailler service
+    mailler_clients_page_size: int = 20  # Rows per page of the list of mailler clients
     mailler_socket_path: str = ""  # Unix socket path (e.g., /run/mailler/mailler.sock)
     # Provider shown for a campaign that names none; empty: the one of its mailler client
     mailler_default_provider: str = ""

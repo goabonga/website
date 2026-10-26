@@ -229,6 +229,9 @@
     <div style="display: flex; align-items: center; gap: 1rem;">
         <h1>Mailler Dashboard</h1>
         <a href="/mailler/emails" class="btn btn-secondary btn-sm">View All Emails &rarr;</a>
+        {% if user.has_scope('mailler:admin') %}
+        <a href="/mailler/clients" class="btn btn-secondary btn-sm">Clients &rarr;</a>
+        {% endif %}
     </div>
     <div class="filters">
         <label for="days">Period:</label>

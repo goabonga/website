@@ -1,0 +1,210 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Clients - Mailler{% endblock %}
+
+{% block head %}
+<style>
+    .filters-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+    .filters-bar select, .filters-bar input {
+        padding: 0.5rem 1rem;
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        color: #e0e0e0;
+    }
+    .filters-bar label {
+        color: #a0a0a0;
+        font-size: 0.9rem;
+    }
+    .summary-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        color: #a0a0a0;
+        font-size: 0.9rem;
+    }
+    .pagination a, .pagination span {
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    .pagination a {
+        background: #16213e;
+        color: #e0e0e0;
+        border: 1px solid #0f3460;
+    }
+    .pagination .current {
+        background: #e94560;
+        color: white;
+    }
+    .pagination .disabled {
+        color: #6c757d;
+    }
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Clients</h1>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="/mailler/clients/new" class="btn btn-primary">+ Register Client</a>
+        <a href="/mailler" class="btn btn-secondary">&larr; Dashboard</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <p class="text-muted">
+        The applications allowed to use the mailler service. A client sends with the sender,
+        reply-to and provider of its record, within its limits; an unregistered or deactivated
+        client is refused.
+    </p>
+
+    <form method="get" action="/mailler/clients" class="filters-bar">
+        <label for="search">Search:</label>
+        <input type="search" id="search" name="search" value="{{ search or '' }}" placeholder="Client ID or name">
+
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="">All</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+    </form>
+
+    <div class="summary-bar">
+        <span>Showing {{ clients | length }} of {{ total }} clients</span>
+        <span>Page {{ page }} of {{ pages }}</span>
+    </div>
+
+    {% if clients %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th>Status</th>
+                <th>Sender</th>
+                <th>Providers</th>
+                <th>Limits</th>
+                <th>Callback</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            <tr>
+                <td>
+                    <code class="mono">{{ client.client_id }}</code>
+                    {% if client.name %}<div class="text-muted" style="font-size: 0.8rem;">{{ client.name }}</div>{% endif %}
+                </td>
+                <td>
+                    {% if client.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if client.from_email %}
+                    {{ client.from_email }}
+                    {% if client.reply_to %}<div class="text-muted" style="font-size: 0.8rem;">Reply-to: {{ client.reply_to }}</div>{% endif %}
+                    {% else %}
+                    <span class="text-muted">None</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for provider in client.allowed_providers %}
+                    <span class="badge {% if provider == client.default_provider %}badge-info{% else %}badge-secondary{% endif %}">{{ provider }}</span>
+                    {% else %}
+                    {% if client.default_provider %}<span class="badge badge-info">{{ client.default_provider }}</span>{% else %}<span class="text-muted">None</span>{% endif %}
+                    {% endfor %}
+                </td>
+                <td class="mono" style="font-size: 0.85rem;">
+                    {% if client.rate_limit_per_minute or client.daily_quota %}
+                    {% if client.rate_limit_per_minute %}{{ client.rate_limit_per_minute }}/min{% endif %}
+                    {% if client.rate_limit_per_minute and client.daily_quota %}<br>{% endif %}
+                    {% if client.daily_quota %}{{ client.daily_quota }}/day{% endif %}
+                    {% else %}
+                    <span class="text-muted">Unlimited</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if client.callback_url %}
+                    <code class="mono" style="font-size: 0.8rem;">{{ client.callback_url }}</code>
+                    {% else %}
+                    <span class="text-muted">None</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="actions">
+                        <a href="/mailler/clients/{{ client.client_id | urlencode }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                        {% if client.is_active %}
+                        <form method="post" action="/mailler/clients/{{ client.client_id | urlencode }}/deactivate" onsubmit="return confirm('Deactivate this client? The mailler service refuses it from now on and stops its queued emails and campaigns.');">
+                            <button type="submit" class="btn btn-danger btn-sm">Deactivate</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/mailler/clients/{{ client.client_id | urlencode }}/activate">
+                            <button type="submit" class="btn btn-primary btn-sm">Activate</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if pages > 1 %}
+    {% macro page_url(p) %}
+    /mailler/clients?page={{ p }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}
+    {% endmacro %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ page_url(page - 1) }}">&lsaquo; Prev</a>
+        {% else %}
+        <span class="disabled">&lsaquo; Prev</span>
+        {% endif %}
+
+        <span class="current">{{ page }}</span>
+
+        {% if page < pages %}
+        <a href="{{ page_url(page + 1) }}">Next &rsaquo;</a>
+        {% else %}
+        <span class="disabled">Next &rsaquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p>No clients found.</p>
+        {% if search or status_filter %}
+        <p><a href="/mailler/clients" class="btn btn-secondary btn-sm">Clear filters</a></p>
+        {% else %}
+        <p class="text-muted">Without a registered client, no application can send through the mailler service.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

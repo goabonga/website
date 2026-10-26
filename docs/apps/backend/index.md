@@ -24,6 +24,7 @@ feature: what it does, how it is configured, how it is tested.
 11. [Chat orchestration and streaming](11-chat-orchestration.md): tool routing, streamed answers and SSE events.
 12. [Chat endpoint](12-chat-endpoint.md): `POST /api/v1/chat`, history mode, cookies and rate limiting.
 13. [Database migrations](13-database-migrations.md): Alembic history, offline SQL and local infrastructure.
+14. [Deployment](14-deployment.md): processes, settings, secrets and the production layout.
 
 ## Running the tests
 

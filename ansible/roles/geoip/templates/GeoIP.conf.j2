@@ -1,0 +1,19 @@
+{{ ansible_managed | comment }}
+AccountID {{ geoip_account_id }}
+LicenseKey {{ geoip_license_key }}
+EditionIDs {{ geoip_editions | join(' ') }}
+DatabaseDirectory {{ geoip_database_dir }}
+LockFile {{ geoip_lock_file }}
+PreserveFileTimes {{ 1 if geoip_preserve_file_times | bool else 0 }}
+{% if geoip_host %}
+Host {{ geoip_host }}
+{% endif %}
+{% if geoip_proxy %}
+Proxy {{ geoip_proxy }}
+{% endif %}
+{% if geoip_proxy_user_password %}
+ProxyUserPassword {{ geoip_proxy_user_password }}
+{% endif %}
+{% if geoip_parallelism | int > 0 %}
+Parallelism {{ geoip_parallelism }}
+{% endif %}

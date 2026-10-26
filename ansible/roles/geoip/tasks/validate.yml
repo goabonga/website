@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The geoip role only supports Debian-family distributions.
+    quiet: true
+
+- name: Assert the MaxMind credentials and editions are set
+  ansible.builtin.assert:
+    that:
+      - geoip_account_id | string | length > 0
+      - geoip_license_key | string | length > 0
+      - geoip_editions | length > 0
+    fail_msg: >-
+      geoip_account_id, geoip_license_key and a non-empty geoip_editions list are required.
+      Create a free MaxMind account to obtain them.
+    quiet: true

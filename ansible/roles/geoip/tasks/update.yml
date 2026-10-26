@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for the first edition on disk
+  ansible.builtin.stat:
+    path: "{{ geoip_database_dir }}/{{ geoip_editions[0] }}.mmdb"
+  register: geoip_first_edition
+  when: geoip_initial_download | bool
+
+- name: Download the databases for the first time
+  ansible.builtin.command:
+    cmd: "{{ geoip_update_command }}"
+  register: geoip_initial_download_result
+  changed_when: true
+  when:
+    - geoip_initial_download | bool
+    - not geoip_first_edition.stat.exists
+
+- name: Schedule the database updates
+  ansible.builtin.cron:
+    name: "{{ geoip_cron_name }}"
+    cron_file: "{{ geoip_cron_name }}"
+    user: root
+    minute: "{{ geoip_cron_minute }}"
+    hour: "{{ geoip_cron_hour }}"
+    weekday: "{{ geoip_cron_weekday }}"
+    job: "{{ geoip_update_command }}"
+    state: present
+  when: geoip_schedule_enabled | bool
+
+- name: Remove the scheduled database updates
+  ansible.builtin.cron:
+    name: "{{ geoip_cron_name }}"
+    cron_file: "{{ geoip_cron_name }}"
+    user: root
+    state: absent
+  when: not (geoip_schedule_enabled | bool)

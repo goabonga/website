@@ -16,3 +16,4 @@ model and how it is tested (pytest and behave).
 - [Package catalog and ACL](03-package-catalog.md)
 - [APT indexes](04-apt-indexes.md)
 - [APT client endpoints](05-apt-endpoints.md)
+- [Package API](06-package-api.md)

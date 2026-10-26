@@ -1,0 +1,549 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit Workflow{% else %}New Workflow{% endif %} - {{ team.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .wf-section {
+        margin-bottom: 1.5rem;
+    }
+    .wf-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .wf-section-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    /* Steps list */
+    .steps-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .step-card {
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        padding: 1rem;
+        position: relative;
+        transition: border-color 0.2s;
+    }
+    .step-card:hover {
+        border-color: #3d3d5c;
+    }
+    .step-card.dragging {
+        opacity: 0.5;
+        border-color: #74b9ff;
+    }
+    .step-card.drag-over {
+        border-color: #74b9ff;
+        border-style: dashed;
+    }
+    .step-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .step-number {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(116, 185, 255, 0.15);
+        color: #74b9ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    .step-name-input {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #2d2d4a;
+        border-radius: 4px;
+        color: #e0e0e0;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .step-name-input:focus {
+        outline: none;
+        border-color: #74b9ff;
+    }
+    .step-actions {
+        display: flex;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+    .step-actions button {
+        background: none;
+        border: 1px solid transparent;
+        color: #666;
+        cursor: pointer;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        line-height: 1;
+    }
+    .step-actions button:hover {
+        color: #e0e0e0;
+        border-color: #2d2d4a;
+    }
+    .step-actions button.step-delete:hover {
+        color: #d63031;
+        border-color: rgba(214, 48, 49, 0.3);
+    }
+    .step-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    .step-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .step-field.full-width {
+        grid-column: 1 / -1;
+    }
+    .step-field label {
+        font-size: 0.75rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .step-field select,
+    .step-field input,
+    .step-field textarea {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #2d2d4a;
+        border-radius: 4px;
+        color: #e0e0e0;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    .step-field select:focus,
+    .step-field input:focus,
+    .step-field textarea:focus {
+        outline: none;
+        border-color: #74b9ff;
+    }
+    .step-field textarea {
+        resize: vertical;
+        min-height: 60px;
+        font-family: inherit;
+    }
+
+    /* Dependencies */
+    .deps-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        min-height: 28px;
+    }
+    .dep-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: rgba(116, 185, 255, 0.12);
+        color: #74b9ff;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+    }
+    .dep-tag button {
+        background: none;
+        border: none;
+        color: #74b9ff;
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.85rem;
+        line-height: 1;
+        opacity: 0.6;
+    }
+    .dep-tag button:hover {
+        opacity: 1;
+    }
+    .dep-add-select {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px dashed #2d2d4a;
+        border-radius: 4px;
+        color: #666;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+    .dep-add-select:focus {
+        outline: none;
+        border-color: #74b9ff;
+    }
+
+    /* Empty state */
+    .steps-empty {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+        border: 2px dashed #2d2d4a;
+        border-radius: 8px;
+    }
+
+    /* Connector lines */
+    .step-connector {
+        display: flex;
+        justify-content: center;
+        height: 0;
+        position: relative;
+    }
+    .step-connector::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        width: 2px;
+        height: 12px;
+        background: #2d2d4a;
+    }
+
+    /* Config toggle */
+    .config-toggle {
+        cursor: pointer;
+        color: #888;
+        font-size: 0.85rem;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .config-toggle:hover {
+        color: #e0e0e0;
+    }
+    .config-content {
+        margin-top: 0.75rem;
+    }
+
+    /* Drag handle */
+    .drag-handle {
+        cursor: grab;
+        color: #555;
+        font-size: 1rem;
+        user-select: none;
+        flex-shrink: 0;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+    .drag-handle:hover {
+        color: #888;
+    }
+
+    @media (max-width: 768px) {
+        .step-body {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{% if is_edit %}Edit Workflow{% else %}New Workflow{% endif %}</h1>
+    <a href="/team/{{ team.id }}/workflows" class="btn btn-secondary">Back</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form id="wf-form" method="post" action="{% if is_edit %}/team/{{ team.id }}/workflows/{{ workflow.id }}/edit{% else %}/team/{{ team.id }}/workflows/new{% endif %}">
+    <input type="hidden" id="steps_json" name="steps_json" value="">
+    <input type="hidden" id="config_json" name="config_json" value="">
+
+    <div class="admin-card">
+        <div class="wf-section">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" class="form-control"
+                       value="{{ workflow.name if workflow else '' }}" required
+                       placeholder="e.g. Content Pipeline, Incident Response...">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control"
+                          rows="2" placeholder="Describe what this workflow does...">{{ workflow.description if workflow and workflow.description else '' }}</textarea>
+            </div>
+
+            {% if is_edit %}
+            <div class="form-group">
+                <label for="workflow_status">Status</label>
+                <select id="workflow_status" name="workflow_status" class="form-control">
+                    {% for s in ['draft', 'active', 'paused', 'completed'] %}
+                    <option value="{{ s }}" {% if workflow and workflow.status == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="wf-section">
+            <div class="wf-section-header">
+                <h2>Steps</h2>
+                <button type="button" class="btn btn-primary btn-sm" onclick="addStep()">+ Add Step</button>
+            </div>
+
+            <div id="steps-container" class="steps-list"></div>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <details class="wf-section">
+            <summary class="config-toggle">Advanced Configuration (JSON)</summary>
+            <div class="config-content">
+                <textarea id="config-editor" class="form-control mono"
+                          rows="5" placeholder="{}">{{ workflow.config | tojson(indent=2) if workflow and workflow.config else '{}' }}</textarea>
+            </div>
+        </details>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem;">
+        <button type="submit" class="btn btn-primary">
+            {% if is_edit %}Update Workflow{% else %}Create Workflow{% endif %}
+        </button>
+        <a href="/team/{{ team.id }}/workflows" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<script>
+    var agents = [{% for a in agents %}{"id":"{{ a.id }}","name":"{{ a.name | e }}"}{% if not loop.last %},{% endif %}{% endfor %}];
+    var stepCounter = 0;
+    var steps = [];
+
+    // Initialize from existing workflow
+    {% if workflow and workflow.steps %}
+    (function() {
+        var raw = {{ workflow.steps | tojson }};
+        if (Array.isArray(raw)) {
+            raw.forEach(function(s, i) {
+                steps.push({
+                    id: s.id || ('step-' + (++stepCounter)),
+                    name: s.name || ('Step ' + (i + 1)),
+                    agent_id: s.agent_id || '',
+                    type: s.type || 'task',
+                    description: s.description || '',
+                    depends_on: s.depends_on || []
+                });
+            });
+        } else if (typeof raw === 'object' && raw !== null) {
+            Object.keys(raw).forEach(function(key) {
+                var s = raw[key];
+                if (typeof s === 'object' && s !== null) {
+                    steps.push({
+                        id: s.id || key,
+                        name: s.name || key,
+                        agent_id: s.agent_id || '',
+                        type: s.type || 'task',
+                        description: s.description || '',
+                        depends_on: s.depends_on || []
+                    });
+                }
+            });
+        }
+        stepCounter = steps.length;
+    })();
+    {% endif %}
+
+    function generateId() {
+        return 'step-' + (++stepCounter);
+    }
+
+    function addStep() {
+        steps.push({
+            id: generateId(),
+            name: '',
+            agent_id: '',
+            type: 'task',
+            description: '',
+            depends_on: []
+        });
+        render();
+        // Focus the new step name input
+        var cards = document.querySelectorAll('.step-name-input');
+        if (cards.length > 0) cards[cards.length - 1].focus();
+    }
+
+    function removeStep(index) {
+        var removedId = steps[index].id;
+        steps.splice(index, 1);
+        // Remove from all depends_on
+        steps.forEach(function(s) {
+            s.depends_on = s.depends_on.filter(function(d) { return d !== removedId; });
+        });
+        render();
+    }
+
+    function moveStep(index, direction) {
+        var newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= steps.length) return;
+        var tmp = steps[index];
+        steps[index] = steps[newIndex];
+        steps[newIndex] = tmp;
+        render();
+    }
+
+    function updateStep(index, field, value) {
+        steps[index][field] = value;
+    }
+
+    function addDependency(stepIndex, depId) {
+        if (!depId || steps[stepIndex].depends_on.indexOf(depId) !== -1) return;
+        if (depId === steps[stepIndex].id) return;
+        steps[stepIndex].depends_on.push(depId);
+        render();
+    }
+
+    function removeDependency(stepIndex, depId) {
+        steps[stepIndex].depends_on = steps[stepIndex].depends_on.filter(function(d) {
+            return d !== depId;
+        });
+        render();
+    }
+
+    function getStepName(id) {
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i].id === id) return steps[i].name || ('Step ' + (i + 1));
+        }
+        return id;
+    }
+
+    function escapeAttr(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML.replace(/"/g, '&quot;');
+    }
+
+    // Drag and drop
+    var dragIndex = null;
+
+    function onDragStart(e, index) {
+        dragIndex = index;
+        e.dataTransfer.effectAllowed = 'move';
+        e.target.closest('.step-card').classList.add('dragging');
+    }
+
+    function onDragEnd(e) {
+        dragIndex = null;
+        document.querySelectorAll('.step-card').forEach(function(el) {
+            el.classList.remove('dragging', 'drag-over');
+        });
+    }
+
+    function onDragOver(e, index) {
+        e.preventDefault();
+        if (dragIndex === null || dragIndex === index) return;
+        e.target.closest('.step-card').classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+        e.target.closest('.step-card').classList.remove('drag-over');
+    }
+
+    function onDrop(e, index) {
+        e.preventDefault();
+        if (dragIndex === null || dragIndex === index) return;
+        var item = steps.splice(dragIndex, 1)[0];
+        steps.splice(index, 0, item);
+        dragIndex = null;
+        render();
+    }
+
+    function render() {
+        var container = document.getElementById('steps-container');
+
+        if (steps.length === 0) {
+            container.innerHTML = '<div class="steps-empty"><p>No steps defined.</p><p style="margin-top: 0.5rem;"><button type="button" class="btn btn-primary btn-sm" onclick="addStep()">+ Add First Step</button></p></div>';
+            return;
+        }
+
+        var html = '';
+        steps.forEach(function(step, i) {
+            if (i > 0) {
+                html += '<div class="step-connector"></div>';
+            }
+
+            html += '<div class="step-card" draggable="true" ondragstart="onDragStart(event,' + i + ')" ondragend="onDragEnd(event)" ondragover="onDragOver(event,' + i + ')" ondragleave="onDragLeave(event)" ondrop="onDrop(event,' + i + ')">';
+            html += '<div class="step-header">';
+            html += '<span class="drag-handle" title="Drag to reorder">&#9776;</span>';
+            html += '<span class="step-number">' + (i + 1) + '</span>';
+            html += '<input type="text" class="step-name-input" value="' + escapeAttr(step.name) + '" placeholder="Step name" onchange="updateStep(' + i + ',\'name\',this.value)" onkeyup="updateStep(' + i + ',\'name\',this.value)">';
+            html += '<div class="step-actions">';
+            html += '<button type="button" onclick="moveStep(' + i + ',-1)" title="Move up" ' + (i === 0 ? 'disabled style="opacity:0.3"' : '') + '>&uarr;</button>';
+            html += '<button type="button" onclick="moveStep(' + i + ',1)" title="Move down" ' + (i === steps.length - 1 ? 'disabled style="opacity:0.3"' : '') + '>&darr;</button>';
+            html += '<button type="button" class="step-delete" onclick="removeStep(' + i + ')" title="Remove step">&times;</button>';
+            html += '</div></div>';
+
+            html += '<div class="step-body">';
+
+            // Agent
+            html += '<div class="step-field"><label>Agent</label><select onchange="updateStep(' + i + ',\'agent_id\',this.value)">';
+            html += '<option value="">-- Select agent --</option>';
+            agents.forEach(function(a) {
+                html += '<option value="' + escapeAttr(a.id) + '" ' + (step.agent_id === a.id ? 'selected' : '') + '>' + escapeAttr(a.name) + '</option>';
+            });
+            html += '</select></div>';
+
+            // Type
+            html += '<div class="step-field"><label>Type</label><select onchange="updateStep(' + i + ',\'type\',this.value)">';
+            ['task', 'decision', 'parallel', 'review', 'notify'].forEach(function(t) {
+                html += '<option value="' + t + '" ' + (step.type === t ? 'selected' : '') + '>' + t + '</option>';
+            });
+            html += '</select></div>';
+
+            // Description
+            html += '<div class="step-field full-width"><label>Instructions</label>';
+            html += '<textarea onchange="updateStep(' + i + ',\'description\',this.value)" placeholder="What should this step do...">' + escapeAttr(step.description) + '</textarea></div>';
+
+            // Dependencies
+            html += '<div class="step-field full-width"><label>Depends on</label><div class="deps-list">';
+            step.depends_on.forEach(function(depId) {
+                html += '<span class="dep-tag">' + escapeAttr(getStepName(depId));
+                html += ' <button type="button" onclick="removeDependency(' + i + ',\'' + escapeAttr(depId) + '\')">&times;</button></span>';
+            });
+
+            // Add dependency dropdown (only show steps before this one)
+            var availableDeps = steps.filter(function(s, si) {
+                return si !== i && step.depends_on.indexOf(s.id) === -1;
+            });
+            if (availableDeps.length > 0) {
+                html += '<select class="dep-add-select" onchange="addDependency(' + i + ',this.value);this.value=\'\';">';
+                html += '<option value="">+ add...</option>';
+                availableDeps.forEach(function(s, si) {
+                    var label = s.name || ('Step ' + (steps.indexOf(s) + 1));
+                    html += '<option value="' + escapeAttr(s.id) + '">' + escapeAttr(label) + '</option>';
+                });
+                html += '</select>';
+            }
+            html += '</div></div>';
+
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    // Serialize before submit
+    document.getElementById('wf-form').addEventListener('submit', function() {
+        document.getElementById('steps_json').value = JSON.stringify(steps);
+        document.getElementById('config_json').value = document.getElementById('config-editor').value || '{}';
+    });
+
+    // Initial render
+    render();
+</script>
+{% endblock %}

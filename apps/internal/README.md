@@ -26,6 +26,42 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/analytics/ips` | session; scope `analytics:read` | List IP addresses with their statistics |
 | GET | `/analytics/ips/{ip_address:path}` | session; scope `analytics:read` | View detailed statistics for a specific IP address |
 | POST | `/analytics/reset` | session; scope `analytics:delete` | Reset all analytics data |
+| GET | `/team` | session; scope `team:read` | Team dashboard - overview of all teams |
+| GET | `/team/new` | session; scope `team:write` | New team form |
+| POST | `/team/new` | session; scope `team:write` | Create a new team |
+| GET | `/team/{team_id}` | session; scope `team:read` | Team detail view with agents, workflows, conversations |
+| GET | `/team/{team_id}/edit` | session; scope `team:write` | Edit team form |
+| POST | `/team/{team_id}/edit` | session; scope `team:write` | Update a team |
+| POST | `/team/{team_id}/delete` | session; scope `team:write` | Delete a team |
+| GET | `/team/{team_id}/agents` | session; scope `team:read` | List agents for a team |
+| GET | `/team/{team_id}/agents/new` | session; scope `team:write` | New agent form |
+| POST | `/team/{team_id}/agents/new` | session; scope `team:write` | Create a new agent |
+| GET | `/team/{team_id}/agents/{agent_id}` | session; scope `team:read` | Agent detail view |
+| GET | `/team/{team_id}/agents/{agent_id}/edit` | session; scope `team:write` | Edit agent form |
+| POST | `/team/{team_id}/agents/{agent_id}/edit` | session; scope `team:write` | Update an agent |
+| POST | `/team/{team_id}/agents/{agent_id}/delete` | session; scope `team:write` | Delete an agent |
+| POST | `/team/{team_id}/agents/{agent_id}/skills/new` | session; scope `team:write` | Create a new skill for an agent |
+| POST | `/team/{team_id}/agents/{agent_id}/skills/{skill_id}/delete` | session; scope `team:write` | Delete a skill |
+| GET | `/team/{team_id}/agents/{agent_id}/skills/{skill_id}/edit` | session; scope `team:write` | Edit skill form |
+| POST | `/team/{team_id}/agents/{agent_id}/skills/{skill_id}/edit` | session; scope `team:write` | Update a skill |
+| GET | `/team/{team_id}/workflows` | session; scope `team:read` | List workflows for a team |
+| GET | `/team/{team_id}/workflows/new` | session; scope `team:write` | New workflow form |
+| POST | `/team/{team_id}/workflows/new` | session; scope `team:write` | Create a new workflow |
+| GET | `/team/{team_id}/workflows/{workflow_id}/edit` | session; scope `team:write` | Edit workflow form |
+| POST | `/team/{team_id}/workflows/{workflow_id}/edit` | session; scope `team:write` | Update a workflow |
+| POST | `/team/{team_id}/workflows/{workflow_id}/delete` | session; scope `team:write` | Delete a workflow |
+| GET | `/team/{team_id}/run` | session; scope `team:write` | Show the form to launch an agent conversation |
+| POST | `/team/{team_id}/run` | session; scope `team:write` | Create a task and trigger agent execution |
+| GET | `/team/{team_id}/conversations` | session; scope `team:read` | List conversations |
+| GET | `/team/{team_id}/conversations/{conv_id}` | session; scope `team:read` | Conversation detail with messages |
+| GET | `/team/{team_id}/conversations/{conv_id}/status` | session; scope `team:read` | Get conversation status and message count as JSON (for polling) |
+| POST | `/team/{team_id}/conversations/{conv_id}/delete` | session; scope `team:write` | Delete a conversation |
+| POST | `/team/{team_id}/conversations/bulk-delete` | session; scope `team:write` | Bulk delete conversations |
+| POST | `/team/{team_id}/conversations/{conv_id}/cancel-task` | session; scope `team:write` | Cancel the task linked to a conversation |
+| POST | `/team/{team_id}/conversations/bulk-cancel` | session; scope `team:write` | Bulk cancel tasks linked to conversations |
+| GET | `/team/{team_id}/memory` | session; scope `team:read` | List memory entries for a team |
+| POST | `/team/{team_id}/memory/{memory_id}/delete` | session; scope `team:write` | Delete a single memory entry |
+| POST | `/team/{team_id}/memory/bulk-delete` | session; scope `team:write` | Bulk delete memory entries |
 | GET | `/vpn/sessions` | session; scope `vpn:admin` | List all VPN sessions with pagination |
 | POST | `/vpn/sessions/{serial_number}/revoke` | session; scope `vpn:admin` | Revoke a VPN session by certificate serial number |
 | GET | `/billing` | session; scope `billing:read` | Billing dashboard - overview of all SaaS apps |
@@ -65,6 +101,8 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:read` - checked by 5 routes
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
+- `team:read` - checked by 9 routes
+- `team:write` - checked by 27 routes
 - `vpn:admin` - checked by 2 routes
 - `billing:read` - checked by 9 routes
 - `billing:write` - checked by 14 routes

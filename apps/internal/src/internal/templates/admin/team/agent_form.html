@@ -1,0 +1,431 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit Agent{% else %}New Agent{% endif %} - {{ team.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .tool-selection {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #2d2d4a;
+        border-radius: 6px;
+        padding: 0.5rem;
+        background: rgba(26, 26, 46, 0.6);
+    }
+    .tool-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.4rem 0.25rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(45, 45, 74, 0.4);
+    }
+    .tool-checkbox:last-child {
+        border-bottom: none;
+    }
+    .tool-checkbox input[type="checkbox"] {
+        margin-top: 0.2rem;
+        flex-shrink: 0;
+    }
+    .tool-name {
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #74b9ff;
+        flex-shrink: 0;
+    }
+    .tool-desc {
+        font-size: 0.8rem;
+        color: #888;
+        margin-left: 0.25rem;
+    }
+    .credential-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+    }
+    .credential-key {
+        flex: 1;
+        max-width: 250px;
+    }
+    .credential-value {
+        flex: 2;
+    }
+    .credential-row.removed {
+        opacity: 0.3;
+    }
+    .credential-row.removed .credential-key,
+    .credential-row.removed .credential-value {
+        text-decoration: line-through;
+    }
+    .advanced-config {
+        margin-bottom: 1rem;
+    }
+    .advanced-config summary {
+        cursor: pointer;
+        color: #a0a0a0;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% if is_edit %}
+<style>
+    .skill-card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+    }
+    .skill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .skill-name {
+        font-weight: 600;
+        color: #74b9ff;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+    }
+    .skill-desc {
+        color: #b0b0b0;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    .skill-meta {
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.75rem;
+        color: #666;
+    }
+    .skill-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .skill-tool-tag {
+        background: rgba(116, 185, 255, 0.1);
+        color: #74b9ff;
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    }
+    .new-skill-form {
+        display: none;
+        padding: 1rem;
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+    .new-skill-form.visible {
+        display: block;
+    }
+    .new-skill-form .form-group {
+        margin-bottom: 0.75rem;
+    }
+    .new-skill-form label {
+        font-size: 0.8rem;
+        color: #a0a0a0;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .new-skill-form .form-control {
+        font-size: 0.85rem;
+    }
+    .skill-content-preview {
+        margin-top: 0.5rem;
+    }
+    .skill-content-preview summary {
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: #888;
+    }
+    .skill-content-preview pre {
+        margin-top: 0.25rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #b0b0b0;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{% if is_edit %}Edit Agent{% else %}New Agent{% endif %}</h1>
+    <a href="{% if is_edit %}/team/{{ team.id }}/agents/{{ agent.id }}{% else %}/team/{{ team.id }}/agents{% endif %}" class="btn btn-secondary">Back</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="{% if is_edit %}/team/{{ team.id }}/agents/{{ agent.id }}/edit{% else %}/team/{{ team.id }}/agents/new{% endif %}">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" class="form-control"
+                   value="{{ agent.name if agent else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="role">Role</label>
+            <input type="text" id="role" name="role" class="form-control"
+                   value="{{ agent.role if agent else '' }}" required
+                   placeholder="e.g. developer, ceo, sre, security">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control"
+                      rows="2">{{ agent.description if agent else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="system_prompt">System Prompt</label>
+            <textarea id="system_prompt" name="system_prompt" class="form-control mono"
+                      rows="8">{{ agent.system_prompt if agent else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="model">Model</label>
+            <select id="model" name="model" class="form-control">
+                {% for m in ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'] %}
+                <option value="{{ m }}" {% if agent and agent.model == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="provider">Provider</label>
+            <select id="provider" name="provider" class="form-control">
+                {% for p in ['openai', 'anthropic'] %}
+                <option value="{{ p }}" {% if agent and agent.provider == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# ---- Tools ---- #}
+        <div class="form-group">
+            <label>Tools</label>
+            {% set agent_tools = agent.config.get('tools', []) if agent and agent.config else [] %}
+            <div class="tool-selection">
+                {% if available_tools %}
+                {% for tool in available_tools %}
+                <label class="tool-checkbox">
+                    <input type="checkbox" name="tools" value="{{ tool.name }}"
+                           {% if tool.name in agent_tools %}checked{% endif %}>
+                    <span class="tool-name">{{ tool.name }}</span>
+                    {% if tool.description %}
+                    <span class="tool-desc">{{ tool.description }}</span>
+                    {% endif %}
+                </label>
+                {% endfor %}
+                {% else %}
+                <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0;">No tools available from the platform catalog.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# ---- Max Iterations ---- #}
+        <div class="form-group">
+            <label for="max_iterations">Max Iterations</label>
+            <input type="number" id="max_iterations" name="max_iterations" class="form-control"
+                   value="{{ agent.config.get('max_iterations', 10) if agent and agent.config else 10 }}"
+                   min="1" max="100" style="max-width: 200px;">
+            <small style="color: #666; font-size: 0.75rem;">Maximum LLM iterations per task execution (default: 10)</small>
+        </div>
+
+        {# ---- Credentials ---- #}
+        <div class="form-group">
+            <label>Credentials</label>
+            <div id="credentials-container">
+                {% if agent and agent.config and agent.config.get('credentials') %}
+                {% for key, value in agent.config.get('credentials', {}).items() %}
+                <div class="credential-row">
+                    <input type="text" name="credential_keys" value="{{ key }}" class="form-control credential-key"
+                           placeholder="Key" readonly>
+                    <input type="text" name="credential_values" value="" class="form-control credential-value"
+                           placeholder="&#8226;&#8226;&#8226;&#8226;{{ value[-4:] if value|length > 4 else '&#8226;&#8226;&#8226;&#8226;' }}">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeCredential(this)">Remove</button>
+                    <input type="hidden" name="credential_remove" value="" disabled>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCredential()" style="margin-top: 0.5rem;">+ Add Credential</button>
+        </div>
+
+        {# ---- Advanced Config ---- #}
+        <details class="advanced-config">
+            <summary>Advanced Config (JSON)</summary>
+            <div class="form-group" style="margin-top: 0.5rem;">
+                <textarea id="config_json" name="config_json" class="form-control mono"
+                          rows="4">{{ advanced_config | tojson(indent=2) if advanced_config else '{}' }}</textarea>
+                <small style="color: #666; font-size: 0.75rem;">Additional config fields. Do not include tools, max_iterations, or credentials here.</small>
+            </div>
+        </details>
+
+        {% if is_edit %}
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_active" value="true"
+                       {% if agent.is_active %}checked{% endif %}>
+                Active
+            </label>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">
+            {% if is_edit %}Update Agent{% else %}Create Agent{% endif %}
+        </button>
+    </form>
+</div>
+
+{% if is_edit %}
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Skills <span class="text-muted">({{ skills | length }})</span></h2>
+        <button type="button" class="btn btn-primary btn-sm" onclick="toggleNewSkill()">+ Add Skill</button>
+    </div>
+
+    <div id="new-skill-form" class="new-skill-form">
+        <form method="post" action="/team/{{ team.id }}/agents/{{ agent.id }}/skills/new">
+            <div class="form-group">
+                <label for="skill_name">Name</label>
+                <input type="text" id="skill_name" name="skill_name" class="form-control"
+                       required pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+                       placeholder="e.g. code-review, data-analysis">
+                <small style="color: #666; font-size: 0.75rem;">Lowercase alphanumeric with hyphens only</small>
+            </div>
+            <div class="form-group">
+                <label for="skill_description">Description</label>
+                <input type="text" id="skill_description" name="skill_description" class="form-control"
+                       required placeholder="Short description of what this skill does">
+            </div>
+            <div class="form-group">
+                <label for="skill_content">Instructions (Markdown)</label>
+                <textarea id="skill_content" name="skill_content" class="form-control mono"
+                          rows="6" placeholder="Full instructions loaded when the agent activates this skill..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Allowed Tools</label>
+                <div class="tool-selection" style="max-height: 200px;">
+                    {% if available_tools %}
+                    {% for tool in available_tools %}
+                    <label class="tool-checkbox">
+                        <input type="checkbox" name="skill_allowed_tools" value="{{ tool.name }}">
+                        <span class="tool-name">{{ tool.name }}</span>
+                        {% if tool.description %}
+                        <span class="tool-desc">{{ tool.description }}</span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0;">No tools available from the platform catalog.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary btn-sm">Create Skill</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleNewSkill()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    {% if skills %}
+    {% for skill in skills %}
+    <div class="skill-card">
+        <div class="skill-header">
+            <span class="skill-name">{{ skill.name }}</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                {% if not skill.is_active %}
+                <span class="badge badge-secondary">inactive</span>
+                {% endif %}
+                <a href="/team/{{ team.id }}/agents/{{ agent.id }}/skills/{{ skill.id }}/edit"
+                   class="btn btn-secondary btn-sm">Edit</a>
+                <form method="post" action="/team/{{ team.id }}/agents/{{ agent.id }}/skills/{{ skill.id }}/delete"
+                      style="display: inline;" onsubmit='return confirm({{ ("Delete skill " ~ skill.name ~ "?") | tojson }})'>
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </div>
+        </div>
+        <div class="skill-desc">{{ skill.description }}</div>
+        {% if skill.allowed_tools %}
+        <div class="skill-tools">
+            {% for tool in skill.allowed_tools %}
+            <span class="skill-tool-tag">{{ tool }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if skill.content %}
+        <details class="skill-content-preview">
+            <summary>View instructions</summary>
+            <pre>{{ skill.content }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <p style="color: #666;">No skills yet. Skills are loaded on-demand by the agent during task execution.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+    function addCredential() {
+        var container = document.getElementById('credentials-container');
+        var row = document.createElement('div');
+        row.className = 'credential-row';
+        row.innerHTML = '<input type="text" name="credential_keys" value="" class="form-control credential-key" placeholder="Key">'
+            + '<input type="text" name="credential_values" value="" class="form-control credential-value" placeholder="Value">'
+            + '<button type="button" class="btn btn-danger btn-sm" onclick="removeCredential(this)">Remove</button>'
+            + '<input type="hidden" name="credential_remove" value="" disabled>';
+        container.appendChild(row);
+        row.querySelector('.credential-key').focus();
+    }
+
+    function removeCredential(btn) {
+        var row = btn.closest('.credential-row');
+        var keyInput = row.querySelector('.credential-key');
+        var hiddenRemove = row.querySelector('input[name="credential_remove"]');
+        if (keyInput.readOnly) {
+            row.classList.toggle('removed');
+            if (row.classList.contains('removed')) {
+                hiddenRemove.value = keyInput.value;
+                hiddenRemove.disabled = false;
+            } else {
+                hiddenRemove.value = '';
+                hiddenRemove.disabled = true;
+            }
+        } else {
+            row.remove();
+        }
+    }
+
+    {% if is_edit %}
+    function toggleNewSkill() {
+        var form = document.getElementById('new-skill-form');
+        form.classList.toggle('visible');
+        if (form.classList.contains('visible')) {
+            document.getElementById('skill_name').focus();
+        }
+    }
+    {% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Memory - {{ team.name }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+    .memory-item {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: rgba(26, 26, 46, 0.6);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+    }
+    .memory-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .memory-plain {
+        white-space: pre-wrap;
+    }
+    .memory-content {
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        word-wrap: break-word;
+    }
+    .memory-content h1, .memory-content h2, .memory-content h3, .memory-content h4 {
+        color: #ffffff;
+        margin: 0.75rem 0 0.5rem;
+    }
+    .memory-content h1 { font-size: 1.3rem; }
+    .memory-content h2 { font-size: 1.15rem; }
+    .memory-content h3 { font-size: 1.05rem; }
+    .memory-content p { margin: 0.4rem 0; }
+    .memory-content code {
+        background: rgba(0, 0, 0, 0.35);
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85em;
+    }
+    .memory-content pre {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.75rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0.5rem 0;
+    }
+    .memory-content pre code { background: none; padding: 0; font-size: 0.85em; }
+    .memory-content ul, .memory-content ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+    .memory-content li { margin: 0.2rem 0; }
+    .memory-content blockquote {
+        border-left: 3px solid #74b9ff;
+        margin: 0.5rem 0;
+        padding: 0.25rem 0.75rem;
+        color: #b0b0b0;
+    }
+    .memory-content table { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+    .memory-content th, .memory-content td { border: 1px solid #2d2d4a; padding: 0.4rem 0.6rem; text-align: left; }
+    .memory-content th { background: rgba(0, 0, 0, 0.3); color: #ffffff; }
+    .memory-content a { color: #74b9ff; }
+    .memory-content hr { border: none; border-top: 1px solid #2d2d4a; margin: 0.75rem 0; }
+    .memory-meta {
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        gap: 1rem;
+    }
+    .bulk-bar {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: rgba(26, 26, 46, 0.8);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .bulk-select-all {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .bulk-bar.visible {
+        display: flex;
+    }
+    .bulk-count {
+        font-weight: 500;
+        color: #e0e0e0;
+        margin-right: 0.5rem;
+    }
+    .memory-cb {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #74b9ff;
+        flex-shrink: 0;
+    }
+    .memory-item-row {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+    .memory-item-content {
+        flex: 1;
+        min-width: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Memory - {{ team.name }}</h1>
+    <a href="/team/{{ team.id }}" class="btn btn-secondary">Back to Team</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Memory Entries <span class="text-muted">({{ memory | length }})</span></h2>
+
+    {% if memory %}
+
+    {% if user.has_scope('team:write') %}
+    {# The bulk form holds no row: the checkboxes belong to it by their form attribute, so that the
+       delete form of an entry is not nested in it #}
+    <form id="bulk-form" method="post"></form>
+    <label class="bulk-select-all">
+        <input type="checkbox" id="select-all" class="memory-cb" title="Select all"> Select all
+    </label>
+        <div id="bulk-bar" class="bulk-bar">
+            <span class="bulk-count"><span id="bulk-count">0</span> selected</span>
+            <button type="button" class="btn btn-danger btn-sm" onclick="submitBulk()">
+                Delete selected
+            </button>
+        </div>
+    {% endif %}
+
+    {% for entry in memory %}
+    <div class="memory-item">
+        <div class="memory-item-row">
+            {% if user.has_scope('team:write') %}
+            <input type="checkbox" name="memory_ids" value="{{ entry.id }}" class="memory-cb entry-cb" form="bulk-form" style="margin-top: 0.2rem;">
+            {% endif %}
+            <div class="memory-item-content">
+                <div class="memory-header">
+                    <div class="memory-meta">
+                        <span>{{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% if entry.agent_id %}
+                        <span>Agent: {{ agent_map.get(entry.agent_id, entry.agent_id[:8] + '...') }}</span>
+                        {% endif %}
+                        {% if entry.conversation_id %}
+                        <span>Conv: {{ entry.conversation_id[:8] }}...</span>
+                        {% endif %}
+                    </div>
+                    {% if user.has_scope('team:write') %}
+                    <form method="post" action="/team/{{ team.id }}/memory/{{ entry.id }}/delete" style="display: inline;"
+                          onsubmit="return confirm('Delete this memory entry?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="memory-content memory-plain" data-raw="{{ entry.content | e }}">{{ entry.content or 'No content' }}</div>
+                {% if entry.extra %}
+                <details style="margin-top: 0.5rem;">
+                    <summary class="text-muted" style="cursor: pointer; font-size: 0.8rem;">Extra metadata</summary>
+                    <pre class="mono" style="font-size: 0.75rem; margin-top: 0.25rem; color: #a0a0a0;">{{ entry.extra | tojson(indent=2) }}</pre>
+                </details>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if page > 1 or has_next %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/team/{{ team.id }}/memory?page={{ page - 1 }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }}</span>
+        {% if has_next %}
+        <a href="/team/{{ team.id }}/memory?page={{ page + 1 }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128218;</p>
+        <p>No memory entries for this team.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% include "admin/_markdown.html" %}
+<script>
+    document.querySelectorAll('.memory-content[data-raw]').forEach(function(el) {
+        var raw = el.getAttribute('data-raw');
+        var html = raw ? window.renderMarkdown(raw) : null;
+        if (html !== null) {
+            el.classList.remove('memory-plain');
+            el.innerHTML = html;
+        }
+    });
+</script>
+
+{% if user.has_scope('team:write') and memory %}
+<script>
+    var teamId = '{{ team.id }}';
+
+    function submitBulk() {
+        var form = document.getElementById('bulk-form');
+        var checked = document.querySelectorAll('.entry-cb:checked').length;
+        if (checked === 0) return;
+        if (!confirm('Delete the ' + checked + ' selected memory entry(ies)?')) return;
+        form.action = '/team/' + teamId + '/memory/bulk-delete';
+        form.submit();
+    }
+
+    (function() {
+        var selectAll = document.getElementById('select-all');
+        var bulkBar = document.getElementById('bulk-bar');
+        var countEl = document.getElementById('bulk-count');
+        var checkboxes = document.querySelectorAll('.entry-cb');
+
+        function update() {
+            var checked = document.querySelectorAll('.entry-cb:checked').length;
+            countEl.textContent = checked;
+            bulkBar.classList.toggle('visible', checked > 0);
+            selectAll.checked = checked === checkboxes.length && checkboxes.length > 0;
+            selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+            update();
+        });
+
+        checkboxes.forEach(function(cb) {
+            cb.addEventListener('change', update);
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

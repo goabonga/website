@@ -1,0 +1,203 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Conversations - {{ team.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .bulk-bar {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: rgba(26, 26, 46, 0.8);
+        border: 1px solid #2d2d4a;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .bulk-bar.visible {
+        display: flex;
+    }
+    .bulk-count {
+        font-weight: 500;
+        color: #e0e0e0;
+        margin-right: 0.5rem;
+    }
+    .cb-cell {
+        width: 40px;
+        text-align: center;
+    }
+    .cb-cell input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #74b9ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Conversations - {{ team.name }}</h1>
+    <a href="/team/{{ team.id }}" class="btn btn-secondary">Back to Team</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    {% if conversations %}
+
+    {% if user.has_scope('team:delete') or user.has_scope('team:write') %}
+    {# The bulk form holds no row: the checkboxes belong to it by their form attribute, so that the
+       delete form of a row is not nested in it #}
+    <form id="bulk-form" method="post"></form>
+        <div id="bulk-bar" class="bulk-bar">
+            <span class="bulk-count"><span id="bulk-count">0</span> selected</span>
+            {% if user.has_scope('team:write') %}
+            <button type="button" class="btn btn-warning btn-sm" id="btn-bulk-cancel"
+                    onclick="submitBulk('cancel')">
+                Cancel tasks
+            </button>
+            {% endif %}
+            {% if user.has_scope('team:delete') %}
+            <button type="button" class="btn btn-danger btn-sm" id="btn-bulk-delete"
+                    onclick="submitBulk('delete')">
+                Delete selected
+            </button>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <table class="table">
+        <thead>
+            <tr>
+                {% if user.has_scope('team:delete') or user.has_scope('team:write') %}
+                <th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"></th>
+                {% endif %}
+                <th>Title</th>
+                <th>Slug</th>
+                <th>Agent</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conv in conversations %}
+            <tr>
+                {% if user.has_scope('team:delete') or user.has_scope('team:write') %}
+                <td class="cb-cell">
+                    <input type="checkbox" name="conversation_ids" value="{{ conv.id }}" class="conv-cb" form="bulk-form">
+                </td>
+                {% endif %}
+                <td>
+                    <a href="/team/{{ team.id }}/conversations/{{ conv.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ conv.title }}
+                    </a>
+                </td>
+                <td class="mono text-muted">{{ conv.slug }}</td>
+                <td>
+                    {% set agent_id = conv.extra.get('agent_id', '') if conv.extra else '' %}
+                    {% if agent_id and agent_map.get(agent_id) %}
+                    <span style="color: #74b9ff;">{{ agent_map[agent_id] }}</span>
+                    {% elif agent_id %}
+                    <span class="mono text-muted">{{ agent_id[:8] }}...</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge {% if conv.type == 'task' %}badge-info{% elif conv.type == 'incident' %}badge-danger{% elif conv.type == 'workflow' %}badge-warning{% else %}badge-secondary{% endif %}">
+                        {{ conv.type }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge {% if conv.status == 'active' %}badge-success{% else %}badge-secondary{% endif %}">
+                        {{ conv.status }}
+                    </span>
+                </td>
+                <td class="text-muted">{{ conv.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if user.has_scope('team:delete') %}
+                    <form method="post" action="/team/{{ team.id }}/conversations/{{ conv.id }}/delete" style="display: inline;"
+                          onsubmit="return confirm('Delete this conversation and all its messages?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if page > 1 or has_next %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/team/{{ team.id }}/conversations?page={{ page - 1 }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }}</span>
+        {% if has_next %}
+        <a href="/team/{{ team.id }}/conversations?page={{ page + 1 }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128172;</p>
+        <p>No conversations yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if (user.has_scope('team:delete') or user.has_scope('team:write')) and conversations %}
+<script>
+    var teamId = '{{ team.id }}';
+
+    function submitBulk(action) {
+        var form = document.getElementById('bulk-form');
+        var checked = document.querySelectorAll('.conv-cb:checked').length;
+        if (checked === 0) return;
+
+        if (action === 'delete') {
+            if (!confirm('Delete the ' + checked + ' selected conversation(s) and all their messages?')) return;
+            form.action = '/team/' + teamId + '/conversations/bulk-delete';
+        } else if (action === 'cancel') {
+            if (!confirm('Cancel tasks for the ' + checked + ' selected conversation(s)?')) return;
+            form.action = '/team/' + teamId + '/conversations/bulk-cancel';
+        }
+        form.submit();
+    }
+
+    (function() {
+        var selectAll = document.getElementById('select-all');
+        var bulkBar = document.getElementById('bulk-bar');
+        var countEl = document.getElementById('bulk-count');
+        var checkboxes = document.querySelectorAll('.conv-cb');
+
+        function update() {
+            var checked = document.querySelectorAll('.conv-cb:checked').length;
+            countEl.textContent = checked;
+            bulkBar.classList.toggle('visible', checked > 0);
+            selectAll.checked = checked === checkboxes.length && checkboxes.length > 0;
+            selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+            update();
+        });
+
+        checkboxes.forEach(function(cb) {
+            cb.addEventListener('change', update);
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

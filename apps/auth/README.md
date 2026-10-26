@@ -15,6 +15,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Login and password reset: Login form and API, password recovery.
 - OAuth2 and OIDC authorization server: Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
 - Device authorization and pushed authorization requests: RFC 8628 device flow and RFC 9126 pushed authorization requests.
+- Identity provider federation: Login through external OIDC identity providers.
 
 ## Routes and scopes
 
@@ -46,6 +47,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/oauth2/par` | client credentials (HTTP Basic or form) | Push an authorization request to the server and receive a request_uri |
 | POST | `/oauth2/revoke` | client credentials (HTTP Basic or form) | Revoke an OAuth2 access token or refresh token (RFC 7009) |
 | POST | `/oauth2/introspect` | client credentials (HTTP Basic or form), confidential client allowed the `introspect` scope | Validate a token and return its active state and metadata |
+| GET | `/federation/providers` | public | List available identity providers for a tenant |
+| GET | `/federation/{idp_id}/authorize` | public | Initiate federation flow with an external identity provider |
+| GET | `/federation/callback` | public (needs the `code` and `state` returned by the identity provider) | Handle callback from external identity provider |
 
 ### Account pages and API
 

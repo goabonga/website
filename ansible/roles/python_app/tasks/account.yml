@@ -1,0 +1,30 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Select the components of the application
+  ansible.builtin.import_tasks: context.yml
+
+- name: Create the group of {{ python_app__app }}
+  ansible.builtin.group:
+    name: "{{ python_app__group }}"
+    system: true
+    state: present
+
+- name: Create the account of {{ python_app__app }}
+  ansible.builtin.user:
+    name: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    home: "{{ python_app__dir }}"
+    shell: /bin/bash
+    system: true
+    create_home: false
+    state: present
+
+- name: Create the directory of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "{{ python_app__dir }}"
+    state: directory
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0755"

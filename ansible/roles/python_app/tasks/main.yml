@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Merge the component definitions
+  ansible.builtin.set_fact:
+    python_app__all: >-
+      {%- set ns = namespace(out=[]) -%}
+      {%- for key, value in python_app__catalog.items() -%}
+      {%- set merged = python_app_component_defaults | combine(value, recursive=True) -%}
+      {%- set app = merged.app | default('', true) or key -%}
+      {%- set name = merged.name | default('', true) or (key | replace('_', '-')) -%}
+      {%- set ns.out = ns.out + [merged | combine({'id': key, 'app': app, 'primary': key == app, 'name': name})] -%}
+      {%- endfor -%}
+      {{ ns.out }}
+  tags: [python_app]
+
+- name: Validate the selection of applications
+  ansible.builtin.import_tasks: validate.yml
+  tags: [python_app]
+
+- name: Prepare the host
+  ansible.builtin.import_tasks: prepare.yml
+  when: python_app__apps | length > 0
+  tags: [python_app]
+
+- name: Create the accounts of the applications
+  ansible.builtin.include_tasks:
+    file: account.yml
+    apply:
+      tags: [python_app]
+  loop: "{{ python_app__apps }}"
+  loop_control:
+    loop_var: python_app__app
+  tags: [python_app]
+
+- name: Grant the group memberships and sudo rights
+  ansible.builtin.include_tasks:
+    file: access.yml
+    apply:
+      tags: [python_app]
+  loop: "{{ python_app__apps }}"
+  loop_control:
+    loop_var: python_app__app
+  tags: [python_app]
+
+- name: Deploy the applications
+  ansible.builtin.include_tasks:
+    file: app.yml
+    apply:
+      tags: [python_app]
+  loop: "{{ python_app__apps }}"
+  loop_control:
+    loop_var: python_app__app
+  tags: [python_app]

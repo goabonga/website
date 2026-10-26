@@ -1,0 +1,89 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install the system packages
+  ansible.builtin.apt:
+    name: "{{ website_system_packages + ['acl'] }}"
+    state: present
+    cache_valid_time: 3600
+
+- name: Install Node.js from the distribution
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - npm
+    state: present
+  when:
+    - website_node_install_method == 'apt'
+    - python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | selectattr('build_node') | list | length > 0
+
+- name: Install Node.js from nodesource
+  ansible.builtin.shell:
+    cmd: set -o pipefail && curl -fsSL https://deb.nodesource.com/setup_{{ website_node_version }}.x | bash - && apt-get install -y nodejs
+    executable: /bin/bash
+    creates: /etc/apt/sources.list.d/nodesource.list
+  when:
+    - website_node_install_method == 'nodesource'
+    - python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | selectattr('build_node') | list | length > 0
+
+- name: Create the state directory
+  ansible.builtin.file:
+    path: "{{ website_state_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install uv in a dedicated virtualenv
+  ansible.builtin.pip:
+    name: "{{ 'uv==' ~ website_uv_version if website_uv_version | length > 0 else 'uv' }}"
+    virtualenv: "{{ website_state_dir }}/tools"
+    virtualenv_command: python3 -m venv
+  when: website_uv_install_method == 'pip'
+
+- name: Look for the uv binary
+  ansible.builtin.stat:
+    path: "{{ website_uv_bin }}"
+  register: python_app__uv
+
+- name: Check that uv is available
+  ansible.builtin.assert:
+    that:
+      - python_app__uv.stat.exists or ansible_check_mode
+    fail_msg: "uv not found at {{ website_uv_bin }}. Install it or set website_uv_install_method to pip."
+    quiet: true
+
+- name: Clone or update the monorepo
+  ansible.builtin.git:
+    repo: "{{ website_repo_url | regex_replace('^https://', 'https://x-access-token:' ~ website_repo_token ~ '@') if website_repo_token | length > 0 else website_repo_url }}"
+    dest: "{{ python_app__repo_dir }}"
+    version: "{{ website_repo_version }}"
+    force: true
+  no_log: "{{ website_repo_token | length > 0 }}"
+
+- name: Restrict the clone to root
+  ansible.builtin.file:
+    path: "{{ python_app__repo_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Fetch every branch and tag
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ python_app__repo_dir }}"
+      - fetch
+      - --prune
+      - --tags
+      - --force
+      - origin
+      - "+refs/heads/*:refs/remotes/origin/*"
+  changed_when: false
+  check_mode: false
+  failed_when: python_app__fetch.rc != 0 and not ansible_check_mode
+  register: python_app__fetch
+  no_log: "{{ website_repo_token | length > 0 }}"

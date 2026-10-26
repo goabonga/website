@@ -1,0 +1,21 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Select the components of {{ python_app__app }}
+  ansible.builtin.set_fact:
+    python_app__comps: >-
+      {{ (python_app__all | selectattr('app', 'equalto', python_app__app) | selectattr('enabled') | selectattr('primary') | list)
+         + (python_app__all | selectattr('app', 'equalto', python_app__app) | selectattr('enabled') | rejectattr('primary') | list) }}
+
+- name: Check that the primary component of {{ python_app__app }} is enabled
+  ansible.builtin.assert:
+    that:
+      - python_app__comps | length > 0
+      - python_app__comps[0].primary
+    fail_msg: "The primary component {{ python_app__app }} is disabled or missing."
+    quiet: true
+
+- name: Select the primary component of {{ python_app__app }}
+  ansible.builtin.set_fact:
+    python_app__p: "{{ python_app__comps[0] }}"

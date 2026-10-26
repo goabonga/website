@@ -1,0 +1,95 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Resolve the version of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      for ref in "refs/remotes/origin/$VERSION" "refs/tags/$VERSION" "$VERSION"; do
+        if sha=$(git -C "$REPO" rev-parse --verify --quiet "$ref^{commit}"); then
+          echo "$sha"
+          exit 0
+        fi
+      done
+      echo "version $VERSION not found in $REPO" >&2
+      exit 1
+  environment:
+    REPO: "{{ python_app__repo_dir }}"
+    VERSION: "{{ python_app__version }}"
+  register: python_app__rev
+  changed_when: false
+  check_mode: false
+  failed_when: python_app__rev.rc != 0 and not ansible_check_mode
+
+- name: Remember the commit and the release directory
+  ansible.builtin.set_fact:
+    python_app__sha: "{{ python_app__rev.stdout | default('') | trim }}"
+    python_app__release: "{{ python_app__releases_dir }}/{{ (python_app__rev.stdout | default('') | trim)[:12] }}"
+
+- name: Deploy the release
+  when: python_app__sha | length > 0
+  block:
+    - name: Extract the release
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          rm -rf "$RELEASE.partial"
+          mkdir "$RELEASE.partial"
+          git -C "$REPO" archive --format=tar "$SHA" | tar -x -C "$RELEASE.partial"
+          chown -R "$OWNER" "$RELEASE.partial"
+          mv "$RELEASE.partial" "$RELEASE"
+        executable: /bin/bash
+        creates: "{{ python_app__release }}"
+      environment:
+        REPO: "{{ python_app__repo_dir }}"
+        SHA: "{{ python_app__sha }}"
+        RELEASE: "{{ python_app__release }}"
+        OWNER: "{{ python_app__user }}:{{ python_app__group }}"
+      register: python_app__r_extract
+
+    - name: Point current to the release
+      ansible.builtin.file:
+        src: "{{ python_app__release }}"
+        dest: "{{ python_app__current }}"
+        state: link
+        owner: "{{ python_app__user }}"
+        group: "{{ python_app__group }}"
+      register: python_app__r_link
+
+    - name: Install the dependencies of {{ python_app__app }} with uv
+      ansible.builtin.command:
+        argv: >-
+          {{ [website_uv_bin, 'sync', '--frozen', '--no-dev', '--package', python_app__app_package]
+             + (['--python', website_python_version] if website_python_version | length > 0 else []) }}
+        chdir: "{{ python_app__release }}"
+      environment:
+        UV_PROJECT_ENVIRONMENT: "{{ python_app__venv }}"
+        UV_CACHE_DIR: "{{ python_app__dir }}/.cache/uv"
+        UV_PYTHON_PREFERENCE: "{{ website_uv_python_preference }}"
+        UV_NO_PROGRESS: "1"
+        HOME: "{{ python_app__dir }}"
+      become: true
+      become_user: "{{ python_app__user }}"
+      register: python_app__r_sync
+      changed_when: >-
+        python_app__r_extract is changed
+        or 'Installed' in python_app__r_sync.stderr
+        or 'Uninstalled' in python_app__r_sync.stderr
+        or 'Creating virtual environment' in python_app__r_sync.stderr
+
+    - name: List the releases of {{ python_app__app }}
+      ansible.builtin.find:
+        paths: "{{ python_app__releases_dir }}"
+        file_type: directory
+        patterns: '^[0-9a-f]{12}$'
+        use_regex: true
+      register: python_app__old
+
+    - name: Remove the old releases of {{ python_app__app }}
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ (python_app__old.files | sort(attribute='mtime', reverse=true))[website_keep_releases | int:] }}"
+      loop_control:
+        label: "{{ item.path }}"
+      when: item.path != python_app__release

@@ -1,0 +1,352 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Deploy the platform applications from the monorepo with uv and systemd.
+    description:
+    - Checks out the monorepo, installs each selected application into its own virtualenv
+      with uv and renders its environment file, encrypted credentials and systemd units. Applications
+      are described by a catalog of components that is merged with the user overrides.
+    author: Chris
+    options:
+      website_apps_catalog:
+        type: dict
+        description:
+        - Catalog of the deployable components, keyed by component. Each entry is deep-merged
+          over python_app_component_defaults. Replace it entirely or adjust it with website_apps_overrides.
+        default: {}
+      python_app_component_defaults:
+        type: dict
+        description:
+        - 'Every catalog entry is a component: one systemd unit (or one set of wrapper scripts)
+          of an application. The catalog entry and the matching website_apps_overrides entry
+          are deep-merged over these defaults, so a component only states what differs.'
+        default:
+          enabled: true
+          app: ''
+          primary: false
+          name: ''
+          module: ''
+          package: ''
+          type: gunicorn
+          version: ''
+          user: ''
+          group: ''
+          extra_groups: []
+          extra_path: []
+          sudoers: []
+          stepca_group_member: false
+          healthcheck:
+            enabled: false
+            path: /health
+            timeout: 10
+          gunicorn:
+            workers: 2
+            socket: true
+            host: 127.0.0.1
+            port: 8000
+            module: ''
+            worker_class: uvicorn.workers.UvicornWorker
+          celery:
+            app: ''
+            loglevel: info
+            concurrency: 2
+            queues: []
+            scheduler: ''
+          daemon:
+            module: ''
+            args: ''
+            stop_timeout: 30
+          build_commands: []
+          build_chdir: ''
+          build_node: false
+          oauth2:
+            enabled: false
+          env_vars: {}
+          secret_names: []
+          optional_secret_names: []
+          hardening:
+            enabled: true
+            read_write_paths: []
+          logrotate:
+            enabled: true
+            frequency: daily
+            rotate: 14
+            max_size: 100M
+            compress: true
+            delay_compress: true
+            missing_ok: true
+            not_if_empty: true
+      website_domain:
+        type: str
+        description:
+        - 'Public DNS zone the applications are served under. There is no default: deploying
+          an application with a public virtual host fails until it is set.'
+        default: ''
+      website_internal_domain:
+        type: str
+        description:
+        - Zone suffix of the applications that are only reachable internally.
+        default: internal
+      website_internal_apps:
+        type: list
+        description:
+        - Applications served under website_internal_domain instead of website_domain.
+        default:
+        - billing
+        - custom_domain
+        - internal
+        - mailler
+        - reachy_mini_api
+        - team
+        elements: str
+      website_subdomains_defaults:
+        type: dict
+        description:
+        - Label prepended to the zone for each application. An empty label serves the application
+          on the bare zone. Override single entries with website_subdomains_overrides.
+        default:
+          analytics: ua
+          apt_server: apt
+          auth: auth
+          backend: api
+          billing: billing
+          custom_domain: custom-domain
+          frontend: ''
+          internal: admin
+          knowledge: knowledge
+          mailler: mailler
+          mta_sts: mta-sts
+          reachy_mini_api: reachy
+          team: team
+          vpn_portal: vpn
+          webhooks: webhooks
+      website_subdomains_overrides:
+        type: dict
+        description:
+        - Labels merged over website_subdomains_defaults.
+        default: {}
+      website_subdomains:
+        type: dict
+        description:
+        - Labels in effect.
+      website_hostnames_overrides:
+        type: dict
+        description:
+        - Complete host names that replace the derived ones, keyed by application.
+        default: {}
+      website_hostnames:
+        type: dict
+        description:
+        - 'Host name of each application: the label in front of the zone, or the bare zone
+          for an empty label. Host names are not derived for applications without a label.'
+      website_apps_enabled:
+        type: list
+        description:
+        - Applications to deploy, by catalog application name (for example auth, backend,
+          frontend). An application brings every component of the catalog that belongs to
+          it (web service, worker, beat, scripts).
+        default: []
+        elements: str
+      website_apps_limit:
+        type: list
+        description:
+        - Optional subset of website_apps_enabled to deploy on this run. Empty means every
+          enabled application.
+        default: []
+        elements: str
+      website_apps_overrides:
+        type: dict
+        description:
+        - Deep-merged over the catalog, keyed by component (auth, auth_worker, ...). Use it
+          to pin a version, change a setting or define extra components.
+        default: {}
+      website_repo_url:
+        type: str
+        description:
+        - Git URL of the monorepo. Applications are deployed from this repository; nothing
+          is published to PyPI or built as a Debian package.
+        default: https://github.com/goabonga/website.git
+      website_repo_version:
+        type: str
+        description:
+        - Branch, tag or commit deployed by default. Pin one application with website_apps_overrides.<application>.version.
+        default: main
+      website_repo_token:
+        type: str
+        description:
+        - Access token for a private repository (HTTPS). Empty for a public one.
+        default: ''
+      website_state_dir:
+        type: str
+        description:
+        - Directory holding the shared clone of the monorepo and the uv installation.
+        default: /var/lib/website
+      website_base_dir:
+        type: str
+        description:
+        - Parent of the per-application directories (<base>/<name>).
+        default: /opt
+      website_keep_releases:
+        type: int
+        description:
+        - Number of releases kept on disk per application.
+        default: 3
+      website_uv_install_method:
+        type: str
+        description:
+        - 'uv installation: pip installs it in a dedicated virtualenv under website_state_dir,
+          none uses the binary found at website_uv_bin.'
+        default: pip
+        choices:
+        - pip
+        - none
+      website_uv_version:
+        type: str
+        description:
+        - uv version installed with the pip method (empty installs the latest).
+        default: ''
+      website_uv_bin:
+        type: str
+        description:
+        - Path of the uv binary.
+      website_python_version:
+        type: str
+        description:
+        - Python interpreter handed to uv (empty lets uv pick one matching the requires-python
+          of the project).
+        default: ''
+      website_uv_python_preference:
+        type: str
+        description:
+        - 'Python selection policy of uv: system, managed, only-system or only-managed (UV_PYTHON_PREFERENCE).'
+        default: system
+        choices:
+        - system
+        - managed
+        - only-system
+        - only-managed
+      website_system_packages:
+        type: list
+        description:
+        - Distribution packages needed to build and run the applications.
+        default:
+        - git
+        - python3
+        - python3-venv
+        - curl
+        - zstd
+        elements: str
+      website_node_install_method:
+        type: str
+        description:
+        - 'How Node.js is installed when a component sets build_node: apt, nodesource or none.'
+        default: apt
+        choices:
+        - apt
+        - nodesource
+        - none
+      website_node_version:
+        type: str
+        description:
+        - Major Node.js version installed by the nodesource method.
+        default: '20'
+      website_hardening_enabled:
+        type: bool
+        description:
+        - Apply systemd hardening to every unit (per-component override available).
+        default: true
+      website_secrets_required:
+        type: bool
+        description:
+        - Fail when a required secret is missing instead of deploying without it.
+        default: true
+      website_secrets:
+        type: dict
+        description:
+        - 'Secrets, keyed by application or component name then by variable name: website_secrets:
+          {auth: {JWKS_ENCRYPTION_KEY: <value from a vault>}} Component-level entries win
+          over application-level ones. The values are stored as encrypted systemd credentials
+          and never written to the environment file.'
+        default: {}
+      website_credstore_dir:
+        type: str
+        description:
+        - Directory holding the encrypted systemd credentials.
+        default: /etc/credstore.encrypted
+      website_redis_group:
+        type: str
+        description:
+        - Name of the group that owns the Redis socket.
+        default: redis
+      website_redis_socket:
+        type: str
+        description:
+        - Redis Unix socket (follows the redis role); an empty value selects TCP.
+      website_redis_host:
+        type: str
+        description:
+        - website_redis_host
+        default: 127.0.0.1
+      website_redis_port:
+        type: int
+        description:
+        - website_redis_port
+        default: 6379
+      website_redis_password:
+        type: str
+        description:
+        - website_redis_password
+        default: ''
+      website_redis_url:
+        type: str
+        description:
+        - Redis URL for clients that accept the unix:// scheme.
+      website_celery_redis_url:
+        type: str
+        description:
+        - Redis URL for Celery, which needs the redis+socket:// scheme.
+      website_celery_broker_url:
+        type: str
+        description:
+        - Celery broker and result backend (Redis databases 0 and 1).
+      website_celery_result_backend:
+        type: str
+        description:
+        - website_celery_result_backend
+      website_smtp_host:
+        type: str
+        description:
+        - SMTP settings handed to the applications that send mail directly.
+        default: localhost
+      website_smtp_port:
+        type: str
+        description:
+        - website_smtp_port
+        default: '587'
+      website_smtp_tls:
+        type: str
+        description:
+        - website_smtp_tls
+        default: 'true'
+      website_smtp_user:
+        type: str
+        description:
+        - website_smtp_user
+        default: ''
+      website_smtp_from:
+        type: str
+        description:
+        - website_smtp_from
+        default: ''
+      website_oauth2_issuer:
+        type: str
+        description:
+        - Issuer shared by every application that validates tokens.
+      website_oauth2_clients:
+        type: dict
+        description:
+        - 'OAuth2 client identifiers, keyed by application, for the components that set oauth2.enabled:
+          website_oauth2_clients: backend: {client_id: "...", swagger_client_id: "..."}'
+        default: {}

@@ -1,0 +1,148 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# ---------------------------------------------------------------------------
+# Application selection
+# ---------------------------------------------------------------------------
+
+# Applications to deploy, by catalog application name (for example auth,
+# backend, frontend). An application brings every component of the catalog
+# that belongs to it (web service, worker, beat, scripts).
+website_apps_enabled: []
+
+# Optional subset of website_apps_enabled to deploy on this run. Empty means
+# every enabled application.
+website_apps_limit: []
+
+# Deep-merged over the catalog, keyed by component (auth, auth_worker, ...).
+# Use it to pin a version, change a setting or define extra components.
+website_apps_overrides: {}
+
+# ---------------------------------------------------------------------------
+# Source of the applications
+# ---------------------------------------------------------------------------
+
+# Git URL of the monorepo. Applications are deployed from this repository;
+# nothing is published to PyPI or built as a Debian package.
+website_repo_url: "https://github.com/goabonga/website.git"
+
+# Branch, tag or commit deployed by default. Pin one application with
+# website_apps_overrides.<application>.version.
+website_repo_version: main
+
+# Access token for a private repository (HTTPS). Empty for a public one.
+website_repo_token: ""
+
+# Directory holding the shared clone of the monorepo and the uv installation.
+website_state_dir: /var/lib/website
+
+# Parent of the per-application directories (<base>/<name>).
+website_base_dir: /opt
+
+# Number of releases kept on disk per application.
+website_keep_releases: 3
+
+# ---------------------------------------------------------------------------
+# Python and uv
+# ---------------------------------------------------------------------------
+
+# uv installation: pip installs it in a dedicated virtualenv under
+# website_state_dir, none uses the binary found at website_uv_bin.
+website_uv_install_method: pip
+
+# uv version installed with the pip method (empty installs the latest).
+website_uv_version: ""
+
+# Path of the uv binary.
+website_uv_bin: "{{ website_state_dir }}/tools/bin/uv"
+
+# Python interpreter handed to uv (empty lets uv pick one matching the
+# requires-python of the project).
+website_python_version: ""
+
+# Python selection policy of uv: system, managed, only-system or only-managed
+# (UV_PYTHON_PREFERENCE).
+website_uv_python_preference: system
+
+# Distribution packages needed to build and run the applications.
+website_system_packages:
+  - git
+  - python3
+  - python3-venv
+  - curl
+  - zstd
+
+# How Node.js is installed when a component sets build_node: apt, nodesource or
+# none.
+website_node_install_method: apt
+
+# Major Node.js version installed by the nodesource method.
+website_node_version: "20"
+
+# ---------------------------------------------------------------------------
+# Runtime behaviour
+# ---------------------------------------------------------------------------
+
+# Apply systemd hardening to every unit (per-component override available).
+website_hardening_enabled: true
+
+# Fail when a required secret is missing instead of deploying without it.
+website_secrets_required: true
+
+# Secrets, keyed by application or component name then by variable name:
+#   website_secrets: {auth: {JWKS_ENCRYPTION_KEY: <value from a vault>}}
+# Component-level entries win over application-level ones. The values are
+# stored as encrypted systemd credentials and never written to the
+# environment file.
+website_secrets: {}
+
+# Directory holding the encrypted systemd credentials.
+website_credstore_dir: /etc/credstore.encrypted
+
+# Name of the group that owns the Redis socket.
+website_redis_group: redis
+
+# ---------------------------------------------------------------------------
+# Neighbouring services
+# ---------------------------------------------------------------------------
+
+# Redis Unix socket (follows the redis role); an empty value selects TCP.
+website_redis_socket: "{{ redis_socket | default('') }}"
+website_redis_host: 127.0.0.1
+website_redis_port: 6379
+website_redis_password: ""
+
+# Redis URL for clients that accept the unix:// scheme.
+website_redis_url: >-
+  {{ 'unix://' ~ website_redis_socket
+     if website_redis_socket | length > 0
+     else 'redis://' ~ (':' ~ website_redis_password ~ '@' if website_redis_password | length > 0 else '')
+          ~ website_redis_host ~ ':' ~ website_redis_port }}
+
+# Redis URL for Celery, which needs the redis+socket:// scheme.
+website_celery_redis_url: >-
+  {{ 'redis+socket://' ~ website_redis_socket
+     if website_redis_socket | length > 0
+     else website_redis_url }}
+
+# Celery broker and result backend (Redis databases 0 and 1).
+website_celery_broker_url: "{{ website_celery_redis_url ~ '?db=0' if website_redis_socket | length > 0 else website_redis_url ~ '/0' }}"
+website_celery_result_backend: "{{ website_celery_redis_url ~ '?db=1' if website_redis_socket | length > 0 else website_redis_url ~ '/1' }}"
+
+# SMTP settings handed to the applications that send mail directly.
+website_smtp_host: localhost
+website_smtp_port: "587"
+website_smtp_tls: "true"
+website_smtp_user: ""
+website_smtp_from: ""
+
+# Issuer shared by every application that validates tokens.
+website_oauth2_issuer: "https://{{ website_hostnames.auth }}"
+
+# OAuth2 client identifiers, keyed by application, for the components that set
+# oauth2.enabled:
+#   website_oauth2_clients:
+#     backend: {client_id: "...", swagger_client_id: "..."}
+website_oauth2_clients: {}
+

@@ -1,0 +1,94 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy the environment file of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ python_app__env_file }}"
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__env_group }}"
+    mode: "{{ python_app__env_mode }}"
+  register: python_app__r_env
+
+- name: Deploy the credentials of {{ python_app__unit }}
+  ansible.builtin.import_tasks: credentials.yml
+
+- name: Check whether the build of {{ python_app__unit }} is done
+  ansible.builtin.stat:
+    path: "{{ python_app__release }}/.build-{{ python_app__unit }}"
+  register: python_app__built
+  when: python_app__c.build_commands | length > 0
+
+- name: Run the build commands of {{ python_app__unit }}
+  ansible.builtin.shell:
+    cmd: "{{ item }}"
+    chdir: "{{ python_app__release }}/{{ python_app__c.build_chdir }}"
+  environment:
+    HOME: "{{ python_app__dir }}"
+    CI: "true"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ python_app__c.build_commands }}"
+  register: python_app__r_build
+  when:
+    - python_app__c.build_commands | length > 0
+    - not (python_app__built.stat.exists | default(false))
+
+- name: Mark the build of {{ python_app__unit }} as done
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ python_app__release }}/.build-{{ python_app__unit }}"
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0644"
+    force: false
+  when:
+    - python_app__c.build_commands | length > 0
+    - not (python_app__built.stat.exists | default(false))
+
+- name: Deploy the gunicorn configuration of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: gunicorn.conf.py.j2
+    dest: "{{ python_app__env_dir }}/{{ python_app__unit }}.gunicorn.py"
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0644"
+  register: python_app__r_gconf
+  when: python_app__c.type == 'gunicorn'
+
+- name: Deploy the unit of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: unit.service.j2
+    dest: "/etc/systemd/system/{{ python_app__unit }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: python_app__r_unit
+
+- name: Enable and start {{ python_app__unit }}
+  ansible.builtin.systemd:
+    name: "{{ python_app__unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  register: python_app__r_start
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Work out whether {{ python_app__unit }} must restart
+  ansible.builtin.set_fact:
+    python_app__restart: >-
+      {{ [python_app__r_link | default({}), python_app__r_sync | default({}), python_app__r_env | default({}),
+          python_app__r_cred | default({}), python_app__r_build | default({}), python_app__r_gconf | default({}),
+          python_app__r_unit | default({})]
+         | map(attribute='changed', default=false) | select | list | length > 0 }}
+
+- name: Restart {{ python_app__unit }} after a change
+  ansible.builtin.systemd:
+    name: "{{ python_app__unit }}"
+    state: restarted
+  ignore_errors: "{{ ansible_check_mode }}"
+  when:
+    - python_app__restart | bool
+    - not (python_app__r_start is changed)
+

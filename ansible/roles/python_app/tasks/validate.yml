@@ -1,0 +1,48 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Check that every selected application exists in the catalog
+  ansible.builtin.assert:
+    that:
+      - python_app__apps | difference(python_app__all | selectattr('primary') | map(attribute='id') | list) | length == 0
+    fail_msg: >-
+      Unknown applications in website_apps_enabled:
+      {{ python_app__apps | difference(python_app__all | selectattr('primary') | map(attribute='id') | list) | join(', ') }}.
+      Known applications: {{ python_app__all | selectattr('primary') | map(attribute='id') | sort | join(', ') }}.
+    quiet: true
+
+- name: Check that the limit only names enabled applications
+  ansible.builtin.assert:
+    that:
+      - website_apps_limit | difference(website_apps_enabled) | length == 0
+    fail_msg: >-
+      website_apps_limit names applications that are not in website_apps_enabled:
+      {{ website_apps_limit | difference(website_apps_enabled) | join(', ') }}.
+    quiet: true
+
+- name: Check the type of every selected component
+  ansible.builtin.assert:
+    that:
+      - item.type in python_app__types
+    fail_msg: "Component {{ item.id }} has the unknown type {{ item.type }}. Known types: {{ python_app__types | join(', ') }}."
+    quiet: true
+  loop: "{{ python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | list }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Check that the unit names are unique
+  ansible.builtin.assert:
+    that:
+      - (python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | map(attribute='name') | list | unique | length)
+        == (python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | list | length)
+    fail_msg: Two enabled components share the same name.
+    quiet: true
+
+- name: Check the uv installation method
+  ansible.builtin.assert:
+    that:
+      - website_uv_install_method in ['pip', 'none']
+      - website_node_install_method in ['apt', 'nodesource', 'none']
+    fail_msg: website_uv_install_method must be pip or none and website_node_install_method apt, nodesource or none.
+    quiet: true

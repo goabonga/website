@@ -1,0 +1,99 @@
+# Managed by Ansible (goabonga.website.python_app). Do not edit.
+[Unit]
+Description={{ python_app__unit }} ({{ python_app__c.type | replace('_', ' ') }})
+After=network.target redis-server.service
+
+[Service]
+Type={{ 'notify' if python_app__c.type == 'gunicorn' else 'simple' }}
+User={{ python_app__user }}
+Group={{ python_app__group }}
+WorkingDirectory={{ python_app__current }}
+Environment="PATH={{ python_app__venv }}/bin{% for path in python_app__c.extra_path %}:{{ path }}{% endfor %}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile={{ python_app__env_file }}
+{% for name in python_app__secrets_deployed %}
+LoadCredentialEncrypted={{ name }}:{{ website_credstore_dir }}/{{ python_app__unit }}.{{ name }}.cred
+{% endfor %}
+StandardOutput=append:{{ python_app__logs_dir }}/{{ python_app__unit }}.log
+StandardError=append:{{ python_app__logs_dir }}/{{ python_app__unit }}-error.log
+{% if python_app__c.type == 'gunicorn' and python_app__c.gunicorn.socket | bool %}
+RuntimeDirectory={{ python_app__unit }}
+{% endif %}
+{% if python_app__c.type == 'gunicorn' %}
+ExecStart={{ python_app__venv }}/bin/gunicorn \
+    --config {{ python_app__env_dir }}/{{ python_app__unit }}.gunicorn.py \
+    {{ python_app__c.gunicorn.module | default('', true) or (python_app__module ~ '.main:app') }}
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+{% if python_app__c.healthcheck.enabled | bool %}
+{% if python_app__c.gunicorn.socket | bool %}
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 {{ python_app__c.healthcheck.timeout }}); do [ -S {{ python_app__socket }} ] && /usr/bin/curl -sfo /dev/null --unix-socket {{ python_app__socket }} http://localhost{{ python_app__c.healthcheck.path }} && exit 0; /bin/sleep 1; done; exit 1'
+{% else %}
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 {{ python_app__c.healthcheck.timeout }}); do /usr/bin/curl -sfo /dev/null http://{{ python_app__c.gunicorn.host }}:{{ python_app__c.gunicorn.port }}{{ python_app__c.healthcheck.path }} && exit 0; /bin/sleep 1; done; exit 1'
+{% endif %}
+{% endif %}
+{% elif python_app__c.type == 'celery_worker' %}
+ExecStart={{ python_app__venv }}/bin/celery \
+    -A {{ python_app__c.celery.app | default('', true) or (python_app__module ~ '.celery:celery_app') }} \
+    worker \
+    --loglevel={{ python_app__c.celery.loglevel }} \
+    --concurrency={{ python_app__c.celery.concurrency }} \
+{% if python_app__c.celery.queues | length > 0 %}
+    --queues={{ python_app__c.celery.queues | join(',') }} \
+{% endif %}
+    --hostname={{ python_app__unit }}@%h
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+{% elif python_app__c.type == 'celery_beat' %}
+ExecStart={{ python_app__venv }}/bin/celery \
+    -A {{ python_app__c.celery.app | default('', true) or (python_app__module ~ '.celery:celery_app') }} \
+    beat \
+    --loglevel={{ python_app__c.celery.loglevel }} \
+{% if python_app__c.celery.scheduler | length > 0 %}
+    --scheduler={{ python_app__c.celery.scheduler }} \
+{% endif %}
+    --pidfile={{ python_app__dir }}/{{ python_app__unit }}.pid \
+    --schedule={{ python_app__dir }}/{{ python_app__unit }}-schedule
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=10
+{% elif python_app__c.type == 'daemon' %}
+ExecStart={{ python_app__venv }}/bin/python -m {{ python_app__c.daemon.module | default('', true) or (python_app__module ~ '.main') }}{{ ' ' ~ python_app__c.daemon.args if python_app__c.daemon.args | length > 0 else '' }}
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec={{ python_app__c.daemon.stop_timeout }}
+{% endif %}
+Restart=always
+RestartSec=5
+{% if python_app__hardened | bool %}
+
+# Hardening
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+{% if python_app__c.sudoers | length == 0 %}
+NoNewPrivileges=true
+CapabilityBoundingSet=
+{% else %}
+# sudo needs these capabilities
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_NET_BIND_SERVICE
+{% endif %}
+SystemCallFilter=@system-service
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths={{ python_app__dir }}
+{% if website_redis_socket | length > 0 %}
+ReadWritePaths={{ website_redis_socket | dirname }}
+{% endif %}
+{% for group in python_app__c.extra_groups %}
+ReadWritePaths=-/run/{{ group }}
+{% endfor %}
+{% for path in python_app__c.hardening.read_write_paths %}
+ReadWritePaths={{ path }}
+{% endfor %}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

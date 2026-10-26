@@ -18,6 +18,7 @@ class TestSettings:
             s = Settings(_env_file=None)
         assert s.app_name == "Reachy Mini API"
         assert s.debug is False
+        assert s.log_level == "INFO"
         assert s.docs_enabled is False
         assert s.cors_origins == ["*"]
         assert s.cors_credentials is True
@@ -29,6 +30,7 @@ class TestSettings:
         env = {
             "APP_NAME": "Custom API",
             "DEBUG": "true",
+            "LOG_LEVEL": "DEBUG",
             "DOCS_ENABLED": "true",
             "CORS_ORIGINS": '["https://reachy.internal"]',
             "CORS_CREDENTIALS": "false",
@@ -37,6 +39,7 @@ class TestSettings:
             s = Settings(_env_file=None)
         assert s.app_name == "Custom API"
         assert s.debug is True
+        assert s.log_level == "DEBUG"
         assert s.docs_enabled is True
         assert s.cors_origins == ["https://reachy.internal"]
         assert s.cors_credentials is False

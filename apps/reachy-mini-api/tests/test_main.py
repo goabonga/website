@@ -4,10 +4,11 @@
 """Tests for the application object and the health endpoint."""
 
 import re
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from reachy_mini_api import __version__
-from reachy_mini_api.main import HealthResponse, app, health_check
+from reachy_mini_api.main import HealthResponse, app, health_check, lifespan
 
 client = TestClient(app)
 
@@ -68,3 +69,23 @@ class TestHealthResponse:
     def test_create(self):
         """Create a HealthResponse."""
         assert HealthResponse(status="healthy").status == "healthy"
+
+
+class TestLifespan:
+    """Tests for the lifespan context manager."""
+
+    async def test_startup_and_shutdown(self):
+        """Configure logging on startup and log both transitions."""
+        with (
+            patch("reachy_mini_api.main.setup_logging") as mock_setup,
+            patch("reachy_mini_api.main.logger") as mock_logger,
+        ):
+            async with lifespan(MagicMock()):
+                mock_setup.assert_called_once_with(level="INFO")
+                assert mock_logger.info.call_count == 1
+            assert mock_logger.info.call_count == 2
+
+    def test_request_logging_middleware_registered(self):
+        """The request logging middleware wraps the application."""
+        names = [m.cls.__name__ for m in app.user_middleware]
+        assert "RequestLoggingMiddleware" in names

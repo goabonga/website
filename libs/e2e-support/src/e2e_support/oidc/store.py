@@ -41,9 +41,35 @@ class AuthorizationCode:
 
 
 @dataclass
+class AccessTokenRecord:
+    """An issued access token: what introspection, userinfo and exchange look up by ``jti``."""
+
+    jti: str
+    client_id: str
+    user_id: str | None  # None for client credentials
+    scopes: list[str]
+    expires_at: float
+    revoked: bool = False
+
+
+@dataclass
+class RefreshTokenRecord:
+    """An issued refresh token, rotated every time it is used."""
+
+    token: str
+    client_id: str
+    user_id: str | None
+    scopes: list[str]
+    expires_at: float
+    revoked: bool = False
+
+
+@dataclass
 class Store:
     """Everything the provider remembers between requests."""
 
     pending: dict[str, PendingAuthorization] = field(default_factory=dict)
     codes: dict[str, AuthorizationCode] = field(default_factory=dict)
     sessions: dict[str, str] = field(default_factory=dict)  # session id -> user id
+    access_tokens: dict[str, AccessTokenRecord] = field(default_factory=dict)  # by jti
+    refresh_tokens: dict[str, RefreshTokenRecord] = field(default_factory=dict)  # by token

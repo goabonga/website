@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class SendEmailRequest(BaseModel):
@@ -22,13 +22,43 @@ class SendEmailRequest(BaseModel):
         None, description="Sender name, the one of the chosen identity (default if omitted)"
     )
     reply_to: EmailStr | None = Field(None, description="Reply-to address (the client's if fixed)")
-    subject: str = Field(..., min_length=1, max_length=500, description="Email subject")
-    html_content: str = Field(..., min_length=1, description="HTML content of the email")
-    text_content: str | None = Field(None, description="Plain text content (optional)")
+    subject: str | None = Field(
+        None, min_length=1, max_length=500, description="Email subject (without template_slug)"
+    )
+    html_content: str | None = Field(
+        None, min_length=1, description="HTML content of the email (without template_slug)"
+    )
+    text_content: str | None = Field(
+        None, description="Plain text content (optional, without template_slug)"
+    )
+    template_slug: str | None = Field(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Slug of one of the client's active templates, rendered by the service",
+    )
+    variables: dict[str, Any] | None = Field(
+        None, description="Variables of the template (with template_slug)"
+    )
     provider: str | None = Field(
         None, description="Provider among those the client may use (its default if omitted)"
     )
     metadata: dict[str, Any] | None = Field(None, description="Custom metadata")
+
+    @model_validator(mode="after")
+    def _content_or_template(self) -> "SendEmailRequest":
+        """An email carries either its content or the slug of a template to render."""
+        if self.template_slug:
+            if self.subject or self.html_content or self.text_content:
+                raise ValueError(
+                    "template_slug cannot be combined with subject, html_content or text_content"
+                )
+        else:
+            if not self.subject or not self.html_content:
+                raise ValueError("subject and html_content are required without template_slug")
+            if self.variables is not None:
+                raise ValueError("variables can only be used with template_slug")
+        return self
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -70,6 +100,10 @@ class SendEmailResponse(BaseModel):
     status: str = Field(..., description="Email status")
     message: str = Field(..., description="Status message")
     task_id: str | None = Field(None, description="Celery task ID (for immediate sends)")
+    missing_variables: list[str] = Field(
+        default_factory=list,
+        description="Variables of the template that the request did not provide",
+    )
 
 
 class EmailDetailResponse(BaseModel):

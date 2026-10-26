@@ -1110,3 +1110,159 @@ class TestAdminScope:
             await client._request("GET", "/api/v1/test")
 
             assert MockClient.call_args[1]["timeout"] == 12.5
+
+
+def _status_error(status_code, body):
+    request = httpx.Request("POST", "https://mailler.example.com/api/v1/clients")
+    return httpx.HTTPStatusError(
+        str(status_code), request=request, response=httpx.Response(status_code, json=body)
+    )
+
+
+class TestClientRegistry:
+    @pytest.mark.asyncio
+    async def test_list_clients_sends_the_filters(self, client):
+        page = {"items": [{"client_id": "a"}], "total": 1, "page": 2, "page_size": 5, "pages": 3}
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=page
+        ) as mock_req:
+            result = await client.list_clients(page=2, page_size=5, is_active=False, search="ac")
+            assert result == page
+            mock_req.assert_called_once_with(
+                "GET",
+                "/api/v1/clients",
+                params={"page": 2, "page_size": 5, "is_active": "false", "search": "ac"},
+                scope="",
+            )
+
+    @pytest.mark.asyncio
+    async def test_list_clients_without_filters(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value={"items": [], "total": 0}
+        ) as mock_req:
+            await client.list_clients()
+            assert mock_req.call_args[1]["params"] == {"page": 1, "page_size": 20}
+
+    @pytest.mark.asyncio
+    async def test_list_clients_failure_gives_an_empty_page(self, client):
+        with patch.object(client, "_request", side_effect=Exception("fail")):
+            result = await client.list_clients(page_size=7)
+            assert result["items"] == []
+            assert result["page_size"] == 7
+
+    @pytest.mark.asyncio
+    async def test_list_clients_when_not_configured(self, client):
+        with patch.object(client, "_request", new_callable=AsyncMock, return_value={}):
+            assert (await client.list_clients())["items"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_client(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value={"client_id": "a b"}
+        ) as mock_req:
+            assert await client.get_client("a b") == {"client_id": "a b"}
+            mock_req.assert_called_once_with("GET", "/api/v1/clients/a%20b", scope="")
+
+    @pytest.mark.asyncio
+    async def test_get_unknown_client(self, client):
+        with patch.object(client, "_request", side_effect=_status_error(404, {"detail": "x"})):
+            assert await client.get_client("a") is None
+
+    @pytest.mark.asyncio
+    async def test_get_client_failure(self, client):
+        with patch.object(client, "_request", side_effect=Exception("fail")):
+            assert await client.get_client("a") is None
+
+    @pytest.mark.asyncio
+    async def test_get_client_when_not_configured(self, client):
+        with patch.object(client, "_request", new_callable=AsyncMock, return_value={}):
+            assert await client.get_client("a") is None
+
+    @pytest.mark.asyncio
+    async def test_create_client(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value={"client_id": "a"}
+        ) as mock_req:
+            assert await client.create_client({"client_id": "a"}) == {"client_id": "a"}
+            mock_req.assert_called_once_with(
+                "POST", "/api/v1/clients", json_data={"client_id": "a"}, scope=""
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_client_already_registered(self, client):
+        error = _status_error(409, {"detail": "Client 'a' is already registered"})
+        with patch.object(client, "_request", side_effect=error):
+            with pytest.raises(MaillerAPIError) as raised:
+                await client.create_client({"client_id": "a"})
+            assert raised.value.message == "Client 'a' is already registered"
+            assert raised.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_create_client_validation_errors_are_listed(self, client):
+        body = {
+            "detail": [
+                {"loc": ["body", "from_email"], "msg": "not a valid email address"},
+                {"loc": ["body", "daily_quota"], "msg": "must be at least 1"},
+                "plain",
+            ]
+        }
+        with patch.object(client, "_request", side_effect=_status_error(422, body)):
+            with pytest.raises(MaillerAPIError) as raised:
+                await client.create_client({"client_id": "a"})
+            assert raised.value.status_code == 422
+            assert raised.value.message == (
+                "from_email: not a valid email address; daily_quota: must be at least 1; plain"
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_client_other_failure(self, client):
+        with patch.object(client, "_request", side_effect=Exception("boom")):
+            with pytest.raises(MaillerAPIError) as raised:
+                await client.create_client({"client_id": "a"})
+            assert raised.value.message == "boom"
+            assert raised.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_error_without_json_body(self, client):
+        request = httpx.Request("PUT", "https://mailler.example.com/api/v1/clients/a")
+        error = httpx.HTTPStatusError(
+            "502", request=request, response=httpx.Response(502, text="bad gateway")
+        )
+        with patch.object(client, "_request", side_effect=error):
+            with pytest.raises(MaillerAPIError) as raised:
+                await client.update_client("a", {})
+            assert raised.value.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_update_client(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value={"client_id": "a"}
+        ) as mock_req:
+            await client.update_client("a/b", {"is_active": False})
+            mock_req.assert_called_once_with(
+                "PUT", "/api/v1/clients/a%2Fb", json_data={"is_active": False}, scope=""
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_unknown_client(self, client):
+        with (
+            patch.object(
+                client, "_request", side_effect=_status_error(404, {"detail": "Client not found"})
+            ),
+            pytest.raises(MaillerAPIError, match="Client not found"),
+        ):
+            await client.update_client("a", {})
+
+    @pytest.mark.asyncio
+    async def test_the_registry_is_called_with_the_admin_scope_alone(self, client):
+        mock_http = AsyncMock()
+        mock_http.post.return_value = _token_response("tok")
+        mock_http.request.return_value = _json_response({"items": []})
+
+        with patch("internal.services.mailler_client.httpx.AsyncClient") as MockClient:
+            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_http)
+            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await client.list_clients()
+
+        assert mock_http.post.call_args[1]["data"]["scope"] == "mailler:admin"

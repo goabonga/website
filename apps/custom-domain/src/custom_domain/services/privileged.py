@@ -30,6 +30,11 @@ OPTION_SETTINGS = {
     "nginx-bin": "nginx_bin",
     "nginx-service": "nginx_service",
     "systemctl-bin": "systemctl_bin",
+    "certbot-bin": "certbot_bin",
+    "openssl-bin": "openssl_bin",
+    "webroot": "certbot_webroot",
+    "letsencrypt-dir": "letsencrypt_dir",
+    "email": "certbot_email",
 }
 
 

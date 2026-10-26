@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/13"
     redis_key_prefix: str = "custom-domain"
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
+    celery_queue: str = "custom-domain"
+    celery_task_soft_time_limit_seconds: int = 270
+    celery_task_time_limit_seconds: int = 300
+
     # Nginx (paths and binaries have no default: a deployment must provide them)
     nginx_sites_dir: str = ""
     nginx_config_prefix: str = "custom-domain-"
@@ -92,8 +99,19 @@ class Settings(BaseSettings):
     systemctl_bin: str = ""
 
     # Certbot
+    certbot_enabled: bool = True
+    certbot_email: str = ""
+    certbot_bin: str = ""
+    openssl_bin: str = ""
     certbot_webroot: str = ""
     letsencrypt_dir: str = ""
+    certbot_revoke_on_deprovision: bool = True
+
+    # Provisioning
+    provisioning_max_retries: int = 2
+    provisioning_retry_delay_seconds: int = 600
+    event_history_size: int = 100
+    event_history_ttl_seconds: int = 86400
 
     # Privileged operations (see services/privileged.py)
     sudo_bin: str = "sudo"

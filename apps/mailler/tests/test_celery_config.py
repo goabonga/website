@@ -40,3 +40,28 @@ class TestCeleryConfig:
     def test_default_queue(self):
         assert celery_app.conf.task_default_queue == settings.celery_queue
         assert settings.celery_queue in celery_app.conf.task_queues
+
+    def test_beat_schedule_contains_core_tasks(self):
+        schedule = celery_app.conf.beat_schedule
+        assert "requeue-stuck-emails" in schedule
+        assert "process-scheduled-emails" in schedule
+        assert "cleanup-old-emails" in schedule
+        assert "aggregate-daily-stats" in schedule
+
+    def test_beat_schedule_task_names(self):
+        schedule = celery_app.conf.beat_schedule
+        assert (
+            schedule["requeue-stuck-emails"]["task"]
+            == "mailler.tasks.scheduler.requeue_stuck_emails"
+        )
+        assert (
+            schedule["process-scheduled-emails"]["task"]
+            == "mailler.tasks.scheduler.process_scheduled_emails"
+        )
+        assert (
+            schedule["cleanup-old-emails"]["task"] == "mailler.tasks.scheduler.cleanup_old_emails"
+        )
+        assert (
+            schedule["aggregate-daily-stats"]["task"]
+            == "mailler.tasks.scheduler.aggregate_daily_stats"
+        )

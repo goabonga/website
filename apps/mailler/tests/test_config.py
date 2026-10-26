@@ -191,3 +191,18 @@ class TestCelerySettings:
         s = Settings(_env_file=None)
         assert s.celery_queue == "outgoing"
         assert s.send_max_retries == 5
+
+
+class TestSchedulerSettings:
+    """Thresholds of the periodic tasks introduced with scheduling."""
+
+    def test_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.stuck_email_minutes == 5
+        assert s.stuck_email_batch == 50
+        assert s.scheduled_email_batch == 100
+        assert s.email_retention_days == 90
+
+    def test_from_environment(self, monkeypatch):
+        monkeypatch.setenv("EMAIL_RETENTION_DAYS", "30")
+        assert Settings(_env_file=None).email_retention_days == 30

@@ -246,3 +246,42 @@ class TestInvitationPage:
         assert 'href="/auth/login?redirect=/tenants/invites/tok"' in html
         assert 'href="/auth/signup?redirect=/tenants/invites/tok"' in html
         assert "/auth/register" not in html
+
+
+def _settings_page(**member):
+    from uuid import uuid4
+
+    from knowledge.auth.models import User
+
+    tenant = NS(
+        id=uuid4(),
+        name="Acme",
+        slug="acme",
+        plan=NS(value="free"),
+        is_enterprise=False,
+        custom_domain=None,
+    )
+    with patch.object(templating, "get_settings", return_value=_settings()):
+        return (
+            create_templates()
+            .get_template("tenants/settings.html")
+            .render(
+                user=User(id=uuid4(), name="Ada"),
+                tenant=tenant,
+                tenant_member=NS(**member),
+                tenants=[],
+                usage_stats=None,
+                active_section="organization_settings",
+            )
+        )
+
+
+class TestSettingsPage:
+    def test_the_owner_can_ask_for_the_deletion(self):
+        html = _settings_page(is_owner=True, is_admin=True)
+        assert 'action="/tenants/delete"' in html and "Send Confirmation Email" in html
+
+    def test_an_administrator_is_told_that_only_the_owner_can(self):
+        html = _settings_page(is_owner=False, is_admin=True)
+        assert 'action="/tenants/delete"' not in html
+        assert "Only the workspace owner can delete this workspace." in html

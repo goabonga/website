@@ -20,6 +20,10 @@ from knowledge.models.enums import (
     OrganizationMemberRole,
     PlanType,
 )
+from knowledge.models.workspace_deletion_request import (
+    DeletionRequestStatus,
+    WorkspaceDeletionRequest,
+)
 from tests.conftest import TEST_TENANT_ID, TEST_USER_ID
 
 
@@ -80,6 +84,29 @@ def _make_result(scalar_one_or_none=None, scalar=0, scalars_all=None):
     result.scalar.return_value = scalar
     result.scalars.return_value.all.return_value = scalars_all or []
     return result
+
+
+def _make_deletion_request(**overrides):
+    dr = MagicMock()
+    dr.id = overrides.get("id", uuid4())
+    dr.organization_id = overrides.get("organization_id", TEST_TENANT_ID)
+    dr.requested_by = overrides.get("requested_by", TEST_USER_ID)
+    dr.email = overrides.get("email", "test@example.com")
+    dr.token = overrides.get("token", "test-token-123")
+    dr.cancel_token = overrides.get("cancel_token", "cancel-token-123")
+    dr.status = overrides.get("status", DeletionRequestStatus.PENDING)
+    dr.expires_at = overrides.get("expires_at", datetime.now(UTC) + timedelta(hours=24))
+    dr.confirmed_at = overrides.get("confirmed_at")
+    dr.scheduled_deletion_at = overrides.get("scheduled_deletion_at")
+    dr.subscription_cancelled = overrides.get("subscription_cancelled", False)
+    dr.is_expired = overrides.get("is_expired", False)
+    dr.is_valid = overrides.get("is_valid", True)
+    dr.is_pending = overrides.get("is_pending", True)
+    dr.confirm = MagicMock()
+    dr.cancel = MagicMock()
+    dr.mark_expired = MagicMock()
+    dr.schedule = MagicMock()
+    return dr
 
 
 def _make_invitation(**overrides):
@@ -778,6 +805,750 @@ async def test_update_settings_non_admin(mock_templates, web_client_non_admin, m
     assert response.status_code == 403
 
 
+@patch("knowledge.routes.web.organizations.send_workspace_deletion_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.templates")
+async def test_delete_org_request(mock_templates, mock_settings, mock_email, web_client, mock_db):
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    # No existing pending requests
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),  # existing requests
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants for switcher
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    with (
+        patch.object(WorkspaceDeletionRequest, "generate_token", return_value="tok123"),
+        patch.object(
+            WorkspaceDeletionRequest,
+            "default_expiry",
+            return_value=datetime.now(UTC) + timedelta(hours=24),
+        ),
+    ):
+        response = await web_client.post(
+            "/organizations/delete",
+            data={"confirmation_name": "Test Org"},
+        )
+    assert response.status_code == 200
+    mock_email.delay.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.QuotaService")
+async def test_delete_org_wrong_name(MockQuota, mock_templates, web_client, mock_db):
+    MockQuota.return_value.get_usage = AsyncMock(return_value=MagicMock())
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalars_all=[]))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post(
+        "/organizations/delete",
+        data={"confirmation_name": "Wrong Name"},
+    )
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert "does not match" in ctx["delete_error"]
+
+
+async def test_delete_org_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        "/organizations/delete",
+        data={"confirmation_name": "x"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_delete_org_not_owner(mock_templates, web_client_admin_not_owner, mock_db):
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+
+    response = await web_client_admin_not_owner.post(
+        "/organizations/delete",
+        data={"confirmation_name": "Test Org"},
+    )
+    assert response.status_code == 403
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_success(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(status=DeletionRequestStatus.PENDING, is_expired=False)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants for switcher
+            _make_result(scalar_one_or_none=dr),  # deletion request
+            _make_result(scalar_one_or_none=org),  # organization
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/test-token-123")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_confirm.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_not_found(mock_templates, web_client, mock_db):
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),  # tenants
+            _make_result(scalar_one_or_none=None),  # no request
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/bad-token")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_expired(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.PENDING,
+        is_expired=True,
+    )
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+    dr.mark_expired.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_already_confirmed(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.CONFIRMED,
+        is_expired=False,
+    )
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_cancelled(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(status=DeletionRequestStatus.CANCELLED, is_expired=False)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_expired_status(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(status=DeletionRequestStatus.EXPIRED, is_expired=False)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_org_not_found(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(status=DeletionRequestStatus.PENDING, is_expired=False)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=None),  # org not found
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_immediate(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """No subscription -> immediate deletion, user has remaining workspaces."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    billing = MagicMock()
+    billing.is_configured = False
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True, is_expired=False)
+    org = _make_mock_tenant()
+    remaining_member = _make_mock_member()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants for switcher
+            _make_result(scalar_one_or_none=dr),  # deletion request
+            _make_result(scalar_one_or_none=org),  # organization
+            _make_result(scalar_one_or_none=remaining_member),  # has remaining workspaces
+        ]
+    )
+
+    response = await web_client.post(
+        "/organizations/delete/confirm/test-token-123",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/dashboard?deleted=true" in response.headers["location"]
+    dr.confirm.assert_called_once()
+    mock_db.delete.assert_called_once_with(org)
+    mock_email.delay.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_no_remaining_workspaces(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """No remaining workspaces -> redirect to logout."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    billing = MagicMock()
+    billing.is_configured = False
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True, is_expired=False)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),  # tenants
+            _make_result(scalar_one_or_none=dr),  # deletion request
+            _make_result(scalar_one_or_none=org),  # organization
+            _make_result(scalar_one_or_none=None),  # no remaining workspaces
+        ]
+    )
+
+    response = await web_client.post(
+        "/organizations/delete/confirm/test-token-123",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/logout" in response.headers["location"]
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_not_found(mock_billing, mock_templates, web_client, mock_db):
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=None),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post("/organizations/delete/confirm/bad-token")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_invalid(mock_billing, mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(
+        is_valid=False, is_expired=True, status=DeletionRequestStatus.PENDING
+    )
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    dr.mark_expired.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_invalid_not_expired(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    dr = _make_deletion_request(is_valid=False, is_expired=False)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_org_not_found(mock_billing, mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(is_valid=True)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=None),  # org not found
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    dr.cancel.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deletion_scheduled_email")
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_scheduled(
+    mock_billing, mock_templates, mock_sched_email, web_client, mock_db
+):
+    """Active subscription -> schedule deletion for end of period."""
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.status = "active"
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=30)
+
+    cancel_result = MagicMock()
+    cancel_result.success = True
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    billing.cancel_subscription = AsyncMock(return_value=cancel_result)
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_scheduled.html"
+    dr.schedule.assert_called_once()
+    mock_sched_email.delay.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_cancel_failed(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """Cancel subscription fails -> proceed with immediate deletion."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.status = "active"
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=30)
+
+    cancel_result = MagicMock()
+    cancel_result.success = False
+    cancel_result.error = "Failed"
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    billing.cancel_subscription = AsyncMock(return_value=cancel_result)
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+            _make_result(scalar_one_or_none=None),  # no remaining
+        ]
+    )
+
+    response = await web_client.post(
+        "/organizations/delete/confirm/tok",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    dr.confirm.assert_called_once()
+    mock_db.delete.assert_called_once_with(org)
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_subscription_expired(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """Subscription period already ended -> immediate deletion."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.status = "active"
+    sub.current_period_end = datetime.now(UTC) - timedelta(days=1)  # already past
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+            _make_result(scalar_one_or_none=None),
+        ]
+    )
+
+    response = await web_client.post(
+        "/organizations/delete/confirm/tok",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    dr.confirm.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_sub_fetch_error(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """Error fetching subscription -> still delete."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(side_effect=RuntimeError("err"))
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True)
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+            _make_result(scalar_one_or_none=None),
+        ]
+    )
+
+    response = await web_client.post(
+        "/organizations/delete/confirm/tok",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    dr.confirm.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_execute_deletion_trialing_subscription(
+    mock_billing, mock_settings, mock_email, web_client, mock_db
+):
+    """Trialing subscription also triggers scheduled deletion."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    sub = MagicMock()
+    sub.id = "sub_t"
+    sub.status = "trialing"
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=14)
+
+    cancel_result = MagicMock()
+    cancel_result.success = True
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    billing.cancel_subscription = AsyncMock(return_value=cancel_result)
+    mock_billing.return_value = billing
+
+    dr = _make_deletion_request(is_valid=True)
+    org = _make_mock_tenant()
+
+    # Need to patch templates for the scheduled response
+    with (
+        patch("knowledge.routes.web.organizations.templates") as mock_templates,
+        patch("knowledge.routes.web.organizations.send_workspace_deletion_scheduled_email"),
+    ):
+        mock_templates.TemplateResponse.return_value = _html_response()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_result(scalars_all=[]),
+                _make_result(scalar_one_or_none=dr),
+                _make_result(scalar_one_or_none=org),
+            ]
+        )
+
+        response = await web_client.post("/organizations/delete/confirm/tok")
+        assert response.status_code == 200
+        dr.schedule.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_deletion_success(mock_billing, mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.cancel_at_period_end = True
+
+    reactivate = MagicMock()
+    reactivate.success = True
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    billing.reactivate_subscription = AsyncMock(return_value=reactivate)
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/cancel-token-123")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_cancelled.html"
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is True
+    dr.cancel.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_cancel_scheduled_deletion_not_found(mock_templates, web_client, mock_db):
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=None),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/bad")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_cancel_scheduled_deletion_wrong_status(mock_templates, web_client, mock_db):
+    """Not SCHEDULED status returns error for each status."""
+    for status in [
+        DeletionRequestStatus.CONFIRMED,
+        DeletionRequestStatus.CANCELLED,
+        DeletionRequestStatus.PENDING,
+        DeletionRequestStatus.EXPIRED,
+    ]:
+        dr = _make_deletion_request(status=status)
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_result(scalars_all=[]),
+                _make_result(scalar_one_or_none=dr),
+            ]
+        )
+        mock_templates.TemplateResponse.return_value = _html_response()
+
+        response = await web_client.get("/organizations/delete/cancel/tok")
+        assert response.status_code == 200
+        assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_cancel_scheduled_deletion_org_not_found(mock_templates, web_client, mock_db):
+    dr = _make_deletion_request(status=DeletionRequestStatus.SCHEDULED)
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=None),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    dr.cancel.assert_called_once()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_reactivation_failed(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.cancel_at_period_end = True
+
+    reactivate = MagicMock()
+    reactivate.success = False
+    reactivate.error = "fail"
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    billing.reactivate_subscription = AsyncMock(return_value=reactivate)
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_reactivation_exception(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(side_effect=RuntimeError("err"))
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_no_sub_cancelled(mock_billing, mock_templates, web_client, mock_db):
+    """subscription_cancelled is False -> skip reactivation."""
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=False,
+    )
+    org = _make_mock_tenant()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+
+
 @patch("knowledge.routes.web.organizations.templates")
 async def test_members_page(mock_templates, web_client, mock_db):
     member = _make_mock_member()
@@ -1466,6 +2237,47 @@ async def test_update_organization_settings_auth_redirect(web_client_redirect):
     assert "/auth/login" in response.headers["location"]
 
 
+async def test_delete_organization_auth_redirect(web_client_redirect):
+    """Line 462: delete_organization returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/delete",
+        data={"confirmation_name": "x"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_confirm_deletion_page_auth_redirect(web_client_redirect):
+    """Line 560: confirm_deletion_page returns auth redirect."""
+    response = await web_client_redirect.get(
+        "/organizations/delete/confirm/some-token",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_execute_deletion_auth_redirect(web_client_redirect):
+    """Line 649: execute_deletion returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/delete/confirm/some-token",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_cancel_scheduled_deletion_auth_redirect(web_client_redirect):
+    """Line 823: cancel_scheduled_deletion returns auth redirect."""
+    response = await web_client_redirect.get(
+        "/organizations/delete/cancel/some-cancel-token",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
 async def test_organization_members_auth_redirect(web_client_redirect):
     """Line 935: organization_members returns auth redirect."""
     response = await web_client_redirect.get("/organizations/members", follow_redirects=False)
@@ -1577,6 +2389,148 @@ async def test_pricing_page_multiple_plans_match_second(
     assert ctx["current_price_id"] == "price_match"
 
 
+@patch("knowledge.routes.web.organizations.templates")
+async def test_confirm_deletion_page_expired_not_pending(mock_templates, web_client, mock_db):
+    """Branch 581->584: deletion_request.is_expired=True but status is NOT PENDING.
+
+    The code should skip calling mark_expired() and go directly to rendering error.
+    """
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.CONFIRMED,
+        is_expired=True,
+    )
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/confirm/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+    # mark_expired should NOT be called because status is not PENDING
+    dr.mark_expired.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_deletion_billing_not_configured(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    """Branch 889->907: subscription_cancelled=True but billing_client.is_configured=False.
+
+    The code should skip reactivation and proceed to cancel the deletion request.
+    """
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+
+    billing = MagicMock()
+    billing.is_configured = False
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+    dr.cancel.assert_called_once()
+    # billing.get_tenant_subscription should NOT be called
+    billing.get_tenant_subscription.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_deletion_sub_not_cancel_at_period_end(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    """Branch 892->907: subscription exists but cancel_at_period_end is False.
+
+    The code should skip reactivation.
+    """
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+    sub = MagicMock()
+    sub.id = "sub_123"
+    sub.cancel_at_period_end = False
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=sub)
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+    dr.cancel.assert_called_once()
+    # reactivate_subscription should NOT be called
+    billing.reactivate_subscription.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_billing_client")
+async def test_cancel_scheduled_deletion_no_subscription(
+    mock_billing, mock_templates, web_client, mock_db
+):
+    """Branch 892->907: subscription is None.
+
+    The code should skip reactivation.
+    """
+    dr = _make_deletion_request(
+        status=DeletionRequestStatus.SCHEDULED,
+        subscription_cancelled=True,
+    )
+    org = _make_mock_tenant()
+
+    billing = MagicMock()
+    billing.is_configured = True
+    billing.get_tenant_subscription = AsyncMock(return_value=None)
+    mock_billing.return_value = billing
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[]),
+            _make_result(scalar_one_or_none=dr),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/delete/cancel/tok")
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["subscription_reactivated"] is False
+    dr.cancel.assert_called_once()
+    billing.reactivate_subscription.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.get_settings")
 @patch(
     "knowledge.routes.web.organizations.checkout_redirect_urls",
     return_value=("http://test/ok", "http://test/ko"),
@@ -1614,6 +2568,45 @@ async def test_upgrade_plan_no_sub_personal_workspace(mock_billing, mock_setting
     call_kwargs = billing.create_checkout_session.call_args[1]
     assert call_kwargs["customer_name"] == "Test User"
     internal_app.dependency_overrides.clear()
+
+
+@patch("knowledge.routes.web.organizations.send_workspace_deletion_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.templates")
+async def test_delete_org_cancels_existing_pending_requests(
+    mock_templates, mock_settings, mock_email, web_client, mock_db
+):
+    """Line 506: existing pending deletion requests are cancelled before creating new one."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    existing_req1 = _make_deletion_request()
+    existing_req2 = _make_deletion_request()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[existing_req1, existing_req2]),  # existing pending requests
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants for switcher
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    with (
+        patch.object(WorkspaceDeletionRequest, "generate_token", return_value="tok-new"),
+        patch.object(
+            WorkspaceDeletionRequest,
+            "default_expiry",
+            return_value=datetime.now(UTC) + timedelta(hours=24),
+        ),
+    ):
+        response = await web_client.post(
+            "/organizations/delete",
+            data={"confirmation_name": "Test Org"},
+        )
+    assert response.status_code == 200
+    existing_req1.cancel.assert_called_once()
+    existing_req2.cancel.assert_called_once()
 
 
 async def test_update_member_role_no_tenant(web_client_no_tenant):

@@ -1,0 +1,31 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The asterisk role only supports Debian-family distributions.
+    quiet: true
+
+- name: Assert the SIP trunk settings are complete
+  ansible.builtin.assert:
+    that:
+      - asterisk_trunk_server | length > 0
+      - asterisk_trunk_username | length > 0
+      - asterisk_trunk_password | length > 0
+      - asterisk_trunk_codecs | length > 0
+    fail_msg: >-
+      asterisk_trunk_server, asterisk_trunk_username, asterisk_trunk_password and a
+      non-empty asterisk_trunk_codecs list are required when asterisk_trunk_enabled is true.
+    quiet: true
+  when: asterisk_trunk_enabled | bool
+
+- name: Assert every DID has a number
+  ansible.builtin.assert:
+    that: item.number is defined
+    fail_msg: Every entry of asterisk_dids needs a number.
+    quiet: true
+  loop: "{{ asterisk_dids }}"
+  loop_control:
+    label: "{{ item.number | default('?') }}"

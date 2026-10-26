@@ -1,0 +1,20 @@
+{{ ansible_managed | comment }}
+# Matches PJSIP authentication and endpoint-matching failures.
+
+[INCLUDES]
+before = common.conf
+
+[Definition]
+_daemon = asterisk
+
+failregex = ^.* NOTICE.* Registration from '[^']*' failed for '<HOST>(:\d+)?' - .*$
+            ^.* NOTICE.* <HOST> failed to authenticate as .*$
+            ^.* NOTICE.* No matching endpoint found for request from '<HOST>(:\d+)?'.*$
+            ^.* SECURITY.* SecurityEvent="(FailedACL|InvalidAccountID|ChallengeResponseFailed|InvalidPassword)".*RemoteAddress="IPV[46]/[^/]*//?<HOST>/\d+".*$
+            ^.* WARNING.* Request .* from '[^']*' failed for '<HOST>(:\d+)?'.*$
+            ^.* NOTICE.* Request from '<HOST>(:\d+)?' failed for .* - No matching endpoint found$
+            ^.* NOTICE.* Request from '<HOST>(:\d+)?' failed for .* - Failed to authenticate$
+            ^.* NOTICE.* Request '[^']*' from '[^']*' failed for '<HOST>(:\d+)?' .* - No matching endpoint found$
+            ^.* NOTICE.* Request '[^']*' from '[^']*' failed for '<HOST>(:\d+)?' .* - Failed to authenticate$
+
+ignoreregex =

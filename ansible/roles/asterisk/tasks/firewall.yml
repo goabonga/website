@@ -1,0 +1,23 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Allow SIP traffic
+  ansible.builtin.iptables:
+    chain: "{{ asterisk_firewall_chain }}"
+    protocol: "{{ 'udp' if asterisk_transport_protocol == 'udp' else 'tcp' }}"
+    destination_port: "{{ asterisk_transport_port | string }}"
+    jump: ACCEPT
+    comment: Asterisk SIP
+  notify: asterisk | save iptables
+  when: asterisk_firewall_enabled | bool
+
+- name: Allow RTP traffic
+  ansible.builtin.iptables:
+    chain: "{{ asterisk_firewall_chain }}"
+    protocol: udp
+    destination_port: "{{ asterisk_firewall_rtp_ports }}"
+    jump: ACCEPT
+    comment: Asterisk RTP
+  notify: asterisk | save iptables
+  when: asterisk_firewall_enabled | bool

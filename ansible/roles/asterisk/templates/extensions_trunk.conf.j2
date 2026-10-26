@@ -1,0 +1,45 @@
+{{ ansible_managed | comment(decoration='; ') }}
+{% macro fallback() %}
+ same => n,Answer()
+ same => n,Playback({{ asterisk_incoming_sound }})
+ same => n,Hangup()
+{% endmacro %}
+
+[{{ asterisk_trunk_context }}]
+; Inbound calls from the SIP trunk.
+{% if asterisk_incoming_context %}
+; Calls without a more specific route go to the context {{ asterisk_incoming_context }}.
+{% else %}
+; No incoming context is set: calls without a specific route play {{ asterisk_incoming_sound }}.
+{% endif %}
+
+; Call without a dialled number
+exten => s,1,NoOp(Incoming trunk call from ${CALLERID(num)})
+{% if asterisk_incoming_context %}
+ same => n,Goto({{ asterisk_incoming_context }},s,1)
+{% else %}
+{{ fallback() }}
+{%- endif %}
+
+; Call with a dialled number
+exten => _X.,1,NoOp(Incoming trunk call from ${CALLERID(num)} to ${EXTEN})
+{% if asterisk_incoming_context %}
+ same => n,Goto({{ asterisk_incoming_context }},s,1)
+{% else %}
+{{ fallback() }}
+{%- endif %}
+{% for did in asterisk_dids %}
+
+; Dedicated route for {{ did.number }}
+exten => {{ did.number }},1,NoOp(DID {{ did.number }}: {{ did.description | default('') }})
+{% if did.context is defined %}
+ same => n,Goto({{ did.context }},s,1)
+{% elif did.extension is defined %}
+ same => n,Dial({{ did.extension }},{{ asterisk_did_dial_timeout }})
+ same => n,Hangup()
+{% elif asterisk_incoming_context %}
+ same => n,Goto({{ asterisk_incoming_context }},s,1)
+{% else %}
+{{ fallback() }}
+{%- endif %}
+{% endfor %}

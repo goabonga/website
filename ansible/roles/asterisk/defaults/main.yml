@@ -1,0 +1,203 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the asterisk role. Every knob is prefixed with `asterisk_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+asterisk_enabled: true
+
+# Refresh the apt cache before installing packages.
+asterisk_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+asterisk_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation and service
+# ======================================================================
+# Packages to install.
+asterisk_packages:
+- asterisk
+- asterisk-core-sounds-en
+- asterisk-core-sounds-fr
+
+# Owner of the generated configuration files.
+asterisk_user: asterisk
+
+# Group of the generated configuration files.
+asterisk_group: asterisk
+
+# Asterisk configuration directory.
+asterisk_config_dir: /etc/asterisk
+
+# systemd unit name.
+asterisk_service_name: asterisk
+
+# State of the service after configuration.
+asterisk_service_state: started
+
+# Enable the service at boot.
+asterisk_service_enabled: true
+
+# Modules marked `noload` in modules.conf.
+asterisk_noload_modules:
+- cel_radius.so
+- cdr_radius.so
+
+
+# ======================================================================
+# SIP transport
+# ======================================================================
+# Declare the PJSIP transport together with the trunk. Disable it when pjsip.conf already
+# defines one.
+asterisk_transport_manage: true
+
+# Name of the PJSIP transport section.
+asterisk_transport_name: transport-udp
+
+# Transport protocol.
+asterisk_transport_protocol: udp
+
+# Address the transport binds to.
+asterisk_transport_bind_address: 0.0.0.0
+
+# Port the transport binds to; also the port opened by the firewall and watched by fail2ban.
+asterisk_transport_port: 5060
+
+
+# ======================================================================
+# SIP trunk
+# ======================================================================
+# Configure the SIP trunk and the inbound dialplan. When false their files and include lines
+# are removed.
+asterisk_trunk_enabled: false
+
+# Prefix of the PJSIP sections (<name>-auth, <name>-aor, <name>-endpoint, ...).
+asterisk_trunk_name: trunk
+
+# SIP server (host name) of the provider. Required when the trunk is enabled.
+asterisk_trunk_server: ''
+
+# SIP account / number registered with the provider. Required when the trunk is enabled.
+asterisk_trunk_username: ''
+
+# SIP account password. Required when the trunk is enabled. Provide it from a vault.
+asterisk_trunk_password: ''
+
+# Register the account with the provider. Disable for IP-authenticated trunks.
+asterisk_trunk_register: true
+
+# Seconds between registration retries.
+asterisk_trunk_retry_interval: 60
+
+# Registration expiration in seconds.
+asterisk_trunk_expiration: 3600
+
+# Seconds between qualify (keep-alive) requests to the provider.
+asterisk_trunk_qualify_frequency: 60
+
+# Codecs allowed on the trunk, in order of preference.
+asterisk_trunk_codecs:
+- alaw
+- ulaw
+- g722
+
+# Dialplan context receiving inbound calls.
+asterisk_trunk_context: from-trunk
+
+# Additional PJSIP endpoint options rendered as `key=value`, for example {dtmf_mode:
+# rfc4733}.
+asterisk_trunk_extra_endpoint_options: {}
+
+# File (relative to the configuration directory) holding the generated PJSIP sections; it is
+# included from pjsip.conf.
+asterisk_trunk_pjsip_file: pjsip_trunk.conf
+
+# File (relative to the configuration directory) holding the generated dialplan; it is
+# included from extensions.conf.
+asterisk_trunk_dialplan_file: extensions_trunk.conf
+
+
+# ======================================================================
+# Inbound calls
+# ======================================================================
+# Dialplan context that receives calls without a more specific route, for example the
+# context of an AGI application. Empty plays a sound and hangs up.
+asterisk_incoming_context: ''
+
+# Sound played when no incoming context is set.
+asterisk_incoming_sound: hello-world
+
+# Per-number routes.
+asterisk_dids: []
+
+# Seconds to ring an endpoint for DID routes using `extension`.
+asterisk_did_dial_timeout: 30
+
+
+# ======================================================================
+# Firewall
+# ======================================================================
+# Open the SIP and RTP ports with iptables.
+asterisk_firewall_enabled: false
+
+# iptables chain receiving the rules.
+asterisk_firewall_chain: INPUT
+
+# RTP port range to open. It must match rtp.conf.
+asterisk_firewall_rtp_ports: 10000:20000
+
+# Save the rule set after a change.
+asterisk_firewall_persist: true
+
+# File receiving the saved rule set (iptables-persistent format).
+asterisk_firewall_rules_file: /etc/iptables/rules.v4
+
+
+# ======================================================================
+# Fail2ban
+# ======================================================================
+# Deploy the fail2ban filter and jail. When false they are removed.
+asterisk_fail2ban_enabled: true
+
+# Deploy only when the fail2ban client is present, so the role never depends on the fail2ban
+# role.
+asterisk_fail2ban_require_installed: true
+
+# Path of the fail2ban client used to detect an installation.
+asterisk_fail2ban_client: /usr/bin/fail2ban-client
+
+# systemd unit reloaded after a change.
+asterisk_fail2ban_service_name: fail2ban
+
+# Name of the jail and of the filter. It differs from the `asterisk` filter shipped by
+# fail2ban on purpose.
+asterisk_fail2ban_jail_name: asterisk-pjsip
+
+# Directory receiving the filter.
+asterisk_fail2ban_filter_dir: /etc/fail2ban/filter.d
+
+# Directory receiving the jail.
+asterisk_fail2ban_jail_dir: /etc/fail2ban/jail.d
+
+# Log file watched by the jail.
+asterisk_fail2ban_logpath: /var/log/asterisk/messages.log
+
+# Ports banned by the jail.
+asterisk_fail2ban_ports: 5060,5061
+
+# Protocol banned by the jail.
+asterisk_fail2ban_protocol: udp
+
+# Failures before a ban.
+asterisk_fail2ban_maxretry: 3
+
+# Window in which failures are counted.
+asterisk_fail2ban_findtime: 10m
+
+# Duration of a ban.
+asterisk_fail2ban_bantime: 24h

@@ -1,6 +1,28 @@
 # Mailler
 
-Internal email sending service.
+Internal email sending service shared by several applications. They submit
+emails to its HTTP API; mailler queues them in Celery and delivers them through
+Brevo, SendGrid, AWS SES or a Protonmail Bridge.
+
+- A registry of the authorized clients: each application sends with the sender,
+  reply-to and providers of its record, within optional rate and daily limits,
+  and only sees its own data.
+- Immediate and scheduled sending, one-call sending from a template, idempotency
+  keys, delivery status, statistics and signed status callbacks.
+- MJML templates, contacts, contact groups and campaigns.
+- Brevo delivery webhooks and signed public unsubscribe links.
+- Optional inbound mail processing over IMAP.
+- OAuth2 bearer token authentication with scope checks.
+- The `mailler` command to register clients and import their templates.
+
+Documentation: `docs/apps/mailler/` in the repository root.
+
+From the repository root:
+
+```bash
+uv run --package mailler --group dev pytest apps/mailler
+uv run --package mailler --group dev behave apps/mailler/features
+```
 
 ## Routes and scopes
 
@@ -9,6 +31,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint for monitoring |
+| GET | `/api/v1/clients` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | List the registered clients (administrators only) |
+| POST | `/api/v1/clients` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | Register a client (administrators only) |
+| GET | `/api/v1/clients/{client_id}` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | Read a registered client (administrators only) |
+| PUT | `/api/v1/clients/{client_id}` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | Update a registered client (administrators only) |
 | POST | `/api/v1/send` | scope `mailler:send` | Send an email immediately (async via Celery) |
 | POST | `/api/v1/schedule` | scope `mailler:send` | Schedule an email for future delivery |
 | GET | `/api/v1/emails` | scope `mailler:read` | List the emails of the calling client with pagination |
@@ -61,15 +87,15 @@ HTTP routes served by the application and what each one requires. `public` route
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
-Emails, templates, contacts, groups and campaigns belong to the client of the access token (`client_id`): a caller sees and acts only on its own client, and only a holder of the `ADMIN_SCOPE` setting scope can name another one.
+Emails, templates, contacts, groups and campaigns belong to the client of the access token (`client_id`): a caller sees and acts only on its own client, and only a holder of the `ADMIN_SCOPE` setting scope can name another one. A regular client must also be registered and active; administrators are exempt.
 
 ### Scopes
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
+- `mailler:admin` - crosses the client boundary and manages the registered clients (`ADMIN_SCOPE` setting); checked by 6 routes
 - `mailler:send` - checked by 6 routes
 - `mailler:read` - checked by 20 routes
 - `mailler:stats` - checked by 1 route
 - `mailler:webhooks` - checked by 1 route
 - `mailler:write` - checked by 16 routes
-- `mailler:admin` - crosses the client boundary and manages the registered clients (`ADMIN_SCOPE` setting); checked by 2 routes

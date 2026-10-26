@@ -5,6 +5,7 @@
 
 from internal.models.contact import Contact, ContactGroup, ContactGroupMember
 from internal.models.conversation import Conversation, Message
+from internal.models.email_campaign import EmailCampaign, EmailSend
 from internal.models.email_template import EmailTemplate
 
 __all__ = [
@@ -12,6 +13,8 @@ __all__ = [
     "ContactGroup",
     "ContactGroupMember",
     "Conversation",
+    "EmailCampaign",
+    "EmailSend",
     "EmailTemplate",
     "Message",
 ]

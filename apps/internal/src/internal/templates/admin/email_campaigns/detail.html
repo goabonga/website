@@ -1,0 +1,448 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Campaign: {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ campaign.name }}</h1>
+    <div style="display: flex; gap: 0.5rem;">
+        {% if campaign.status in ['draft', 'scheduled'] %}
+        <a href="/email-campaigns/{{ campaign.id }}/edit" class="btn btn-secondary">Edit</a>
+        {% endif %}
+        <a href="/email-campaigns" class="btn btn-secondary">Back to Campaigns</a>
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <!-- Main Content -->
+    <div>
+        <!-- Campaign Info -->
+        <div class="admin-card">
+            <h3 style="margin-bottom: 1rem;">Campaign Details</h3>
+
+            <div class="detail-row">
+                <span class="detail-label">Status</span>
+                <span class="detail-value">
+                    {% if campaign.status == 'draft' %}
+                    <span class="badge badge-secondary">Draft</span>
+                    {% elif campaign.status == 'scheduled' %}
+                    <span class="badge badge-info">Scheduled</span>
+                    {% elif campaign.status == 'sending' %}
+                    <span class="badge badge-warning">Sending</span>
+                    {% elif campaign.status == 'paused' %}
+                    <span class="badge badge-warning">Paused</span>
+                    {% elif campaign.status == 'completed' %}
+                    <span class="badge badge-success">Completed</span>
+                    {% elif campaign.status == 'failed' %}
+                    <span class="badge badge-danger">Failed</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            {% if campaign.description %}
+            <div class="detail-row">
+                <span class="detail-label">Description</span>
+                <span class="detail-value">{{ campaign.description }}</span>
+            </div>
+            {% endif %}
+
+            <div class="detail-row">
+                <span class="detail-label">Template</span>
+                <span class="detail-value">
+                    {% if campaign.template %}
+                    <a href="/email-templates/{{ campaign.template.id }}" style="color: #e94560;">
+                        {{ campaign.template.name }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Recipients</span>
+                <span class="detail-value">
+                    {% if campaign.group %}
+                    <a href="/contact-groups/{{ campaign.group.id }}" style="color: #e94560;">
+                        {{ campaign.group.name }}
+                    </a>
+                    ({{ campaign.group.member_count if campaign.group.member_count else campaign.total_recipients }} contacts)
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            {% if campaign.subject_override %}
+            <div class="detail-row">
+                <span class="detail-label">Subject Override</span>
+                <span class="detail-value">{{ campaign.subject_override }}</span>
+            </div>
+            {% endif %}
+
+            <div class="detail-row">
+                <span class="detail-label">From</span>
+                <span class="detail-value">
+                    {% if campaign.from_name and campaign.from_email %}
+                    {{ campaign.from_name }} &lt;{{ campaign.from_email }}&gt;
+                    {% elif campaign.from_email %}
+                    {{ campaign.from_email }}
+                    {% else %}
+                    <span class="text-muted">Default sender</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            {% if campaign.reply_to %}
+            <div class="detail-row">
+                <span class="detail-label">Reply-To</span>
+                <span class="detail-value">{{ campaign.reply_to }}</span>
+            </div>
+            {% endif %}
+
+            <div class="detail-row">
+                <span class="detail-label">Provider</span>
+                <span class="detail-value">
+                    <span class="badge badge-info">{{ (campaign.provider or default_provider or "Client default")|capitalize }}</span>
+                </span>
+            </div>
+
+            {% if campaign.scheduled_at %}
+            <div class="detail-row">
+                <span class="detail-label">Scheduled For</span>
+                <span class="detail-value">{{ campaign.scheduled_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            {% endif %}
+
+            {% if campaign.started_at %}
+            <div class="detail-row">
+                <span class="detail-label">Started</span>
+                <span class="detail-value">{{ campaign.started_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            {% endif %}
+
+            {% if campaign.completed_at %}
+            <div class="detail-row">
+                <span class="detail-label">Completed</span>
+                <span class="detail-value">{{ campaign.completed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            {% endif %}
+
+            <div class="detail-row">
+                <span class="detail-label">Created</span>
+                <span class="detail-value">{{ campaign.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+        </div>
+
+        <!-- Progress (for active campaigns) -->
+        {% set sending_started = success and 'sending' in success|lower %}
+        {% if campaign.status in ['sending', 'paused', 'completed'] or sending_started %}
+        <div class="admin-card" id="progress-section">
+            <h3 style="margin-bottom: 1rem;">Progress</h3>
+
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ campaign.progress_percent|default(0) }}%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.85rem; color: #a0a0a0;">
+                <span id="progress-sent">{{ campaign.sent_count|default(0) }} / {{ campaign.total_recipients|default(0) }} sent</span>
+                <span id="progress-percent">{{ campaign.progress_percent|default(0) }}%</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="admin-card">
+            <h3 style="margin-bottom: 1rem;">Actions</h3>
+
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if campaign.status == 'draft' %}
+                <form method="post" action="/email-campaigns/{{ campaign.id }}/send" style="margin: 0;">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('Start sending this campaign to {{ campaign.group.member_count if campaign.group and campaign.group.member_count else campaign.total_recipients }} recipients?')">
+                        &#9658; Start Campaign
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if campaign.status == 'scheduled' %}
+                <form method="post" action="/email-campaigns/{{ campaign.id }}/send" style="margin: 0;">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('Send now instead of waiting for scheduled time?')">
+                        &#9658; Send Now
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if campaign.status == 'sending' %}
+                <form method="post" action="/email-campaigns/{{ campaign.id }}/pause" style="margin: 0;">
+                    <button type="submit" class="btn btn-warning">
+                        &#10074;&#10074; Pause
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if campaign.status == 'paused' %}
+                <form method="post" action="/email-campaigns/{{ campaign.id }}/resume" style="margin: 0;">
+                    <button type="submit" class="btn btn-primary">
+                        &#9658; Resume
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if campaign.status in ['draft', 'scheduled', 'paused', 'failed'] %}
+                <form method="post" action="/email-campaigns/{{ campaign.id }}/delete" style="margin: 0;">
+                    <button type="submit" class="btn btn-danger"
+                            onclick="return confirm('Are you sure you want to delete this campaign? This cannot be undone.')">
+                        Delete Campaign
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Sidebar -->
+    <div>
+        <div class="admin-card stats-card" id="stats-section">
+            <h3 style="margin-bottom: 1.5rem;">Statistics</h3>
+
+            {% set not_started = campaign.status in ['draft', 'scheduled'] %}
+
+            <div class="stat-item">
+                <div class="stat-value" id="stat-total">{{ campaign.group.member_count if campaign.group and campaign.group.member_count else (campaign.total_recipients if campaign.total_recipients else '-') }}</div>
+                <div class="stat-label">Total Recipients</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-success" id="stat-sent">{{ '-' if not_started else campaign.sent_count }}</div>
+                <div class="stat-label">Sent</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-info" id="stat-delivered">{{ '-' if not_started else campaign.delivered_count }}</div>
+                <div class="stat-label">Delivered</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-primary" id="stat-opened">{{ '-' if not_started else campaign.opened_count }}</div>
+                <div class="stat-label">Opened</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-primary" id="stat-clicked">{{ '-' if not_started else campaign.clicked_count }}</div>
+                <div class="stat-label">Clicked</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-warning" id="stat-bounced">{{ '-' if not_started else campaign.bounced_count }}</div>
+                <div class="stat-label">Bounced</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-danger" id="stat-complained">{{ '-' if not_started else campaign.complained_count }}</div>
+                <div class="stat-label">Complaints</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-value stat-danger" id="stat-failed">{{ '-' if not_started else campaign.failed_count }}</div>
+                <div class="stat-label">Failed</div>
+            </div>
+
+            {% if campaign.status in ['sending', 'paused'] or sending_started %}
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #2a2a4a;">
+                <p class="text-muted" style="font-size: 0.8rem; text-align: center;">
+                    Stats refresh automatically
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Rates Card -->
+        {% if campaign.sent_count > 0 %}
+        <div class="admin-card" style="margin-top: 1rem;">
+            <h3 style="margin-bottom: 1rem;">Rates</h3>
+
+            <div class="rate-item">
+                <span class="rate-label">Open Rate</span>
+                <span class="rate-value" id="rate-open">
+                    {{ ((campaign.opened_count / campaign.sent_count) * 100) | round(1) if campaign.sent_count > 0 else 0 }}%
+                </span>
+            </div>
+
+            <div class="rate-item">
+                <span class="rate-label">Click Rate</span>
+                <span class="rate-value" id="rate-click">
+                    {{ ((campaign.clicked_count / campaign.sent_count) * 100) | round(1) if campaign.sent_count > 0 else 0 }}%
+                </span>
+            </div>
+
+            <div class="rate-item">
+                <span class="rate-label">Bounce Rate</span>
+                <span class="rate-value" id="rate-bounce">
+                    {{ ((campaign.bounced_count / campaign.sent_count) * 100) | round(1) if campaign.sent_count > 0 else 0 }}%
+                </span>
+            </div>
+
+            <div class="rate-item">
+                <span class="rate-label">Complaint Rate</span>
+                <span class="rate-value" id="rate-complaint">
+                    {{ ((campaign.complained_count / campaign.delivered_count) * 100) | round(2) if campaign.delivered_count > 0 else 0 }}%
+                </span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.detail-row {
+    display: flex;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #2a2a4a;
+}
+.detail-row:last-child {
+    border-bottom: none;
+}
+.detail-label {
+    width: 150px;
+    color: #a0a0a0;
+    font-size: 0.9rem;
+}
+.detail-value {
+    flex: 1;
+}
+
+.progress-bar-container {
+    height: 12px;
+    background: #1a1a2e;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #e94560, #00b894);
+    transition: width 0.5s ease;
+}
+
+.stats-card .stat-item {
+    text-align: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #2a2a4a;
+}
+.stats-card .stat-item:last-child {
+    border-bottom: none;
+}
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+.stat-value.stat-success { color: #00b894; }
+.stat-value.stat-info { color: #0984e3; }
+.stat-value.stat-primary { color: #e94560; }
+.stat-value.stat-warning { color: #fdcb6e; }
+.stat-value.stat-danger { color: #d63031; }
+.stat-label {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.rate-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #2a2a4a;
+}
+.rate-item:last-child {
+    border-bottom: none;
+}
+.rate-label {
+    color: #a0a0a0;
+}
+.rate-value {
+    font-weight: 600;
+    color: #ffffff;
+}
+</style>
+
+{% if campaign.status in ['sending', 'paused'] or sending_started %}
+<script>
+// Auto-refresh stats for active campaigns
+var initialStatus = '{{ campaign.status }}';
+
+function refreshStats() {
+    fetch('/email-campaigns/{{ campaign.id }}/stats')
+        .then(response => response.json())
+        .then(data => {
+            // If status changed from initial, reload to get proper UI
+            if (data.status !== initialStatus) {
+                window.location.replace('/email-campaigns/{{ campaign.id }}');
+                return;
+            }
+
+            document.getElementById('stat-sent').textContent = data.sent_count;
+            document.getElementById('stat-delivered').textContent = data.delivered_count;
+            document.getElementById('stat-opened').textContent = data.opened_count;
+            document.getElementById('stat-clicked').textContent = data.clicked_count;
+            document.getElementById('stat-bounced').textContent = data.bounced_count;
+            document.getElementById('stat-complained').textContent = data.complained_count;
+            document.getElementById('stat-failed').textContent = data.failed_count;
+
+            // Update progress
+            var progressSent = document.getElementById('progress-sent');
+            var progressPercent = document.getElementById('progress-percent');
+            var progressBar = document.querySelector('.progress-bar');
+
+            if (progressSent) {
+                progressSent.textContent = data.sent_count + ' / ' + data.total_recipients + ' sent';
+            }
+            if (progressPercent) {
+                progressPercent.textContent = data.progress_percent + '%';
+            }
+            if (progressBar) {
+                progressBar.style.width = data.progress_percent + '%';
+            }
+
+            // Update rates if sent > 0
+            if (data.sent_count > 0) {
+                var openRate = document.getElementById('rate-open');
+                var clickRate = document.getElementById('rate-click');
+                var bounceRate = document.getElementById('rate-bounce');
+                var complaintRate = document.getElementById('rate-complaint');
+
+                if (openRate) {
+                    openRate.textContent = ((data.opened_count / data.sent_count) * 100).toFixed(1) + '%';
+                }
+                if (clickRate) {
+                    clickRate.textContent = ((data.clicked_count / data.sent_count) * 100).toFixed(1) + '%';
+                }
+                if (bounceRate) {
+                    bounceRate.textContent = ((data.bounced_count / data.sent_count) * 100).toFixed(1) + '%';
+                }
+                if (complaintRate && data.delivered_count > 0) {
+                    complaintRate.textContent = ((data.complained_count / data.delivered_count) * 100).toFixed(2) + '%';
+                }
+            }
+        })
+        .catch(error => console.error('Failed to fetch stats:', error));
+}
+
+// Refresh every 5 seconds
+setInterval(refreshStats, 5000);
+
+{% if campaign.status not in ['sending', 'paused'] %}
+// Campaign just started - poll sooner to catch status transition
+setTimeout(refreshStats, 2000);
+{% endif %}
+</script>
+{% endif %}
+{% endblock %}

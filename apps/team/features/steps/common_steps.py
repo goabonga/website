@@ -79,6 +79,15 @@ def step_json_list(context, count: int) -> None:
     assert isinstance(data, list) and len(data) == count, data
 
 
+@then('the response has no field "{field}"')
+def step_no_field(context, field: str) -> None:
+    try:
+        _field(context.response.json(), field)
+    except (KeyError, IndexError):
+        return
+    raise AssertionError(f"unexpected field {field}")
+
+
 @then('the response detail is "{detail}"')
 def step_detail(context, detail: str) -> None:
     assert context.response.json()["detail"] == detail, context.response.json()

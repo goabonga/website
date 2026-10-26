@@ -3,11 +3,12 @@
 
 """API routes."""
 
-from team.routes import health
+from team.routes import health, usage
 from team.routes.team import agents, conversations, memory, messages, tasks, teams, workflows
 
 __all__ = [
     "health",
+    "usage",
     "agents",
     "conversations",
     "memory",

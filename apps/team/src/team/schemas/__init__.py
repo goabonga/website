@@ -11,6 +11,7 @@ from team.schemas.message import MessageCreate, MessageResponse
 from team.schemas.skill import SkillCreate, SkillResponse, SkillSummaryResponse, SkillUpdate
 from team.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from team.schemas.team import TeamCreate, TeamResponse, TeamUpdate
+from team.schemas.usage import UsageBatchReport, UsageEventResponse, UsageReport
 from team.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowUpdate
 
 __all__ = [
@@ -36,6 +37,9 @@ __all__ = [
     "TeamCreate",
     "TeamResponse",
     "TeamUpdate",
+    "UsageBatchReport",
+    "UsageEventResponse",
+    "UsageReport",
     "WorkflowCreate",
     "WorkflowResponse",
     "WorkflowUpdate",

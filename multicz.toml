@@ -282,6 +282,7 @@ paths = [
     "apps/auth/src/**",
     "apps/auth/features/**",
     "apps/auth/tests/**",
+    "apps/auth/alembic/**",
     "apps/auth/pyproject.toml",
 ]
 bump_files = [

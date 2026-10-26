@@ -12,6 +12,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint for monitoring and load balancer probes |
 | POST | `/webhooks/brevo`, `/webhooks/brevo/` | public; HMAC-SHA256 signature checked when `BREVO_WEBHOOK_SECRET` is set | Proxy Brevo webhook to internal API (only when `BREVO_ENABLED` is set) |
+| POST | `/webhooks/ses`, `/webhooks/ses/` | public; forwarded without a signature check | Proxy SES/SNS webhook to internal API (only when `SES_ENABLED` is set) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -41,6 +42,15 @@ Read from the environment (a `.env` file is loaded when present).
 | `BREVO_INTERNAL_API_URL` | HTTP URL of the internal API | - |
 | `BREVO_INTERNAL_API_SOCKET` | Unix socket of the internal API (overrides the URL) | - |
 | `BREVO_INTERNAL_API_TOKEN` | Static bearer token for the internal API | - |
+
+### Amazon SES/SNS
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `SES_ENABLED` | Register the `/webhooks/ses` route | `false` |
+| `SES_INTERNAL_API_URL` | HTTP URL of the internal API | - |
+| `SES_INTERNAL_API_SOCKET` | Unix socket of the internal API (overrides the URL) | - |
+| `SES_INTERNAL_API_TOKEN` | Static bearer token for the internal API | - |
 
 ## Downstream authentication
 

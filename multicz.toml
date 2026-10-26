@@ -146,3 +146,18 @@ bump_files = [
 ]
 changelog = "apps/billing/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.internal]
+tag_format = "internal-v{version}"
+paths = [
+    "apps/internal/src/**",
+    "apps/internal/features/**",
+    "apps/internal/tests/**",
+    "apps/internal/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/internal/pyproject.toml", key = "project.version" },
+    { file = "apps/internal/src/internal/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/internal/CHANGELOG.md"
+post_bump = ["uv lock"]

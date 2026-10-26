@@ -3,6 +3,8 @@
 
 """Tests for mta_sts.main module."""
 
+from unittest.mock import patch
+
 import httpx
 from mta_sts import __version__
 from mta_sts.main import HealthResponse, app, health_check
@@ -65,3 +67,16 @@ class TestVersion:
         parts = __version__.split(".")
         assert len(parts) == 3
         assert all(part.isdigit() for part in parts)
+
+
+class TestLoggingSetup:
+    """Tests for the logging configuration applied at import time."""
+
+    def test_import_configures_logging_with_configured_level(self):
+        import importlib
+
+        import mta_sts.main
+
+        with patch("mta_sts.logging.setup_logging") as mock_setup:
+            importlib.reload(mta_sts.main)
+        mock_setup.assert_called_once_with(level=mta_sts.main.settings.log_level)

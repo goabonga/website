@@ -190,3 +190,23 @@ def step_check_json_path(context, path, value):
 @then('the response JSON "{key}" should not have key "{name}"')
 def step_check_json_missing_key(context, key, name):
     assert name not in context.response.json()[key], context.response.json()[key]
+
+
+@then('I store the first item "{field}" as "{alias}"')
+def step_store_first_item(context, field, alias):
+    items = context.response.json()["items"]
+    assert items, "The list is empty"
+    context.created_ids[alias] = str(items[0][field])
+
+
+@then('I add all listed contacts to the group "{group_alias}"')
+def step_add_listed_to_group(context, group_alias):
+    ids = [item["id"] for item in context.response.json()["items"]]
+    group_id = context.created_ids[group_alias]
+    context.response = _run(
+        context,
+        _get_client(context).post(
+            f"/api/v1/contact-groups/{group_id}/contacts", json={"contact_ids": ids}
+        ),
+    )
+    assert context.response.status_code == 200, context.response.text

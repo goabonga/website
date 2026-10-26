@@ -6,3 +6,4 @@
 
 * @goabonga
 /.github/workflows/** @goabonga
+/deploy/** @goabonga

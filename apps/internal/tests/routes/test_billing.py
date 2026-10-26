@@ -2106,3 +2106,285 @@ class TestSaasClientBindings:
         html = self._render_detail(_make_user(scopes=["billing:read"]), [])
         assert "OAuth clients" not in html
         assert "/clients" not in html
+
+
+# ---------------------------------------------------------------------------
+# Checkout URL allow-list and branding
+# ---------------------------------------------------------------------------
+
+
+class TestParseCheckoutUrls:
+    def test_one_url_per_line(self):
+        from internal.routes.billing import parse_checkout_urls
+
+        text = "https://app.example.test\n\n  http://other.example.test:8080/billing  \n"
+        assert parse_checkout_urls(text) == [
+            "https://app.example.test",
+            "http://other.example.test:8080/billing",
+        ]
+
+    def test_duplicates_are_dropped_in_order(self):
+        from internal.routes.billing import parse_checkout_urls
+
+        text = "https://a.example.test\nhttps://b.example.test\nhttps://a.example.test"
+        assert parse_checkout_urls(text) == ["https://a.example.test", "https://b.example.test"]
+
+    def test_nothing_clears_the_list(self):
+        from internal.routes.billing import parse_checkout_urls
+
+        assert parse_checkout_urls("") is None
+        assert parse_checkout_urls(" \n \n") is None
+
+    def test_rejected_entries(self):
+        import pytest
+        from internal.routes.billing import parse_checkout_urls
+
+        for entry in (
+            "app.example.test",
+            "ftp://app.example.test",
+            "https://",
+            "https://user:pw@app.example.test",
+            "https://app.example.test?x=1",
+            "https://app.example.test/#top",
+        ):
+            with pytest.raises(ValueError, match="app.example.test|https://"):
+                parse_checkout_urls(entry)
+
+
+class TestParseBranding:
+    def test_json_object(self):
+        from internal.routes.billing import parse_branding
+
+        assert parse_branding('{"locale": "xx", "custom_text": {}}') == {
+            "locale": "xx",
+            "custom_text": {},
+        }
+
+    def test_nothing_clears_the_branding(self):
+        from internal.routes.billing import parse_branding
+
+        assert parse_branding("") is None
+        assert parse_branding("  \n") is None
+
+    def test_invalid_json(self):
+        import pytest
+        from internal.routes.billing import parse_branding
+
+        with pytest.raises(ValueError, match="not valid JSON"):
+            parse_branding("{nope")
+
+    def test_not_an_object(self):
+        import pytest
+        from internal.routes.billing import parse_branding
+
+        for text in ("[]", '"x"', "3", "null"):
+            with pytest.raises(ValueError, match="JSON object"):
+                parse_branding(text)
+
+
+class TestSaasAppCheckoutSettings:
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_passes_the_parsed_fields(self, mock_client):
+        from internal.routes.billing import saas_app_create
+
+        mock_client.create_saas_app = AsyncMock(return_value=MagicMock(id="s1"))
+
+        result = await saas_app_create(
+            _make_request(),
+            name="App",
+            slug="app",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="https://app.example.test\nhttps://other.example.test/pay",
+            branding_json='{"locale": "xx"}',
+            auth_result=_make_user(),
+        )
+
+        assert "success=" in result.headers["location"]
+        kwargs = mock_client.create_saas_app.call_args[1]
+        assert kwargs["checkout_url_allowlist"] == [
+            "https://app.example.test",
+            "https://other.example.test/pay",
+        ]
+        assert kwargs["branding"] == {"locale": "xx"}
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_refuses_an_invalid_url_before_calling_the_service(self, mock_client):
+        from internal.routes.billing import saas_app_create
+
+        mock_client.create_saas_app = AsyncMock()
+
+        result = await saas_app_create(
+            _make_request(),
+            name="App",
+            slug="app",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="not a url",
+            branding_json="",
+            auth_result=_make_user(),
+        )
+
+        assert result.headers["location"].startswith("/billing/saas/new?error=")
+        assert "not+a+url" in result.headers["location"]
+        mock_client.create_saas_app.assert_not_awaited()
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_refuses_invalid_branding(self, mock_client):
+        from internal.routes.billing import saas_app_create
+
+        mock_client.create_saas_app = AsyncMock()
+
+        result = await saas_app_create(
+            _make_request(),
+            name="App",
+            slug="app",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="",
+            branding_json="[1]",
+            auth_result=_make_user(),
+        )
+
+        assert "error=Branding+must+be+a+JSON+object" in result.headers["location"]
+        mock_client.create_saas_app.assert_not_awaited()
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_passes_the_parsed_fields(self, mock_client):
+        from internal.routes.billing import saas_app_update
+
+        mock_client.update_saas_app = AsyncMock(return_value=MagicMock(id="s1"))
+
+        await saas_app_update(
+            _make_request(),
+            saas_id="s1",
+            name="App",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="https://app.example.test",
+            branding_json='{"locale": "xx"}',
+            is_active=True,
+            auth_result=_make_user(),
+        )
+
+        kwargs = mock_client.update_saas_app.call_args[1]
+        assert kwargs["checkout_url_allowlist"] == ["https://app.example.test"]
+        assert kwargs["branding"] == {"locale": "xx"}
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_with_empty_fields_clears_them(self, mock_client):
+        from internal.routes.billing import saas_app_update
+
+        mock_client.update_saas_app = AsyncMock(return_value=MagicMock(id="s1"))
+
+        await saas_app_update(
+            _make_request(),
+            saas_id="s1",
+            name="App",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="",
+            branding_json="",
+            is_active=True,
+            auth_result=_make_user(),
+        )
+
+        kwargs = mock_client.update_saas_app.call_args[1]
+        assert kwargs["checkout_url_allowlist"] is None
+        assert kwargs["branding"] is None
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_refuses_an_invalid_url(self, mock_client):
+        from internal.routes.billing import saas_app_update
+
+        mock_client.update_saas_app = AsyncMock()
+
+        result = await saas_app_update(
+            _make_request(),
+            saas_id="s1",
+            name="App",
+            description="",
+            webhook_url="",
+            webhook_secret="",
+            checkout_urls="https://app.example.test?x=1",
+            branding_json="",
+            is_active=True,
+            auth_result=_make_user(),
+        )
+
+        assert result.headers["location"].startswith("/billing/saas/s1/edit?error=")
+        mock_client.update_saas_app.assert_not_awaited()
+
+    def _render_form(self, saas_app, is_edit):
+        return _render("saas_form.html", saas_app=saas_app, is_edit=is_edit, error=None)
+
+    def test_form_is_empty_for_a_new_app(self):
+        html = self._render_form(None, False)
+        assert 'name="checkout_urls"' in html
+        assert 'name="branding_json"' in html
+
+    def test_form_shows_the_current_values(self):
+        app = MagicMock(
+            id="s1",
+            is_active=True,
+            description=None,
+            webhook_url=None,
+            branding={"locale": "xx"},
+            checkout_url_allowlist=["https://a.example.test", "https://b.example.test/pay"],
+        )
+        app.name = _APP_NAME
+        html = self._render_form(app, True)
+        assert "https://a.example.test\nhttps://b.example.test/pay</textarea>" in html
+        assert '"locale": "xx"' in html
+
+    def test_detail_shows_the_allowlist_and_branding(self):
+        app = MagicMock(
+            id="s1",
+            is_active=True,
+            description=None,
+            webhook_url=None,
+            branding={"locale": "xx"},
+            checkout_url_allowlist=["https://a.example.test"],
+        )
+        app.name = _APP_NAME
+        app.created_at = datetime(2024, 1, 1)
+        html = _render(
+            "saas_detail.html",
+            saas_app=app,
+            products=[],
+            customers=[],
+            subscriptions=[],
+            bindings=[],
+            success=None,
+            error=None,
+        )
+        assert "https://a.example.test" in html
+        assert "locale" in html
+
+    def test_detail_says_when_redirects_are_refused(self):
+        app = MagicMock(
+            id="s1",
+            is_active=True,
+            description=None,
+            webhook_url=None,
+            branding=None,
+            checkout_url_allowlist=None,
+        )
+        app.name = _APP_NAME
+        app.created_at = datetime(2024, 1, 1)
+        html = _render(
+            "saas_detail.html",
+            saas_app=app,
+            products=[],
+            customers=[],
+            subscriptions=[],
+            bindings=[],
+            success=None,
+            error=None,
+        )
+        assert "checkout and portal redirects are refused" in html

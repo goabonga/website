@@ -1237,6 +1237,86 @@ class TestSyncSubscription:
 
 
 # =========================================================================
+# Checkout URL allow-list and branding
+# =========================================================================
+
+
+class TestSaasAppCheckoutSettings:
+    @pytest.mark.asyncio
+    async def test_create_sends_the_allowlist_and_branding(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_saas_app_data("new")
+        ) as mock_req:
+            await client.create_saas_app(
+                name="App",
+                slug="app",
+                branding={"locale": "xx"},
+                checkout_url_allowlist=["https://app.example.test"],
+            )
+            json_data = mock_req.call_args[1]["json_data"]
+            assert json_data["branding"] == {"locale": "xx"}
+            assert json_data["checkout_url_allowlist"] == ["https://app.example.test"]
+
+    @pytest.mark.asyncio
+    async def test_create_leaves_them_out_when_not_given(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_saas_app_data("new")
+        ) as mock_req:
+            await client.create_saas_app(name="App", slug="app")
+            json_data = mock_req.call_args[1]["json_data"]
+            assert "branding" not in json_data
+            assert "checkout_url_allowlist" not in json_data
+
+    @pytest.mark.asyncio
+    async def test_update_sends_them(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_saas_app_data()
+        ) as mock_req:
+            await client.update_saas_app(
+                "app1",
+                branding={"locale": "xx"},
+                checkout_url_allowlist=["https://app.example.test"],
+            )
+            assert mock_req.call_args[1]["json_data"] == {
+                "branding": {"locale": "xx"},
+                "checkout_url_allowlist": ["https://app.example.test"],
+            }
+
+    @pytest.mark.asyncio
+    async def test_update_clears_them_with_none(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_saas_app_data()
+        ) as mock_req:
+            await client.update_saas_app("app1", branding=None, checkout_url_allowlist=None)
+            assert mock_req.call_args[1]["json_data"] == {
+                "branding": None,
+                "checkout_url_allowlist": None,
+            }
+
+    @pytest.mark.asyncio
+    async def test_update_leaves_them_alone_when_not_given(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_saas_app_data()
+        ) as mock_req:
+            await client.update_saas_app("app1", name="Renamed")
+            assert mock_req.call_args[1]["json_data"] == {"name": "Renamed"}
+
+    def test_model_reads_the_fields(self):
+        app = SaasApp(
+            **_saas_app_data(),
+            branding={"locale": "xx"},
+            checkout_url_allowlist=["https://app.example.test"],
+        )
+        assert app.branding == {"locale": "xx"}
+        assert app.checkout_url_allowlist == ["https://app.example.test"]
+
+    def test_model_defaults_to_none(self):
+        app = SaasApp(**_saas_app_data())
+        assert app.branding is None
+        assert app.checkout_url_allowlist is None
+
+
+# =========================================================================
 # OAuth client bindings
 # =========================================================================
 

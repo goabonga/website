@@ -1,0 +1,28 @@
+# mailler
+
+Internal email sending service. Other platform services submit emails to its
+HTTP API; mailler queues them in Celery and delivers them through one of
+several providers. The application is built as a sequence of features, each
+documented on its own page.
+
+- Workspace member: `apps/mailler` (distribution `mailler`, import package `mailler`).
+- ASGI entry point: `mailler.main:app` (FastAPI).
+- Python 3.11 or newer.
+
+## Features
+
+| Page | Feature |
+| --- | --- |
+| [Application foundation](01-foundation.md) | Settings, logging, database sessions, health check |
+
+## Running the tests
+
+From the repository root:
+
+```bash
+uv run --package mailler --group dev pytest apps/mailler
+uv run --package mailler --group dev behave apps/mailler/features
+```
+
+Every feature page lists the pytest modules and the behave feature file that
+cover it. Behave scenarios run in-process and need no external service.

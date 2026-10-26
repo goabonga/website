@@ -4,6 +4,8 @@
 """Behave environment: everything runs in-process, no external service is needed."""
 
 import asyncio
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 from custom_domain.main import app
 from httpx import ASGITransport, AsyncClient
@@ -13,7 +15,6 @@ def before_all(context):
     """Create the event loop shared by all scenarios."""
     context.loop = asyncio.new_event_loop()
     asyncio.set_event_loop(context.loop)
-    context.app = app
 
 
 def after_all(context):
@@ -23,7 +24,9 @@ def after_all(context):
 
 def before_scenario(context, scenario):
     """Reset the per-scenario state."""
+    context.app = app
     context.response = None
+    context.token = None
     context.patchers = []
     context.cleanups = []
 
@@ -39,10 +42,45 @@ def after_scenario(context, scenario):
 
 def http_request(context, method, path, **kwargs):
     """Send a request to the ASGI application and keep the response on the context."""
+    headers = dict(kwargs.pop("headers", {}))
+    if context.token:
+        headers["Authorization"] = f"Bearer {context.token}"
 
     async def send():
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            return await client.request(method, path, **kwargs)
+        async with AsyncClient(
+            transport=ASGITransport(app=context.app), base_url="http://test"
+        ) as client:
+            return await client.request(method, path, headers=headers, **kwargs)
 
     context.response = context.loop.run_until_complete(send())
     return context.response
+
+
+def start_patch(context, target, **kwargs):
+    """Start a patcher that is stopped automatically after the scenario."""
+    patcher = patch(target, **kwargs)
+    mock = patcher.start()
+    context.patchers.append(patcher)
+    return mock
+
+
+def authenticate(context, scopes, client_id="test-client", subject=None, error=None):
+    """Make the auth dependencies accept (or reject) a JWT-shaped bearer token."""
+    claims = {
+        "sub": subject or str(uuid4()),
+        "scope": " ".join(scopes),
+        "client_id": client_id,
+        "email": "user@example.com",
+    }
+    jwks = start_patch(context, "custom_domain.auth.dependencies.jwks_manager")
+    introspection = start_patch(context, "custom_domain.auth.dependencies.introspection_client")
+    exchange = start_patch(context, "custom_domain.auth.dependencies.token_exchange_client")
+    jwks.is_configured = True
+    exchange.is_configured = False
+    introspection.validate_token_with_introspection = AsyncMock(
+        return_value=claims, side_effect=error
+    )
+    introspection.validate_opaque_token = AsyncMock(return_value=claims, side_effect=error)
+    context.token = "header.payload.signature"
+    context.claims = claims
+    return claims

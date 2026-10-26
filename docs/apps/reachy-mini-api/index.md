@@ -24,3 +24,5 @@ documents one feature as it exists in the code.
 6. [WebSocket channel](06-websocket.md) - real-time messages on `/ws`.
 7. [Token introspection](07-introspection.md) - revocation check, opaque
    tokens and the Redis cache.
+8. [Token exchange](08-token-exchange.md) - scopes granted by the auth
+   server (RFC 8693).

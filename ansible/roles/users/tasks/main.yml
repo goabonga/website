@@ -1,0 +1,93 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Check that accounts with a sudo password policy have a password hash
+  ansible.builtin.assert:
+    that:
+      - item.password_hash | default('') | length > 0
+    fail_msg: "Account {{ item.name }} uses the password sudo policy and needs a password_hash."
+    quiet: true
+  loop: "{{ users__managed }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.sudo | default('none') == 'password'
+    - item.state | default('present') == 'present'
+  tags: [users]
+
+- name: Install sudo
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+    cache_valid_time: 3600
+  when:
+    - users_install_sudo | bool
+    - users__managed | selectattr('sudo', 'defined') | rejectattr('sudo', 'equalto', 'none') | list | length > 0
+  tags: [users]
+
+- name: Manage user accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    shell: "{{ item.shell | default(users_default_shell) if item.state | default('present') == 'present' else omit }}"
+    groups: "{{ item.groups | default(omit) }}"
+    append: "{{ true if item.groups is defined else omit }}"
+    comment: "{{ item.comment | default(omit) }}"
+    uid: "{{ item.uid | default(omit) }}"
+    system: "{{ item.system | default(omit) }}"
+    home: "{{ item.home | default(omit) }}"
+    create_home: "{{ item.create_home | default(omit) }}"
+    remove: "{{ item.remove | default(omit) }}"
+    password: "{{ item.password_hash | default(omit) if item.password_hash | default('') | length > 0 else omit }}"
+  loop: "{{ users__managed }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  tags: [users]
+
+- name: Authorize SSH public keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_public_keys | join('\n') }}"
+    exclusive: "{{ item.ssh_exclusive | default(false) }}"
+    state: present
+  loop: "{{ users__managed }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.ssh_public_keys | default([]) | length > 0
+    - item.state | default('present') == 'present'
+  # In check mode the user may not exist yet, so its home cannot be found.
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags: [users]
+
+- name: Grant sudo rights
+  ansible.builtin.copy:
+    dest: "{{ users_sudoers_dir }}/{{ item.name }}"
+    content: |
+      # Managed by Ansible (goabonga.website.users)
+      {{ item.name }} ALL=(ALL:ALL) {{ 'NOPASSWD: ' if item.sudo == 'nopasswd' else '' }}ALL
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+  loop: "{{ users__managed }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.sudo | default('none') in ['nopasswd', 'password']
+    - item.state | default('present') == 'present'
+  tags: [users]
+
+- name: Revoke sudo rights
+  ansible.builtin.file:
+    path: "{{ users_sudoers_dir }}/{{ item.name }}"
+    state: absent
+  loop: "{{ users__managed }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: >-
+    item.sudo | default('none') == 'none'
+    or item.state | default('present') == 'absent'
+  tags: [users]

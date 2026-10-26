@@ -1,0 +1,40 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Create the deploy account used by application deployments.
+users_deploy_enabled: true
+
+# Login name of the deploy account.
+users_deploy_name: deploy
+
+# Login shell of the deploy account.
+users_deploy_shell: /bin/bash
+
+# Supplementary groups of the deploy account (appended, never replaced).
+users_deploy_groups: []
+
+# SSH public keys (full key lines) authorized for the deploy account.
+users_deploy_ssh_public_keys: []
+
+# Sudo policy of the deploy account: none removes any rule, nopasswd grants
+# passwordless sudo, password grants sudo with a password.
+users_deploy_sudo: nopasswd
+
+# Password hash for the deploy account (required when users_deploy_sudo is
+# password). Keep it in an Ansible Vault.
+users_deploy_password_hash: ''
+
+# Additional accounts to manage.
+# Item keys: name, state, shell, groups, comment, uid, system, home,
+# create_home, remove, password_hash, ssh_public_keys, ssh_exclusive, sudo.
+users_accounts: []
+
+# Directory holding the per-user sudoers files.
+users_sudoers_dir: /etc/sudoers.d
+
+# Install the sudo package when at least one account has a sudo policy.
+users_install_sudo: true
+
+# Shell used for additional accounts that do not set one.
+users_default_shell: /bin/bash

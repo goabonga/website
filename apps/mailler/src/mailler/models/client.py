@@ -45,10 +45,20 @@ class AuthorizedClient(Base):
     rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_quota: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Status callback: where the client is told about the status of its emails, and the
+    # secret the notifications are signed with
+    callback_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    callback_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def has_callback_secret(self) -> bool:
+        """Whether a callback secret is set (the secret itself is never exposed)."""
+        return bool(self.callback_secret)
 
     def __repr__(self) -> str:
         """String representation."""

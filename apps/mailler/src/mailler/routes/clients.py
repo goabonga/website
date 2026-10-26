@@ -123,10 +123,16 @@ async def update_client(
 
     Only the fields present in the body change; deactivating a client with
     ``is_active: false`` refuses it from then on (within ``CLIENT_CACHE_TTL``).
+    The callback secret can be replaced but is never returned.
     """
     client = await _get_or_404(db, client_id)
 
     client_service.apply_update(client, request)
+    try:
+        client_service.validate_callback(client)
+    except ValueError as error:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
     await db.commit()
     await db.refresh(client)

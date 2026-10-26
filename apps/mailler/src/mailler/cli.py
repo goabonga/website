@@ -81,6 +81,8 @@ def _client_as_dict(client: AuthorizedClient) -> dict:
         "default_provider": client.default_provider,
         "rate_limit_per_minute": client.rate_limit_per_minute,
         "daily_quota": client.daily_quota,
+        "callback_url": client.callback_url,
+        "has_callback_secret": client.has_callback_secret,
     }
 
 
@@ -102,6 +104,14 @@ def _client_options(args: argparse.Namespace) -> dict:
         value = getattr(args, option)
         if value is not None:
             fields[option] = value or None
+    if args.callback_url is not None:
+        fields["callback_url"] = args.callback_url or None
+    if args.callback_secret_file is not None:
+        secret_file = Path(args.callback_secret_file)
+        try:
+            fields["callback_secret"] = secret_file.read_text().strip() or None
+        except OSError as error:
+            raise CliError(f"Cannot read {secret_file}: {error.strerror}", USAGE) from error
     return fields
 
 
@@ -175,6 +185,11 @@ def cmd_clients_update(args: argparse.Namespace) -> int:
     with get_sync_db() as db:
         client = _get_client(db, args.client_id)
         client_service.apply_update(client, update)
+        try:
+            client_service.validate_callback(client)
+        except ValueError as error:
+            db.rollback()
+            raise CliError(str(error), USAGE) from error
         db.commit()
     print(f"Updated client '{args.client_id}'")
     return SUCCESS
@@ -326,6 +341,14 @@ def _add_client_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--default-provider", help="provider used when a request names none")
     parser.add_argument("--rate-limit-per-minute", type=int, help="emails per minute (0 removes)")
     parser.add_argument("--daily-quota", type=int, help="emails per UTC day (0 removes)")
+    parser.add_argument(
+        "--callback-url", help="URL notified of the status of the emails (empty removes)"
+    )
+    parser.add_argument(
+        "--callback-secret-file",
+        metavar="FILE",
+        help="file holding the secret that signs the notifications (an empty file removes it)",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

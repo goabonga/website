@@ -57,6 +57,18 @@ def apply_update(client: AuthorizedClient, update: ClientUpdate) -> None:
         setattr(client, field, value)
 
 
+def validate_callback(client: AuthorizedClient) -> None:
+    """Check that a client has a callback URL and a secret together, or neither.
+
+    Raises:
+        ValueError: When only one of the two is set.
+    """
+    if client.callback_url and not client.callback_secret:
+        raise ValueError("callback_url needs a callback_secret to sign the notifications")
+    if client.callback_secret and not client.callback_url:
+        raise ValueError("callback_secret needs a callback_url")
+
+
 def clear_cache() -> None:
     """Forget which clients are known to be active."""
     _active_until.clear()

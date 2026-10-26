@@ -13,7 +13,7 @@ import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
-PROVIDERS = ("brevo", "ses", "stripe", "sendgrid")
+PROVIDERS = ("brevo", "ses", "stripe", "sendgrid", "github")
 
 # Enable the provider routes before the settings object is created.
 for _provider in PROVIDERS:

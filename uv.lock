@@ -498,12 +498,14 @@ name = "e2e-support"
 version = "0.0.0"
 source = { editable = "libs/e2e-support" }
 dependencies = [
+    { name = "behave" },
     { name = "playwright" },
     { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "behave", specifier = ">=1.2.6" },
     { name = "playwright", specifier = ">=1.49" },
     { name = "uvicorn", specifier = ">=0.27.0" },
 ]

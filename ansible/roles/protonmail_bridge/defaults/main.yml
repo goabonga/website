@@ -1,0 +1,159 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the protonmail_bridge role. Every knob is prefixed with `protonmail_bridge_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+protonmail_bridge_enabled: true
+
+# Refresh the apt cache before installing packages.
+protonmail_bridge_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+protonmail_bridge_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Packages
+# ======================================================================
+# Packages required by the Bridge: the pass store, GnuPG and a secret service.
+protonmail_bridge_packages:
+- pass
+- gnupg2
+- libsecret-1-0
+- ca-certificates
+- dbus
+- dbus-x11
+- gnome-keyring
+
+# Bridge release to install (see https://proton.me/mail/bridge).
+protonmail_bridge_version: 3.14.0
+
+# Download URL of the Bridge .deb. Only amd64 packages are published.
+protonmail_bridge_deb_url: https://proton.me/download/bridge/protonmail-bridge_{{ protonmail_bridge_version
+  }}-1_amd64.deb
+
+# Optional checksum of the .deb in the `algorithm:value` form accepted by get_url.
+protonmail_bridge_deb_checksum: ''
+
+# Directory where the .deb is stored.
+protonmail_bridge_deb_download_dir: /var/cache/protonmail-bridge
+
+
+# ======================================================================
+# Service account
+# ======================================================================
+# System user running the Bridge.
+protonmail_bridge_user: protonmail
+
+# Primary group of the service user.
+protonmail_bridge_group: protonmail
+
+# Fixed UID of the service user. Empty lets the system allocate one.
+protonmail_bridge_uid: ''
+
+# Home directory of the service user; also holds the pass store and GnuPG keyring.
+protonmail_bridge_home: /var/lib/protonmail-bridge
+
+# Bridge configuration directory.
+protonmail_bridge_config_dir: '{{ protonmail_bridge_home }}/.config/protonmail/bridge-v3'
+
+# Bridge cache directory (logs included).
+protonmail_bridge_cache_dir: '{{ protonmail_bridge_home }}/.cache/protonmail/bridge-v3'
+
+# XDG runtime directory of the service user. Empty means /run/user/<uid>.
+protonmail_bridge_runtime_dir: ''
+
+# Enable systemd lingering so /run/user/<uid> exists without a login session.
+protonmail_bridge_enable_linger: true
+
+
+# ======================================================================
+# Credential store
+# ======================================================================
+# Create the GPG key and initialise pass. The key has no passphrase because the service runs
+# unattended.
+protonmail_bridge_manage_gpg: true
+
+# Real name of the generated GPG key.
+protonmail_bridge_gpg_key_name: Proton Mail Bridge
+
+# E-mail identity of the GPG key, also used to initialise pass.
+protonmail_bridge_gpg_key_email: protonmail-bridge@localhost
+
+# GPG key algorithm.
+protonmail_bridge_gpg_key_type: RSA
+
+# GPG key length in bits.
+protonmail_bridge_gpg_key_length: 4096
+
+
+# ======================================================================
+# Service
+# ======================================================================
+# systemd unit name.
+protonmail_bridge_service_name: protonmail-bridge
+
+# Enable the service at boot.
+protonmail_bridge_service_enabled: true
+
+# State of the service. The Bridge needs a one-time login before it can start, so the
+# default only enables it; `started` and `stopped` manage the state.
+protonmail_bridge_service_state: unmanaged
+
+# Bridge log verbosity.
+protonmail_bridge_log_level: info
+
+# Path of the Bridge executable.
+protonmail_bridge_binary: /usr/bin/protonmail-bridge
+
+# Restart= value of the unit.
+protonmail_bridge_restart_policy: on-failure
+
+# RestartSec= of the unit.
+protonmail_bridge_restart_sec: 10
+
+# MemoryMax= of the unit. Empty removes the limit.
+protonmail_bridge_memory_max: 512M
+
+# CPUQuota= of the unit. Empty removes the limit.
+protonmail_bridge_cpu_quota: 50%
+
+# Set PrivateTmp= in the unit.
+protonmail_bridge_private_tmp: true
+
+# Additional `KEY=value` entries added to the unit environment.
+protonmail_bridge_extra_environment: []
+
+
+# ======================================================================
+# Connection details
+# ======================================================================
+# IMAP address the Bridge listens on. Informational: the Bridge owns its settings; used by
+# the setup helper and the post-install message.
+protonmail_bridge_imap_host: 127.0.0.1
+
+# IMAP port of the Bridge. Informational, see above.
+protonmail_bridge_imap_port: 1143
+
+# SMTP address the Bridge listens on. Informational, see above.
+protonmail_bridge_smtp_host: 127.0.0.1
+
+# SMTP port of the Bridge. Informational, see above.
+protonmail_bridge_smtp_port: 1025
+
+
+# ======================================================================
+# Login helper
+# ======================================================================
+# Deploy the interactive helper that starts the Bridge CLI for the one-time login.
+protonmail_bridge_setup_script_enabled: true
+
+# Path of the helper script.
+protonmail_bridge_setup_script_path: '{{ protonmail_bridge_home }}/bridge-setup.sh'
+
+# Print the manual login procedure at the end of the run.
+protonmail_bridge_show_instructions: true

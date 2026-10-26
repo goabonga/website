@@ -1,0 +1,51 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy the systemd unit
+  ansible.builtin.template:
+    src: protonmail-bridge.service.j2
+    dest: "/etc/systemd/system/{{ protonmail_bridge_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - protonmail_bridge | reload systemd
+    - protonmail_bridge | restart
+
+- name: Deploy the login helper
+  ansible.builtin.template:
+    src: bridge-setup.sh.j2
+    dest: "{{ protonmail_bridge_setup_script_path }}"
+    owner: "{{ protonmail_bridge_user }}"
+    group: "{{ protonmail_bridge_group }}"
+    mode: "0750"
+  when: protonmail_bridge_setup_script_enabled | bool
+
+- name: Remove the login helper
+  ansible.builtin.file:
+    path: "{{ protonmail_bridge_setup_script_path }}"
+    state: absent
+  when: not (protonmail_bridge_setup_script_enabled | bool)
+
+- name: Apply pending unit changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Manage the Bridge service
+  ansible.builtin.systemd:
+    name: "{{ protonmail_bridge_service_name }}"
+    enabled: "{{ protonmail_bridge_service_enabled }}"
+    state: "{{ protonmail_bridge_service_state if protonmail_bridge_service_state != 'unmanaged' else omit }}"
+    daemon_reload: true
+
+- name: Explain the one-time login
+  ansible.builtin.debug:
+    msg:
+      - "The Bridge needs a one-time interactive login before it can serve mail."
+      - "1. Run: sudo -u {{ protonmail_bridge_user }} {{ protonmail_bridge_setup_script_path }}"
+      - "2. In the Bridge CLI run `login`, then `info` to read the Bridge password."
+      - "3. Start the service: systemctl start {{ protonmail_bridge_service_name }}"
+      - "Bridge IMAP: {{ protonmail_bridge_imap_host }}:{{ protonmail_bridge_imap_port }}, SMTP: {{ protonmail_bridge_smtp_host }}:{{ protonmail_bridge_smtp_port }}"
+  when:
+    - protonmail_bridge_show_instructions | bool
+    - protonmail_bridge_service_state != 'started'

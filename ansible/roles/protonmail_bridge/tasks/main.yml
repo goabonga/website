@@ -1,0 +1,28 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the protonmail_bridge configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: protonmail_bridge_enabled | bool
+  tags: [protonmail_bridge]
+
+- name: Install the Proton Mail Bridge
+  ansible.builtin.import_tasks: install.yml
+  when: protonmail_bridge_enabled | bool
+  tags: [protonmail_bridge]
+
+- name: Prepare the service account
+  ansible.builtin.import_tasks: account.yml
+  when: protonmail_bridge_enabled | bool
+  tags: [protonmail_bridge]
+
+- name: Prepare the credential store
+  ansible.builtin.import_tasks: credentials.yml
+  when: protonmail_bridge_enabled | bool
+  tags: [protonmail_bridge]
+
+- name: Manage the Bridge service
+  ansible.builtin.import_tasks: service.yml
+  when: protonmail_bridge_enabled | bool
+  tags: [protonmail_bridge]

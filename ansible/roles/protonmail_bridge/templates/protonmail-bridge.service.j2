@@ -1,0 +1,40 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=Proton Mail Bridge
+Documentation=https://proton.me/mail/bridge
+After=network-online.target dbus.service
+Wants=network-online.target
+Requires=dbus.service
+
+[Service]
+Type=simple
+User={{ protonmail_bridge_user }}
+Group={{ protonmail_bridge_group }}
+Environment="HOME={{ protonmail_bridge_home }}"
+Environment="GNUPGHOME={{ protonmail_bridge_home }}/.gnupg"
+Environment="PASSWORD_STORE_DIR={{ protonmail_bridge_home }}/.password-store"
+{% for entry in protonmail_bridge_extra_environment %}
+Environment="{{ entry }}"
+{% endfor %}
+
+# Recreate the keyring directory (the runtime directory is on tmpfs).
+ExecStartPre=+/bin/bash -c 'mkdir -p {{ protonmail_bridge_runtime_dir_effective }}/keyring && chown {{ protonmail_bridge_user }}:{{ protonmail_bridge_group }} {{ protonmail_bridge_runtime_dir_effective }}/keyring && chmod 700 {{ protonmail_bridge_runtime_dir_effective }}/keyring'
+
+# Run inside a private D-Bus session with the runtime directory of the service user.
+ExecStart=/bin/bash -c 'export XDG_RUNTIME_DIR={{ protonmail_bridge_runtime_dir_effective }} && exec dbus-run-session -- {{ protonmail_bridge_binary }} --noninteractive --log-level {{ protonmail_bridge_log_level }}'
+
+Restart={{ protonmail_bridge_restart_policy }}
+RestartSec={{ protonmail_bridge_restart_sec }}
+
+PrivateTmp={{ 'true' if protonmail_bridge_private_tmp | bool else 'false' }}
+ReadWritePaths={{ protonmail_bridge_home }}
+ReadWritePaths=-{{ protonmail_bridge_runtime_dir_effective }}
+{% if protonmail_bridge_memory_max %}
+MemoryMax={{ protonmail_bridge_memory_max }}
+{% endif %}
+{% if protonmail_bridge_cpu_quota %}
+CPUQuota={{ protonmail_bridge_cpu_quota }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

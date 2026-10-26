@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+---
+# Infrastructure settings of the production environment. Role defaults are
+# documented in the pages of the goabonga.website roles; only what differs is
+# set here.
+
+# DNS zone the applications are served under.
+website_domain: example.com
+
+certbot_email: ops@example.com
+certbot_agree_tos: true
+website_certbot_email: "{{ certbot_email }}"

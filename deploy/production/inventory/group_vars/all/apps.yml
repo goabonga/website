@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+---
+# Applications deployed by the apps playbook. See "Deploying applications" in
+# the documentation for the catalog and the override rules.
+website_apps_enabled: []
+
+# Secret values live in the encrypted file vault.yml of this directory
+# (ansible-vault encrypt); the vault password is the ANSIBLE_VAULT_PASSWORD
+# secret of the GitHub Environment.
+website_apps_overrides: {}

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+---
+# State of the production deployment. `version` is the number of the last
+# deployment: only the deploy workflows change it, through multicz, when a
+# deploy pull request is created. `playbooks` are run in this order, from the
+# collection of the same commit, once per deployment.
+version: 0.0.0
+playbooks:
+  - site
+  - apps

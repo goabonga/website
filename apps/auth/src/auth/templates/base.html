@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% if branding and branding.display_name %}{{ branding.display_name }} - {% endif %}Auth{% endblock %}</title>
+    {% if branding and branding.favicon_url %}
+    <link rel="icon" href="{{ branding.favicon_url }}">
+    {% endif %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {% if branding and branding.font_url %}
+    <link href="{{ branding.font_url }}" rel="stylesheet">
+    {% endif %}
+    <style>
+        /* CSS Variables - Tenant Branding (Admin dark theme by default) */
+        :root {
+            --primary-color: {{ branding.primary_color if branding and branding.primary_color else '#e94560' }};
+            --secondary-color: {{ branding.secondary_color if branding and branding.secondary_color else '#0f3460' }};
+            --accent-color: {{ branding.accent_color if branding and branding.accent_color else '#e94560' }};
+            --background-color: {{ branding.background_color if branding and branding.background_color else '#1a1a2e' }};
+            --surface-color: {{ branding.surface_color if branding and branding.surface_color else '#16213e' }};
+            --text-color: {{ branding.text_color if branding and branding.text_color else '#e0e0e0' }};
+            --text-muted-color: {{ branding.text_muted_color if branding and branding.text_muted_color else '#a0a0a0' }};
+            --error-color: {{ branding.error_color if branding and branding.error_color else '#ff6b6b' }};
+            --success-color: {{ branding.success_color if branding and branding.success_color else '#00b894' }};
+            --border-color: {{ branding.border_color if branding and branding.border_color else '#0f3460' }};
+            --warning-color: {{ branding.warning_color if branding and branding.warning_color else '#fdcb6e' }};
+            --info-color: {{ branding.info_color if branding and branding.info_color else '#74b9ff' }};
+            --input-bg-color: {{ branding.input_background_color if branding and branding.input_background_color else 'var(--background-color)' }};
+            --input-focus-bg-color: {{ branding.input_focus_background_color if branding and branding.input_focus_background_color else 'var(--input-bg-color)' }};
+            --input-border-color: {{ branding.input_border_color if branding and branding.input_border_color else 'var(--border-color)' }};
+            --input-focus-border-color: {{ branding.input_focus_border_color if branding and branding.input_focus_border_color else 'var(--primary-color)' }};
+            --input-text-color: {{ branding.input_text_color if branding and branding.input_text_color else 'var(--text-color)' }};
+            --font-family: {{ (branding.font_family if branding and branding.font_family else "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif") | safe }};
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .tenant-logo {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .tenant-logo img {
+            max-height: 60px;
+            max-width: 200px;
+            height: auto;
+        }
+        .container {
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted-color);
+            font-weight: 400;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"],
+        input[type="url"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--input-border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: var(--font-family);
+            background-color: var(--input-bg-color);
+            color: var(--input-text-color);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted-color);
+        }
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--input-focus-border-color);
+            background-color: var(--input-focus-bg-color);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-border-color) 20%, transparent);
+        }
+        button[type="submit"],
+        .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: var(--font-family);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        button[type="submit"]:hover,
+        .btn-primary:hover {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+        .error {
+            background-color: rgba(214, 48, 49, 0.2);
+            color: var(--error-color);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(214, 48, 49, 0.3);
+        }
+        .success {
+            background-color: rgba(0, 184, 148, 0.2);
+            color: var(--success-color);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(0, 184, 148, 0.3);
+        }
+        .link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .link a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .link a:hover {
+            text-decoration: underline;
+        }
+        .powered-by {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted-color);
+        }
+        .powered-by a {
+            color: var(--text-muted-color);
+            text-decoration: none;
+        }
+        .powered-by a:hover {
+            text-decoration: underline;
+        }
+
+        /* Custom CSS from tenant branding */
+        {% if branding and branding.custom_css %}
+        {{ branding.custom_css | safe }}
+        {% endif %}
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if branding and branding.logo_url %}
+    <div class="tenant-logo">
+        <img src="{{ branding.logo_url }}" alt="{{ branding.display_name or 'Logo' }}">
+    </div>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% if not branding or branding.show_powered_by %}
+    <div class="powered-by">
+        Powered by <a href="#">Auth</a>
+    </div>
+    {% endif %}
+
+    {% if branding and branding.custom_js %}
+    <script>
+    {{ branding.custom_js | safe }}
+    </script>
+    {% endif %}
+</body>
+</html>

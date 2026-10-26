@@ -22,6 +22,9 @@ members = ["apps/*"]
 dev = [
     "ruff>=0.13",
 ]
+doc = [
+    "zensical",
+]
 
 [tool.ruff]
 target-version = "py311"

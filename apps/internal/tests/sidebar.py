@@ -73,6 +73,7 @@ SECTIONS: dict[str, Section] = {
     "analytics": Section("/analytics", "analytics:*"),
     "vpn": Section("/vpn/sessions", "vpn:admin", "vpn:admin"),
     "billing": Section("/billing", "billing:*", "billing:read"),
+    "team": Section("/team", "team:*"),
 }
 
 # Targets of the outbound service clients replaced by mocks.
@@ -82,6 +83,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.admin.auth_client",
     "internal.routes.billing.billing_client",
     "internal.routes.vpn.vpn_portal_client",
+    "internal.routes.team.team_client",
 )
 
 
@@ -435,6 +437,96 @@ async def configure_billing(env: "Env") -> dict:
     return {}
 
 
+async def configure_team(env: "Env") -> dict:
+    """Make the team service return one team, agent, workflow, conversation and memory entry."""
+    created = datetime(2024, 1, 1)
+    team = SimpleNamespace(
+        id="team-1",
+        name="Support",
+        slug="support",
+        description="Support team",
+        is_active=True,
+        config={},
+        created_at=created,
+        updated_at=created,
+    )
+    agent = SimpleNamespace(
+        id="agent-1",
+        team_id="team-1",
+        name="Helper",
+        role="assistant",
+        description="Helps",
+        system_prompt="You are helpful.",
+        model="gpt-4o",
+        provider="openai",
+        is_active=True,
+        config={},
+        created_at=created,
+    )
+    workflow = SimpleNamespace(
+        id="wf-1",
+        team_id="team-1",
+        name="Triage",
+        description="Triage tickets",
+        steps={},
+        status="draft",
+        config={},
+        created_at=created,
+    )
+    conversation = SimpleNamespace(
+        id="conv-1",
+        slug="chat",
+        title="Chat",
+        type="general",
+        status="active",
+        extra={},
+        created_at=created,
+        updated_at=created,
+    )
+    message = SimpleNamespace(
+        id="msg-1",
+        conversation_id="conv-1",
+        agent_id="agent-1",
+        type="message",
+        content={},
+        text="Hello",
+        visibility="public",
+        created_at=created,
+    )
+    memory = SimpleNamespace(
+        id="mem-1",
+        team_id="team-1",
+        agent_id=None,
+        conversation_id=None,
+        content="Fact",
+        extra={},
+        created_at=created,
+    )
+    skill = SimpleNamespace(
+        id="skill-1",
+        agent_id="agent-1",
+        name="Search",
+        description="Searches",
+        config={},
+        is_active=True,
+        created_at=created,
+    )
+    client = env.client("team.team_client")
+    client.list_teams.return_value = [team]
+    client.get_team.return_value = team
+    client.list_agents.return_value = [agent]
+    client.get_agent.return_value = agent
+    client.list_workflows.return_value = [workflow]
+    client.list_conversations.return_value = [conversation]
+    client.get_conversation.return_value = conversation
+    client.list_messages.return_value = [message]
+    client.list_memory.return_value = [memory]
+    client.list_skills.return_value = [skill]
+    client.get_skill.return_value = skill
+    client.list_tools.return_value = []
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -466,6 +558,24 @@ PAGES: dict[str, list[Page]] = {
         Page("/billing/saas/saas-1/customers/cust-1", "billing", configure_billing),
         Page("/billing/saas/saas-1/subscriptions", "billing", configure_billing),
         Page("/billing/saas/saas-1/subscriptions/sub-1", "billing", configure_billing),
+    ],
+    "team": [
+        Page("/team", "team", configure_team),
+        Page("/team/new", "team", configure_team),
+        Page("/team/team-1", "team", configure_team),
+        Page("/team/team-1/edit", "team", configure_team),
+        Page("/team/team-1/agents", "team", configure_team),
+        Page("/team/team-1/agents/new", "team", configure_team),
+        Page("/team/team-1/agents/agent-1", "team", configure_team),
+        Page("/team/team-1/agents/agent-1/edit", "team", configure_team),
+        Page("/team/team-1/agents/agent-1/skills/skill-1/edit", "team", configure_team),
+        Page("/team/team-1/workflows", "team", configure_team),
+        Page("/team/team-1/workflows/new", "team", configure_team),
+        Page("/team/team-1/workflows/wf-1/edit", "team", configure_team),
+        Page("/team/team-1/run", "team", configure_team),
+        Page("/team/team-1/conversations", "team", configure_team),
+        Page("/team/team-1/conversations/conv-1", "team", configure_team),
+        Page("/team/team-1/memory", "team", configure_team),
     ],
 }
 

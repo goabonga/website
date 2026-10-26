@@ -24,6 +24,7 @@ documented on its own page.
 | [Contacts](09-contacts.md) | Recipients, bulk import and unsubscribe |
 | [Contact groups](10-contact-groups.md) | Named sets of contacts and memberships |
 | [Public unsubscribe](11-unsubscribe.md) | Signed unsubscribe links and pages |
+| [Email campaigns](12-campaigns.md) | Campaign lifecycle and worker tasks |
 
 ## Running the tests
 

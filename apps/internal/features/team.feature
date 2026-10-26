@@ -437,3 +437,191 @@ Feature: Team AI admin dashboard and agent management
     When I send a GET request to "/team/nonexistent/memory"
     Then the response status code should be 303
     And I should be redirected to a URL containing "error="
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the team dashboard
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And the team list returns data
+    When I send a GET request to "/team"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new team form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/team/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the team detail
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    When I send a GET request to "/team/team-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the team edit form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    When I send a GET request to "/team/team-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the agents list
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And the team agents list returns data for team "team-1"
+    When I send a GET request to "/team/team-1/agents"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new agent form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    When I send a GET request to "/team/team-1/agents/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the agent detail
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And a team agent exists with id "agent-1" for team "team-1"
+    When I send a GET request to "/team/team-1/agents/agent-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the agent edit form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And a team agent exists with id "agent-1" for team "team-1"
+    When I send a GET request to "/team/team-1/agents/agent-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the skill edit form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And a team agent exists with id "agent-1" for team "team-1"
+    And a team agent skill exists with id "skill-1"
+    When I send a GET request to "/team/team-1/agents/agent-1/skills/skill-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the workflows list
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And the team workflows list returns data for team "team-1"
+    When I send a GET request to "/team/team-1/workflows"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new workflow form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    When I send a GET request to "/team/team-1/workflows/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the workflow edit form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And a team workflow exists with id "wf-1" for team "team-1"
+    When I send a GET request to "/team/team-1/workflows/wf-1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the run agent form
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And the team agents list returns data for team "team-1"
+    When I send a GET request to "/team/team-1/run"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the conversations list
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And the team conversations list returns data
+    When I send a GET request to "/team/team-1/conversations"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the conversation detail
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And a team conversation exists with id "conv-1"
+    When I send a GET request to "/team/team-1/conversations/conv-1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the memory list
+    Given I am authenticated with only the scopes "team:* vpn:admin billing:read" granted by token exchange
+    And a team exists with id "team-1"
+    And the team memory list returns data for team "team-1"
+    When I send a GET request to "/team/team-1/memory"
+    Then the response status code should be 200
+    And the active sidebar link should be "/team"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the team dashboard
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the team list returns data
+    When I send a GET request to "/team"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                        | vpn     | billing |
+      | team:*                        | hidden  | hidden  |
+      | team:* vpn:admin              | visible | hidden  |
+      | team:* billing:read           | hidden  | visible |
+      | team:* vpn:admin billing:read | visible | visible |
+      | *                             | visible | visible |

@@ -11,6 +11,7 @@ behave.
 | Page | Feature |
 |------|---------|
 | [Foundation](01-foundation.md) | settings, application factory, health check, CORS |
+| [Logging](02-logging.md) | stdout/stderr split and request context in log lines |
 
 ## Running the tests
 

@@ -3,7 +3,7 @@
 
 """Tests for backend.config module."""
 
-from backend.config import Settings
+from backend.config import Settings, get_credential
 
 
 class TestSettingsDefaults:
@@ -41,3 +41,57 @@ class TestSettingsDefaults:
         s = Settings(_env_file=None)
         assert s.log_level == "DEBUG"
         assert s.docs_enabled is True
+
+    def test_oauth2_defaults(self, monkeypatch):
+        """OAuth2 is unconfigured by default and caches use short TTLs."""
+        for name in (
+            "OAUTH2_ISSUER",
+            "OAUTH2_SWAGGER_CLIENT_ID",
+            "OAUTH2_CLIENT_ID",
+            "OAUTH2_CLIENT_SECRET",
+            "OAUTH2_TRUSTED_ISSUERS",
+            "OAUTH2_CLIENT_CACHE_TTL",
+            "TOKEN_INTROSPECTION_CACHE_TTL",
+            "JWKS_CACHE_TTL",
+            "REDIS_URL",
+            "REDIS_KEY_PREFIX",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.oauth2_issuer == ""
+        assert s.oauth2_client_id == ""
+        assert s.oauth2_client_secret == ""
+        assert s.oauth2_client_cache_ttl == 300
+        assert s.token_introspection_cache_ttl == 60
+        assert s.jwks_cache_ttl == 3600
+        assert s.redis_url == ""
+        assert s.redis_key_prefix == "fastapi"
+
+
+class TestGetCredential:
+    """Tests for get_credential."""
+
+    def test_from_systemd_credentials_directory(self, tmp_path, monkeypatch):
+        """A file in CREDENTIALS_DIRECTORY wins and is stripped."""
+        (tmp_path / "MY_SECRET").write_text("  secret-value-from-file  \n")
+        monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
+        monkeypatch.setenv("MY_SECRET", "env-value")
+        assert get_credential("MY_SECRET", default="fallback") == "secret-value-from-file"
+
+    def test_from_environment_variable(self, monkeypatch):
+        """Without a credentials directory the environment variable is used."""
+        monkeypatch.delenv("CREDENTIALS_DIRECTORY", raising=False)
+        monkeypatch.setenv("MY_SECRET", "env-value")
+        assert get_credential("MY_SECRET", default="fallback") == "env-value"
+
+    def test_returns_default_when_not_found(self, monkeypatch):
+        """The default is returned when neither source has the secret."""
+        monkeypatch.delenv("CREDENTIALS_DIRECTORY", raising=False)
+        monkeypatch.delenv("NONEXISTENT_KEY", raising=False)
+        assert get_credential("NONEXISTENT_KEY", default="my-default") == "my-default"
+
+    def test_missing_file_falls_back_to_environment(self, tmp_path, monkeypatch):
+        """A set but empty credentials directory falls back to the environment."""
+        monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
+        monkeypatch.setenv("MISSING_SECRET", "from-env-var")
+        assert get_credential("MISSING_SECRET", default="fallback") == "from-env-var"

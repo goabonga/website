@@ -18,6 +18,7 @@ how it is tested with pytest and behave.
    token exchange, scopes and tenant resolution.
 4. [Collections](03-collections.md): collection API, ownership and access
    levels.
+5. [Documents](04-documents.md): document API and OpenAI embeddings.
 
 ## Running the tests
 

@@ -14,6 +14,7 @@ applications. It is a member of the `website` uv workspace.
   scope checks.
 - Collections REST API (`/api/v1/collections`) with personal and
   organization ownership.
+- Documents REST API with OpenAI embeddings stored in pgvector.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -29,6 +30,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |
 | PATCH | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:write` | Update a collection |
 | DELETE | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:write` | Delete a collection and all its documents |
+| POST | `/api/v1/collections/{collection_id}/documents` | bearer token; scope `documents:write` | Add documents to a collection |
+| POST | `/api/v1/collections/{collection_id}/documents/single` | bearer token; scope `documents:write` | Add a single document to a collection |
+| GET | `/api/v1/collections/{collection_id}/documents` | bearer token; scope `documents:read` | List documents in a collection |
+| GET | `/api/v1/documents/{document_id}` | bearer token; scope `documents:read` | Get a document by ID |
+| DELETE | `/api/v1/collections/{collection_id}/documents/{document_id}` | bearer token; scope `documents:write` | Delete a document |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -40,6 +46,8 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `collections:write` - checked by 3 routes
 - `collections:read` - checked by 2 routes
+- `documents:write` - checked by 3 routes
+- `documents:read` - checked by 2 routes
 
 ## Local development
 

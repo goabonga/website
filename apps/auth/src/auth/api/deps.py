@@ -18,8 +18,12 @@ from auth.core.database import async_session_factory
 from auth.core.security import AESEncryption
 from auth.db.models.rbac import Role
 from auth.db.models.user import User
+from auth.services.email import EmailService
 from auth.services.jwks import JWKSService
+from auth.services.password import PasswordService
+from auth.services.profile import ProfileService
 from auth.services.trust import TrustPolicyService
+from auth.services.user import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +82,26 @@ def get_encryption() -> AESEncryption:
 def get_jwks_service() -> JWKSService:
     """Get JWKS service instance."""
     return JWKSService(get_encryption())
+
+
+def get_user_service() -> UserService:
+    """Get user service instance."""
+    return UserService()
+
+
+def get_email_service() -> EmailService:
+    """Get email service instance."""
+    return EmailService()
+
+
+def get_password_service() -> PasswordService:
+    """Get password service instance."""
+    return PasswordService()
+
+
+def get_profile_service() -> ProfileService:
+    """Get profile service instance."""
+    return ProfileService()
 
 
 def get_trust_service() -> TrustPolicyService:

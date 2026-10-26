@@ -113,3 +113,8 @@ if settings.tenant_base_domain:
     )
 
 app.include_router(router)
+
+# Mount uploads directory for serving uploaded files (avatars, etc.)
+uploads_path = Path(settings.upload_directory)
+uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")

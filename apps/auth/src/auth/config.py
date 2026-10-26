@@ -58,11 +58,48 @@ class Settings(BaseSettings):
     jwks_rotation_days: int = 90  # Rotate keys every N days
     jwks_grace_period_days: int = 30  # Keep revoked keys for validation
 
+    # Email backend
+    email_backend: str = "smtp"  # "smtp" or "mailler"
+
+    # Email / SMTP
+    smtp_host: str = ""  # SMTP server hostname (empty = log to console)
+    smtp_port: int = 587  # SMTP server port
+    smtp_tls: bool = True  # Use TLS
+    smtp_user: str = ""  # SMTP username
+    smtp_password: str = ""  # SMTP password
+    smtp_from: str = "noreply@example.com"  # From email address
+
+    # Mailler service integration
+    mailler_url: str = (
+        ""  # Mailler service URL (e.g., https://mailler.internal or http://localhost for UDS)
+    )
+    mailler_unix_socket: str = ""  # Unix socket path (e.g., /run/mailler/mailler.sock)
+    mailler_provider: str = "brevo"  # Default email provider (brevo, sendgrid, ses, protonmail)
+    mailler_client_id: str = ""  # OAuth2 client ID for mailler authentication
+    mailler_client_secret: str = ""  # OAuth2 client secret for mailler authentication
+    mailler_auth_url: str = (
+        ""  # Auth service URL for token endpoint (e.g., https://auth.example.com)
+    )
+
+    # Verification
+    verification_code_expiry_hours: int = 24  # Verification code validity
+
+    # Password Reset
+    password_reset_expiry_hours: int = 1  # Password reset token validity
+
     session_cookie_name: str = "session"  # Session cookie name
 
     # Multi-tenancy
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
     tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup
+
+    # Templates
+    templates_path: str = str(Path(__file__).parent / "templates")  # Templates directory
+
+    # File uploads
+    upload_directory: str = "uploads"  # Directory for uploaded files
+    upload_max_size_mb: int = 5  # Maximum file size in MB
+    upload_allowed_types: str = "image/jpeg,image/png,image/gif,image/webp"  # Allowed MIME types
 
     # Celery / Redis
     celery_broker_url: str = "redis://localhost:6379/0"
@@ -83,5 +120,9 @@ class Settings(BaseSettings):
 settings = Settings(
     jwks_encryption_key=get_credential(
         "JWKS_ENCRYPTION_KEY", os.environ.get("JWKS_ENCRYPTION_KEY", "")
+    ),
+    smtp_password=get_credential("SMTP_PASSWORD", os.environ.get("SMTP_PASSWORD", "")),
+    mailler_client_secret=get_credential(
+        "MAILLER_CLIENT_SECRET", os.environ.get("MAILLER_CLIENT_SECRET", "")
     ),
 )

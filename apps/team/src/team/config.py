@@ -55,11 +55,32 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://team:team@localhost:5432/team"
 
+    # Redis
+    redis_url: str = "redis://localhost:6379/10"
+    redis_key_prefix: str = "team"
+
+    # OAuth2 / OIDC
+    oauth2_issuer: str = ""
+    oauth2_swagger_client_id: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+    oauth2_trusted_issuers: str = ""
+    oauth2_token_cache_ttl: int = 300
+    oauth2_introspection_cache_ttl: int = 60
+    token_introspection_cache_ttl: int = 60
+    oauth2_client_cache_ttl: int = 300
+    jwks_cache_ttl: int = 3600
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    return Settings(
+        oauth2_client_secret=get_credential(
+            "OAUTH2_CLIENT_SECRET",
+            os.environ.get("OAUTH2_CLIENT_SECRET", ""),
+        ),
+    )
 
 
 settings = get_settings()

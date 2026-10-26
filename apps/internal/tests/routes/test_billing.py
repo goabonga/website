@@ -120,6 +120,8 @@ class TestSaasAppCreate:
             description="desc",
             webhook_url="http://wh",
             webhook_secret="sec",
+            checkout_urls="",
+            branding_json="",
             auth_result=user,
         )
 
@@ -143,6 +145,8 @@ class TestSaasAppCreate:
             description=None,
             webhook_url=None,
             webhook_secret=None,
+            checkout_urls="",
+            branding_json="",
             auth_result=user,
         )
 
@@ -271,6 +275,8 @@ class TestSaasAppUpdate:
             description="desc",
             webhook_url="http://wh",
             webhook_secret="sec",
+            checkout_urls="",
+            branding_json="",
             is_active=True,
             auth_result=user,
         )
@@ -293,6 +299,8 @@ class TestSaasAppUpdate:
             description=None,
             webhook_url=None,
             webhook_secret=None,
+            checkout_urls="",
+            branding_json="",
             is_active=False,
             auth_result=user,
         )
@@ -2060,7 +2068,14 @@ class TestSaasClientBindings:
             assert route.methods == {"POST"}
 
     def _render_detail(self, user, bindings):
-        app = MagicMock(id="s1", is_active=True, description=None, webhook_url=None)
+        app = MagicMock(
+            id="s1",
+            is_active=True,
+            description=None,
+            webhook_url=None,
+            branding=None,
+            checkout_url_allowlist=None,
+        )
         app.name = _APP_NAME
         app.created_at = datetime(2024, 1, 1)
         return _render(

@@ -72,6 +72,26 @@
             <small class="text-muted">Secret key used to sign webhook payloads (HMAC-SHA256).{% if is_edit %} Leave empty to keep current value.{% endif %}</small>
         </div>
 
+        <div class="form-group">
+            <label for="checkout_urls">Checkout URL allow-list</label>
+            <textarea id="checkout_urls"
+                      name="checkout_urls"
+                      class="form-control mono"
+                      rows="3"
+                      placeholder="https://app.example.test">{{ (saas_app.checkout_url_allowlist or []) | join('\n') if saas_app else '' }}</textarea>
+            <small class="text-muted">One URL prefix per line (an origin, optionally followed by a path). Checkout success and cancel URLs and customer portal return URLs must start with one of them; the billing service refuses any other URL, and every URL when the list is empty unless it is configured otherwise.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="branding_json">Branding (JSON)</label>
+            <textarea id="branding_json"
+                      name="branding_json"
+                      class="form-control mono"
+                      rows="4"
+                      placeholder='{"locale": "..."}'>{{ saas_app.branding | tojson(indent=2) if saas_app and saas_app.branding else '' }}</textarea>
+            <small class="text-muted">A JSON object read by the checkout: <code>locale</code> (language of the Stripe Checkout page) and <code>custom_text</code> (the Stripe <code>custom_text</code> block). Other keys are stored but not used. Leave empty for none.</small>
+        </div>
+
         {% if is_edit %}
         <div class="form-group">
             <label>

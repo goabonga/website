@@ -164,4 +164,66 @@
 </div>
 {% endif %}
 
+{% if tenant_member and tenant_member.is_owner %}
+<div class="card" style="border-color: var(--accent-red);">
+    <div class="card-header">
+        <h2 class="card-title" style="color: var(--accent-red);">Danger Zone</h2>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+        These actions are destructive and cannot be undone. Deleting this workspace will permanently remove all collections, documents, and member access.
+    </p>
+
+    {% if delete_error %}
+    <div class="alert alert-error" style="margin-bottom: 16px;">
+        {{ delete_error }}
+    </div>
+    {% endif %}
+
+    <div id="delete-section">
+        <button type="button" class="btn btn-danger" onclick="document.getElementById('delete-confirm').style.display='block'; this.style.display='none';">
+            Delete Workspace
+        </button>
+
+        <div id="delete-confirm" style="display: none; margin-top: 16px; padding: 16px; background-color: rgba(248, 81, 73, 0.1); border: 1px solid var(--accent-red); border-radius: 8px;">
+            <p style="color: var(--text-primary); margin-bottom: 12px; font-weight: 500;">
+                To request deletion, type the workspace name: <strong>{{ tenant.name }}</strong>
+            </p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 12px;">
+                A confirmation email will be sent to your email address. You must click the link in the email to complete the deletion.
+            </p>
+            <form method="post" action="/tenants/delete">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <input type="text"
+                           name="confirmation_name"
+                           class="form-control"
+                           placeholder="Type workspace name to confirm"
+                           autocomplete="off"
+                           required
+                           style="border-color: var(--accent-red);">
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" class="btn btn-danger">
+                        Send Confirmation Email
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('delete-confirm').style.display='none'; document.querySelector('#delete-section > button').style.display='inline-flex';">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Danger Zone</h2>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+        Only the workspace owner can delete this workspace.
+    </p>
+    <button class="btn btn-danger" disabled title="Only the owner can delete the workspace">
+        Delete Workspace
+    </button>
+</div>
+{% endif %}
 {% endblock %}

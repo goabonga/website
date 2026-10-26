@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Deletion Cancelled{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Deletion Cancelled</h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <div style="padding: 32px;">
+        <div style="font-size: 48px; margin-bottom: 24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-green);">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        </div>
+
+        <h2 style="margin-bottom: 16px;">Workspace Deletion Cancelled</h2>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            Your workspace <strong>"{{ workspace_name }}"</strong> will not be deleted.
+        </p>
+
+        {% if subscription_reactivated %}
+        <div style="background-color: rgba(63, 185, 80, 0.1); border: 1px solid var(--accent-green); border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
+            <p style="color: var(--text-primary); margin: 0 0 8px 0; font-weight: 500;">
+                What happens now:
+            </p>
+            <ul style="color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                <li>Your subscription has been reactivated</li>
+                <li>Normal billing will resume at the next billing cycle</li>
+                <li>All your collections and documents are preserved</li>
+                <li>You can continue using your workspace as usual</li>
+            </ul>
+        </div>
+        {% else %}
+        <div style="background-color: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent-blue); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: var(--text-primary); margin: 0;">
+                Your workspace has been preserved. If you had an active subscription, please contact support to verify your billing status.
+            </p>
+        </div>
+        {% endif %}
+
+        <a href="/dashboard" class="btn btn-primary">
+            Go to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

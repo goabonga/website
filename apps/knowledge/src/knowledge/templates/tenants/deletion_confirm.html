@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Workspace Deletion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 style="color: var(--accent-red);">Confirm Workspace Deletion</h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; border-color: var(--accent-red);">
+    <div style="padding: 32px; text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 24px; color: var(--accent-red);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                <line x1="10" x2="10" y1="11" y2="17"/>
+                <line x1="14" x2="14" y1="11" y2="17"/>
+            </svg>
+        </div>
+
+        <h2 style="margin-bottom: 16px;">Are you sure?</h2>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            You are about to permanently delete the workspace:
+        </p>
+
+        <p style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 24px;">
+            "{{ workspace_name }}"
+        </p>
+
+        <div style="background-color: rgba(248, 81, 73, 0.1); border: 1px solid var(--accent-red); border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
+            <p style="color: var(--text-primary); margin: 0 0 8px 0; font-weight: 500;">
+                This action will permanently delete:
+            </p>
+            <ul style="color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                <li>All collections in this workspace</li>
+                <li>All documents and their embeddings</li>
+                <li>All member access and invitations</li>
+            </ul>
+        </div>
+
+        <form method="post" action="/organizations/delete/confirm/{{ deletion_request.token }}">
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <a href="/dashboard" class="btn btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    Yes, Delete Workspace
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

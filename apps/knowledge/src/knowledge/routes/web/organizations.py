@@ -25,10 +25,17 @@ from knowledge.models import (
     Organization,
     OrganizationInvitation,
     OrganizationMember,
+    WorkspaceDeletionRequest,
 )
 from knowledge.models.enums import InvitationStatus, OrganizationMemberRole
+from knowledge.models.workspace_deletion_request import DeletionRequestStatus
 from knowledge.services.billing import BillingAPIError, checkout_redirect_urls, get_billing_client
 from knowledge.services.quotas import QuotaService
+from knowledge.tasks import (
+    send_workspace_deleted_email,
+    send_workspace_deletion_email,
+    send_workspace_deletion_scheduled_email,
+)
 from knowledge.templating import create_templates
 
 logger = get_logger(__name__)
@@ -435,6 +442,495 @@ async def update_organization_settings(
     await db.commit()
 
     return RedirectResponse(url="/organizations/settings", status_code=302)
+
+
+@router.post("/delete", response_class=HTMLResponse)
+async def delete_organization(
+    request: Request,
+    confirmation_name: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Request workspace deletion - sends confirmation email."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    # Only owner can delete
+    if not auth_result.is_tenant_owner:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:owner",
+            },
+            status_code=403,
+        )
+
+    organization = auth_result.tenant
+    user = auth_result.user
+
+    # Verify confirmation matches organization name
+    if confirmation_name.strip() != organization.name:
+        # Get usage stats for re-rendering the page
+        quota_service = QuotaService(db)
+        usage_stats = await quota_service.get_usage(organization.id)
+
+        return templates.TemplateResponse(
+            request,
+            "tenants/settings.html",
+            {
+                **(await _get_common_context(request, db, auth_result, "organization_settings")),
+                "usage_stats": usage_stats,
+                "delete_error": "Organization name does not match. Please type the exact name to confirm deletion.",
+            },
+        )
+
+    # Cancel any existing pending deletion requests for this organization
+    result = await db.execute(
+        select(WorkspaceDeletionRequest).where(
+            WorkspaceDeletionRequest.organization_id == organization.id,
+            WorkspaceDeletionRequest.status == DeletionRequestStatus.PENDING,
+        )
+    )
+    existing_requests = result.scalars().all()
+    for req in existing_requests:
+        req.cancel()
+
+    # Create new deletion request
+    deletion_request = WorkspaceDeletionRequest(
+        organization_id=organization.id,
+        requested_by=user.id,
+        email=user.email,
+        token=WorkspaceDeletionRequest.generate_token(),
+        expires_at=WorkspaceDeletionRequest.default_expiry(),
+    )
+    db.add(deletion_request)
+    await db.commit()
+    await db.refresh(deletion_request)
+
+    # Build confirmation URL
+    settings = get_settings()
+    base_url = settings.app_base_url.rstrip("/")
+    confirmation_url = f"{base_url}/organizations/delete/confirm/{deletion_request.token}"
+
+    # Send confirmation email
+    send_workspace_deletion_email.delay(
+        to=user.email,
+        workspace_name=organization.name,
+        confirmation_url=confirmation_url,
+        year=datetime.now(UTC).year,
+    )
+
+    logger.info(
+        "Workspace deletion requested | org_id=%s user_id=%s email=%s",
+        organization.id,
+        user.id,
+        user.email,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/deletion_requested.html",
+        {
+            **(await _get_common_context(request, db, auth_result, "organization_settings")),
+            "email": user.email,
+            "workspace_name": organization.name,
+            "expires_at": deletion_request.expires_at,
+        },
+    )
+
+
+@router.get("/delete/confirm/{token}", response_class=HTMLResponse)
+async def confirm_deletion_page(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Show workspace deletion confirmation page (from email link)."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    ctx = await _get_common_context(request, db, auth_result, "organization_settings")
+
+    result = await db.execute(
+        select(WorkspaceDeletionRequest).where(WorkspaceDeletionRequest.token == token)
+    )
+    deletion_request = result.scalar_one_or_none()
+
+    if not deletion_request:
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Deletion request not found",
+                "error_detail": "This deletion link is invalid or has already been used.",
+            },
+        )
+
+    # Check if expired
+    if deletion_request.is_expired:
+        if deletion_request.status == DeletionRequestStatus.PENDING:
+            deletion_request.mark_expired()
+            await db.commit()
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Deletion request expired",
+                "error_detail": "This deletion link has expired. Please request a new deletion from the workspace settings.",
+            },
+        )
+
+    # Check if already processed
+    if deletion_request.status != DeletionRequestStatus.PENDING:
+        status_messages = {
+            DeletionRequestStatus.CONFIRMED: "This workspace has already been deleted.",
+            DeletionRequestStatus.CANCELLED: "This deletion request was cancelled.",
+            DeletionRequestStatus.EXPIRED: "This deletion link has expired.",
+        }
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": f"Deletion request {deletion_request.status.value}",
+                "error_detail": status_messages.get(
+                    deletion_request.status,
+                    "This deletion request is no longer valid.",
+                ),
+            },
+        )
+
+    # Get organization details
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == deletion_request.organization_id)
+    )
+    organization: Organization | None = org_result.scalar_one_or_none()
+
+    if not organization:
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Workspace not found",
+                "error_detail": "The workspace associated with this deletion request no longer exists.",
+            },
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/deletion_confirm.html",
+        {
+            **ctx,
+            "deletion_request": deletion_request,
+            "organization": organization,
+            "workspace_name": organization.name,
+            "expires_at": deletion_request.expires_at,
+        },
+    )
+
+
+@router.post("/delete/confirm/{token}", response_class=HTMLResponse)
+async def execute_deletion(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Execute workspace deletion after email confirmation."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    ctx = await _get_common_context(request, db, auth_result, "organization_settings")
+
+    result = await db.execute(
+        select(WorkspaceDeletionRequest).where(WorkspaceDeletionRequest.token == token)
+    )
+    deletion_request = result.scalar_one_or_none()
+
+    if not deletion_request:
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Deletion request not found",
+                "error_detail": "This deletion link is invalid or has already been used.",
+            },
+        )
+
+    # Check if valid (pending and not expired)
+    if not deletion_request.is_valid:
+        if deletion_request.is_expired and deletion_request.status == DeletionRequestStatus.PENDING:
+            deletion_request.mark_expired()
+            await db.commit()
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Deletion request invalid",
+                "error_detail": "This deletion link is no longer valid. It may have expired or been cancelled.",
+            },
+        )
+
+    # Get organization
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == deletion_request.organization_id)
+    )
+    organization: Organization | None = org_result.scalar_one_or_none()
+
+    if not organization:
+        deletion_request.cancel()
+        await db.commit()
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Workspace not found",
+                "error_detail": "The workspace has already been deleted or no longer exists.",
+            },
+        )
+
+    workspace_name = organization.name
+    org_id = organization.id
+
+    # Check if organization has an active paid subscription
+    billing_client = get_billing_client()
+    subscription = None
+    if billing_client.is_configured:
+        try:
+            subscription = await billing_client.get_tenant_subscription(str(org_id))
+        except Exception as e:
+            logger.warning(f"Failed to get subscription for org {org_id}: {e}")
+
+    # If there's an active subscription with a future period end, schedule deletion
+    if (
+        subscription
+        and subscription.status in ("active", "trialing")
+        and subscription.current_period_end
+        and subscription.current_period_end > datetime.now(UTC)
+    ):
+        # Cancel the subscription at period end
+        cancel_result = await billing_client.cancel_subscription(
+            subscription_id=subscription.id,
+            cancel_at_period_end=True,
+        )
+
+        if cancel_result.success:
+            # Schedule deletion for end of billing period
+            scheduled_date = subscription.current_period_end
+            deletion_request.schedule(
+                deletion_date=scheduled_date,
+                subscription_cancelled=True,
+            )
+            await db.commit()
+
+            # Send scheduled deletion email
+            send_workspace_deletion_scheduled_email.delay(
+                to=deletion_request.email,
+                workspace_name=workspace_name,
+                deletion_date=scheduled_date.strftime("%B %d, %Y at %H:%M UTC"),
+                year=datetime.now(UTC).year,
+            )
+
+            logger.info(
+                "Workspace deletion scheduled | org_id=%s org_name=%s user_id=%s scheduled_at=%s",
+                org_id,
+                workspace_name,
+                deletion_request.requested_by,
+                scheduled_date.isoformat(),
+            )
+
+            return templates.TemplateResponse(
+                request,
+                "tenants/deletion_scheduled.html",
+                {
+                    **ctx,
+                    "workspace_name": workspace_name,
+                    "scheduled_deletion_at": scheduled_date,
+                    "subscription_cancelled": True,
+                },
+            )
+        else:
+            # Cancellation failed, log but continue with immediate deletion
+            logger.error(
+                "Failed to cancel subscription for org %s: %s",
+                org_id,
+                cancel_result.error,
+            )
+
+    # No active paid subscription or cancellation failed - delete immediately
+    deletion_request.confirm()
+    user_email = deletion_request.email
+
+    # Delete the organization (cascade will handle collections, documents, members, invitations)
+    await db.delete(organization)
+    await db.commit()
+
+    # Send deletion confirmation email
+    settings = get_settings()
+    support_url = settings.support_url
+    send_workspace_deleted_email.delay(
+        to=user_email,
+        workspace_name=workspace_name,
+        support_url=support_url,
+        year=datetime.now(UTC).year,
+    )
+
+    logger.info(
+        "Workspace deleted via email confirmation | org_id=%s org_name=%s user_id=%s",
+        org_id,
+        workspace_name,
+        deletion_request.requested_by,
+    )
+
+    # Check if user has remaining workspaces
+    result = await db.execute(
+        select(OrganizationMember)
+        .where(OrganizationMember.user_id == deletion_request.requested_by)
+        .limit(1)
+    )
+    has_remaining_workspaces = result.scalar_one_or_none() is not None
+
+    if has_remaining_workspaces:
+        # User still has workspaces, redirect to dashboard
+        response = RedirectResponse(url="/dashboard?deleted=true", status_code=302)
+        response.delete_cookie(
+            ACTIVE_TENANT_COOKIE,
+            path="/",
+            samesite="lax",
+        )
+        return response
+    else:
+        # No remaining workspaces, log the user out
+        return RedirectResponse(url="/auth/logout?redirect=/", status_code=302)
+
+
+@router.get("/delete/cancel/{cancel_token}", response_class=HTMLResponse)
+async def cancel_scheduled_deletion(
+    request: Request,
+    cancel_token: str,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Cancel a scheduled workspace deletion and reactivate subscription."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    ctx = await _get_common_context(request, db, auth_result, "organization_settings")
+
+    result = await db.execute(
+        select(WorkspaceDeletionRequest).where(
+            WorkspaceDeletionRequest.cancel_token == cancel_token
+        )
+    )
+    deletion_request = result.scalar_one_or_none()
+
+    if not deletion_request:
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Cancellation link not found",
+                "error_detail": "This cancellation link is invalid or has already been used.",
+            },
+        )
+
+    # Check if still scheduled
+    if deletion_request.status != DeletionRequestStatus.SCHEDULED:
+        status_messages = {
+            DeletionRequestStatus.CONFIRMED: "This workspace has already been deleted.",
+            DeletionRequestStatus.CANCELLED: "This deletion has already been cancelled.",
+            DeletionRequestStatus.PENDING: "This deletion request is still pending confirmation.",
+            DeletionRequestStatus.EXPIRED: "This deletion request has expired.",
+        }
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": f"Cannot cancel - status: {deletion_request.status.value}",
+                "error_detail": status_messages.get(
+                    deletion_request.status,
+                    "This deletion request is no longer valid.",
+                ),
+            },
+        )
+
+    # Get organization
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == deletion_request.organization_id)
+    )
+    organization: Organization | None = org_result.scalar_one_or_none()
+
+    if not organization:
+        deletion_request.cancel()
+        await db.commit()
+        return templates.TemplateResponse(
+            request,
+            "tenants/deletion_error.html",
+            {
+                **ctx,
+                "error": "Workspace not found",
+                "error_detail": "The workspace has already been deleted.",
+            },
+        )
+
+    workspace_name = organization.name
+    org_id = organization.id
+
+    # Try to reactivate the subscription if it was cancelled
+    reactivation_success = False
+    if deletion_request.subscription_cancelled:
+        billing_client = get_billing_client()
+        if billing_client.is_configured:
+            try:
+                subscription = await billing_client.get_tenant_subscription(str(org_id))
+                if subscription and subscription.cancel_at_period_end:
+                    reactivate_result = await billing_client.reactivate_subscription(
+                        subscription_id=subscription.id,
+                    )
+                    reactivation_success = reactivate_result.success
+                    if not reactivation_success:
+                        logger.error(
+                            "Failed to reactivate subscription for org %s: %s",
+                            org_id,
+                            reactivate_result.error,
+                        )
+            except Exception as e:
+                logger.error(f"Failed to reactivate subscription for org {org_id}: {e}")
+
+    # Cancel the deletion request
+    deletion_request.cancel()
+    await db.commit()
+
+    logger.info(
+        "Scheduled workspace deletion cancelled | org_id=%s org_name=%s subscription_reactivated=%s",
+        org_id,
+        workspace_name,
+        reactivation_success,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/deletion_cancelled.html",
+        {
+            **ctx,
+            "workspace_name": workspace_name,
+            "subscription_reactivated": reactivation_success,
+        },
+    )
 
 
 @router.get("/members", response_class=HTMLResponse)

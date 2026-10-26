@@ -124,7 +124,7 @@ def _create_jwt_claims(user: User) -> dict:
     }
 
 
-def _setup_auth_mocks(user: User):
+def _setup_auth_mocks(user: User, claims: dict | None = None):
     """Set up authentication mocks for a given user.
 
     Patches jwks_manager, introspection_client, and token_exchange_client
@@ -134,7 +134,7 @@ def _setup_auth_mocks(user: User):
     Returns:
         Tuple of patchers that must be stopped.
     """
-    claims = _create_jwt_claims(user)
+    claims = claims if claims is not None else _create_jwt_claims(user)
 
     jwks_patcher = patch("billing.auth.dependencies.jwks_manager")
     introspection_patcher = patch("billing.auth.dependencies.introspection_client")
@@ -171,6 +171,58 @@ class AllowAllGuard(PartitionGuard):
 
     async def authorized_saas_ids(self, auth, db):
         return None
+
+
+@pytest_asyncio.fixture
+async def partitioned_client_factory(mock_db_session):
+    """Build clients that go through the real partition guard.
+
+    ``await factory(client_id, scopes)`` returns an authenticated client whose
+    token carries the given OAuth client id and scopes (``client_id=None``
+    gives a token without client claim). The guard is not overridden: its
+    binding query is the first ``execute`` of the mocked database session for
+    every route that targets a SaaS application. Calling the factory again
+    replaces the identity of the token.
+    """
+    opened: list[AsyncClient] = []
+    active: list = []
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async def factory(client_id: str | None, scopes: list[str]) -> AsyncClient:
+        for patcher in active:
+            patcher.stop()
+        user = User(
+            id=uuid4(),
+            email="partition@example.com",
+            name="Partition User",
+            scopes=scopes,
+            is_machine_client=False,
+            client_id=client_id,
+        )
+        claims = _create_jwt_claims(user)
+        if client_id is None:
+            claims.pop("client_id")
+        active[:] = _setup_auth_mocks(user, claims)
+        test_client = AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer mock.jwt.token"},
+        )
+        opened.append(test_client)
+        return test_client
+
+    try:
+        yield factory
+    finally:
+        for test_client in opened:
+            await test_client.aclose()
+        for patcher in active:
+            patcher.stop()
+        app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture

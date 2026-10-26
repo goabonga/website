@@ -3,7 +3,7 @@
 
 """Tests for billing/auth/models.py."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from billing.auth.models import User
@@ -264,3 +264,20 @@ class TestUserHasAllScopes:
     def test_wildcard_covers_all(self):
         user = User(id="u1", scopes=["resource:*"])
         assert user.has_all_scopes(["resource:read", "resource:write"]) is True
+
+
+class TestUserClientFromAzp:
+    """User tokens identify their client with ``azp`` when there is no ``client_id`` claim."""
+
+    def test_azp_is_used_when_client_id_is_absent(self):
+        user = User.from_jwt_claims({"sub": str(uuid4()), "azp": "web-app", "scope": ""})
+
+        assert user.client_id == "web-app"
+        assert user.is_machine_client is False
+
+    def test_client_id_wins_over_azp(self):
+        user = User.from_jwt_claims(
+            {"sub": str(uuid4()), "client_id": "api-client", "azp": "web-app", "scope": ""}
+        )
+
+        assert user.client_id == "api-client"

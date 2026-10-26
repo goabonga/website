@@ -743,3 +743,121 @@ class TestModuleLevelOAuth2Scheme:
         from billing.auth.dependencies import oauth2_scheme
 
         assert callable(oauth2_scheme)
+
+
+# ---------------------------------------------------------------------------
+# Identity of the caller (used by the partitioning of the API)
+# ---------------------------------------------------------------------------
+
+
+class TestCallerIdentity:
+    """The OAuth client of the caller is read from the token it presented."""
+
+    @pytest.mark.asyncio
+    async def test_exchange_path_uses_the_presented_token_not_the_exchanged_one(self):
+        """The exchanged token belongs to this service's own client."""
+        uid = str(uuid4())
+        dep = require_scopes("resource:read")
+        exchange_result = {
+            "access_token": "new",
+            "scope": "resource:read",
+            "claims": {"sub": uid, "scope": "resource:read", "client_id": "billing-own-client"},
+        }
+        presented = {
+            "sub": uid,
+            "scope": "resource:read billing:admin",
+            "client_id": "caller-client",
+        }
+        with (
+            patch("billing.auth.dependencies.settings") as mock_settings,
+            patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
+            patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+            patch("billing.auth.dependencies.introspection_client") as mock_intro,
+            patch("billing.auth.dependencies.set_request_context"),
+        ):
+            mock_settings.oauth2_client_id = "billing-own-client"
+            mock_jwks.is_configured = True
+            mock_tex.is_configured = True
+            mock_tex.validate_token_scopes = AsyncMock(return_value=exchange_result)
+            mock_intro.validate_token_with_introspection = AsyncMock(return_value=presented)
+
+            auth = await dep(request=MagicMock(), token="header.payload.signature")
+
+        assert auth.client_id == "caller-client"
+        assert auth.user.scopes == ["resource:read"]
+        assert auth.token_scopes == ["resource:read", "billing:admin"]
+        assert auth.has_token_scope("billing:admin") is True
+
+    @pytest.mark.asyncio
+    async def test_exchange_path_refuses_a_token_that_cannot_be_introspected(self):
+        dep = require_scopes("resource:read")
+        exchange_result = {"access_token": "new", "scope": "resource:read", "claims": {"sub": "u"}}
+        with (
+            patch("billing.auth.dependencies.settings"),
+            patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
+            patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+            patch("billing.auth.dependencies.introspection_client") as mock_intro,
+        ):
+            mock_jwks.is_configured = True
+            mock_tex.is_configured = True
+            mock_tex.validate_token_scopes = AsyncMock(return_value=exchange_result)
+            mock_intro.validate_token_with_introspection = AsyncMock(side_effect=Exception("down"))
+
+            with pytest.raises(HTTPException) as exc_info:
+                await dep(request=MagicMock(), token="header.payload.signature")
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_direct_validation_reads_client_id_then_azp(self):
+        uid = str(uuid4())
+        dep = require_scopes("resource:read")
+        for claims, expected in (
+            ({"sub": uid, "scope": "resource:read", "client_id": "machine"}, "machine"),
+            ({"sub": uid, "scope": "resource:read", "azp": "web-app"}, "web-app"),
+            ({"sub": uid, "scope": "resource:read"}, None),
+        ):
+            with (
+                patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
+                patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+                patch("billing.auth.dependencies.introspection_client") as mock_intro,
+                patch("billing.auth.dependencies.set_request_context"),
+            ):
+                mock_jwks.is_configured = True
+                mock_tex.is_configured = False
+                mock_intro.validate_token_with_introspection = AsyncMock(return_value=claims)
+
+                auth = await dep(request=MagicMock(), token="header.payload.signature")
+
+            assert auth.client_id == expected
+
+    @pytest.mark.asyncio
+    async def test_client_id_never_falls_back_to_this_services_own_client(self):
+        """A token without client claim stays anonymous even if a client id is configured."""
+        dep = require_scopes("resource:read")
+        claims = {"sub": str(uuid4()), "scope": "resource:read"}
+        with (
+            patch("billing.auth.dependencies.settings") as mock_settings,
+            patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
+            patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+            patch("billing.auth.dependencies.introspection_client") as mock_intro,
+            patch("billing.auth.dependencies.set_request_context"),
+        ):
+            mock_settings.oauth2_client_id = "billing-own-client"
+            mock_jwks.is_configured = True
+            mock_tex.is_configured = False
+            mock_intro.validate_token_with_introspection = AsyncMock(return_value=claims)
+
+            auth = await dep(request=MagicMock(), token="header.payload.signature")
+
+        assert auth.client_id is None
+
+    def test_auth_context_defaults_to_the_user(self):
+        user = User(id="u", scopes=["a", "b:*"], client_id="c")
+
+        context = AuthContext(user=user)
+
+        assert context.client_id == "c"
+        assert context.token_scopes == ["a", "b:*"]
+        assert context.has_token_scope("b:read") is True
+        assert context.has_token_scope("x") is False

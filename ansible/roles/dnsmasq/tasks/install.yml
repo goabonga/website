@@ -1,0 +1,16 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The dnsmasq role only supports Debian-family distributions.
+    quiet: true
+
+- name: Install dnsmasq
+  ansible.builtin.apt:
+    name: "{{ dnsmasq_packages }}"
+    state: present
+    update_cache: "{{ dnsmasq_apt_update_cache }}"
+    cache_valid_time: "{{ dnsmasq_apt_cache_valid_time }}"

@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Point the system resolver at dnsmasq
+  ansible.builtin.template:
+    src: resolv.conf.j2
+    dest: "{{ dnsmasq_resolv_conf_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: dnsmasq_manage_resolv_conf | bool

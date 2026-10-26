@@ -20,6 +20,15 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:read` | Get agent by ID |
 | PATCH | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:write` | Update agent configuration |
 | DELETE | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:write` | Delete an agent |
+| POST | `/platform/conversations` | scope `team:platform:write` | Create a new multi-agent conversation |
+| GET | `/platform/conversations` | scope `team:platform:read` | List all conversations |
+| GET | `/platform/conversations/{conversation_id}` | scope `team:platform:read` | Get conversation by ID |
+| POST | `/platform/conversations/{conversation_id}/agents/{agent_id}` | scope `team:platform:write` | Attach an agent to a conversation |
+| DELETE | `/platform/conversations/{conversation_id}` | scope `team:platform:write` | Delete a conversation |
+| POST | `/platform/conversations/{conversation_id}/messages` | scope `team:write` | Post a message inside a conversation |
+| GET | `/platform/conversations/{conversation_id}/messages` | scope `team:read` | List messages for a conversation |
+| GET | `/platform/{team_id}/conversations` | scope `team:platform:read` | List conversations for a team |
+| GET | `/platform/{team_id}/conversations/count` | scope `team:platform:read` | Get conversation count for a team |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -27,8 +36,10 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `team:platform:write` - checked by 6 routes
-- `team:platform:read` - checked by 4 routes
+- `team:platform:write` - checked by 9 routes
+- `team:platform:read` - checked by 8 routes
+- `team:write` - checked by 1 route
+- `team:read` - checked by 1 route
 
 ## Development
 

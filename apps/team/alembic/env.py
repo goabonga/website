@@ -19,6 +19,9 @@ from team.config import get_settings
 from team.models import (  # noqa: F401
     Agent,
     Base,
+    Conversation,
+    ConversationParticipant,
+    Message,
     Team,
 )
 

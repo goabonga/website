@@ -21,6 +21,8 @@ how it is tested with pytest and behave.
 5. [Documents](04-documents.md): document API and OpenAI embeddings.
 6. [Semantic search](05-search.md): vector similarity search over
    collections.
+7. [Collaborators and invitations](06-collaboration.md): sharing collections
+   with other users.
 
 ## Running the tests
 

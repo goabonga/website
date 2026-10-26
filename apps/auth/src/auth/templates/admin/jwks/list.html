@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}JWKS Keys{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>JWKS Key Management</h1>
+    <div style="display: flex; gap: 0.5rem;">
+        {% if permissions['jwks:rotate'] %}
+        <form method="post" action="/admin/jwks/rotate" style="display: inline;">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('This will generate a new key and activate it. Continue?')">
+                <span>&#8635;</span> Rotate Keys
+            </button>
+        </form>
+        {% endif %}
+        {% if permissions['jwks:write'] %}
+        <a href="/admin/jwks/generate" class="btn btn-primary">
+            <span>+</span> Generate New Key
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Active & Available Keys</h2>
+
+    {% if keys %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Key ID (kid)</th>
+                <th>Algorithm</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in keys %}
+            <tr>
+                <td>
+                    <a href="/admin/jwks/{{ key.kid }}" class="mono" style="color: #74b9ff; text-decoration: none;">
+                        {{ key.kid[:16] }}...
+                    </a>
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ key.alg }}</span>
+                </td>
+                <td>
+                    {% if key.revoked_at %}
+                    <span class="badge badge-danger">Revoked</span>
+                    {% elif key.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted">
+                    {{ key.created_at[:10] if key.created_at else 'N/A' }}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/jwks/{{ key.kid }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if not key.revoked_at %}
+                            {% if permissions['jwks:write'] and not key.is_active %}
+                            <form method="post" action="/admin/jwks/{{ key.kid }}/activate" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                            </form>
+                            {% endif %}
+                            {% if permissions['jwks:revoke'] %}
+                            <form method="post" action="/admin/jwks/{{ key.kid }}/revoke" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke this key? Tokens signed with it will remain valid until expiry.')">Revoke</button>
+                            </form>
+                            {% endif %}
+                        {% else %}
+                            {% if permissions['jwks:delete'] %}
+                            <form method="post" action="/admin/jwks/{{ key.kid }}/delete" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Permanently delete this key? This cannot be undone.')">Delete</button>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128273;</p>
+        <p>No JWKS keys found.</p>
+        <p class="text-muted">Generate a new key to get started.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>About JWKS</h2>
+    <p class="text-muted" style="line-height: 1.6;">
+        JSON Web Key Set (JWKS) contains the public keys used to verify JWT signatures.
+        The <strong>active key</strong> is used to sign new tokens.
+        <strong>Inactive keys</strong> can be activated when needed.
+        <strong>Revoked keys</strong> remain in the JWKS for a grace period to allow existing tokens to be verified.
+    </p>
+</div>
+{% endblock %}

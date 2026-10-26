@@ -1,0 +1,134 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Scope: {{ scope.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Scope Details</h1>
+    <a href="/admin/scopes" class="btn btn-secondary">
+        &larr; Back to Scopes
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h2 style="margin-bottom: 0.5rem;">{{ scope.name }}</h2>
+            <p class="text-muted">{{ scope.description or 'No description' }}</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if not scope.is_system %}
+            {% if permissions['scopes:write'] %}
+            <form method="post" action="/admin/scopes/{{ scope.id }}/toggle">
+                <button type="submit" class="btn {% if scope.is_active %}btn-warning{% else %}btn-success{% endif %} btn-sm">
+                    {% if scope.is_active %}Disable{% else %}Enable{% endif %}
+                </button>
+            </form>
+            {% endif %}
+            {% if permissions['scopes:delete'] %}
+            <form method="post" action="/admin/scopes/{{ scope.id }}/delete" style="display: inline;">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this scope?')">Delete</button>
+            </form>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Resource</p>
+            <p class="mono">{{ scope.resource }}</p>
+        </div>
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Action</p>
+            <p class="mono">{{ scope.action }}</p>
+        </div>
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Category</p>
+            {% if scope.category == 'admin' %}
+            <span class="badge badge-info">{{ scope.category }}</span>
+            {% elif scope.category == 'api' %}
+            <span class="badge badge-success">{{ scope.category }}</span>
+            {% else %}
+            <span class="badge badge-secondary">{{ scope.category }}</span>
+            {% endif %}
+        </div>
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Status</p>
+            {% if scope.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Inactive</span>
+            {% endif %}
+            {% if scope.is_system %}
+            <span class="badge badge-warning">System</span>
+            {% endif %}
+        </div>
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Created</p>
+            <p>{{ scope.created_at[:10] if scope.created_at else '-' }}</p>
+        </div>
+        <div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Roles</p>
+            <span class="badge badge-info">{{ scope.role_count }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Assigned Roles ({{ scope.roles|length }})</h2>
+
+    {% if scope.roles %}
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in scope.roles %}
+            <tr>
+                <td>
+                    <a href="/admin/roles/{{ role.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ role.name }}
+                    </a>
+                </td>
+                <td class="text-muted">{{ role.description or '-' }}</td>
+                <td>
+                    {% if role.is_system %}
+                    <span class="badge badge-warning">System</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Custom</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/admin/roles/{{ role.id }}" class="btn btn-secondary btn-sm">View Role</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem;">
+        <p class="text-muted">No roles have this scope assigned.</p>
+        <p class="text-muted" style="font-size: 0.85rem;">Assign this scope to roles from the <a href="/admin/roles" style="color: #74b9ff;">Roles page</a>.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>Scope ID</h2>
+    <p class="mono text-muted" style="margin-top: 0.5rem;">{{ scope.id }}</p>
+</div>
+{% endblock %}

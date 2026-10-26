@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create Role{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Create New Role</h1>
+    <a href="/admin/roles" class="btn btn-secondary">
+        <span>&larr;</span> Back to Roles
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Role Details</h2>
+
+    <form method="post" action="/admin/roles/create" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="name">Role Name *</label>
+            <input type="text" name="name" id="name" class="form-control" required style="max-width: 400px;" pattern="[a-z0-9_-]+" title="Lowercase letters, numbers, underscores, and hyphens only">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Use lowercase letters, numbers, underscores, and hyphens (e.g., "content_admin").
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" class="form-control" style="max-width: 500px;">
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                A brief description of what this role is for.
+            </p>
+        </div>
+
+        <div style="border-top: 1px solid #0f3460; margin: 1.5rem 0; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Scopes</h3>
+            <p class="text-muted" style="margin-bottom: 1rem;">
+                Select the permissions this role should have. Use wildcards (e.g., users:*) for full access to a resource.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                {% for scope, description in available_scopes.items() %}
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid #0f3460; border-radius: 8px;">
+                    <input type="checkbox" name="scopes" value="{{ scope }}" style="width: 18px; height: 18px; margin-top: 2px;">
+                    <div>
+                        <div class="mono" style="font-size: 0.9rem;">{{ scope }}</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">{{ description }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Wildcard Scopes</h4>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    Or enter wildcard scopes manually (comma-separated):
+                </p>
+                <input type="text" name="wildcard_scopes" id="wildcard_scopes" class="form-control" placeholder="e.g., users:*, sessions:*" style="max-width: 400px;">
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    Use <code>*</code> for full access to everything, or <code>resource:*</code> for full access to a specific resource.
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#128101;</span> Create Role
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Scope Patterns</h2>
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Pattern</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="mono">*</td>
+                <td class="text-muted">Full access to everything (super admin)</td>
+            </tr>
+            <tr>
+                <td class="mono">users:*</td>
+                <td class="text-muted">All user operations (read, write, delete)</td>
+            </tr>
+            <tr>
+                <td class="mono">clients:*</td>
+                <td class="text-muted">All client operations (read, write, delete, rotate)</td>
+            </tr>
+            <tr>
+                <td class="mono">sessions:*</td>
+                <td class="text-muted">All session operations (read, revoke)</td>
+            </tr>
+            <tr>
+                <td class="mono">jwks:*</td>
+                <td class="text-muted">All JWKS operations (read, write, rotate)</td>
+            </tr>
+            <tr>
+                <td class="mono">roles:*</td>
+                <td class="text-muted">All role operations (read, write, delete)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

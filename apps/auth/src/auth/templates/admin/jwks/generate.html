@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Generate New Key{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Generate New JWKS Key</h1>
+    <a href="/admin/jwks" class="btn btn-secondary">
+        <span>&larr;</span> Back to Keys
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Key Generation Options</h2>
+
+    <form method="post" action="/admin/jwks/generate" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="key_size">Key Size (bits)</label>
+            <select name="key_size" id="key_size" class="form-control" style="max-width: 200px;">
+                <option value="2048">2048 (Standard)</option>
+                <option value="3072">3072 (Enhanced)</option>
+                <option value="4096">4096 (Maximum)</option>
+            </select>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Larger keys provide more security but slower signing operations.
+                2048-bit is recommended for most use cases.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="activate" value="true" style="width: 18px; height: 18px;">
+                <span>Activate immediately</span>
+            </label>
+            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                If checked, this key will become the active signing key immediately.
+                The current active key will be deactivated.
+            </p>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span>&#128273;</span> Generate Key
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Key Generation Info</h2>
+    <ul style="margin-top: 1rem; line-height: 1.8; color: #a0a0a0;">
+        <li>Keys are generated as RSA key pairs with RS256 algorithm</li>
+        <li>Private keys are encrypted with AES-256-GCM before storage</li>
+        <li>Public keys are exposed via the <code class="mono" style="color: #74b9ff;">/.well-known/jwks.json</code> endpoint</li>
+        <li>Only one key can be active at a time for signing</li>
+        <li>Inactive keys can be activated later when needed</li>
+    </ul>
+</div>
+{% endblock %}

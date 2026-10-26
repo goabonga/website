@@ -1,0 +1,262 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User {{ user.email }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>User Details</h1>
+    <a href="/admin/users" class="btn btn-secondary">
+        <span>&larr;</span> Back to Users
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>User Information</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">User ID</div>
+        <div class="mono">{{ user.id }}</div>
+
+        <div class="text-muted">Email</div>
+        <div>
+            {{ user.email or 'No email' }}
+            {% if user.email_verified %}
+            <span class="badge badge-success" style="margin-left: 0.5rem;">Verified</span>
+            {% else %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">Not verified</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if user.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Name</div>
+        <div>{{ user.profile.name if user.profile and user.profile.name else '-' }}</div>
+
+        <div class="text-muted">Nickname</div>
+        <div>{{ user.profile.nickname if user.profile and user.profile.nickname else '-' }}</div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ user.created_at[:19] if user.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Updated</div>
+        <div>{{ user.updated_at[:19] if user.updated_at else 'N/A' }}</div>
+    </div>
+</div>
+
+{% if (user.registration_source and user.registration_source != 'direct') or user.registration_tenant_id %}
+<div class="admin-card">
+    <h2>Registration Context</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Source</div>
+        <div>
+            {% if user.registration_source == 'api' %}
+            <span class="badge badge-info">API</span>
+            {% elif user.registration_source == 'oauth' %}
+            <span class="badge badge-info">OAuth</span>
+            {% elif user.registration_source == 'direct' %}
+            <span class="badge badge-secondary">Direct</span>
+            {% else %}
+            <span class="badge badge-secondary">{{ user.registration_source or 'Unknown' }}</span>
+            {% endif %}
+        </div>
+
+        {% if user.registration_client_name %}
+        <div class="text-muted">Client</div>
+        <div>
+            {{ user.registration_client_name }}
+            {% if user.registration_client_id %}
+            <span class="text-muted mono" style="margin-left: 0.5rem; font-size: 0.85em;">({{ user.registration_client_id }})</span>
+            {% endif %}
+        </div>
+        {% elif user.registration_client_id %}
+        <div class="text-muted">Client ID</div>
+        <div class="mono">{{ user.registration_client_id }}</div>
+        {% endif %}
+
+        <div class="text-muted">Organisation</div>
+        <div>
+            {% if user.registration_tenant_name %}
+            {{ user.registration_tenant_name }}
+            <a href="/admin/organisations/{{ user.registration_tenant_id }}" style="color: #74b9ff; text-decoration: none; margin-left: 0.5rem;">View</a>
+            {% elif user.registration_tenant_id %}
+            <span class="mono">{{ user.registration_tenant_id[:8] }}...</span>
+            <a href="/admin/organisations/{{ user.registration_tenant_id }}" style="color: #74b9ff; text-decoration: none; margin-left: 0.5rem;">View</a>
+            {% else %}
+            <span class="text-muted">Main domain (no tenant)</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Security</h2>
+
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">MFA (TOTP)</div>
+        <div>
+            {% if user.mfa and user.mfa.totp_enabled %}
+            <span class="badge badge-success">Enabled</span>
+            {% if user.mfa.totp_enabled_at %}
+            <span class="text-muted" style="margin-left: 0.5rem;">since {{ user.mfa.totp_enabled_at[:10] }}</span>
+            {% endif %}
+            {% else %}
+            <span class="badge badge-warning">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Backup Codes</div>
+        <div>
+            {% if user.mfa and user.mfa.backup_codes_remaining is defined %}
+            {{ user.mfa.backup_codes_remaining }} remaining
+            {% else %}
+            -
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Active Sessions</div>
+        <div>
+            {{ user.active_sessions }}
+            {% if user.active_sessions > 0 %}
+            <a href="/admin/sessions?user_id={{ user.id }}" style="color: #74b9ff; text-decoration: none; margin-left: 0.5rem;">View</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Organisations</h2>
+
+    {% if user.tenant_memberships and user.tenant_memberships|length > 0 %}
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Organisation</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Joined</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for membership in user.tenant_memberships %}
+            <tr>
+                <td>
+                    {% if membership.tenant_name %}
+                    {{ membership.tenant_name }}
+                    {% else %}
+                    <span class="mono">{{ membership.tenant_id[:8] }}...</span>
+                    {% endif %}
+                    <a href="/admin/organisations/{{ membership.tenant_id }}" style="color: #74b9ff; text-decoration: none; margin-left: 0.5rem;">View</a>
+                </td>
+                <td>{{ membership.role }}</td>
+                <td>
+                    {% if membership.tenant_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ membership.joined_at[:10] if membership.joined_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted" style="margin-top: 1rem;">No organisation memberships found.</p>
+    {% endif %}
+</div>
+
+{% if user.emails and user.emails|length > 1 %}
+<div class="admin-card">
+    <h2>Email Addresses</h2>
+
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Primary</th>
+                <th>Verified</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for email in user.emails %}
+            <tr>
+                <td>{{ email.email }}</td>
+                <td>
+                    {% if email.is_primary %}
+                    <span class="badge badge-info">Primary</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if email.is_verified %}
+                    <span class="badge badge-success">Yes</span>
+                    {% else %}
+                    <span class="badge badge-warning">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+        {% if permissions['users:write'] %}
+        <a href="/admin/users/{{ user.id }}/edit" class="btn btn-primary">
+            <span>&#9998;</span> Edit User
+        </a>
+        {% endif %}
+
+        {% if permissions['users:disable'] %}
+        {% if user.is_active %}
+        <form method="post" action="/admin/users/{{ user.id }}/disable">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Disable this user? They will not be able to log in.')">
+                <span>&#10005;</span> Disable User
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/users/{{ user.id }}/enable">
+            <button type="submit" class="btn btn-success">
+                <span>&#10003;</span> Enable User
+            </button>
+        </form>
+        {% endif %}
+        {% endif %}
+
+        {% if permissions['users:write'] and user.active_sessions > 0 %}
+        <form method="post" action="/admin/users/{{ user.id }}/revoke-sessions">
+            <button type="submit" class="btn btn-secondary" onclick="return confirm('Revoke all {{ user.active_sessions }} active session(s)? The user will be logged out.')">
+                <span>&#128274;</span> Revoke Sessions
+            </button>
+        </form>
+        {% endif %}
+
+        {% if permissions['users:delete'] %}
+        <form method="post" action="/admin/users/{{ user.id }}/delete">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this user? This action cannot be undone.')">
+                <span>&#128465;</span> Delete User
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

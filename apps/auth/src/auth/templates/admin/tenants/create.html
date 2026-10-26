@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create Tenant{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Create Tenant</h1>
+    <a href="/admin/organisations" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenants
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Tenant Information</h2>
+
+    <form method="post" action="/admin/organisations/create" style="margin-top: 1rem;">
+        <div class="form-group">
+            <label for="display_name">Display Name <span style="color: #e94560;">*</span></label>
+            <input type="text" id="display_name" name="display_name" class="form-control" required placeholder="Acme Corporation">
+            <small class="text-muted">The organization's display name shown to users.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="slug">Slug <span style="color: #e94560;">*</span></label>
+            <input type="text" id="slug" name="slug" class="form-control" required placeholder="acme" pattern="[a-z0-9][a-z0-9-]*[a-z0-9]|[a-z0-9]" style="text-transform: lowercase;">
+            <small class="text-muted">Used for subdomain access (e.g., <code>acme.&lt;base domain&gt;</code>) and path prefix (<code>/t/acme/...</code>). Only lowercase letters, numbers, and hyphens allowed.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="custom_domain">Custom Domain (optional)</label>
+            <input type="text" id="custom_domain" name="custom_domain" class="form-control" placeholder="login.acme.com">
+            <small class="text-muted">Optional CNAME domain. The tenant must configure DNS to point to this service.</small>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="is_active" value="true" checked style="width: auto;">
+                <span>Active</span>
+            </label>
+            <small class="text-muted" style="margin-left: 1.5rem;">Disabled tenants cannot be used for authentication.</small>
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Create Tenant</button>
+            <a href="/admin/organisations" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>After Creation</h2>
+    <p class="text-muted" style="line-height: 1.6;">
+        After creating the tenant, you can:
+    </p>
+    <ul class="text-muted" style="line-height: 1.8; padding-left: 1.5rem;">
+        <li>Add members (users who belong to this organization)</li>
+        <li>Configure identity providers (Google, GitHub, OIDC, SAML)</li>
+        <li>Set up custom domain DNS if using CNAME</li>
+    </ul>
+</div>
+{% endblock %}

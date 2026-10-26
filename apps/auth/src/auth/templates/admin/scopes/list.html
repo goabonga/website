@@ -1,0 +1,144 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Scopes{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Scope Management</h1>
+    {% if permissions['scopes:write'] %}
+    <a href="/admin/scopes/create" class="btn btn-primary">
+        <span>+</span> Create Scope
+    </a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Scopes ({{ total }})</h2>
+        <form method="get" action="/admin/scopes" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search by name..." class="form-control" style="width: 200px;">
+            <select name="category" class="form-control" style="width: 120px;" onchange="this.form.submit()">
+                <option value="">All categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+            <select name="is_active" class="form-control" style="width: 100px;" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active</option>
+                <option value="false" {% if is_active == 'false' %}selected{% endif %}>Inactive</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        </form>
+    </div>
+
+    {% if scopes %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Resource</th>
+                <th>Action</th>
+                <th>Category</th>
+                <th>Roles</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scope in scopes %}
+            <tr>
+                <td>
+                    <a href="/admin/scopes/{{ scope.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ scope.name }}
+                    </a>
+                </td>
+                <td class="mono">{{ scope.resource }}</td>
+                <td class="mono">{{ scope.action }}</td>
+                <td>
+                    {% if scope.category == 'admin' %}
+                    <span class="badge badge-info">{{ scope.category }}</span>
+                    {% elif scope.category == 'api' %}
+                    <span class="badge badge-success">{{ scope.category }}</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ scope.category }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ scope.role_count }}</span>
+                </td>
+                <td>
+                    {% if scope.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inactive</span>
+                    {% endif %}
+                    {% if scope.is_system %}
+                    <span class="badge badge-warning">System</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/scopes/{{ scope.id }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if permissions['scopes:delete'] and not scope.is_system %}
+                        <form method="post" action="/admin/scopes/{{ scope.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this scope? Roles will lose this permission.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/scopes?page={{ page - 1 }}&search={{ search }}&category={{ category }}&is_active={{ is_active or '' }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/scopes?page={{ page + 1 }}&search={{ search }}&category={{ category }}&is_active={{ is_active or '' }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128274;</p>
+        <p>No scopes found.</p>
+        <p class="text-muted">{% if search %}Try a different search term.{% else %}Create a new scope or seed default scopes.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Default Scopes</h2>
+        {% if permissions['scopes:write'] %}
+        <form method="post" action="/admin/scopes/seed">
+            <button type="submit" class="btn btn-secondary btn-sm">Seed Default Scopes</button>
+        </form>
+        {% endif %}
+    </div>
+    <p class="text-muted" style="margin-top: 1rem; line-height: 1.6;">
+        Default admin scopes follow the pattern <code>resource:action</code>:
+    </p>
+    <ul style="margin-top: 0.5rem; line-height: 1.8; color: #a0a0a0;">
+        <li><strong>users</strong> - read, write, delete, disable</li>
+        <li><strong>clients</strong> - read, write, delete, rotate</li>
+        <li><strong>sessions</strong> - read, revoke</li>
+        <li><strong>jwks</strong> - read, write, revoke, delete, rotate</li>
+        <li><strong>roles</strong> - read, write, delete, assign</li>
+    </ul>
+</div>
+{% endblock %}

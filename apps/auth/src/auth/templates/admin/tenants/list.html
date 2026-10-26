@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Tenants{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Tenant Management</h1>
+    {% if permissions['org:write'] %}
+    <a href="/admin/organisations/create" class="btn btn-primary">
+        <span>+</span> Create Tenant
+    </a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Tenants ({{ total }})</h2>
+        <form method="get" action="/admin/organisations" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search by slug, name, or domain..." class="form-control" style="width: 280px;">
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        </form>
+    </div>
+
+    {% if tenants %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Custom Domain</th>
+                <th>Members</th>
+                <th>IdPs</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tenant in tenants %}
+            <tr>
+                <td>
+                    <a href="/admin/organisations/{{ tenant.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ tenant.display_name }}
+                    </a>
+                    {% if tenant.is_platform %}
+                    <span class="badge badge-warning" style="margin-left: 0.5rem; font-size: 0.65rem;">Platform</span>
+                    {% endif %}
+                </td>
+                <td class="mono" style="font-size: 0.85rem;">{{ tenant.slug }}</td>
+                <td class="mono" style="font-size: 0.85rem;">{{ tenant.custom_domain or '-' }}</td>
+                <td>
+                    <span class="badge badge-info">{{ tenant.members_count }}</span>
+                </td>
+                <td>
+                    <span class="badge badge-secondary" style="background: #0f3460;">{{ tenant.idp_count }}</span>
+                </td>
+                <td>
+                    {% if tenant.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted">{{ tenant.created_at[:10] if tenant.created_at else 'N/A' }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if permissions['org:write'] %}
+                        {% if tenant.is_active %}
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/disable" style="display: inline;">
+                            <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Disable this tenant?')">Disable</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/admin/organisations/{{ tenant.id }}/enable" style="display: inline;">
+                            <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/organisations?page={{ page - 1 }}&search={{ search }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/organisations?page={{ page + 1 }}&search={{ search }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#127970;</p>
+        <p>No tenants found.</p>
+        <p class="text-muted">{% if search %}Try a different search term.{% else %}Create a new tenant to get started with multi-tenancy.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>About Multi-Tenancy</h2>
+    <p class="text-muted" style="line-height: 1.6;">
+        Tenants represent organizations or companies that use this authentication service.
+        Each tenant can have its own:
+    </p>
+    <ul class="text-muted" style="line-height: 1.8; margin-top: 0.5rem; padding-left: 1.5rem;">
+        <li><strong>Slug</strong> - Used for subdomain access (e.g., <code>acme.&lt;base domain&gt;</code>)</li>
+        <li><strong>Custom domain</strong> - Optional CNAME (e.g., <code>login.acme.com</code>)</li>
+        <li><strong>Members</strong> - Users belonging to this organization</li>
+        <li><strong>Identity providers</strong> - External IdPs like Google, GitHub, or OIDC providers</li>
+    </ul>
+</div>
+{% endblock %}

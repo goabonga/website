@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Allowed Scopes - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Allowed Scopes</h1>
+    <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenant
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>{{ tenant.display_name }}</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">
+        Configure which scopes this tenant can use when creating custom roles.
+        Unchecked scopes will not be available in the role editor. The wildcard scope (*) is always available for owners.
+    </p>
+</div>
+
+<form method="post" action="/admin/organisations/{{ tenant.id }}/allowed-scopes">
+    {% for category_name, resources in scope_groups.items() %}
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">{{ category_name }}</h3>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAll(true)">Select All</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAll(false)">Deselect All</button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            {% for resource_name, resource_scopes in resources.items() %}
+            <div style="border: 1px solid #0f3460; border-radius: 8px; padding: 1rem;">
+                <h4 style="margin: 0 0 0.75rem 0;">{{ resource_name }}</h4>
+                <div style="display: grid; gap: 0.4rem;">
+                    {% for scope, description in resource_scopes %}
+                    <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.35rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="allowed_scopes" value="{{ scope }}"
+                               {{ 'checked' if scope in current_allowed }}>
+                        <div>
+                            <code style="color: var(--primary-color);">{{ scope }}</code>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ description }}</div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+        {% if permissions['org:write'] %}
+        <button type="submit" class="btn btn-primary">Save Configuration</button>
+        {% endif %}
+        <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<script>
+function toggleAll(checked) {
+    document.querySelectorAll('input[name="allowed_scopes"]').forEach(cb => cb.checked = checked);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Client {{ client.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Client Details</h1>
+    <a href="/admin/clients" class="btn btn-secondary">
+        <span>&larr;</span> Back to Clients
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if new_secret %}
+<div class="alert alert-warning">
+    <strong>New Client Secret (copy now, won't be shown again):</strong>
+    <br>
+    <code class="mono" style="background: rgba(0,0,0,0.2); padding: 0.25rem 0.5rem; border-radius: 8px; user-select: all;">{{ new_secret }}</code>
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Client Information</h2>
+
+    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Name</div>
+        <div>{{ client.name }}</div>
+
+        <div class="text-muted">Client ID</div>
+        <div class="mono" style="word-break: break-all;">{{ client.client_id }}</div>
+
+        <div class="text-muted">Description</div>
+        <div>{{ client.description or '-' }}</div>
+
+        <div class="text-muted">Type</div>
+        <div>
+            {% if client.is_confidential %}
+            <span class="badge badge-info">Confidential</span>
+            {% else %}
+            <span class="badge badge-warning">Public</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if client.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Auth Method</div>
+        <div class="mono">{{ client.token_endpoint_auth_method }}</div>
+
+        <div class="text-muted">Organization</div>
+        <div>
+            {% if client.tenant_name %}
+            <a href="/admin/organisations/{{ client.tenant_id }}" style="color: #74b9ff; text-decoration: none;">{{ client.tenant_name }}</a>
+            {% else %}
+            <span class="text-muted">Global</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ client.created_at[:19] if client.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Updated</div>
+        <div>{{ client.updated_at[:19] if client.updated_at else 'N/A' }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Configuration</h2>
+
+    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Redirect URIs</div>
+        <div>
+            {% for uri in client.redirect_uris %}
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem; word-break: break-all;">{{ uri }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="text-muted">Allowed Scopes</div>
+        <div>
+            {% for scope in client.allowed_scopes %}
+            <span class="badge badge-info" style="margin-right: 0.25rem;">{{ scope }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="text-muted">Grant Types</div>
+        <div>
+            {% for grant in client.allowed_grant_types %}
+            <span class="badge badge-secondary" style="margin-right: 0.25rem; margin-bottom: 0.25rem; background: #0f3460;">{{ grant }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="text-muted">PKCE Required</div>
+        <div>
+            {% if client.require_pkce %}
+            <span class="badge badge-success">Yes</span>
+            {% else %}
+            <span class="badge badge-warning">No</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Consent Required</div>
+        <div>
+            {% if client.require_consent %}
+            <span class="badge badge-success">Yes</span>
+            {% else %}
+            <span class="badge badge-warning">No</span>
+            {% endif %}
+        </div>
+
+        {% if client.allowed_origins %}
+        <div class="text-muted">CORS Origins</div>
+        <div>
+            {% for origin in client.allowed_origins %}
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem;">{{ origin }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if client.jwks_uri %}
+        <div class="text-muted">JWKS URI (JAR)</div>
+        <div class="mono" style="font-size: 0.85rem; word-break: break-all;">{{ client.jwks_uri }}</div>
+        {% endif %}
+
+        <div class="text-muted">Access Token Expiry</div>
+        <div>
+            {% if client.access_token_expiry_seconds %}
+            <span class="mono">{{ client.access_token_expiry_seconds }}s</span>
+            <span class="text-muted" style="font-size: 0.85rem;">
+                ({% if client.access_token_expiry_seconds >= 86400 %}{{ (client.access_token_expiry_seconds / 86400) | round(1) }} days{% elif client.access_token_expiry_seconds >= 3600 %}{{ (client.access_token_expiry_seconds / 3600) | round(1) }} hours{% else %}{{ (client.access_token_expiry_seconds / 60) | round(1) }} minutes{% endif %})
+            </span>
+            {% else %}
+            <span class="text-muted">Default (global config)</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Refresh Token Expiry</div>
+        <div>
+            {% if client.refresh_token_expiry_seconds %}
+            <span class="mono">{{ client.refresh_token_expiry_seconds }}s</span>
+            <span class="text-muted" style="font-size: 0.85rem;">
+                ({% if client.refresh_token_expiry_seconds >= 86400 %}{{ (client.refresh_token_expiry_seconds / 86400) | round(1) }} days{% elif client.refresh_token_expiry_seconds >= 3600 %}{{ (client.refresh_token_expiry_seconds / 3600) | round(1) }} hours{% else %}{{ (client.refresh_token_expiry_seconds / 60) | round(1) }} minutes{% endif %})
+            </span>
+            {% else %}
+            <span class="text-muted">Default (global config)</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h2>Access Tokens <span class="text-muted" style="font-size: 0.9rem; font-weight: normal;">({{ active_tokens }} active / {{ total_tokens }} total)</span></h2>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if permissions.get('clients:write') and active_tokens > 0 %}
+            <form method="post" action="/admin/clients/{{ client.id }}/tokens/revoke-all" style="display: inline;">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke ALL active tokens? Users will need to re-authenticate.')">
+                    <span>&#10005;</span> Revoke All
+                </button>
+            </form>
+            {% endif %}
+            <a href="/admin/clients/{{ client.id }}/tokens" class="btn btn-secondary btn-sm">View All & Filters</a>
+        </div>
+    </div>
+
+    {% if tokens %}
+    <table class="table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>JTI</th>
+                <th>Scopes</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in tokens %}
+            <tr>
+                <td>
+                    {% if token.user_id %}
+                    <a href="/admin/users/{{ token.user_id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ token.user_email or 'Unknown' }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">Client Credentials</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <code class="mono" style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 0.15rem 0.35rem; border-radius: 3px;">
+                        {{ token.jti[:12] }}...
+                    </code>
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 150px;">
+                        {% for scope in token.scopes[:2] %}
+                        <span class="badge badge-info" style="font-size: 0.7rem;">{{ scope }}</span>
+                        {% endfor %}
+                        {% if token.scopes|length > 2 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ token.scopes|length - 2 }}</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ token.created_at[:16] if token.created_at else 'N/A' }}</td>
+                <td>
+                    {% if token.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif token.is_revoked %}
+                    <span class="badge badge-danger">Revoked</span>
+                    {% else %}
+                    <span class="badge badge-warning">Expired</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if token.is_active and permissions.get('clients:write') %}
+                    <form method="post" action="/admin/clients/{{ client.id }}/tokens/{{ token.id }}/revoke" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke this token?')">Revoke</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if tokens_total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if tokens_page > 1 %}
+        <a href="/admin/clients/{{ client.id }}?tokens_page={{ tokens_page - 1 }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ tokens_page }} of {{ tokens_total_pages }}</span>
+        {% if tokens_page < tokens_total_pages %}
+        <a href="/admin/clients/{{ client.id }}?tokens_page={{ tokens_page + 1 }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state" style="margin-top: 1rem; padding: 2rem;">
+        <p style="font-size: 1.5rem;">&#128273;</p>
+        <p class="text-muted">No tokens have been issued for this client yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+        {% if permissions['clients:write'] %}
+        <a href="/admin/clients/{{ client.id }}/edit" class="btn btn-primary">
+            <span>&#9998;</span> Edit Client
+        </a>
+
+        {% if client.is_active %}
+        <form method="post" action="/admin/clients/{{ client.id }}/disable">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Disable this client? It will no longer be able to authenticate users.')">
+                <span>&#10005;</span> Disable Client
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/clients/{{ client.id }}/enable">
+            <button type="submit" class="btn btn-success">
+                <span>&#10003;</span> Enable Client
+            </button>
+        </form>
+        {% endif %}
+        {% endif %}
+
+        {% if permissions['clients:rotate'] and client.is_confidential %}
+        <form method="post" action="/admin/clients/{{ client.id }}/rotate-secret">
+            <button type="submit" class="btn btn-secondary" onclick="return confirm('Rotate client secret? The old secret will stop working immediately.')">
+                <span>&#8635;</span> Rotate Secret
+            </button>
+        </form>
+        {% endif %}
+
+        {% if permissions['clients:delete'] %}
+        <form method="post" action="/admin/clients/{{ client.id }}/delete">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this client? All tokens will be invalidated.')">
+                <span>&#128465;</span> Delete Client
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

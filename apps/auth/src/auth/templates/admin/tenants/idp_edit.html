@@ -1,0 +1,152 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit IdP {{ idp.name }} - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Edit Identity Provider</h1>
+    <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenant
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Identity Provider Configuration</h2>
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        Editing IdP <strong>{{ idp.name }}</strong> for tenant <strong>{{ tenant.display_name }}</strong>.
+    </p>
+
+    <form method="post" action="/admin/organisations/{{ tenant.id }}/idp/{{ idp.id }}/edit">
+        <div class="form-group">
+            <label for="name">Name <span style="color: #e94560;">*</span></label>
+            <input type="text" id="name" name="name" class="form-control" required value="{{ idp.name }}">
+            <small class="text-muted">Display name for this identity provider.</small>
+        </div>
+
+        <div class="form-group">
+            <label>Provider Type</label>
+            <input type="text" class="form-control" value="{{ idp.provider_type }}" disabled>
+            <small class="text-muted">Provider type cannot be changed after creation.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="client_id">Client ID <span style="color: #e94560;">*</span></label>
+            <input type="text" id="client_id" name="client_id" class="form-control" required value="{{ idp.client_id }}">
+            <small class="text-muted">OAuth2/OIDC client ID from the identity provider.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="client_secret">Client Secret</label>
+            <input type="password" id="client_secret" name="client_secret" class="form-control" placeholder="{% if idp.has_secret %}Leave blank to keep current secret{% else %}Enter client secret{% endif %}">
+            <small class="text-muted">
+                {% if idp.has_secret %}
+                <span class="badge badge-success" style="font-size: 0.7rem;">Secret configured</span>
+                Leave blank to keep the current secret, or enter a new value to replace it.
+                {% else %}
+                <span class="badge badge-warning" style="font-size: 0.7rem;">No secret</span>
+                Enter a client secret if required by this provider.
+                {% endif %}
+            </small>
+        </div>
+
+        {% if idp.provider_type in ['oidc', 'microsoft'] %}
+        <div class="form-group">
+            <label for="discovery_url">Discovery URL</label>
+            <input type="url" id="discovery_url" name="discovery_url" class="form-control" value="{{ idp.discovery_url or '' }}" placeholder="https://idp.example.com/.well-known/openid-configuration">
+            <small class="text-muted">OIDC discovery URL. If provided, endpoints will be auto-discovered.</small>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="scopes">Scopes</label>
+            <input type="text" id="scopes" name="scopes" class="form-control" value="{{ idp.scopes|join(' ') }}">
+            <small class="text-muted">Space-separated list of scopes to request from the IdP.</small>
+        </div>
+
+        <div style="margin-top: 1.5rem; border-top: 1px solid #0f3460; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Display Settings</h3>
+
+            <div class="form-group">
+                <label for="button_text">Button Text (optional)</label>
+                <input type="text" id="button_text" name="button_text" class="form-control" value="{{ idp.button_text or '' }}" placeholder="Sign in with Company SSO">
+                <small class="text-muted">Custom text for the login button. Leave empty to use provider name.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="icon_url">Icon URL (optional)</label>
+                <input type="url" id="icon_url" name="icon_url" class="form-control" value="{{ idp.icon_url or '' }}" placeholder="https://example.com/icon.png">
+                <small class="text-muted">URL to an icon image (recommended: 32x32 or 64x64).</small>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; border-top: 1px solid #0f3460; padding-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">Behavior Settings</h3>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_active" value="true" {% if idp.is_active %}checked{% endif %} style="width: auto;">
+                    <span>Active</span>
+                </label>
+                <small class="text-muted" style="margin-left: 1.5rem;">Inactive IdPs won't appear on the login page.</small>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_default" value="true" {% if idp.is_default %}checked{% endif %} style="width: auto;">
+                    <span>Default Provider</span>
+                </label>
+                <small class="text-muted" style="margin-left: 1.5rem;">Automatically redirect to this IdP if only one is configured.</small>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="auto_provision" value="true" {% if idp.auto_provision %}checked{% endif %} style="width: auto;">
+                    <span>Auto-Provision Users (JIT)</span>
+                </label>
+                <small class="text-muted" style="margin-left: 1.5rem;">Automatically create user accounts on first login.</small>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="allow_linking" value="true" {% if idp.allow_linking %}checked{% endif %} style="width: auto;">
+                    <span>Allow Account Linking</span>
+                </label>
+                <small class="text-muted" style="margin-left: 1.5rem;">Allow existing users to link their accounts with this IdP.</small>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Statistics</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2rem; color: #74b9ff;">{{ idp.federated_count }}</div>
+            <div class="text-muted" style="font-size: 0.85rem;">Linked Users</div>
+        </div>
+        <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2rem; color: {% if idp.is_active %}#00b894{% else %}#ff6b6b{% endif %};">
+                {% if idp.is_active %}&#10003;{% else %}&#10005;{% endif %}
+            </div>
+            <div class="text-muted" style="font-size: 0.85rem;">{% if idp.is_active %}Active{% else %}Disabled{% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h2>Redirect URI</h2>
+    <p class="text-muted" style="margin-bottom: 0.5rem;">Configure this URI in your identity provider settings:</p>
+    <code style="display: block; background: #1a1a2e; padding: 1rem; border-radius: 8px; word-break: break-all; font-size: 0.9rem;">
+        https://auth.example.com/federation/callback
+    </code>
+</div>
+{% endblock %}

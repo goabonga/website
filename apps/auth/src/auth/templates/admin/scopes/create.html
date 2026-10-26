@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create Scope{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Create Scope</h1>
+    <a href="/admin/scopes" class="btn btn-secondary">
+        &larr; Back to Scopes
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>New Scope</h2>
+    <form method="post" action="/admin/scopes/create" style="max-width: 500px; margin-top: 1rem;">
+        <div class="form-group">
+            <label for="name">Scope Name *</label>
+            <input type="text" id="name" name="name" class="form-control" required
+                   placeholder="e.g., api:products:read" pattern="[a-z0-9:_-]+"
+                   title="Only lowercase letters, numbers, colons, underscores, and hyphens">
+            <small class="text-muted">Format: resource:action (e.g., products:read, orders:write)</small>
+        </div>
+
+        <div class="form-group">
+            <label for="resource">Resource *</label>
+            <input type="text" id="resource" name="resource" class="form-control" required
+                   placeholder="e.g., products, orders, users">
+            <small class="text-muted">The resource this scope applies to</small>
+        </div>
+
+        <div class="form-group">
+            <label for="action">Action *</label>
+            <input type="text" id="action" name="action" class="form-control" required
+                   placeholder="e.g., read, write, delete">
+            <small class="text-muted">The action allowed on the resource</small>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category</label>
+            <div id="category-select-wrapper">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="category-select" class="form-control" style="flex: 1;"
+                            onchange="document.getElementById('category').value = this.value">
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {{ 'selected' if cat == 'custom' }}>{{ cat }}</option>
+                        {% endfor %}
+                        {% if 'custom' not in categories %}
+                        <option value="custom" selected>custom</option>
+                        {% endif %}
+                    </select>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleCategoryInput()" title="Add new category">+ New</button>
+                </div>
+            </div>
+            <div id="category-input-wrapper" style="display: none;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="category-input" class="form-control" style="flex: 1;"
+                           placeholder="e.g., billing, analytics"
+                           pattern="[a-z0-9_-]+" title="Lowercase letters, numbers, underscores, hyphens"
+                           oninput="document.getElementById('category').value = this.value">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleCategoryInput()" title="Use existing category">List</button>
+                </div>
+            </div>
+            <input type="hidden" id="category" name="category" value="custom">
+            <small class="text-muted">Category helps organize scopes</small>
+        </div>
+
+        <script>
+        function toggleCategoryInput() {
+            var selectW = document.getElementById('category-select-wrapper');
+            var inputW = document.getElementById('category-input-wrapper');
+            var hidden = document.getElementById('category');
+            if (selectW.style.display === 'none') {
+                selectW.style.display = '';
+                inputW.style.display = 'none';
+                hidden.value = document.getElementById('category-select').value;
+            } else {
+                selectW.style.display = 'none';
+                inputW.style.display = '';
+                document.getElementById('category-input').value = '';
+                document.getElementById('category-input').focus();
+                hidden.value = '';
+            }
+        }
+        </script>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control" rows="3"
+                      placeholder="Describe what this scope allows..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">Create Scope</button>
+            <a href="/admin/scopes" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2>Naming Convention</h2>
+    <p class="text-muted" style="margin-top: 1rem; line-height: 1.6;">
+        Scope names should follow the pattern: <code>resource:action</code>
+    </p>
+    <ul style="margin-top: 0.5rem; line-height: 1.8; color: #a0a0a0;">
+        <li><code>api:products:read</code> - Read products via API</li>
+        <li><code>api:orders:write</code> - Create/update orders via API</li>
+        <li><code>api:inventory:manage</code> - Manage inventory via API</li>
+    </ul>
+</div>
+{% endblock %}

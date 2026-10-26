@@ -1,0 +1,143 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ form_title }} - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ form_title }}</h1>
+    <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenant
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Role Configuration</h2>
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        {% if role %}
+        Editing role for <strong>{{ tenant.display_name }}</strong>.
+        {% if role.is_system %}
+        <span class="badge badge-secondary" style="margin-left: 0.5rem;">System Role</span>
+        {% endif %}
+        {% else %}
+        Create a new custom role for <strong>{{ tenant.display_name }}</strong>.
+        {% endif %}
+    </p>
+
+    <form method="post" action="{{ form_action }}">
+        <!-- Name (only editable for new roles) -->
+        {% if not role %}
+        <div class="form-group">
+            <label for="name">Role Name <span style="color: #e94560;">*</span></label>
+            <input type="text" id="name" name="name" class="form-control"
+                   placeholder="e.g., editor, viewer, moderator"
+                   pattern="[a-z0-9_-]+"
+                   title="Lowercase letters, numbers, underscores, and hyphens only"
+                   required>
+            <small class="text-muted">Used internally. Lowercase letters, numbers, underscores, and hyphens only.</small>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label>Role Name</label>
+            <input type="text" class="form-control" value="{{ role.name }}" disabled>
+            <small class="text-muted">Role names cannot be changed after creation.</small>
+        </div>
+        {% endif %}
+
+        <!-- Display Name -->
+        <div class="form-group">
+            <label for="display_name">Display Name <span style="color: #e94560;">*</span></label>
+            <input type="text" id="display_name" name="display_name" class="form-control"
+                   placeholder="e.g., Content Editor"
+                   value="{{ role.display_name if role else '' }}"
+                   required>
+            <small class="text-muted">Human-readable name shown in the UI.</small>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control" rows="2"
+                      placeholder="Describe what this role can do...">{{ role.description if role else '' }}</textarea>
+        </div>
+
+        <!-- Scopes -->
+        {% if role and role.is_system %}
+        <div class="form-group">
+            <label>Scopes</label>
+            <div class="text-muted" style="margin-bottom: 0.5rem;">
+                System role scopes cannot be modified.
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {% for scope in role.scopes %}
+                <span class="badge badge-success">{{ scope }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label>Scopes</label>
+            <div class="text-muted" style="margin-bottom: 0.5rem;">
+                Select the permissions this role should have.
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllScopes()">Select All</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="selectNoneScopes()">Select None</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; max-height: 400px; overflow-y: auto; padding: 0.5rem; background: #1a1a2e; border-radius: 4px;">
+                {% for scope, description in available_scopes.items() %}
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; cursor: pointer; background: #0f0f23; border-radius: 4px;">
+                    <input type="checkbox" name="scopes" value="{{ scope }}"
+                           {% if role and scope in role.scopes %}checked{% endif %}
+                           style="margin-top: 0.2rem;">
+                    <div>
+                        <code style="color: #00d9ff; font-size: 0.85rem;">{{ scope }}</code>
+                        <div class="text-muted" style="font-size: 0.7rem;">{{ description }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">
+                {% if role %}Update Role{% else %}Create Role{% endif %}
+            </button>
+            <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<!-- Scopes Reference -->
+<div class="admin-card">
+    <h2>Available Scopes Reference</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">
+        These scopes control what actions members with this role can perform.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.5rem;">
+        {% for scope, description in available_scopes.items() %}
+        <div style="padding: 0.5rem; background: #1a1a2e; border-radius: 4px;">
+            <code style="color: #00d9ff; font-size: 0.85rem;">{{ scope }}</code>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">{{ description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function selectAllScopes() {
+    document.querySelectorAll('input[name="scopes"]').forEach(cb => cb.checked = true);
+}
+
+function selectNoneScopes() {
+    document.querySelectorAll('input[name="scopes"]').forEach(cb => cb.checked = false);
+}
+</script>
+{% endblock %}

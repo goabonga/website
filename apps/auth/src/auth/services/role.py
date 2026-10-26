@@ -318,6 +318,49 @@ class RoleService:
         await db.commit()
         return role
 
+    async def update_role_by_scope_names(
+        self,
+        db: AsyncSession,
+        role: Role,
+        *,
+        description: str | None,
+        scope_names: BuiltinList[str],
+    ) -> Role:
+        """Update the description and the scopes of a custom role from scope *names*.
+
+        The scopes of the role become exactly ``scope_names`` (admin-HTML flow); the
+        assignments that stay are kept, and so are those of disabled scopes (a form lists
+        the active scopes only). ``role.role_scopes`` must be loaded.
+
+        Raises:
+            ValueError: If the role is a system role or if one of ``scope_names``
+                cannot be resolved.
+        """
+        if role.is_system:
+            raise ValueError("System roles cannot be modified")
+
+        db_scopes = await self._get_scopes_by_names(db, scope_names)
+        invalid = [s for s in scope_names if s not in db_scopes]
+        if invalid:
+            raise ValueError(f"Invalid scopes: {', '.join(invalid)}")
+
+        role.description = description
+        wanted = {db_scopes[name].id for name in scope_names}
+        held = set()
+        for link in list(role.role_scopes):
+            if link.scope_id in wanted:
+                held.add(link.scope_id)
+            elif link.scope is not None and not link.scope.is_active:
+                continue
+            else:
+                await self._repo.delete(db, link)
+        for scope_id in wanted - held:
+            await self._repo.add(db, RoleScope(role_id=role.id, scope_id=scope_id))
+
+        await db.commit()
+        await db.refresh(role)
+        return role
+
     async def delete_role(self, db: AsyncSession, role: Role) -> None:
         """Delete a custom role.
 

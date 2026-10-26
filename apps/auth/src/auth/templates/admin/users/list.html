@@ -1,0 +1,171 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>User Management</h1>
+    {% if permissions['users:write'] %}
+    <a href="/admin/users/create" class="btn btn-primary">
+        <span>+</span> Create User
+    </a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Users ({{ total }})</h2>
+        <form method="get" action="/admin/users" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search by email..." class="form-control" style="width: 200px;">
+            <select name="is_active" class="form-control" style="width: 120px;" onchange="this.form.submit()">
+                <option value="">All status</option>
+                <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active</option>
+                <option value="false" {% if is_active == 'false' %}selected{% endif %}>Disabled</option>
+            </select>
+            <select name="registration_tenant" class="form-control" style="width: 180px;" onchange="this.form.submit()">
+                <option value="">All organisations</option>
+                <option value="none" {% if registration_tenant == 'none' %}selected{% endif %}>Main domain only</option>
+                {% for tenant in tenants %}
+                <option value="{{ tenant.id }}" {% if registration_tenant == tenant.id %}selected{% endif %}>{{ tenant.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        </form>
+    </div>
+
+    {% if users %}
+    {% if permissions['users:delete'] %}
+    <div id="bulk-actions" style="display: none; padding: 0.75rem 1rem; margin-bottom: 1rem; background-color: #16213e; border: 1px solid #0f3460; border-radius: 4px; align-items: center; gap: 1rem;">
+        <span style="color: #a0a0a0;"><strong id="selected-count" style="color: #74b9ff;">0</strong> user(s) selected</span>
+        <button type="submit" form="bulk-form" class="btn btn-danger btn-sm"
+                onclick="return confirm('Delete the selected users? This action cannot be undone.')">
+            Delete Selected
+        </button>
+    </div>
+    {% endif %}
+
+    <form id="bulk-form" method="post" action="/admin/users/bulk-delete">
+    <table class="table">
+        <thead>
+            <tr>
+                {% if permissions['users:delete'] %}
+                <th style="width: 40px;"><input type="checkbox" id="select-all" style="width: 16px; height: 16px; cursor: pointer;"></th>
+                {% endif %}
+                <th>Email</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Verified</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                {% if permissions['users:delete'] %}
+                <td><input type="checkbox" name="user_ids" value="{{ user.id }}" class="user-checkbox" style="width: 16px; height: 16px; cursor: pointer;"></td>
+                {% endif %}
+                <td>
+                    <a href="/admin/users/{{ user.id }}" style="color: #74b9ff; text-decoration: none;">
+                        {{ user.email or 'No email' }}
+                    </a>
+                </td>
+                <td>
+                    {% if user.profile and user.profile.name %}
+                    {{ user.profile.name }}
+                    {% elif user.profile and user.profile.nickname %}
+                    {{ user.profile.nickname }}
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.email_verified %}
+                    <span class="badge badge-success">Yes</span>
+                    {% else %}
+                    <span class="badge badge-warning">No</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted">{{ user.created_at[:10] if user.created_at else 'N/A' }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="/admin/users/{{ user.id }}" class="btn btn-secondary btn-sm">View</a>
+                        {% if permissions['users:disable'] %}
+                        {% if user.is_active %}
+                        <form method="post" action="/admin/users/{{ user.id }}/disable" style="display: inline;">
+                            <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Disable this user?')">Disable</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/admin/users/{{ user.id }}/enable" style="display: inline;">
+                            <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </form>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/admin/users?page={{ page - 1 }}&search={{ search }}&is_active={{ is_active or '' }}&registration_tenant={{ registration_tenant or '' }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/admin/users?page={{ page + 1 }}&search={{ search }}&is_active={{ is_active or '' }}&registration_tenant={{ registration_tenant or '' }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128100;</p>
+        <p>No users found.</p>
+        <p class="text-muted">{% if search %}Try a different search term.{% else %}Create a new user to get started.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if permissions['users:delete'] and users %}
+<script>
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll('.user-checkbox:checked').length;
+        selectedCount.textContent = checked;
+        bulkActions.style.display = checked > 0 ? 'flex' : 'none';
+        selectAll.checked = checked === checkboxes.length && checkboxes.length > 0;
+        selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+    }
+
+    selectAll.addEventListener('change', function () {
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkBar();
+    });
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateBulkBar));
+</script>
+{% endif %}
+{% endblock %}

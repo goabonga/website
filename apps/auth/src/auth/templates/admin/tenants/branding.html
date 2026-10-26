@@ -1,0 +1,357 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Branding - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Branding</h1>
+    <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Tenant
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h2 style="margin: 0;">{{ tenant.display_name }}</h2>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">Customize colors, logos, fonts, and CSS</p>
+        </div>
+        {% if has_branding and permissions['org:write'] %}
+        <form method="post" action="/admin/organisations/{{ tenant.id }}/branding/reset" style="display: inline;">
+            <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Reset all branding to defaults?')">
+                Reset to Defaults
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<form method="post" action="/admin/organisations/{{ tenant.id }}/branding">
+    <!-- Colors Section -->
+    <div class="admin-card">
+        <h3>Colors</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">These colors will be used as CSS variables throughout the UI.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Primary Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="primary_color" value="{{ branding.primary_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.primary_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Buttons, links, primary actions</small>
+            </div>
+
+            <div class="form-group">
+                <label>Secondary Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="secondary_color" value="{{ branding.secondary_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.secondary_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Secondary buttons, badges</small>
+            </div>
+
+            <div class="form-group">
+                <label>Accent Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="accent_color" value="{{ branding.accent_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.accent_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Highlights, accents</small>
+            </div>
+
+            <div class="form-group">
+                <label>Background Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="background_color" value="{{ branding.background_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.background_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Page background</small>
+            </div>
+
+            <div class="form-group">
+                <label>Surface Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="surface_color" value="{{ branding.surface_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.surface_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Cards, modals, overlays</small>
+            </div>
+
+            <div class="form-group">
+                <label>Text Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="text_color" value="{{ branding.text_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.text_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Main text color</small>
+            </div>
+
+            <div class="form-group">
+                <label>Muted Text Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="text_muted_color" value="{{ branding.text_muted_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.text_muted_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Secondary text, labels</small>
+            </div>
+
+            <div class="form-group">
+                <label>Error Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="error_color" value="{{ branding.error_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.error_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Error messages, alerts</small>
+            </div>
+
+            <div class="form-group">
+                <label>Success Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="success_color" value="{{ branding.success_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.success_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Success messages</small>
+            </div>
+
+            <div class="form-group">
+                <label>Border Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="border_color" value="{{ branding.border_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.border_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Borders, dividers</small>
+            </div>
+
+            <div class="form-group">
+                <label>Warning Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="warning_color" value="{{ branding.warning_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.warning_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Warning messages, cautions</small>
+            </div>
+
+            <div class="form-group">
+                <label>Info Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="info_color" value="{{ branding.info_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.info_color }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value" onchange="this.previousElementSibling.value = this.value" data-sync-color>
+                </div>
+                <small class="text-muted">Informational messages, hints</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Colors Section -->
+    <div class="admin-card">
+        <h3>Input Colors</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">Override colors for form inputs. Leave empty to use the default general colors.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Input Background</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_background_color" value="{{ branding.input_background_color or branding.background_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.input_background_color or '' }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value || '{{ branding.background_color }}'" onchange="this.previousElementSibling.value = this.value || '{{ branding.background_color }}'" placeholder="{{ branding.background_color }}" data-sync-color>
+                </div>
+                <small class="text-muted">Background color for text fields</small>
+            </div>
+
+            <div class="form-group">
+                <label>Input Focus Background</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_focus_background_color" value="{{ branding.input_focus_background_color or branding.input_background_color or branding.background_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.input_focus_background_color or '' }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value || '{{ branding.background_color }}'" onchange="this.previousElementSibling.value = this.value || '{{ branding.background_color }}'" placeholder="{{ branding.input_background_color or branding.background_color }}" data-sync-color>
+                </div>
+                <small class="text-muted">Background when input is focused</small>
+            </div>
+
+            <div class="form-group">
+                <label>Input Border</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_border_color" value="{{ branding.input_border_color or branding.border_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.input_border_color or '' }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value || '{{ branding.border_color }}'" onchange="this.previousElementSibling.value = this.value || '{{ branding.border_color }}'" placeholder="{{ branding.border_color }}" data-sync-color>
+                </div>
+                <small class="text-muted">Border color for text fields</small>
+            </div>
+
+            <div class="form-group">
+                <label>Input Focus Border</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_focus_border_color" value="{{ branding.input_focus_border_color or branding.primary_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.input_focus_border_color or '' }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value || '{{ branding.primary_color }}'" onchange="this.previousElementSibling.value = this.value || '{{ branding.primary_color }}'" placeholder="{{ branding.primary_color }}" data-sync-color>
+                </div>
+                <small class="text-muted">Border color when input is focused</small>
+            </div>
+
+            <div class="form-group">
+                <label>Input Text</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_text_color" value="{{ branding.input_text_color or branding.text_color }}" style="width: 50px; height: 38px; padding: 2px; border: none; cursor: pointer;">
+                    <input type="text" value="{{ branding.input_text_color or '' }}" class="form-control mono" style="flex: 1;" oninput="this.previousElementSibling.value = this.value || '{{ branding.text_color }}'" onchange="this.previousElementSibling.value = this.value || '{{ branding.text_color }}'" placeholder="{{ branding.text_color }}" data-sync-color>
+                </div>
+                <small class="text-muted">Text color inside inputs</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logo Section -->
+    <div class="admin-card">
+        <h3>Logo & Favicon</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">Provide URLs to your logo and favicon images.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Logo URL</label>
+                <input type="url" name="logo_url" value="{{ branding.logo_url or '' }}" class="form-control" placeholder="https://example.com/logo.png">
+                <small class="text-muted">Light mode logo (recommended: SVG or PNG with transparency)</small>
+            </div>
+
+            <div class="form-group">
+                <label>Logo URL (Dark Mode)</label>
+                <input type="url" name="logo_dark_url" value="{{ branding.logo_dark_url or '' }}" class="form-control" placeholder="https://example.com/logo-dark.png">
+                <small class="text-muted">Optional: Logo for dark backgrounds</small>
+            </div>
+
+            <div class="form-group">
+                <label>Favicon URL</label>
+                <input type="url" name="favicon_url" value="{{ branding.favicon_url or '' }}" class="form-control" placeholder="https://example.com/favicon.ico">
+                <small class="text-muted">Browser tab icon (recommended: .ico or .png)</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Typography Section -->
+    <div class="admin-card">
+        <h3>Typography</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">Customize fonts used in the UI.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Font Family</label>
+                <input type="text" name="font_family" value="{{ branding.font_family }}" class="form-control" placeholder="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+                <small class="text-muted">CSS font-family value</small>
+            </div>
+
+            <div class="form-group">
+                <label>Custom Font URL</label>
+                <input type="url" name="font_url" value="{{ branding.font_url or '' }}" class="form-control" placeholder="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+                <small class="text-muted">Google Fonts or other font CSS URL</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom CSS/JS Section -->
+    <div class="admin-card">
+        <h3>Custom CSS & JavaScript</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">Add custom styles or scripts (use with caution).</p>
+
+        <div class="form-group">
+            <label>Custom CSS</label>
+            <textarea name="custom_css" class="form-control mono" rows="8" placeholder="/* Add custom CSS here */
+.login-form {
+    border-radius: 12px;
+}">{{ branding.custom_css or '' }}</textarea>
+            <small class="text-muted">CSS that will be appended after theme styles</small>
+        </div>
+
+        <div class="form-group">
+            <label>Custom JavaScript</label>
+            <textarea name="custom_js" class="form-control mono" rows="8" placeholder="// Add custom JavaScript here
+// e.g., analytics tracking code">{{ branding.custom_js or '' }}</textarea>
+            <small class="text-muted">JavaScript that will be executed on page load (e.g., analytics)</small>
+        </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="admin-card">
+        <h3>Settings</h3>
+
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" name="show_powered_by" value="true" {% if branding.show_powered_by %}checked{% endif %}>
+            <span>Show "Powered by" badge</span>
+        </label>
+        <small class="text-muted" style="margin-left: 1.5rem; display: block;">Display branding attribution in the footer</small>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="admin-card">
+        <h3>Preview</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">Preview how the branding will look.</p>
+
+        <div id="preview-container" style="border: 1px solid #333; border-radius: 8px; overflow: hidden;">
+            <div id="preview-content" style="padding: 2rem; transition: all 0.3s;">
+                <div style="max-width: 400px; margin: 0 auto; padding: 2rem; border-radius: 8px; transition: all 0.3s;" id="preview-card">
+                    <h2 style="margin: 0 0 1rem 0; transition: color 0.3s;" id="preview-title">Sign In</h2>
+                    <p style="margin-bottom: 1.5rem; transition: color 0.3s;" id="preview-text">Welcome to <strong id="preview-tenant">{{ tenant.display_name }}</strong></p>
+                    <div style="margin-bottom: 1rem;">
+                        <input type="text" placeholder="Email" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <input type="password" placeholder="Password" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">
+                    </div>
+                    <button type="button" style="width: 100%; padding: 0.75rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s;" id="preview-button">Sign In</button>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; transition: color 0.3s;" id="preview-muted">Don't have an account? <a href="#" style="transition: color 0.3s;" id="preview-link">Register</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    {% if permissions['org:write'] %}
+    <div class="admin-card">
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Branding</button>
+            <a href="/admin/organisations/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+    {% endif %}
+</form>
+
+<script>
+// Sync color picker with text input
+document.querySelectorAll('input[type="color"]').forEach(function(colorInput) {
+    var textInput = colorInput.nextElementSibling;
+    colorInput.addEventListener('input', function() {
+        textInput.value = colorInput.value;
+        updatePreview();
+    });
+});
+
+// Update preview
+function updatePreview() {
+    var primary = document.querySelector('input[name="primary_color"]').value;
+    var background = document.querySelector('input[name="background_color"]').value;
+    var surface = document.querySelector('input[name="surface_color"]').value;
+    var text = document.querySelector('input[name="text_color"]').value;
+    var muted = document.querySelector('input[name="text_muted_color"]').value;
+
+    document.getElementById('preview-content').style.backgroundColor = background;
+    document.getElementById('preview-card').style.backgroundColor = surface;
+    document.getElementById('preview-title').style.color = text;
+    document.getElementById('preview-text').style.color = text;
+    document.getElementById('preview-muted').style.color = muted;
+    document.getElementById('preview-button').style.backgroundColor = primary;
+    document.getElementById('preview-button').style.color = '#fff';
+    document.getElementById('preview-link').style.color = primary;
+}
+
+// Initial preview
+updatePreview();
+
+// Update on any color change
+document.querySelectorAll('input[name$="_color"]').forEach(function(input) {
+    input.addEventListener('input', updatePreview);
+    input.addEventListener('change', updatePreview);
+});
+</script>
+{% endblock %}

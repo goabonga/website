@@ -6,6 +6,7 @@
 from fastapi import APIRouter
 
 from auth.api.routes import discovery, health, jwks, me_legacy, userinfo
+from auth.api.routes.admin import pages_router as admin_pages_router
 from auth.api.routes.api import router as api_router
 from auth.api.routes.auth import router as auth_router
 from auth.api.routes.federation import router as federation_router
@@ -21,6 +22,7 @@ router.include_router(userinfo.router)
 router.include_router(auth_router, include_in_schema=False)
 router.include_router(oauth2_router)
 router.include_router(federation_router, include_in_schema=False)
+router.include_router(admin_pages_router, include_in_schema=False)  # HTML pages at /admin/*
 router.include_router(
     me_legacy.router,
     prefix="/api",

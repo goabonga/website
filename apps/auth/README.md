@@ -16,10 +16,11 @@ Centralized OIDC/OAuth2 authentication service.
 - OAuth2 and OIDC authorization server: Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
 - Device authorization and pushed authorization requests: RFC 8628 device flow and RFC 9126 pushed authorization requests.
 - Identity provider federation: Login through external OIDC identity providers.
+- REST API v1: Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no credentials. `session` routes need the session cookie of a signed-in user.
+HTTP routes served by the application and what each one requires. `public` routes need no credentials. `session` routes need the session cookie of a signed-in user. `PAT` is a personal access token and `bearer token` an OAuth2 access token, both sent in the `Authorization: Bearer` header; the scopes of the token are checked against the scope named in the table (a wildcard scope also matches).
 
 ### Service and OpenID Connect endpoints
 
@@ -88,52 +89,132 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/mfa/email/verify` | session | Validate the email OTP submitted by the current user |
 | GET | `/auth/mfa/email` | session | Render the email OTP verification page for browser-based MFA flows |
 
+### REST API v1
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/v1/me/` | PAT or bearer token (any scope) | Return the profile of the currently authenticated user |
+| PUT | `/api/v1/me/` | PAT or bearer token (any scope) | Replace the profile of the currently authenticated user |
+| PUT | `/api/v1/me/password` | PAT or bearer token (any scope) | Change the authenticated user's password |
+| GET | `/api/v1/me/sessions` | PAT or bearer token (any scope) | List all active sessions for the current user |
+| DELETE | `/api/v1/me/sessions/{session_id}` | PAT or bearer token (any scope) | Revoke a specific session by ID |
+| GET | `/api/v1/me/mfa/` | PAT or bearer token (any scope) | Return the current MFA status for the authenticated user |
+| POST | `/api/v1/me/mfa/totp/setup` | PAT or bearer token (any scope) | Initiate TOTP setup and return a one-time secret and QR code |
+| POST | `/api/v1/me/mfa/totp/verify` | PAT or bearer token (any scope) | Verify a TOTP code and permanently enable TOTP-based MFA |
+| POST | `/api/v1/me/mfa/totp/disable` | PAT or bearer token (any scope) | Disable TOTP-based MFA after confirming with a valid TOTP code |
+| POST | `/api/v1/me/mfa/backup-codes` | PAT or bearer token (any scope) | Regenerate all backup codes, invalidating the previous set |
+| GET | `/api/v1/me/pats/` | PAT or bearer token (any scope) | List all active personal access tokens for the authenticated user |
+| POST | `/api/v1/me/pats/` | PAT or bearer token (any scope) | Create a new personal access token for the authenticated user |
+| GET | `/api/v1/me/pats/{token_id}` | PAT or bearer token (any scope) | Retrieve metadata for a specific personal access token |
+| PATCH | `/api/v1/me/pats/{token_id}` | PAT or bearer token (any scope) | Update the scopes assigned to a personal access token |
+| DELETE | `/api/v1/me/pats/{token_id}` | PAT or bearer token (any scope) | Revoke a personal access token, permanently invalidating it |
+| POST | `/api/v1/me/pats/{token_id}/regenerate` | PAT or bearer token (any scope) | Regenerate a personal access token, rotating its secret value |
+| GET | `/api/v1/me/applications/` | PAT or bearer token (any scope) | List OAuth2 applications the current user has authorized |
+| DELETE | `/api/v1/me/applications/{client_id}` | PAT or bearer token (any scope) | Revoke all tokens granted to a specific OAuth2 application |
+| GET | `/api/v1/users/` | PAT or bearer token; scope `users:read` | List all users with pagination |
+| POST | `/api/v1/users/` | PAT or bearer token; scope `users:write` | Create a new user account |
+| GET | `/api/v1/users/{user_id}` | PAT or bearer token; scope `users:read` | Get a single user by ID |
+| PATCH | `/api/v1/users/{user_id}` | PAT or bearer token; scope `users:write` | Partially update a user account |
+| DELETE | `/api/v1/users/{user_id}` | PAT or bearer token; scope `users:delete` | Permanently delete a user account |
+| POST | `/api/v1/users/{user_id}/disable` | PAT or bearer token; scope `users:write` | Disable a user account |
+| POST | `/api/v1/users/{user_id}/enable` | PAT or bearer token; scope `users:write` | Enable a previously disabled user account |
+| DELETE | `/api/v1/users/{user_id}/sessions` | PAT or bearer token; scope `users:write` | Revoke all active sessions for a user |
+| GET | `/api/v1/clients/` | PAT or bearer token; scope `clients:read` | List all OAuth2 clients across all tenants |
+| POST | `/api/v1/clients/` | PAT or bearer token; scope `clients:write` | Create a new OAuth2 client |
+| GET | `/api/v1/clients/{client_id}` | PAT or bearer token; scope `clients:read` | Get a single OAuth2 client by its internal UUID |
+| PATCH | `/api/v1/clients/{client_id}` | PAT or bearer token; scope `clients:write` | Partially update an OAuth2 client's configuration |
+| DELETE | `/api/v1/clients/{client_id}` | PAT or bearer token; scope `clients:delete` | Permanently delete an OAuth2 client |
+| POST | `/api/v1/clients/{client_id}/rotate-secret` | PAT or bearer token; scope `clients:rotate` | Rotate the client secret for a confidential OAuth2 client |
+| GET | `/api/v1/roles/` | PAT or bearer token; scope `roles:read` | List all roles with their assigned scopes |
+| POST | `/api/v1/roles/` | PAT or bearer token; scope `roles:write` | Create a new custom role and optionally attach scopes |
+| POST | `/api/v1/roles/seed` | PAT or bearer token; scope `roles:write` | Seed the default system roles defined in the application codebase |
+| GET | `/api/v1/roles/{role_id}` | PAT or bearer token; scope `roles:read` | Get a single role by ID, including all assigned scopes |
+| PATCH | `/api/v1/roles/{role_id}` | PAT or bearer token; scope `roles:write` | Update a role's name, description, or assigned scopes |
+| DELETE | `/api/v1/roles/{role_id}` | PAT or bearer token; scope `roles:delete` | Delete a custom role by ID |
+| POST | `/api/v1/roles/{role_id}/users` | PAT or bearer token; scope `roles:assign` | Assign a role to a user by user ID |
+| DELETE | `/api/v1/roles/{role_id}/users/{target_user_id}` | PAT or bearer token; scope `roles:assign` | Remove a role assignment from a user |
+| POST | `/api/v1/roles/{role_id}/scopes/{scope_id}` | PAT or bearer token; scope `roles:write` | Assign a scope to a role by scope ID |
+| DELETE | `/api/v1/roles/{role_id}/scopes/{scope_id}` | PAT or bearer token; scope `roles:write` | Remove a scope assignment from a role |
+| GET | `/api/v1/scopes/` | PAT or bearer token; scope `scopes:read` | List all scopes with pagination |
+| POST | `/api/v1/scopes/` | PAT or bearer token; scope `scopes:write` | Create a new custom scope |
+| GET | `/api/v1/scopes/{scope_id}` | PAT or bearer token; scope `scopes:read` | Get a single scope by its UUID |
+| PATCH | `/api/v1/scopes/{scope_id}` | PAT or bearer token; scope `scopes:write` | Partially update a scope |
+| DELETE | `/api/v1/scopes/{scope_id}` | PAT or bearer token; scope `scopes:delete` | Delete a scope by its UUID |
+| GET | `/api/v1/sessions/` | PAT or bearer token; scope `sessions:read` | List all active and revoked sessions across all users |
+| GET | `/api/v1/sessions/{session_id}` | PAT or bearer token; scope `sessions:read` | Get a single session by ID |
+| DELETE | `/api/v1/sessions/{session_id}` | PAT or bearer token; scope `sessions:revoke` | Revoke a specific session by its ID |
+| DELETE | `/api/v1/sessions/` | PAT or bearer token; scope `sessions:revoke` | Revoke all currently active sessions across all users |
+| GET | `/api/v1/jwks/` | PAT or bearer token; scope `jwks:read` | List all active JWK keys |
+| POST | `/api/v1/jwks/` | PAT or bearer token; scope `jwks:write` | Generate a new JWK key pair |
+| POST | `/api/v1/jwks/rotate` | PAT or bearer token; scope `jwks:rotate` | Rotate the active signing key |
+| GET | `/api/v1/jwks/{kid}` | PAT or bearer token; scope `jwks:read` | Retrieve a single JWK key by key ID |
+| POST | `/api/v1/jwks/{kid}/activate` | PAT or bearer token; scope `jwks:write` | Activate a specific JWK key for token signing |
+| POST | `/api/v1/jwks/{kid}/revoke` | PAT or bearer token; scope `jwks:revoke` | Revoke a JWK key |
+| DELETE | `/api/v1/jwks/{kid}` | PAT or bearer token; scope `jwks:delete` | Permanently delete a revoked JWK key |
+| GET | `/api/v1/pats/` | PAT or bearer token; scope `pats:read` | List all personal access tokens across all users |
+| GET | `/api/v1/pats/{pat_id}` | PAT or bearer token; scope `pats:read` | Get a single personal access token by ID (admin view) |
+| DELETE | `/api/v1/pats/{pat_id}` | PAT or bearer token; scope `pats:revoke` | Revoke a single personal access token by ID |
+| DELETE | `/api/v1/pats/` | PAT or bearer token; scope `pats:revoke` | Revoke active personal access tokens, optionally filtered by user |
+
+### Legacy profile API
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/me/profile` | bearer token (any scope) | Get current user's profile |
+| PUT | `/api/me/profile` | bearer token (any scope) | Update current user's profile |
+| PUT | `/api/me/password` | bearer token (any scope) | Change current user's password |
+| GET | `/api/me/mfa/status` | bearer token (any scope) | Get MFA status for current user |
+| POST | `/api/me/mfa/totp/setup` | bearer token (any scope) | Start TOTP setup |
+| POST | `/api/me/mfa/totp/verify` | bearer token (any scope) | Verify TOTP code and enable MFA |
+| POST | `/api/me/mfa/totp/disable` | bearer token (any scope) | Disable TOTP |
+| POST | `/api/me/mfa/backup-codes/regenerate` | bearer token (any scope) | Regenerate backup codes |
+
 Static files are served publicly under `/static` (favicon and Swagger UI assets) and `/uploads` (uploaded files).
 
 ### Scopes and roles
 
 The scopes and roles of auth itself are defined in the code. The wildcard `*` matches every scope and `<resource>:*` every action on the resource.
 
-Platform scopes (`ADMIN_SCOPES` in `apps/auth/src/auth/db/models/rbac.py`) are the scopes of the authorization of auth itself. They are carried by platform roles assigned to users.
+Platform scopes (`ADMIN_SCOPES` in `apps/auth/src/auth/db/models/rbac.py`) are the scopes of the authorization of auth itself. They are carried by platform roles assigned to users. The last column counts the routes above that name the scope.
 
-| Scope | Description |
-| --- | --- |
-| `*` | Full access to all operations (super admin) |
-| `users:*` | All user operations |
-| `users:read` | View user information (list, details) |
-| `users:write` | Create and update users |
-| `users:delete` | Delete users permanently |
-| `users:disable` | Enable/disable user accounts |
-| `clients:*` | All OAuth2 client operations |
-| `clients:read` | View OAuth2 client information |
-| `clients:write` | Create and update OAuth2 clients |
-| `clients:delete` | Delete OAuth2 clients |
-| `clients:rotate` | Rotate OAuth2 client secrets |
-| `sessions:*` | All session operations |
-| `sessions:read` | View active sessions |
-| `sessions:revoke` | Revoke user sessions |
-| `jwks:*` | All JWKS key operations |
-| `jwks:read` | View JWKS keys (public key info) |
-| `jwks:write` | Create and activate JWKS keys |
-| `jwks:revoke` | Revoke JWKS keys |
-| `jwks:delete` | Delete JWKS keys permanently |
-| `jwks:rotate` | Rotate JWKS keys automatically |
-| `roles:*` | All role operations |
-| `roles:read` | View roles and available scopes |
-| `roles:write` | Create and update custom roles |
-| `roles:delete` | Delete custom roles |
-| `roles:assign` | Assign/remove roles to/from users |
-| `scopes:*` | All scope operations |
-| `scopes:read` | View available scopes |
-| `scopes:write` | Create and update scopes |
-| `scopes:delete` | Delete scopes |
-| `org:*` | All organisation operations |
-| `org:read` | View organisations, their members and identity providers |
-| `org:write` | Create and update organisations, their members and identity providers |
-| `org:delete` | Delete organisations and identity providers |
-| `pats:*` | All PAT management operations (admin) |
-| `pats:read` | View all users' personal access tokens |
-| `pats:revoke` | Revoke any user's personal access tokens |
+| Scope | Description | Routes |
+| --- | --- | --- |
+| `*` | Full access to all operations (super admin) | 0 |
+| `users:*` | All user operations | 0 |
+| `users:read` | View user information (list, details) | 2 |
+| `users:write` | Create and update users | 5 |
+| `users:delete` | Delete users permanently | 1 |
+| `users:disable` | Enable/disable user accounts | 0 |
+| `clients:*` | All OAuth2 client operations | 0 |
+| `clients:read` | View OAuth2 client information | 2 |
+| `clients:write` | Create and update OAuth2 clients | 2 |
+| `clients:delete` | Delete OAuth2 clients | 1 |
+| `clients:rotate` | Rotate OAuth2 client secrets | 1 |
+| `sessions:*` | All session operations | 0 |
+| `sessions:read` | View active sessions | 2 |
+| `sessions:revoke` | Revoke user sessions | 2 |
+| `jwks:*` | All JWKS key operations | 0 |
+| `jwks:read` | View JWKS keys (public key info) | 2 |
+| `jwks:write` | Create and activate JWKS keys | 2 |
+| `jwks:revoke` | Revoke JWKS keys | 1 |
+| `jwks:delete` | Delete JWKS keys permanently | 1 |
+| `jwks:rotate` | Rotate JWKS keys automatically | 1 |
+| `roles:*` | All role operations | 0 |
+| `roles:read` | View roles and available scopes | 2 |
+| `roles:write` | Create and update custom roles | 5 |
+| `roles:delete` | Delete custom roles | 1 |
+| `roles:assign` | Assign/remove roles to/from users | 2 |
+| `scopes:*` | All scope operations | 0 |
+| `scopes:read` | View available scopes | 2 |
+| `scopes:write` | Create and update scopes | 2 |
+| `scopes:delete` | Delete scopes | 1 |
+| `org:*` | All organisation operations | 0 |
+| `org:read` | View organisations, their members and identity providers | 0 |
+| `org:write` | Create and update organisations, their members and identity providers | 0 |
+| `org:delete` | Delete organisations and identity providers | 0 |
+| `pats:*` | All PAT management operations (admin) | 0 |
+| `pats:read` | View all users' personal access tokens | 2 |
+| `pats:revoke` | Revoke any user's personal access tokens | 2 |
 
 Platform roles (`DEFAULT_ROLES`, system roles):
 

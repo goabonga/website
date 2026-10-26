@@ -116,3 +116,7 @@
     - python_app__restart | bool
     - not (python_app__r_start is changed)
 
+- name: Publish {{ python_app__unit }} through nginx
+  ansible.builtin.include_tasks: nginx.yml
+  when: python_app__c.nginx.enabled | bool
+

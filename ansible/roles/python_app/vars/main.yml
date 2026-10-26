@@ -64,3 +64,20 @@ python_app__secret_value: >-
 python_app__secret_names: >-
   {{ (python_app__c.secret_names + python_app__c.optional_secret_names
       + ((website_secrets[python_app__c.id] | default({})) | list)) | unique | list }}
+
+# Web front of the component being deployed.
+python_app__domain: "{{ python_app__c.nginx.domain | default('', true) or (website_hostnames[python_app__c.app] | default('')) }}"
+python_app__tls: "{{ python_app__c.nginx.ssl in ['letsencrypt', 'step-ca'] }}"
+python_app__wildcard: "{{ python_app__c.nginx.ssl_wildcard | bool }}"
+python_app__cert_dir: "{{ website_letsencrypt_dir }}/live/{{ python_app__domain }}"
+python_app__allowed_hosts: "{{ python_app__c.nginx.allowed_hosts if python_app__c.nginx.allowed_hosts | length > 0 else (website_internal_allowed_hosts if python_app__c.nginx.internal_domain | bool else []) }}"
+python_app__upstream: >-
+  {{ 'http://' ~ python_app__unit ~ '_upstream' if python_app__c.gunicorn.socket | bool
+     else 'http://' ~ python_app__c.gunicorn.host ~ ':' ~ python_app__c.gunicorn.port }}
+python_app__listen_addrs: >-
+  {{ ([website_internal_listen, '127.0.0.1'] | unique | list)
+     if python_app__c.nginx.internal_domain | bool
+     else ([website_listen_ipv4 if website_listen_ipv4 | length > 0 else '0.0.0.0']
+           + (['[' ~ website_listen_ipv6 ~ ']'] if website_listen_ipv6 | length > 0 else [])) }}
+python_app__server_names: >-
+  {{ [python_app__domain] + (python_app__c.nginx.ssl_wildcard_domains if python_app__wildcard else []) }}

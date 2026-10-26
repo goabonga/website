@@ -1,0 +1,267 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Certificate of a virtual host. Let's Encrypt with the HTTP-01 challenge for a
+# plain host, the DNS-01 challenge for a wildcard, the internal CA for step-ca.
+
+- name: Look for certbot
+  ansible.builtin.stat:
+    path: /usr/bin/certbot
+  register: python_app__certbot
+
+- name: Look for the certificate of {{ python_app__domain }}
+  ansible.builtin.stat:
+    path: "{{ python_app__cert_dir }}/fullchain.pem"
+  register: python_app__cert
+
+- name: Check whether the certificate lists the alternate names
+  ansible.builtin.shell:
+    cmd: |
+      for name in {{ python_app__c.nginx.redirect_domains | join(' ') }}; do
+        openssl x509 -in "{{ python_app__cert_dir }}/fullchain.pem" -noout -text | grep -qE "DNS:$name(,|$)" || exit 1
+      done
+    executable: /bin/bash
+  register: python_app__cert_names
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - python_app__c.nginx.redirect_domains | length > 0
+    - python_app__cert.stat.exists
+
+- name: Check whether the certificate covers the wildcard
+  ansible.builtin.shell:
+    cmd: openssl x509 -in "{{ python_app__cert_dir }}/fullchain.pem" -noout -text | grep -q 'DNS:\*\.{{ python_app__domain }}'
+    executable: /bin/bash
+  register: python_app__cert_wildcard
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - python_app__wildcard
+    - python_app__cert.stat.exists
+
+- name: Work out whether a certificate must be requested
+  ansible.builtin.set_fact:
+    python_app__cert_needed: >-
+      {{ not python_app__cert.stat.exists
+         or (python_app__cert_names.rc | default(0)) != 0
+         or (python_app__wildcard and (python_app__cert_wildcard.rc | default(0)) != 0) }}
+    python_app__certbot_email: "{{ website_certbot_email if website_certbot_email | length > 0 else 'admin@' ~ python_app__domain }}"
+
+- name: Check that certbot is installed
+  ansible.builtin.assert:
+    that:
+      - python_app__certbot.stat.exists
+    fail_msg: "certbot is not installed (/usr/bin/certbot). Run the certbot role first."
+    quiet: true
+  when: python_app__cert_needed | bool
+
+# --- Let's Encrypt, HTTP-01 -------------------------------------------------
+- name: Obtain the certificate with the HTTP-01 challenge
+  when:
+    - python_app__cert_needed | bool
+    - python_app__c.nginx.ssl == 'letsencrypt'
+    - not python_app__wildcard
+  block:
+    - name: Serve the ACME challenge of {{ python_app__domain }}
+      ansible.builtin.template:
+        src: nginx-vhost-http.conf.j2
+        dest: "/etc/nginx/sites-available/{{ python_app__unit }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable the challenge virtual host
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ python_app__unit }}"
+        dest: "/etc/nginx/sites-enabled/{{ python_app__unit }}"
+        state: link
+
+    - name: Reload nginx for the challenge
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Request the certificate of {{ python_app__domain }}
+      ansible.builtin.command:
+        argv: >-
+          {{ ['certbot', 'certonly', '--webroot', '--webroot-path', website_acme_webroot, '--non-interactive', '--agree-tos',
+              '--email', python_app__certbot_email, '--cert-name', python_app__domain, '--expand']
+             + python_app__domain_args }}
+      vars:
+        python_app__domain_args: >-
+          {%- set ns = namespace(out=[]) -%}
+          {%- for name in [python_app__domain] + python_app__c.nginx.redirect_domains -%}
+          {%- set ns.out = ns.out + ['-d', name] -%}
+          {%- endfor -%}
+          {{ ns.out }}
+      register: python_app__certbot_run
+      changed_when: "'Successfully' in python_app__certbot_run.stdout"
+
+# --- Let's Encrypt, wildcard, DNS-01 ----------------------------------------
+- name: Remove the certificate that lacks the wildcard
+  ansible.builtin.command:
+    argv: [certbot, delete, --cert-name, "{{ python_app__domain }}", --non-interactive]
+  when:
+    - python_app__cert_needed | bool
+    - python_app__wildcard
+    - python_app__cert.stat.exists
+  changed_when: true
+
+- name: Obtain the wildcard certificate with Route 53
+  when:
+    - python_app__cert_needed | bool
+    - python_app__wildcard
+    - python_app__c.nginx.ssl_dns_provider == 'route53'
+  block:
+    - name: Install the Route 53 tooling
+      ansible.builtin.apt:
+        name:
+          - python3-certbot-dns-route53
+          - python3-boto3
+        state: present
+        cache_valid_time: 3600
+
+    - name: Create the AWS credentials directory
+      ansible.builtin.file:
+        path: /root/.aws
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Write the AWS credentials
+      ansible.builtin.copy:
+        dest: /root/.aws/credentials
+        content: |
+          [default]
+          aws_access_key_id = {{ website_aws_route53_access_key_id }}
+          aws_secret_access_key = {{ website_aws_route53_secret_access_key }}
+        owner: root
+        group: root
+        mode: "0600"
+      when:
+        - website_aws_route53_access_key_id | length > 0
+        - website_aws_route53_secret_access_key | length > 0
+      no_log: true
+
+    - name: Look for the AWS credentials
+      ansible.builtin.stat:
+        path: /root/.aws/credentials
+      register: python_app__aws
+
+    - name: Check that the AWS credentials exist
+      ansible.builtin.assert:
+        that:
+          - python_app__aws.stat.exists
+        fail_msg: >-
+          No AWS credentials for Route 53: set website_aws_route53_access_key_id and
+          website_aws_route53_secret_access_key or create /root/.aws/credentials.
+          The IAM user needs route53:ListHostedZones, route53:GetChange and
+          route53:ChangeResourceRecordSets.
+        quiet: true
+
+    - name: Create the wildcard CNAME records
+      ansible.builtin.script:
+        cmd: >-
+          route53_wildcard_cname.py --target {{ python_app__c.nginx.dns_wildcard_cname_target | quote }}
+          {{ python_app__c.nginx.ssl_wildcard_domains | map('quote') | join(' ') }}
+        executable: /usr/bin/python3
+      environment:
+        AWS_SHARED_CREDENTIALS_FILE: /root/.aws/credentials
+      register: python_app__cname
+      changed_when: "'CREATED' in python_app__cname.stdout"
+      when: python_app__c.nginx.dns_wildcard_cname_target | length > 0
+
+    - name: Request the wildcard certificate
+      ansible.builtin.command:
+        argv: >-
+          {{ ['certbot', 'certonly', '--dns-route53', '--dns-route53-propagation-seconds', '30', '--non-interactive', '--agree-tos',
+              '--email', python_app__certbot_email, '--cert-name', python_app__domain]
+             + python_app__domain_args }}
+      vars:
+        python_app__domain_args: >-
+          {%- set ns = namespace(out=[]) -%}
+          {%- for name in python_app__server_names -%}
+          {%- set ns.out = ns.out + ['-d', name] -%}
+          {%- endfor -%}
+          {{ ns.out }}
+      environment:
+        AWS_SHARED_CREDENTIALS_FILE: /root/.aws/credentials
+      register: python_app__certbot_dns
+      changed_when: "'Successfully' in python_app__certbot_dns.stdout"
+
+- name: Check that the wildcard certificate exists
+  ansible.builtin.fail:
+    msg: |
+      The wildcard certificate of {{ python_app__domain }} is missing in {{ python_app__cert_dir }}.
+      Wildcard certificates need the DNS-01 challenge. Either obtain it by hand:
+        certbot certonly --manual --preferred-challenges dns -d {{ python_app__domain }} -d "{{ python_app__c.nginx.ssl_wildcard_domains | first | default('*.' ~ python_app__domain) }}"
+      or set nginx.ssl_dns_provider to route53 and provide the AWS credentials, then run the playbook again.
+  when:
+    - python_app__cert_needed | bool
+    - python_app__wildcard
+    - python_app__c.nginx.ssl_dns_provider == 'manual'
+    - not ansible_check_mode
+
+# --- Internal CA ------------------------------------------------------------
+- name: Obtain the certificate from the internal CA
+  when:
+    - python_app__cert_needed | bool
+    - python_app__c.nginx.ssl == 'step-ca'
+  block:
+    - name: Look for the root certificate of the internal CA
+      ansible.builtin.stat:
+        path: "{{ website_step_ca_root }}"
+      register: python_app__step_root
+
+    - name: Check that the internal CA is available
+      ansible.builtin.assert:
+        that:
+          - python_app__step_root.stat.exists
+        fail_msg: "The root certificate {{ website_step_ca_root }} is missing. Run the step_ca_client role first."
+        quiet: true
+
+    - name: Serve the ACME challenge of {{ python_app__domain }}
+      ansible.builtin.template:
+        src: nginx-vhost-http.conf.j2
+        dest: "/etc/nginx/sites-available/{{ python_app__unit }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable the challenge virtual host
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ python_app__unit }}"
+        dest: "/etc/nginx/sites-enabled/{{ python_app__unit }}"
+        state: link
+
+    - name: Reload nginx for the challenge
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Request the certificate from the internal CA
+      ansible.builtin.command:
+        argv:
+          - certbot
+          - certonly
+          - --webroot
+          - --webroot-path
+          - "{{ website_acme_webroot }}"
+          - --non-interactive
+          - --agree-tos
+          - --server
+          - "{{ website_step_ca_acme_url }}"
+          - --email
+          - "{{ python_app__certbot_email }}"
+          - --cert-name
+          - "{{ python_app__domain }}"
+          - -d
+          - "{{ python_app__domain }}"
+      environment:
+        REQUESTS_CA_BUNDLE: "{{ website_step_ca_root }}"
+      register: python_app__certbot_step
+      changed_when: "'Successfully' in python_app__certbot_step.stdout"

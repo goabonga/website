@@ -1,0 +1,164 @@
+# Managed by Ansible (goabonga.website.python_app)
+# Virtual host of {{ python_app__unit }}.
+{% set nginx = python_app__c.nginx %}
+{% macro listen(port, tls=false) %}
+{% for addr in python_app__listen_addrs %}
+    listen {{ addr }}:{{ port }}{{ (' ssl' ~ ('' if python_app__http2_directive | bool else ' http2')) if tls else '' }};
+{% endfor %}
+{% endmacro %}
+{% macro proxy() %}
+        proxy_pass {{ python_app__upstream }};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+{% endmacro %}
+{% macro tls_settings() %}
+    ssl_certificate {{ python_app__cert_dir }}/fullchain.pem;
+    ssl_certificate_key {{ python_app__cert_dir }}/privkey.pem;
+    ssl_protocols {{ website_nginx_ssl_protocols }};
+    ssl_ciphers {{ website_nginx_ssl_ciphers }};
+    ssl_prefer_server_ciphers off;
+{% endmacro %}
+{% if python_app__c.gunicorn.socket | bool %}
+upstream {{ python_app__unit }}_upstream {
+    server unix:{{ python_app__socket }} max_fails=3 fail_timeout=10s;
+    keepalive 32;
+}
+
+{% endif %}
+{% if python_app__tls %}
+server {
+{{ listen(80) | trim('\n') }}
+    server_name {{ python_app__server_names | join(' ') }};
+
+    # The ACME challenge is answered over HTTP, for the renewals.
+    location /.well-known/acme-challenge/ {
+        root {{ website_acme_webroot }};
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+{% if nginx.redirect_domains | length > 0 %}
+# Alternate names, redirected to {{ python_app__domain }}.
+server {
+{{ listen(80) | trim('\n') }}
+    server_name {{ nginx.redirect_domains | join(' ') }};
+
+    location /.well-known/acme-challenge/ {
+        root {{ website_acme_webroot }};
+        allow all;
+    }
+
+    location / {
+        return 301 https://{{ python_app__domain }}$request_uri;
+    }
+}
+
+server {
+{{ listen(443, true) | trim('\n') }}
+{% if python_app__http2_directive | bool %}
+    http2 on;
+{% endif %}
+    server_name {{ nginx.redirect_domains | join(' ') }};
+
+{{ tls_settings() | trim('\n') }}
+    return 301 https://{{ python_app__domain }}$request_uri;
+}
+
+{% endif %}
+{% endif %}
+server {
+{% if python_app__tls %}
+{{ listen(443, true) | trim('\n') }}
+{% if python_app__http2_directive | bool %}
+    http2 on;
+{% endif %}
+{% else %}
+{{ listen(80) | trim('\n') }}
+{% endif %}
+    server_name {{ python_app__server_names | join(' ') }};
+
+{% if python_app__tls %}
+{{ tls_settings() | trim('\n') }}
+
+{% endif %}
+    access_log {{ python_app__logs_dir }}/nginx/{{ python_app__unit }}-access.log;
+    error_log {{ python_app__logs_dir }}/nginx/{{ python_app__unit }}-error.log;
+
+{% if nginx.client_max_body_size | length > 0 %}
+    client_max_body_size {{ nginx.client_max_body_size }};
+
+{% endif %}
+{% if python_app__error_pages | bool %}
+    include {{ website_nginx_error_pages_snippet }};
+
+{% endif %}
+{% if nginx.csp | length > 0 %}
+    add_header Content-Security-Policy "{{ nginx.csp }}" always;
+{% endif %}
+{% for header in nginx.headers %}
+    add_header {{ header }};
+{% endfor %}
+{% if python_app__allowed_hosts | length > 0 %}
+
+    # Restrict the access to the allowed networks.
+{% if nginx.internal_domain | bool %}
+    allow 127.0.0.1;
+{% endif %}
+{% for host in python_app__allowed_hosts %}
+    allow {{ host }};
+{% endfor %}
+    deny all;
+{% endif %}
+{% if python_app__c.healthcheck.enabled | bool %}
+
+    # Health probe, reachable from the host only.
+    location = {{ python_app__c.healthcheck.path }} {
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+{{ proxy() | trim('\n') }}
+        proxy_connect_timeout {{ python_app__c.healthcheck.timeout }}s;
+        proxy_read_timeout {{ python_app__c.healthcheck.timeout }}s;
+        access_log off;
+    }
+{% endif %}
+{% if nginx.websocket.enabled | bool %}
+
+    location {{ nginx.websocket.path }} {
+{{ proxy() | trim('\n') }}
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout {{ nginx.websocket.timeout }};
+        proxy_send_timeout {{ nginx.websocket.timeout }};
+        proxy_buffering off;
+    }
+{% endif %}
+{% for location in nginx.custom_locations %}
+
+    location {{ location.path }} {
+{{ location.config | trim | indent(8, first=true) }}
+    }
+{% endfor %}
+{% if nginx.static.enabled | bool %}
+
+    location {{ nginx.static.location }} {
+        alias {{ python_app__current }}/{{ nginx.static.alias }};
+        expires {{ nginx.static.expires }};
+        add_header Cache-Control "public";
+    }
+{% endif %}
+
+    location / {
+{{ proxy() | trim('\n') }}
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;
+    }
+}

@@ -628,3 +628,48 @@ argument_specs:
           webhook_url).'
         default: []
         elements: dict
+      website_mailler_celery_queue:
+        type: str
+        description:
+        - Celery queue of the three mailler processes (CELERY_QUEUE); the worker consumes it
+          (--queues), the API and beat publish to it.
+        default: mailler
+      website_mailler_legacy_client_id:
+        type: str
+        description:
+        - 'OAuth2 client that owns the data created before the client registry existed
+          (LEGACY_CLIENT_ID). Required only when the database already holds templates, contacts,
+          groups or campaigns: migration 006 stops with an explanation when it is empty.'
+        default: ''
+      website_mailler_cors_origins:
+        type: list
+        description:
+        - Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
+        default: []
+        elements: str
+      website_mailler_unsubscribe_base_url:
+        type: str
+        description:
+        - Public base URL of the API including /api/v1, used to build the unsubscribe links of the
+          campaigns (UNSUBSCRIBE_BASE_URL). Required to send campaigns.
+        default: ''
+      website_mailler_protonmail_host:
+        type: str
+        description:
+        - Protonmail Bridge SMTP host (PROTONMAIL_HOST); follows the protonmail_bridge role.
+          Required, with the port and the user, when the PROTONMAIL_PASSWORD secret is provided.
+      website_mailler_protonmail_port:
+        type: raw
+        description:
+        - Protonmail Bridge SMTP port (PROTONMAIL_PORT); follows the protonmail_bridge role, 0
+          when it is not used.
+      website_mailler_protonmail_user:
+        type: str
+        description:
+        - Protonmail Bridge account (PROTONMAIL_USER).
+        default: ''
+      website_mailler_ses_region:
+        type: str
+        description:
+        - AWS SES region (SES_REGION). Required when the SES_ACCESS_KEY secret is provided.
+        default: ''

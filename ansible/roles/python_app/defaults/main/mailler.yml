@@ -1,0 +1,35 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Settings of the mailler application. The service refuses every caller that
+# is not registered (website_mailler_clients) and has no default for the
+# settings below: an empty value is neutral (nothing allowed, nothing sent).
+
+# Celery queue of the three processes (CELERY_QUEUE); the worker consumes it
+# (--queues), the API and beat publish to it.
+website_mailler_celery_queue: mailler
+
+# OAuth2 client that owns the data created before the client registry existed
+# (LEGACY_CLIENT_ID). Required only when the database already holds templates,
+# contacts, groups or campaigns: migration 006 stops with an explanation when
+# it is empty. Not needed on a new database.
+website_mailler_legacy_client_id: ""
+
+# Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
+website_mailler_cors_origins: []
+
+# Public base URL of the API including /api/v1, used to build the unsubscribe
+# links of the campaigns (UNSUBSCRIBE_BASE_URL). Required to send campaigns.
+website_mailler_unsubscribe_base_url: ""
+
+# Protonmail Bridge (SMTP) provider: PROTONMAIL_HOST, PROTONMAIL_PORT and
+# PROTONMAIL_USER are required as soon as the PROTONMAIL_PASSWORD secret is
+# provided for mailler. The host and the port follow the protonmail_bridge role.
+website_mailler_protonmail_host: "{{ protonmail_bridge_smtp_host | default('') }}"
+website_mailler_protonmail_port: "{{ protonmail_bridge_smtp_port | default(0) }}"
+website_mailler_protonmail_user: ""
+
+# AWS SES region (SES_REGION), required as soon as the SES_ACCESS_KEY secret is
+# provided for mailler.
+website_mailler_ses_region: ""

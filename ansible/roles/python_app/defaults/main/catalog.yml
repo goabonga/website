@@ -608,7 +608,6 @@ website_apps_catalog:
     optional_secret_names: ["SMTP_PASSWORD"]
 
   mailler:
-    extra_groups: ["internal"]
     healthcheck:
       enabled: true
     nginx:
@@ -625,10 +624,16 @@ website_apps_catalog:
       REDIS_URL: "{{ website_redis_url }}?db=11"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_mailler_celery_queue }}"
       TOKEN_INTROSPECTION_CACHE_TTL: "60"
       OAUTH2_CLIENT_CACHE_TTL: "300"
-      PROTONMAIL_PORT: "1025"
-      INTERNAL_API_SOCKET: "/run/internal/internal.sock"
+      CORS_ORIGINS: "{{ website_mailler_cors_origins }}"
+      LEGACY_CLIENT_ID: "{{ website_mailler_legacy_client_id }}"
+      UNSUBSCRIBE_BASE_URL: "{{ website_mailler_unsubscribe_base_url }}"
+      PROTONMAIL_HOST: "{{ website_mailler_protonmail_host }}"
+      PROTONMAIL_PORT: "{{ website_mailler_protonmail_port }}"
+      PROTONMAIL_USER: "{{ website_mailler_protonmail_user }}"
+      SES_REGION: "{{ website_mailler_ses_region }}"
     secret_names: ["OAUTH2_CLIENT_SECRET", "BREVO_API_KEY", "WEBHOOK_HMAC_SECRET"]
     optional_secret_names: ["SENDGRID_API_KEY", "SES_ACCESS_KEY", "SES_SECRET_KEY", "PROTONMAIL_PASSWORD"]
     oauth2:
@@ -642,19 +647,24 @@ website_apps_catalog:
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_mailler_celery_queue }}"
 
   mailler_worker:
     app: mailler
     type: celery_worker
     celery:
       concurrency: 4
-      queues: ["mailler"]
+      queues: ["{{ website_mailler_celery_queue }}"]
     postgres:
       database: mailler
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
-      PROTONMAIL_PORT: "1025"
+      CELERY_QUEUE: "{{ website_mailler_celery_queue }}"
+      PROTONMAIL_HOST: "{{ website_mailler_protonmail_host }}"
+      PROTONMAIL_PORT: "{{ website_mailler_protonmail_port }}"
+      PROTONMAIL_USER: "{{ website_mailler_protonmail_user }}"
+      SES_REGION: "{{ website_mailler_ses_region }}"
     secret_names: ["BREVO_API_KEY", "WEBHOOK_HMAC_SECRET"]
     optional_secret_names: ["SENDGRID_API_KEY", "SES_ACCESS_KEY", "SES_SECRET_KEY", "PROTONMAIL_PASSWORD"]
 

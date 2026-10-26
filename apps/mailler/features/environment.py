@@ -181,6 +181,7 @@ def before_all(context):
         ("mailler.routes.campaigns.send_campaign_task", "send_campaign_task"),
         ("mailler.tasks.scheduler.send_campaign_task", "send_campaign_task"),
         ("mailler.tasks.send.send_email_task", "send_email_task"),
+        ("mailler.tasks.callbacks.deliver_status_callback", "deliver_status_callback"),
     ):
         context._patchers.append(patch(target, _delayed_task(context, name)))
         context._patchers[-1].start()

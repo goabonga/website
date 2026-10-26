@@ -48,13 +48,13 @@ website_subdomains: "{{ website_subdomains_defaults | combine(website_subdomains
 website_hostnames_overrides: {}
 
 # Host name of each application: the label in front of the zone, or the bare
-# zone for an empty label. Host names are not derived for applications without
-# a label.
+# zone for an empty label. The name is empty while the zone is empty, and the
+# applications without an entry in website_subdomains (asterisk) have none.
 website_hostnames: >-
   {%- set ns = namespace(out={}) -%}
   {%- for app, label in website_subdomains.items() -%}
   {%- set zone = website_internal_domain if app in website_internal_apps else website_domain -%}
-  {%- set host = (label ~ '.' ~ zone) if label | length > 0 else zone -%}
+  {%- set host = ((label ~ '.' ~ zone) if label | length > 0 else zone) if zone | length > 0 else '' -%}
   {%- set ns.out = ns.out | combine({app: host}) -%}
   {%- endfor -%}
   {{ ns.out | combine(website_hostnames_overrides) }}

@@ -19,6 +19,7 @@ applications. It is a member of the `website` uv workspace.
   collections.
 - Collection sharing with collaborators and email invitations.
 - Plan-based quotas and per-tenant API call tracking.
+- Multi-tenant resolution from path prefix, subdomain or custom domain.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 

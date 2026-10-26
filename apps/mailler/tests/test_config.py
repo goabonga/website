@@ -168,3 +168,26 @@ class TestProviderSettings:
                 assert reloaded.settings.webhook_hmac_secret == "hmac-secret"
             finally:
                 importlib.reload(config_module)
+
+
+class TestCelerySettings:
+    """Celery broker settings introduced with sending."""
+
+    def test_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.celery_broker_url == "redis://localhost:6379/0"
+        assert s.celery_result_backend == "redis://localhost:6379/1"
+        assert s.celery_queue == "mailler"
+
+    def test_delivery_retry_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.send_max_retries == 3
+        assert s.send_retry_delay == 60
+        assert s.send_retry_backoff_max == 300
+
+    def test_queue_and_retries_from_environment(self, monkeypatch):
+        monkeypatch.setenv("CELERY_QUEUE", "outgoing")
+        monkeypatch.setenv("SEND_MAX_RETRIES", "5")
+        s = Settings(_env_file=None)
+        assert s.celery_queue == "outgoing"
+        assert s.send_max_retries == 5

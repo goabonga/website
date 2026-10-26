@@ -18,6 +18,7 @@ feature: what it does, how it is configured, how it is tested.
 5. [Conversations](05-conversations.md): conversation, message and usage models, `ChatService`.
 6. [Anonymous sessions](06-anonymous-sessions.md): cookie sessions and the unified chat context.
 7. [Conversation cache and background sync](07-conversation-cache.md): write-behind Redis cache and the Celery sync task.
+8. [Knowledge base](08-knowledge-base.md): pgvector entries, namespaces with scope access and semantic search.
 
 ## Running the tests
 

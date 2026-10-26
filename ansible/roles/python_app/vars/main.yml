@@ -136,3 +136,11 @@ python_app__helper_rules: >-
 
 # Components that run with sudo: plain sudoers entries or the helper.
 python_app__sudo: "{{ python_app__c.sudoers | length > 0 or python_app__c.custom_domain_helper.enabled | bool }}"
+
+# Providers of mailler that are in use: their credentials are provided.
+python_app__mailler_protonmail: >-
+  {{ ((website_secrets.get('mailler', {}).get('PROTONMAIL_PASSWORD', '') | string)
+      ~ (website_secrets.get('mailler_worker', {}).get('PROTONMAIL_PASSWORD', '') | string)) | length > 0 }}
+python_app__mailler_ses: >-
+  {{ ((website_secrets.get('mailler', {}).get('SES_ACCESS_KEY', '') | string)
+      ~ (website_secrets.get('mailler_worker', {}).get('SES_ACCESS_KEY', '') | string)) | length > 0 }}

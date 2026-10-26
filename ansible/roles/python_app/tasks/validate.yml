@@ -68,3 +68,15 @@
       {{ python_app__helper_options | dict2items | rejectattr('key', 'in', ['config-prefix', 'nginx-service', 'email'])
          | rejectattr('value', 'match', '^/') | map(attribute='key') | list }}
   when: python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | selectattr('custom_domain_helper.enabled') | list | length > 0
+
+- name: Check the provider settings of mailler
+  ansible.builtin.assert:
+    that:
+      - not python_app__mailler_protonmail or (website_mailler_protonmail_host | string | length > 0 and website_mailler_protonmail_port | int > 0 and website_mailler_protonmail_user | string | length > 0)
+      - not python_app__mailler_ses or website_mailler_ses_region | string | length > 0
+    fail_msg: >-
+      mailler: the PROTONMAIL_PASSWORD secret needs website_mailler_protonmail_host,
+      website_mailler_protonmail_port and website_mailler_protonmail_user, and the SES_ACCESS_KEY secret
+      needs website_mailler_ses_region.
+    quiet: true
+  when: "'mailler' in python_app__apps"

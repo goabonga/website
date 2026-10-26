@@ -1,0 +1,44 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: "/etc/systemd/system/openvpn@{{ openvpn_client_config_name }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: openvpn_client_restart_on_failure | bool
+
+- name: Deploy the restart policy drop-in
+  ansible.builtin.template:
+    src: restart.conf.j2
+    dest: "/etc/systemd/system/openvpn@{{ openvpn_client_config_name }}.service.d/restart.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - openvpn_client | reload systemd
+    - openvpn_client | restart
+  when: openvpn_client_restart_on_failure | bool
+
+- name: Remove the restart policy drop-in
+  ansible.builtin.file:
+    path: "/etc/systemd/system/openvpn@{{ openvpn_client_config_name }}.service.d/restart.conf"
+    state: absent
+  notify:
+    - openvpn_client | reload systemd
+    - openvpn_client | restart
+  when: not (openvpn_client_restart_on_failure | bool)
+
+- name: Apply pending changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Manage the tunnel service
+  ansible.builtin.systemd:
+    name: "openvpn@{{ openvpn_client_config_name }}"
+    enabled: "{{ openvpn_client_autostart }}"
+    state: "{{ openvpn_client_service_state }}"
+    daemon_reload: true
+  when: openvpn_client_config_file | length > 0

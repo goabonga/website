@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The openvpn_client role only supports Debian-family distributions.
+    quiet: true
+
+- name: Look for the client profile on the controller
+  ansible.builtin.stat:
+    path: "{{ openvpn_client_config_file }}"
+  delegate_to: localhost
+  become: false
+  register: openvpn_client_profile_stat
+  when: openvpn_client_config_file | length > 0
+
+- name: Assert the client profile exists
+  ansible.builtin.assert:
+    that: openvpn_client_profile_stat.stat.exists
+    fail_msg: "OpenVPN client profile not found on the controller: {{ openvpn_client_config_file }}"
+    quiet: true
+  when: openvpn_client_config_file | length > 0

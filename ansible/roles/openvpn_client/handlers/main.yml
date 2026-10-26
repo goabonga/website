@@ -1,0 +1,17 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Reload systemd for the OpenVPN client
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: openvpn_client | reload systemd
+
+- name: Restart the OpenVPN client
+  ansible.builtin.systemd:
+    name: "openvpn@{{ openvpn_client_config_name }}"
+    state: restarted
+  when:
+    - openvpn_client_service_state == 'started'
+    - openvpn_client_config_file | length > 0
+  listen: openvpn_client | restart

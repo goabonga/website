@@ -23,6 +23,16 @@ from billing.schemas.saas_app import (
     SaasAppResponse,
     SaasAppUpdate,
 )
+from billing.schemas.subscription import (
+    ProrationBehavior,
+    ProrationLineItem,
+    SubscriptionCreate,
+    SubscriptionResponse,
+    SubscriptionUpdate,
+    SubscriptionUpgradePreview,
+    SubscriptionUpgradeRequest,
+    SubscriptionUpgradeResponse,
+)
 
 __all__ = [
     "SaasAppCreate",
@@ -37,4 +47,12 @@ __all__ = [
     "CustomerCreate",
     "CustomerResponse",
     "CustomerUpdate",
+    "ProrationBehavior",
+    "ProrationLineItem",
+    "SubscriptionCreate",
+    "SubscriptionResponse",
+    "SubscriptionUpdate",
+    "SubscriptionUpgradePreview",
+    "SubscriptionUpgradeRequest",
+    "SubscriptionUpgradeResponse",
 ]

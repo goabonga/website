@@ -18,6 +18,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Product catalog per SaaS application
 - One-time, recurring and metered prices
 - Customers synchronized with Stripe
+- Subscription lifecycle (create, update, cancel, upgrade with proration preview)
 
 ## Routes and scopes
 
@@ -44,6 +45,16 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/{saas_id}/customers/{customer_id}` | scope `billing:platform:read` | Get a customer by ID |
 | PATCH | `/platform/{saas_id}/customers/{customer_id}` | scope `billing:platform:write` | Update a customer (syncs to Stripe) |
 | GET | `/platform/{saas_id}/customers/{customer_id}/portal` | scope `billing:platform:read` | Generate a Customer Portal URL for managing billing |
+| GET | `/platform/{saas_id}/subscriptions` | scope `billing:platform:read` | List all subscriptions for a SaaS app |
+| GET | `/platform/{saas_id}/customers/{customer_id}/subscriptions` | scope `billing:platform:read` | List all subscriptions for a customer |
+| GET | `/platform/{saas_id}/external/{external_id}/subscription` | scope `billing:platform:read` | Get the active subscription for a customer by external_id |
+| GET | `/platform/{saas_id}/subscriptions/{subscription_id}` | scope `billing:platform:read` | Get a subscription by ID |
+| POST | `/platform/{saas_id}/customers/{customer_id}/subscriptions` | scope `billing:platform:write` | Create a new subscription for a customer (syncs to Stripe) |
+| PATCH | `/platform/{saas_id}/subscriptions/{subscription_id}` | scope `billing:platform:write` | Update a subscription (syncs to Stripe) |
+| DELETE | `/platform/{saas_id}/subscriptions/{subscription_id}` | scope `billing:platform:write` | Cancel a subscription (syncs to Stripe) |
+| POST | `/platform/{saas_id}/subscriptions/{subscription_id}/sync` | scope `billing:platform:write` | Sync subscription data from Stripe |
+| POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade/preview` | scope `billing:platform:read` | Preview proration costs for upgrading a subscription |
+| POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade` | scope `billing:platform:write` | Upgrade a subscription to a new plan with proration |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -51,8 +62,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `billing:platform:write` - checked by 9 routes
-- `billing:platform:read` - checked by 9 routes
+- `billing:platform:write` - checked by 14 routes
+- `billing:platform:read` - checked by 14 routes
 
 ## Usage
 

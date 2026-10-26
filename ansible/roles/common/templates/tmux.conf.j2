@@ -1,0 +1,38 @@
+{{ ansible_managed | comment }}
+
+# General
+set -g default-terminal "{{ common_tmux_default_terminal }}"
+set -ga terminal-overrides ",*256col*:Tc"
+set -g mouse {{ 'on' if common_tmux_mouse | bool else 'off' }}
+set -g history-limit {{ common_tmux_history_limit }}
+set -g base-index {{ common_tmux_base_index }}
+setw -g pane-base-index {{ common_tmux_base_index }}
+set -g renumber-windows on
+set -g escape-time 10
+set -g focus-events on
+setw -g mode-keys vi
+
+# Prefix
+unbind C-b
+set -g prefix {{ common_tmux_prefix }}
+bind {{ common_tmux_prefix }} send-prefix
+
+# Windows and panes
+bind | split-window -h -c "#{pane_current_path}"
+bind - split-window -v -c "#{pane_current_path}"
+bind c new-window -c "#{pane_current_path}"
+bind r source-file {{ common_tmux_config_path }} \; display-message "Configuration reloaded"
+
+# Colors
+set -g status-style "bg={{ common_tmux_status_bg }},fg={{ common_tmux_status_fg }}"
+set -g window-status-current-style "bg={{ common_tmux_accent }},fg={{ common_tmux_status_bg }},bold"
+set -g pane-active-border-style "fg={{ common_tmux_accent }}"
+set -g status-left "[#S] "
+set -g status-right "#h  %Y-%m-%d %H:%M"
+{% if common_tmux_extra_config %}
+
+# Extra configuration
+{% for line in common_tmux_extra_config %}
+{{ line }}
+{% endfor %}
+{% endif %}

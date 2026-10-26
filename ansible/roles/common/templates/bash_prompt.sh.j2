@@ -1,0 +1,28 @@
+{{ ansible_managed | comment }}
+
+[ -n "${BASH_VERSION:-}" ] || return 0
+case $- in *i*) ;; *) return 0 ;; esac
+
+{% if common_bash_prompt_show_git | bool %}
+__common_prompt_git() {
+  local branch
+  branch=$(git symbolic-ref --short -q HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null) || return 0
+  printf ' (%s)' "$branch"
+}
+
+{% endif %}
+if [ "$EUID" -eq 0 ]; then
+  __common_user_color={{ common_bash_prompt_root_color }}
+else
+  __common_user_color={{ common_bash_prompt_user_color }}
+fi
+
+PS1='\[\e[0;'"$__common_user_color"'m\]\u\[\e[0m\]'
+{% if common_bash_prompt_show_host | bool %}
+PS1+='@\[\e[0;{{ common_bash_prompt_host_color }}m\]\h\[\e[0m\]'
+{% endif %}
+PS1+=':\[\e[0;{{ common_bash_prompt_path_color }}m\]\w\[\e[0m\]'
+{% if common_bash_prompt_show_git | bool %}
+PS1+='\[\e[0;{{ common_bash_prompt_git_color }}m\]$(__common_prompt_git)\[\e[0m\]'
+{% endif %}
+PS1+='\$ '

@@ -1,0 +1,40 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Set the host name
+  ansible.builtin.hostname:
+    name: "{{ common_hostname }}"
+  when: common_hostname | length > 0
+
+- name: Set the time zone
+  ansible.builtin.timezone:
+    name: "{{ common_timezone }}"
+
+- name: Install the locales package
+  ansible.builtin.apt:
+    name: locales
+    state: present
+
+- name: Generate locales
+  community.general.locale_gen:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ ([common_locale] + common_locales_extra) | unique }}"
+
+# /etc/default/locale is a symlink on recent releases: the owner and the mode
+# belong to the file it points to, not to the link.
+- name: Look for the default locale file
+  ansible.builtin.stat:
+    path: /etc/default/locale
+  register: common__locale_file
+
+- name: Set the default locale
+  ansible.builtin.lineinfile:
+    path: "{{ common__locale_file.stat.lnk_source | default('/etc/default/locale') }}"
+    regexp: "^LANG="
+    line: "LANG={{ common_locale }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"

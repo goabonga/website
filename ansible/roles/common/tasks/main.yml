@@ -1,0 +1,21 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install and upgrade packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: [common, common_packages]
+
+- name: Configure the host identity and locale
+  ansible.builtin.import_tasks: system.yml
+  tags: [common, common_system]
+
+- name: Install the shared bash prompt
+  ansible.builtin.import_tasks: bash_prompt.yml
+  when: common_bash_prompt_enabled | bool
+  tags: [common, common_bash_prompt]
+
+- name: Configure tmux
+  ansible.builtin.import_tasks: tmux.yml
+  when: common_tmux_enabled | bool
+  tags: [common, common_tmux]

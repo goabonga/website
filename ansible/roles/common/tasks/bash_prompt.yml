@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install the bash prompt script
+  ansible.builtin.template:
+    src: bash_prompt.sh.j2
+    dest: /etc/profile.d/common-prompt.sh
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Load the bash prompt in every interactive shell
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - common prompt"
+    block: |
+      [ -r /etc/profile.d/common-prompt.sh ] && . /etc/profile.d/common-prompt.sh

@@ -1,0 +1,179 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: 'Baseline host configuration: packages, time zone, locale, bash prompt
+      and tmux.'
+    description:
+    - 'Brings a fresh Debian or Ubuntu host to a consistent baseline: package index and upgrades,
+      base packages, host name, time zone, locale, a shared bash prompt and a system-wide
+      tmux configuration.'
+    author: Chris
+    options:
+      common_apt_update_cache:
+        type: bool
+        description:
+        - Refresh the apt package index.
+        default: true
+      common_apt_cache_valid_time:
+        type: int
+        description:
+        - Seconds during which the apt cache is considered fresh.
+        default: 3600
+      common_upgrade:
+        type: str
+        description:
+        - How installed packages are upgraded (none skips the upgrade).
+        default: safe
+        choices:
+        - none
+        - safe
+        - full
+        - dist
+      common_packages:
+        type: list
+        description:
+        - Packages installed on every host.
+        default:
+        - ca-certificates
+        - curl
+        - git
+        - htop
+        - unzip
+        - vim
+        - wget
+        elements: str
+      common_packages_absent:
+        type: list
+        description:
+        - Packages removed from every host.
+        default: []
+        elements: str
+      common_hostname:
+        type: str
+        description:
+        - Host name to set. Left untouched when empty.
+        default: ''
+      common_timezone:
+        type: str
+        description:
+        - System time zone.
+        default: UTC
+      common_locale:
+        type: str
+        description:
+        - Default system locale (LANG).
+        default: en_US.UTF-8
+      common_locales_extra:
+        type: list
+        description:
+        - Additional locales to generate.
+        default: []
+        elements: str
+      common_bash_prompt_enabled:
+        type: bool
+        description:
+        - Install a shared bash prompt for interactive shells.
+        default: true
+      common_bash_prompt_show_host:
+        type: bool
+        description:
+        - Show the host name in the prompt.
+        default: true
+      common_bash_prompt_show_git:
+        type: bool
+        description:
+        - Show the current git branch in the prompt.
+        default: true
+      common_bash_prompt_user_color:
+        type: int
+        description:
+        - ANSI foreground color code of the user name.
+        default: 32
+      common_bash_prompt_root_color:
+        type: int
+        description:
+        - ANSI foreground color code of the user name for root.
+        default: 31
+      common_bash_prompt_host_color:
+        type: int
+        description:
+        - ANSI foreground color code of the host name.
+        default: 36
+      common_bash_prompt_path_color:
+        type: int
+        description:
+        - ANSI foreground color code of the working directory.
+        default: 34
+      common_bash_prompt_git_color:
+        type: int
+        description:
+        - ANSI foreground color code of the git branch.
+        default: 33
+      common_tmux_enabled:
+        type: bool
+        description:
+        - Install tmux and a system-wide configuration.
+        default: true
+      common_tmux_config_path:
+        type: path
+        description:
+        - Path of the system-wide tmux configuration.
+        default: /etc/tmux.conf
+      common_tmux_prefix:
+        type: str
+        description:
+        - tmux prefix key.
+        default: C-a
+      common_tmux_mouse:
+        type: bool
+        description:
+        - Enable mouse support.
+        default: true
+      common_tmux_history_limit:
+        type: int
+        description:
+        - Scrollback lines kept per pane.
+        default: 50000
+      common_tmux_base_index:
+        type: int
+        description:
+        - Index of the first window and pane.
+        default: 1
+      common_tmux_default_terminal:
+        type: str
+        description:
+        - Value of default-terminal.
+        default: tmux-256color
+      common_tmux_status_bg:
+        type: str
+        description:
+        - Status bar background color.
+        default: colour235
+      common_tmux_status_fg:
+        type: str
+        description:
+        - Status bar foreground color.
+        default: colour250
+      common_tmux_accent:
+        type: str
+        description:
+        - Accent color of the active window and pane border.
+        default: colour33
+      common_tmux_extra_config:
+        type: list
+        description:
+        - Extra raw tmux configuration lines appended to the file.
+        default: []
+        elements: str
+      common_tmux_autoattach:
+        type: bool
+        description:
+        - Attach interactive SSH logins to a tmux session (skipped when already inside tmux).
+        default: false
+      common_tmux_session_name:
+        type: str
+        description:
+        - Name of the session created by auto-attach.
+        default: main

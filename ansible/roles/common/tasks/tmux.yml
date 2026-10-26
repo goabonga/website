@@ -1,0 +1,30 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install tmux
+  ansible.builtin.apt:
+    name: tmux
+    state: present
+
+- name: Install the system-wide tmux configuration
+  ansible.builtin.template:
+    src: tmux.conf.j2
+    dest: "{{ common_tmux_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Attach interactive SSH logins to tmux
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - common tmux autoattach"
+    block: |
+      # TERM is forwarded by ssh but TMUX is not: a screen or tmux TERM means the
+      # client already runs inside tmux, so do not nest a second one.
+      if [ -n "$SSH_CONNECTION" ] && [ -z "$TMUX" ] && [ -t 0 ] \
+          && [[ $- == *i* ]] && [[ "$TERM" != screen* && "$TERM" != tmux* ]] \
+          && command -v tmux > /dev/null; then
+        exec tmux new-session -A -s {{ common_tmux_session_name | quote }}
+      fi
+    state: "{{ 'present' if common_tmux_autoattach | bool else 'absent' }}"

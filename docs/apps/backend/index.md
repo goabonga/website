@@ -14,6 +14,7 @@ feature: what it does, how it is configured, how it is tested.
    base, FastAPI application and the `/health` probe.
 2. [security.txt endpoint](02-security-txt.md): RFC 9116 disclosure file built from settings.
 3. [OAuth2 token authentication](03-oauth2-authentication.md): JWT and opaque token validation, scopes.
+4. [Redis rate limiting](04-rate-limiting.md): per-user and per-address sliding window, session creation budget.
 
 ## Running the tests
 

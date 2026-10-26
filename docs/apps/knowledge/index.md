@@ -31,6 +31,8 @@ how it is tested with pytest and behave.
     subscription webhook.
 11. [Email delivery](10-email.md): MJML templates sent through the
     mailler service.
+12. [MCP releases](11-releases.md): GitHub release webhook and public
+    download API.
 
 ## Running the tests
 

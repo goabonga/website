@@ -23,6 +23,8 @@ applications. It is a member of the `website` uv workspace.
 - Billing client and subscription webhook that keep organization plans in
   sync.
 - Transactional emails (MJML templates) sent through the mailler service.
+- MCP executable releases imported from GitHub and served through a public
+  download API.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -34,6 +36,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint |
 | POST | `/webhooks/billing` | public; HMAC signature required (`BILLING_WEBHOOK_SECRET`) | Receive billing webhook events |
+| POST | `/webhooks/github/releases` | public; HMAC signature checked when `GITHUB_WEBHOOK_SECRET` is set | Receive GitHub release webhook events |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |
@@ -56,6 +59,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/api/v1/collections/{collection_id}/documents/{document_id}` | bearer token; scope `documents:write` | Delete a document |
 | POST | `/api/v1/search` | bearer token; scope `collections:search` | Search across collections |
 | POST | `/api/v1/search/collections/{collection_id}` | bearer token; scope `collections:search` | Search within a specific collection |
+| GET | `/api/v1/mcp/releases` | public | List all published MCP releases |
+| GET | `/api/v1/mcp/releases/latest` | public | Get the latest published MCP release |
+| GET | `/api/v1/mcp/releases/{version}` | public | Get a specific MCP release by version |
+| GET | `/api/v1/mcp/download/{version}/{platform}` | public | Download a specific release for a platform |
+| GET | `/api/v1/mcp/download/latest/{platform}` | public | Download the latest release for a platform |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

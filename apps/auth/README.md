@@ -12,6 +12,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Registration and email verification: User accounts, password hashing, email delivery and verification.
 - Sessions and logout: Cookie sessions, sliding expiry middleware and logout.
 - Multi-factor authentication: TOTP, email codes and backup codes.
+- Login and password reset: Login form and API, password recovery.
 
 ## Routes and scopes
 
@@ -39,6 +40,15 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/verify-email/api` | public | Verify an email address using a one-time code (JSON API) |
 | POST | `/auth/resend-verification` | public | Re-send the email verification code via the HTML form |
 | POST | `/auth/resend-verification/api` | public | Re-send the email verification code (JSON API) |
+| GET | `/auth/forgot-password` | public | Render the forgot-password HTML form |
+| POST | `/auth/forgot-password` | public | Submit the forgot-password form and dispatch a reset email |
+| POST | `/auth/forgot-password/api` | public | Request a password reset link via JSON API |
+| GET | `/auth/reset-password` | public | Render the reset-password HTML form authenticated by a URL token |
+| POST | `/auth/reset-password` | public | Submit the reset-password form and update the user credential |
+| POST | `/auth/reset-password/api` | public | Reset a user password via JSON API using a single-use token |
+| GET | `/auth/login` | public | Render the HTML login form for password-based authentication |
+| POST | `/auth/login` | public | Process the HTML login form submission and establish a session cookie |
+| POST | `/auth/login/api` | public | Authenticate via JSON and establish a session cookie (API variant) |
 | POST | `/auth/logout` | public (clears the session cookie) | Terminate the current session and redirect to the login page |
 | POST | `/auth/logout/api` | session | Terminate the current session and return a JSON confirmation |
 | POST | `/auth/logout/all` | public (clears the session cookie) | Revoke every active session for the user and redirect to the login page |

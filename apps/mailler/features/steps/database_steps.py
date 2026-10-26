@@ -217,3 +217,13 @@ def step_email_html_excludes(context, to_email, text):
 def step_email_plain_text(context, to_email, text):
     email = load_email(to_email=to_email)
     assert (email.text_content or "").strip() == text, email.text_content
+
+
+@then('{count:d} emails should be stored for "{to_email}"')
+@then('{count:d} email should be stored for "{to_email}"')
+def step_count_emails_to(context, count, to_email):
+    with get_sync_db() as db:
+        stored = db.execute(
+            select(func.count()).select_from(Email).where(Email.to_email == to_email)
+        ).scalar_one()
+    assert stored == count, f"Expected {count} email(s) to {to_email}, found {stored}"

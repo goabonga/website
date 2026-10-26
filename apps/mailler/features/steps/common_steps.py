@@ -228,3 +228,20 @@ def step_send_raw_post(context, path, body, header_name, header_value):
 def step_check_json_list_contains(context, key, value):
     values = context.response.json()[key]
     assert value in values, values
+
+
+@when('I send a POST to "{path}" with the idempotency key "{key}" and')
+def step_send_post_with_idempotency_key(context, path, key):
+    body = json.loads(_resolve(context, context.text))
+    context.response = _run(
+        context,
+        _get_client(context).post(
+            _resolve(context, path), json=body, headers={"Idempotency-Key": key}
+        ),
+    )
+
+
+@then('the response JSON "{key}" should be the stored "{alias}"')
+def step_check_json_value_alias(context, key, alias):
+    expected = context.created_ids[alias]
+    assert str(context.response.json().get(key)) == expected, context.response.json()

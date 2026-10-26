@@ -27,6 +27,7 @@ tested.
 | 6 | [Products](06-products.md) | Product catalog per tenant |
 | 7 | [Prices](07-prices.md) | One-time, recurring and metered prices |
 | 8 | [Customers](08-customers.md) | Customers synchronized with Stripe |
+| 9 | [Subscriptions](09-subscriptions.md) | Lifecycle, sync and upgrades with proration |
 
 ## Running the tests
 

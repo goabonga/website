@@ -1,0 +1,5 @@
+{
+  "name": "Workspace deletion reminder",
+  "description": "Reminds the owner, one day before, that the workspace will be deleted.",
+  "subject_template": "Reminder: Workspace deletion tomorrow - {{ workspace_name }}"
+}

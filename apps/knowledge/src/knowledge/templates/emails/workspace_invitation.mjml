@@ -1,0 +1,78 @@
+<mjml>
+  <mj-head>
+    <mj-title>Workspace Invitation</mj-title>
+    <mj-preview>You've been invited to join {{ workspace_name }} on Knowledge</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" color="#c9d1d9" line-height="1.6" />
+      <mj-button background-color="#58a6ff" color="#ffffff" border-radius="6px" font-weight="600" />
+    </mj-attributes>
+  </mj-head>
+
+  <mj-body background-color="#0d1117">
+    <!-- Header -->
+    <mj-section background-color="#161b22" padding="32px 20px 20px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#58a6ff" align="center">
+          Knowledge
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#161b22" padding="0 20px 20px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#c9d1d9" padding-bottom="16px">
+          You're invited!
+        </mj-text>
+
+        <mj-text>
+          Hello,
+        </mj-text>
+
+        <mj-text>
+          <strong>{{ inviter_name }}</strong> has invited you to join the workspace <strong>"{{ workspace_name }}"</strong> as a <strong>{{ role }}</strong>.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA Button -->
+    <mj-section background-color="#161b22" padding="8px 20px 24px">
+      <mj-column>
+        <mj-text>
+          Click the button below to accept the invitation:
+        </mj-text>
+
+        <mj-button href="{{ invitation_url }}" padding="24px 0">
+          Accept Invitation
+        </mj-button>
+
+        <mj-text font-size="12px" color="#8b949e">
+          This invitation will expire in 7 days.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Info Box -->
+    <mj-section background-color="#161b22" padding="0 20px 32px">
+      <mj-column>
+        <mj-text background-color="#121d2f" padding="12px" border-radius="8px" color="#58a6ff" font-size="14px">
+          If you don't have an account yet, you'll be able to create one after clicking the link above.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px">
+      <mj-column>
+        <mj-divider border-color="#30363d" border-width="1px" />
+        <mj-text font-size="12px" color="#8b949e" align="center" padding-top="16px">
+          This email was sent to {{ user_email }}
+        </mj-text>
+        <mj-text font-size="12px" color="#8b949e" align="center">
+          &copy; {{ year }} Knowledge. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,0 +1,96 @@
+<mjml>
+  <mj-head>
+    <mj-title>Workspace Deletion Scheduled</mj-title>
+    <mj-preview>Your workspace will be deleted at the end of your billing period</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" color="#c9d1d9" line-height="1.6" />
+      <mj-button background-color="#58a6ff" color="#ffffff" border-radius="6px" font-weight="600" />
+    </mj-attributes>
+  </mj-head>
+
+  <mj-body background-color="#0d1117">
+    <!-- Header -->
+    <mj-section background-color="#161b22" padding="32px 20px 20px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#58a6ff" align="center">
+          Knowledge
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#161b22" padding="0 20px 20px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#d29922" padding-bottom="16px">
+          Workspace Deletion Scheduled
+        </mj-text>
+
+        <mj-text>
+          Hello,
+        </mj-text>
+
+        <mj-text>
+          Your request to delete the workspace <strong>"{{ workspace_name }}"</strong> has been confirmed.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Schedule Box -->
+    <mj-section background-color="#161b22" padding="0 20px">
+      <mj-column>
+        <mj-text background-color="#2d2410" padding="16px" border-radius="8px" color="#d29922">
+          <strong>Scheduled Deletion Date:</strong><br/>
+          {{ deletion_date }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Info Section -->
+    <mj-section background-color="#161b22" padding="24px 20px">
+      <mj-column>
+        <mj-text font-weight="bold" padding-bottom="8px">
+          What happens next:
+        </mj-text>
+
+        <mj-text padding-left="16px">
+          &#8226; Your subscription has been cancelled and will not renew<br/>
+          &#8226; You can continue using your workspace until the deletion date<br/>
+          &#8226; All collections, documents, and member access will be deleted<br/>
+          &#8226; You will not be charged for the next billing period
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Warning Box -->
+    <mj-section background-color="#161b22" padding="0 20px">
+      <mj-column>
+        <mj-text background-color="#2d1618" padding="16px" border-radius="8px" color="#f85149">
+          <strong>Important:</strong> This action is irreversible. Once the deletion date is reached, all data will be permanently removed and cannot be recovered.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Info Box -->
+    <mj-section background-color="#161b22" padding="24px 20px 32px">
+      <mj-column>
+        <mj-text background-color="#121d2f" padding="12px" border-radius="8px" color="#58a6ff" font-size="14px">
+          If you change your mind, please contact support before the scheduled deletion date.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px">
+      <mj-column>
+        <mj-divider border-color="#30363d" border-width="1px" />
+        <mj-text font-size="12px" color="#8b949e" align="center" padding-top="16px">
+          This email was sent to {{ user_email }}
+        </mj-text>
+        <mj-text font-size="12px" color="#8b949e" align="center">
+          &copy; {{ year }} Knowledge. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

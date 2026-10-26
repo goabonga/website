@@ -1,0 +1,5 @@
+{
+  "name": "Workspace deleted",
+  "description": "Tells the owner that the workspace is permanently deleted.",
+  "subject_template": "Workspace deleted: {{ workspace_name }}"
+}

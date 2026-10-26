@@ -115,3 +115,18 @@ bump_files = [
 ]
 changelog = "apps/webhooks/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.reachy-mini-api]
+tag_format = "reachy-mini-api-v{version}"
+paths = [
+    "apps/reachy-mini-api/src/**",
+    "apps/reachy-mini-api/features/**",
+    "apps/reachy-mini-api/tests/**",
+    "apps/reachy-mini-api/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/reachy-mini-api/pyproject.toml", key = "project.version" },
+    { file = "apps/reachy-mini-api/src/reachy_mini_api/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/reachy-mini-api/CHANGELOG.md"
+post_bump = ["uv lock"]

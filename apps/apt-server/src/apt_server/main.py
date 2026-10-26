@@ -11,16 +11,43 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 from fastapi.staticfiles import StaticFiles
 
+from apt_server.auth import (
+    Auth,
+    introspection_client,
+    jwks_manager,
+    token_exchange_client,
+    userinfo_client,
+)
+from apt_server.auth.dependencies import oauth2_scheme
 from apt_server.config import settings
 from apt_server.logging import get_logger, setup_logging
 
 setup_logging(settings.log_level)
 logger = get_logger(__name__)
+
+
+def get_swagger_oauth2_config() -> dict:
+    """Configure Swagger UI OAuth2 login with PKCE.
+
+    Returns kwargs compatible with get_swagger_ui_html().
+    """
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
 
 
 @asynccontextmanager
@@ -29,9 +56,13 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     logger.info("starting %s", settings.app_name)
     yield
     logger.info("shutting down %s", settings.app_name)
+    await jwks_manager.close()
+    await introspection_client.close()
+    await token_exchange_client.close()
+    await userinfo_client.close()
 
 
-swagger_config: dict = {}
+swagger_config = get_swagger_oauth2_config()
 
 app = FastAPI(
     title=settings.app_name,
@@ -99,3 +130,16 @@ app.add_middleware(
 async def health() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/me")
+async def me(auth: Auth, token: str = Depends(oauth2_scheme)) -> dict:
+    """Return current user profile from OIDC UserInfo."""
+    profile = await userinfo_client.get_userinfo(token)
+    return {
+        "user_id": auth.user_id,
+        "email": profile.get("email"),
+        "name": profile.get("name"),
+        "picture": profile.get("picture"),
+        "scopes": auth.scopes,
+    }

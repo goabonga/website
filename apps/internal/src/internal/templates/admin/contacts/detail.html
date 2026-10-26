@@ -62,9 +62,9 @@
         <label style="display: block; color: #a0a0a0; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem;">Groups</label>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
             {% for group in contact.groups %}
-            <span style="padding: 0.25rem 0.75rem; background: #0f3460; color: #74b9ff; border-radius: 4px; font-size: 0.9rem;">
+            <a href="/contact-groups/{{ group.id }}" style="padding: 0.25rem 0.75rem; background: #0f3460; color: #74b9ff; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
                 {{ group.name }}
-            </span>
+            </a>
             {% endfor %}
         </div>
     </div>

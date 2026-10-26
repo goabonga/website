@@ -1,0 +1,173 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Contact Groups{% endblock %}
+
+{% block head %}
+<style>
+    .bulk-actions {
+        display: none;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .bulk-actions.visible {
+        display: flex;
+    }
+    .entry-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Contact Groups</h1>
+    <a href="/contact-groups/new" class="btn btn-primary">
+        <span>+</span> New Group
+    </a>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="get" action="/contact-groups" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="flex: 1;">
+            <input type="text" name="search" class="form-control" placeholder="Search groups..." value="{{ search or '' }}">
+        </div>
+        <button type="submit" class="btn btn-secondary">Search</button>
+        {% if search %}
+        <a href="/contact-groups" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if user.can_delete('contacts') %}
+    <div class="bulk-actions" id="bulkActions">
+        <span><span id="selectedCount">0</span> selected</span>
+        <form method="post" action="/contact-groups/bulk-delete" id="bulkDeleteForm" style="display: inline;">
+            <input type="hidden" name="group_ids" id="groupIds">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected groups?')">
+                Delete Selected
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if groups %}
+    <table class="table">
+        <thead>
+            <tr>
+                {% if user.can_delete('contacts') %}<th width="40"><input type="checkbox" id="selectAll" class="entry-checkbox" title="Select all"></th>{% endif %}
+                <th>Name</th>
+                <th>Members</th>
+                <th>Type</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for group in groups %}
+            <tr>
+                {% if user.can_delete('contacts') %}
+                <td>
+                    <input type="checkbox" class="entry-checkbox row-checkbox" data-id="{{ group.id }}">
+                </td>
+                {% endif %}
+                <td>
+                    <a href="/contact-groups/{{ group.id }}" style="color: #e94560; text-decoration: none; font-weight: 500;">
+                        {{ group.name }}
+                    </a>
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ group.slug }}</div>
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ group.member_count }}</span>
+                </td>
+                <td>
+                    {% if group.is_dynamic %}
+                    <span class="badge badge-warning">Dynamic</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Static</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">
+                    {{ group.created_at.strftime('%Y-%m-%d') if group.created_at else '-' }}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="/contact-groups/{{ group.id }}" class="btn btn-sm btn-secondary">View</a>
+                        <a href="/contact-groups/{{ group.id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/contact-groups?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} total)
+        </span>
+        {% if page < total_pages %}
+        <a href="/contact-groups?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem;">&#128193;</div>
+        <p>No contact groups found</p>
+        <a href="/contact-groups/new" class="btn btn-primary" style="margin-top: 1rem;">Create your first group</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.can_delete('contacts') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const groupIds = document.getElementById('groupIds');
+
+    if (!selectAll || rowCheckboxes.length === 0) return;
+
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const count = checked.length;
+        selectedCount.textContent = count;
+        bulkActions.classList.toggle('visible', count > 0);
+        groupIds.value = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    }
+
+    selectAll.addEventListener('change', function() {
+        rowCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkActions();
+    });
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const allChecked = document.querySelectorAll('.row-checkbox:checked').length === rowCheckboxes.length;
+            selectAll.checked = allChecked;
+            updateBulkActions();
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

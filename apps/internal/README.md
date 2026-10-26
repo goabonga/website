@@ -39,6 +39,17 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/contacts/{contact_id}/delete` | session; scope `contacts:delete` | Delete a contact |
 | POST | `/contacts/bulk-delete` | session; scope `contacts:delete` | Delete multiple contacts |
 | POST | `/contacts/bulk-add-to-group` | session; scope `contacts:write` | Add multiple contacts to a group |
+| GET | `/contact-groups` | session; scope `contacts:read` | List all contact groups with pagination |
+| GET | `/contact-groups/new` | session; scope `contacts:write` | Show form to create a new contact group |
+| POST | `/contact-groups/new` | session; scope `contacts:write` | Create a new contact group |
+| GET | `/contact-groups/{group_id}` | session; scope `contacts:read` | View contact group detail with member list |
+| GET | `/contact-groups/{group_id}/edit` | session; scope `contacts:write` | Show form to edit a contact group |
+| POST | `/contact-groups/{group_id}/edit` | session; scope `contacts:write` | Update a contact group |
+| GET | `/contact-groups/{group_id}/add-contacts` | session; scope `contacts:write` | Show form to add contacts to a group |
+| POST | `/contact-groups/{group_id}/add-contacts` | session; scope `contacts:write` | Add contacts to a group |
+| POST | `/contact-groups/{group_id}/remove-contacts` | session; scope `contacts:write` | Remove contacts from a group |
+| POST | `/contact-groups/bulk-delete` | session; scope `contacts:delete` | Delete multiple contact groups |
+| POST | `/contact-groups/{group_id}/delete` | session; scope `contacts:delete` | Delete a contact group |
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
@@ -117,9 +128,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:read` - checked by 5 routes
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
-- `contacts:read` - checked by 3 routes
-- `contacts:write` - checked by 8 routes
-- `contacts:delete` - checked by 2 routes
+- `contacts:read` - checked by 5 routes
+- `contacts:write` - checked by 15 routes
+- `contacts:delete` - checked by 4 routes
 - `mailler:read` - checked by 3 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes

@@ -1,0 +1,171 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Add Contacts to {{ group.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .bulk-actions {
+        display: none;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        align-items: center;
+        gap: 1rem;
+    }
+    .bulk-actions.active {
+        display: flex;
+    }
+    .checkbox-cell {
+        width: 40px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <h1>Add Contacts to {{ group.name }}</h1>
+        <p class="text-muted" style="margin-top: 0.25rem;">Select contacts to add to this group</p>
+    </div>
+    <a href="/contact-groups/{{ group.id }}" class="btn btn-secondary">&larr; Back to Group</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="get" action="/contact-groups/{{ group.id }}/add-contacts" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <div style="flex: 1;">
+            <input type="text" name="search" class="form-control" placeholder="Search contacts..." value="{{ search or '' }}">
+        </div>
+        <button type="submit" class="btn btn-secondary">Search</button>
+        {% if search %}
+        <a href="/contact-groups/{{ group.id }}/add-contacts" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    <div class="bulk-actions" id="bulk-actions">
+        <span id="selected-count">0</span> selected
+        <button type="button" class="btn btn-sm btn-primary" onclick="bulkAdd()">Add to Group</button>
+    </div>
+
+    {% if contacts %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th class="checkbox-cell">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                </th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Current Groups</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+            <tr>
+                <td class="checkbox-cell">
+                    <input type="checkbox" class="contact-checkbox" value="{{ contact.id }}" onchange="updateBulkActions()">
+                </td>
+                <td>
+                    <a href="/contacts/{{ contact.id }}" style="color: #e94560; text-decoration: none;">
+                        {{ contact.email }}
+                    </a>
+                </td>
+                <td>{{ contact.full_name or '-' }}</td>
+                <td>
+                    {% if contact.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif contact.status == 'unsubscribed' %}
+                    <span class="badge badge-warning">Unsubscribed</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ contact.status | capitalize }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if contact.groups %}
+                    <span class="text-muted" style="font-size: 0.85rem;">
+                        {{ contact.groups | length }} group(s)
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/contact-groups/{{ group.id }}/add-contacts?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} available)
+        </span>
+        {% if page < total_pages %}
+        <a href="/contact-groups/{{ group.id }}/add-contacts?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem;">&#128101;</div>
+        <p>
+            {% if search %}
+            No contacts found matching "{{ search }}"
+            {% else %}
+            All contacts are already in this group
+            {% endif %}
+        </p>
+        <a href="/contacts/new" class="btn btn-primary" style="margin-top: 1rem;">Create New Contact</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Hidden form for bulk add -->
+<form id="bulk-add-form" method="post" action="/contact-groups/{{ group.id }}/add-contacts" style="display: none;">
+    <input type="hidden" name="contact_ids" id="bulk-add-ids">
+</form>
+
+<script>
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.contact-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.contact-checkbox:checked');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+
+    if (checkboxes.length > 0) {
+        bulkActions.classList.add('active');
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkActions.classList.remove('active');
+    }
+}
+
+function getSelectedIds() {
+    const checkboxes = document.querySelectorAll('.contact-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value).join(',');
+}
+
+function bulkAdd() {
+    const ids = getSelectedIds();
+    if (!ids) return;
+
+    document.getElementById('bulk-add-ids').value = ids;
+    document.getElementById('bulk-add-form').submit();
+}
+</script>
+{% endblock %}

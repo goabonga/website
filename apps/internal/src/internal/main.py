@@ -22,6 +22,7 @@ from internal.routes import (
     analytics_router,
     auth_router,
     billing_router,
+    contact_groups_router,
     contacts_router,
     mailler_router,
     team_router,
@@ -160,6 +161,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(contacts_router)
+app.include_router(contact_groups_router)
 app.include_router(mailler_router)
 app.include_router(team_router)
 app.include_router(vpn_router)

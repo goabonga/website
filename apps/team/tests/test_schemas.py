@@ -5,6 +5,8 @@
 
 from uuid import uuid4
 
+import pytest
+from pydantic import ValidationError
 from team.schemas import (
     AgentCreate,
     AgentUpdate,
@@ -14,6 +16,8 @@ from team.schemas import (
     TaskCreate,
     TeamCreate,
     TeamUpdate,
+    UsageBatchReport,
+    UsageReport,
     WorkflowCreate,
     WorkflowUpdate,
 )
@@ -66,6 +70,24 @@ class TestTaskSchemas:
         agent_id = uuid4()
         data = TaskCreate(title="Fix bug", agent_id=agent_id)
         assert data.agent_id == agent_id
+
+
+class TestUsageSchemas:
+    def test_usage_report_valid(self):
+        agent_id = uuid4()
+        data = UsageReport(agent_id=agent_id, action="task.completed")
+        assert data.agent_id == agent_id
+        assert data.action == "task.completed"
+
+    def test_usage_batch_report_valid(self):
+        agent_id = uuid4()
+        events = [UsageReport(agent_id=agent_id, action="task.completed")]
+        data = UsageBatchReport(events=events)
+        assert len(data.events) == 1
+
+    def test_usage_batch_report_empty_fails(self):
+        with pytest.raises(ValidationError):
+            UsageBatchReport(events=[])
 
 
 class TestMessageSchemas:

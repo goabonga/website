@@ -1,0 +1,18 @@
+{{ ansible_managed | comment }}
+# Temporary HTTP-only site used to answer the ACME challenge while the proxy
+# certificate for {{ step_ca_domain }} is being issued.
+
+server {
+    listen {{ step_ca_nginx_listen_address }}:{{ step_ca_nginx_http_port }};
+    server_name {{ step_ca_domain }};
+
+    root {{ step_ca_nginx_webroot }};
+
+    location /.well-known/acme-challenge/ {
+        allow all;
+    }
+
+    location / {
+        return 503 "Service temporarily unavailable - certificate being issued";
+    }
+}

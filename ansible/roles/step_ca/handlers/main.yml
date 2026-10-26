@@ -1,0 +1,36 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Reload systemd for step-ca
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: step_ca | reload systemd
+
+- name: Restart step-ca
+  ansible.builtin.systemd:
+    name: "{{ step_ca_service_name }}"
+    state: restarted
+  when:
+    - step_ca_service_state == 'started'
+    - __step_ca_has_password | bool
+    - step_ca_config_stat.stat.exists
+  listen: step_ca | restart
+
+- name: Update the system CA certificates
+  ansible.builtin.command:
+    cmd: update-ca-certificates
+  changed_when: true
+  listen: step_ca | update ca certificates
+
+- name: Reload nginx for step-ca
+  ansible.builtin.systemd:
+    name: "{{ step_ca_nginx_service_name }}"
+    state: reloaded
+  listen: step_ca | reload nginx
+
+- name: Restart dnsmasq for step-ca
+  ansible.builtin.systemd:
+    name: "{{ step_ca_dnsmasq_service_name }}"
+    state: restarted
+  listen: step_ca | restart dnsmasq

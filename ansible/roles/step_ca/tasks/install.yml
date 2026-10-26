@@ -1,0 +1,53 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install the repository prerequisites
+  ansible.builtin.apt:
+    name: "{{ step_ca_prerequisite_packages }}"
+    state: present
+    update_cache: "{{ step_ca_apt_update_cache }}"
+    cache_valid_time: "{{ step_ca_apt_cache_valid_time }}"
+  when: step_ca_manage_repository | bool
+
+- name: Configure the Smallstep apt repository
+  when: step_ca_manage_repository | bool
+  block:
+    - name: Create the keyring directory
+      ansible.builtin.file:
+        path: "{{ step_ca_repository_key_path | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download the repository signing key
+      ansible.builtin.get_url:
+        url: "{{ step_ca_repository_key_url }}"
+        dest: "{{ step_ca_repository_key_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Add the repository
+      ansible.builtin.deb822_repository:
+        name: "{{ step_ca_repository_name }}"
+        types: deb
+        uris: "{{ step_ca_repository_uri }}"
+        suites: "{{ step_ca_repository_suite }}"
+        components: "{{ step_ca_repository_component }}"
+        signed_by: "{{ step_ca_repository_key_path }}"
+        state: present
+      register: step_ca_repository
+
+- name: Refresh the apt cache after adding the repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: (step_ca_repository | default({})) is changed
+
+- name: Install step-ca and step-cli
+  ansible.builtin.apt:
+    name: "{{ step_ca_packages }}"
+    state: present
+    update_cache: "{{ step_ca_apt_update_cache }}"
+    cache_valid_time: "{{ step_ca_apt_cache_valid_time }}"

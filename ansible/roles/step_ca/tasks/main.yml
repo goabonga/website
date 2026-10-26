@@ -1,0 +1,57 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the step_ca configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Install step-ca
+  ansible.builtin.import_tasks: install.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Prepare the account and directories
+  ansible.builtin.import_tasks: account.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Initialise the certificate authority
+  ansible.builtin.import_tasks: init.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Prepare PostgreSQL storage
+  ansible.builtin.import_tasks: postgres.yml
+  when:
+    - step_ca_enabled | bool
+    - step_ca_postgres_enabled | bool
+  tags: [step_ca]
+
+- name: Apply the CA configuration
+  ansible.builtin.import_tasks: config.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Manage the provisioners
+  ansible.builtin.import_tasks: provisioners.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Run the CA service
+  ansible.builtin.import_tasks: service.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Trust and export the root certificate
+  ansible.builtin.import_tasks: trust.yml
+  when: step_ca_enabled | bool
+  tags: [step_ca]
+
+- name: Publish the CA behind nginx
+  ansible.builtin.import_tasks: nginx.yml
+  when:
+    - step_ca_enabled | bool
+    - step_ca_nginx_enabled | bool
+  tags: [step_ca]

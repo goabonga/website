@@ -1,0 +1,70 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Creates or updates one provisioner. The item is step_ca_prov.
+
+- name: Read ca.json
+  ansible.builtin.slurp:
+    src: "{{ step_ca_config_dir }}/ca.json"
+  register: step_ca_prov_raw
+
+- name: Find the provisioner in ca.json
+  ansible.builtin.set_fact:
+    step_ca_prov_current: >-
+      {{ ((step_ca_prov_raw.content | b64decode | from_json).authority | default({})).provisioners | default([])
+         | selectattr('name', 'equalto', step_ca_prov.name) | list | first | default({}) }}
+
+- name: Write the provisioner password file
+  ansible.builtin.copy:
+    content: "{{ step_ca_prov.password }}"
+    dest: "{{ step_ca_secrets_dir }}/{{ step_ca_prov.name }}-password"
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_group }}"
+    mode: "{{ step_ca_prov.password_mode | default('0600') }}"
+  no_log: true
+  when:
+    - (step_ca_prov.type | default('JWK')) == 'JWK'
+    - step_ca_prov.password | default('') | length > 0
+
+- name: Add the provisioner
+  ansible.builtin.command:
+    argv: >-
+      {{ ['step', 'ca', 'provisioner', 'add', step_ca_prov.name,
+          '--type', step_ca_prov.type | default('JWK'),
+          '--ca-config', step_ca_config_dir ~ '/ca.json']
+         + (['--create', '--password-file', step_ca_secrets_dir ~ '/' ~ step_ca_prov.name ~ '-password']
+            if (step_ca_prov.type | default('JWK')) == 'JWK' else [])
+         + (['--x509-max-dur', step_ca_prov.max_duration] if step_ca_prov.max_duration | default('') | length > 0 else [])
+         + (['--x509-default-dur', step_ca_prov.default_duration] if step_ca_prov.default_duration | default('') | length > 0 else [])
+         + (['--disable-renewal'] if step_ca_prov.disable_renewal | default(false) | bool else []) }}
+  environment:
+    STEPPATH: "{{ step_ca_home }}"
+  become: true
+  become_user: "{{ step_ca_user }}"
+  changed_when: true
+  notify: step_ca | restart
+  when: step_ca_prov_current | length == 0
+
+- name: Update the provisioner claims
+  ansible.builtin.command:
+    argv: >-
+      {{ ['step', 'ca', 'provisioner', 'update', step_ca_prov.name,
+          '--ca-config', step_ca_config_dir ~ '/ca.json']
+         + (['--x509-max-dur', step_ca_prov.max_duration] if step_ca_prov.max_duration | default('') | length > 0 else [])
+         + (['--x509-default-dur', step_ca_prov.default_duration] if step_ca_prov.default_duration | default('') | length > 0 else [])
+         + ['--disable-renewal=' ~ (step_ca_prov.disable_renewal | default(false) | bool | string | lower)] }}
+  environment:
+    STEPPATH: "{{ step_ca_home }}"
+  become: true
+  become_user: "{{ step_ca_user }}"
+  changed_when: true
+  notify: step_ca | restart
+  when:
+    - step_ca_prov_current | length > 0
+    - >-
+      (step_ca_prov.max_duration | default('') | length > 0
+       and (step_ca_prov_current.claims | default({})).maxTLSCertDuration | default('') != step_ca_prov.max_duration)
+      or (step_ca_prov.default_duration | default('') | length > 0
+       and (step_ca_prov_current.claims | default({})).defaultTLSCertDuration | default('') != step_ca_prov.default_duration)
+      or ((step_ca_prov_current.claims | default({})).disableRenewal | default(false) | bool)
+         != (step_ca_prov.disable_renewal | default(false) | bool)

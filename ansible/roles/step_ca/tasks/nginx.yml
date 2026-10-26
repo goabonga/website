@@ -1,0 +1,95 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for nginx, certbot and dnsmasq
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ step_ca_nginx_binary }}"
+    - "{{ step_ca_certbot_binary }}"
+    - "{{ step_ca_dnsmasq_binary }}"
+  register: step_ca_tools
+
+- name: Look for the proxy certificate
+  ansible.builtin.stat:
+    path: "{{ step_ca_letsencrypt_live_dir }}/{{ step_ca_domain }}/fullchain.pem"
+  register: step_ca_proxy_cert
+
+- name: Assert nginx is installed, and certbot when a certificate is needed
+  ansible.builtin.assert:
+    that:
+      - step_ca_tools.results[0].stat.exists
+      - step_ca_proxy_cert.stat.exists or step_ca_tools.results[1].stat.exists
+    fail_msg: >-
+      step_ca_nginx_enabled needs nginx ({{ step_ca_nginx_binary }}) and, until the certificate
+      exists, certbot ({{ step_ca_certbot_binary }}). Install them first.
+    quiet: true
+
+- name: Resolve the CA domain to the loopback address
+  ansible.builtin.lineinfile:
+    path: "{{ step_ca_dnsmasq_hosts_file }}"
+    line: "address=/{{ step_ca_domain }}/127.0.0.1"
+    regexp: "^address=/{{ step_ca_domain | regex_escape }}/"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: step_ca | restart dnsmasq
+  when:
+    - step_ca_dnsmasq_enabled | bool
+    - step_ca_tools.results[2].stat.exists
+
+- name: Obtain the proxy certificate
+  when: not step_ca_proxy_cert.stat.exists
+  block:
+    - name: Deploy the HTTP-only site used for the ACME challenge
+      ansible.builtin.template:
+        src: nginx-http.conf.j2
+        dest: "{{ step_ca_nginx_sites_available }}/{{ step_ca_domain }}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: step_ca | reload nginx
+
+    - name: Enable the HTTP-only site
+      ansible.builtin.file:
+        src: "{{ step_ca_nginx_sites_available }}/{{ step_ca_domain }}"
+        dest: "{{ step_ca_nginx_sites_enabled }}/{{ step_ca_domain }}"
+        state: link
+      notify: step_ca | reload nginx
+
+    - name: Apply the nginx and dnsmasq changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Request the certificate from the CA
+      ansible.builtin.command:
+        argv: >-
+          {{ [step_ca_certbot_binary, 'certonly', '--webroot', '--non-interactive', '--agree-tos',
+              '--server', step_ca_url ~ '/acme/' ~ step_ca_acme_provisioner ~ '/directory',
+              '--webroot-path', step_ca_nginx_webroot,
+              '-d', step_ca_domain]
+             + (['--email', step_ca_certbot_email] if step_ca_certbot_email | length > 0 else ['--register-unsafely-without-email'])
+             + ([] if step_ca_certbot_verify_tls | bool else ['--no-verify-ssl']) }}
+        creates: "{{ step_ca_letsencrypt_live_dir }}/{{ step_ca_domain }}/fullchain.pem"
+      environment:
+        REQUESTS_CA_BUNDLE: "{{ step_ca_certs_dir }}/root_ca.crt"
+      when: __step_ca_has_password | bool
+
+- name: Deploy the HTTPS proxy site
+  ansible.builtin.template:
+    src: nginx-proxy.conf.j2
+    dest: "{{ step_ca_nginx_sites_available }}/{{ step_ca_domain }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: step_ca | reload nginx
+  when: step_ca_proxy_cert.stat.exists or __step_ca_has_password | bool
+
+- name: Enable the HTTPS proxy site
+  ansible.builtin.file:
+    src: "{{ step_ca_nginx_sites_available }}/{{ step_ca_domain }}"
+    dest: "{{ step_ca_nginx_sites_enabled }}/{{ step_ca_domain }}"
+    state: link
+  notify: step_ca | reload nginx
+  when: step_ca_proxy_cert.stat.exists or __step_ca_has_password | bool

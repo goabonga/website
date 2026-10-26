@@ -1,0 +1,70 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy the systemd unit
+  ansible.builtin.template:
+    src: step-ca.service.j2
+    dest: "/etc/systemd/system/{{ step_ca_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - step_ca | reload systemd
+    - step_ca | restart
+
+- name: Apply pending unit and configuration changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Manage the CA service
+  ansible.builtin.systemd:
+    name: "{{ step_ca_service_name }}"
+    state: "{{ step_ca_service_state }}"
+    enabled: "{{ step_ca_service_enabled }}"
+    daemon_reload: true
+  when: step_ca_config_stat.stat.exists
+
+# A check run never starts or restarts the unit, so waiting for it would only time out.
+- name: Wait for the CA
+  when:
+    - step_ca_wait_for_ready | bool
+    - step_ca_service_state == 'started'
+    - step_ca_config_stat.stat.exists
+    - not ansible_check_mode
+  block:
+    - name: Wait for the CA to accept connections
+      ansible.builtin.wait_for:
+        host: "{{ __step_ca_local_host }}"
+        port: "{{ step_ca_port }}"
+        timeout: "{{ step_ca_wait_timeout }}"
+  rescue:
+    - name: Read the state of the unit
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - status
+          - --no-pager
+          - "{{ step_ca_service_name }}"
+      register: step_ca_unit_status
+      changed_when: false
+      failed_when: false
+
+    - name: Read the journal of the unit
+      ansible.builtin.command:
+        argv:
+          - journalctl
+          - --unit={{ step_ca_service_name }}
+          - --no-pager
+          - --lines={{ step_ca_diagnostic_log_lines }}
+      register: step_ca_unit_journal
+      changed_when: false
+      failed_when: false
+      no_log: "{{ step_ca_postgres_password | length > 0 }}"
+
+    - name: Fail with the state of the unit
+      ansible.builtin.fail:
+        msg: |-
+          The CA did not accept connections on {{ __step_ca_local_host }}:{{ step_ca_port }} within {{ step_ca_wait_timeout }} seconds.
+          {{ step_ca_unit_status.stdout | default('') }}{{ step_ca_unit_status.stderr | default('') }}
+          Last {{ step_ca_diagnostic_log_lines }} lines of the journal:
+          {{ step_ca_unit_journal.stdout | default('') }}

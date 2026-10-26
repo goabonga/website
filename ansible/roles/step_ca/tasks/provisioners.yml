@@ -1,0 +1,17 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Manage the provisioners
+  ansible.builtin.include_tasks: provisioner.yml
+  loop: "{{ __step_ca_provisioners }}"
+  loop_control:
+    loop_var: step_ca_prov
+    label: "{{ step_ca_prov.name }}"
+  when: step_ca_config_stat.stat.exists
+
+- name: Export the VPN portal provisioner key
+  ansible.builtin.include_tasks: vpn_portal_key.yml
+  when:
+    - step_ca_vpn_portal_enabled | bool
+    - step_ca_config_stat.stat.exists

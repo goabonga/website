@@ -1,0 +1,51 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Internal values derived from the public variables. They are not meant to be
+# overridden.
+
+# The CA is initialised, started and configured only when a password is provided.
+__step_ca_has_password: "{{ step_ca_password | length > 0 }}"
+
+# Host the readiness check connects to.
+__step_ca_local_host: "{{ '127.0.0.1' if step_ca_listen_address in ['0.0.0.0', '::'] else step_ca_listen_address }}"
+
+# Provisioners managed by the role: ACME, the VPN portal and the user-defined ones.
+__step_ca_acme_provisioners: >-
+  {{ [{'name': step_ca_acme_provisioner, 'type': 'ACME',
+       'max_duration': step_ca_acme_max_duration,
+       'default_duration': step_ca_acme_default_duration}]
+     if step_ca_acme_enabled | bool else [] }}
+__step_ca_vpn_portal_provisioners: >-
+  {{ [{'name': step_ca_vpn_portal_provisioner, 'type': 'JWK',
+       'password': step_ca_vpn_portal_password, 'password_mode': '0640',
+       'max_duration': step_ca_vpn_portal_max_duration,
+       'default_duration': step_ca_vpn_portal_default_duration,
+       'disable_renewal': step_ca_vpn_portal_disable_renewal}]
+     if step_ca_vpn_portal_enabled | bool else [] }}
+__step_ca_provisioners: "{{ __step_ca_acme_provisioners + __step_ca_vpn_portal_provisioners + step_ca_provisioners }}"
+
+# Keys removed from ca.json before the managed ones are merged back.
+__step_ca_config_removals: "{{ [] if step_ca_crl_enabled | bool else ['insecureAddress', 'crl'] }}"
+
+# Database section of ca.json.
+__step_ca_postgres_datasource: >-
+  host={{ step_ca_postgres_socket_dir }} dbname={{ step_ca_postgres_database }}
+  user={{ step_ca_postgres_user }} sslmode=disable{{ ' password=' ~ step_ca_postgres_password if step_ca_postgres_password | length > 0 else '' }}
+__step_ca_db_patch: >-
+  {{ {'db': {'type': 'postgresql', 'dataSource': __step_ca_postgres_datasource | trim | regex_replace('\s+', ' ')}}
+     if step_ca_postgres_enabled | bool
+     else ({'db': {'type': 'badgerv2', 'dataSource': step_ca_home ~ '/db'}}
+           if ((step_ca_config_current.db | default({})).type | default('')) == 'postgresql' else {}) }}
+
+# CRL section of ca.json.
+__step_ca_crl_patch: >-
+  {{ {'insecureAddress': step_ca_crl_address, 'crl': {'enabled': true, 'idpURL': step_ca_crl_url}}
+     if step_ca_crl_enabled | bool else {} }}
+
+__step_ca_config_base: >-
+  {{ step_ca_config_current | dict2items | rejectattr('key', 'in', __step_ca_config_removals) | list | items2dict }}
+__step_ca_config_desired: >-
+  {{ __step_ca_config_base
+     | combine({'address': step_ca_address, 'dnsNames': step_ca_dns_names | unique | list},
+               __step_ca_db_patch, __step_ca_crl_patch, recursive=True) }}

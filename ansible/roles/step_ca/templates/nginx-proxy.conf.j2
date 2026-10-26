@@ -1,0 +1,48 @@
+{{ ansible_managed | comment }}
+# Reverse proxy for step-ca published as {{ step_ca_domain }}.
+
+upstream step_ca_backend {
+    server {{ __step_ca_local_host }}:{{ step_ca_port }};
+}
+
+server {
+    listen {{ step_ca_nginx_listen_address }}:{{ step_ca_nginx_http_port }};
+    server_name {{ step_ca_domain }};
+
+    # Webroot for certificate renewal.
+    location /.well-known/acme-challenge/ {
+        root {{ step_ca_nginx_webroot }};
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen {{ step_ca_nginx_listen_address }}:{{ step_ca_nginx_https_port }} ssl;
+    server_name {{ step_ca_domain }};
+
+    ssl_certificate {{ step_ca_letsencrypt_live_dir }}/{{ step_ca_domain }}/fullchain.pem;
+    ssl_certificate_key {{ step_ca_letsencrypt_live_dir }}/{{ step_ca_domain }}/privkey.pem;
+    ssl_protocols {{ step_ca_nginx_ssl_protocols }};
+    ssl_ciphers {{ step_ca_nginx_ssl_ciphers }};
+    ssl_prefer_server_ciphers off;
+
+    access_log /var/log/nginx/{{ step_ca_domain }}-access.log;
+    error_log /var/log/nginx/{{ step_ca_domain }}-error.log;
+
+    location / {
+        proxy_pass https://step_ca_backend;
+        proxy_ssl_verify off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}

@@ -1,0 +1,25 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  role_name: step_ca
+  author: Chris
+  description: Install and configure a step-ca private certificate authority
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - step-ca
+  - smallstep
+  - pki
+  - acme
+  - certificates
+dependencies: []

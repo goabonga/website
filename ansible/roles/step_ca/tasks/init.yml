@@ -1,0 +1,43 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Check whether the CA is initialised
+  ansible.builtin.stat:
+    path: "{{ step_ca_config_dir }}/ca.json"
+  register: step_ca_config_stat
+
+- name: Initialise the certificate authority
+  ansible.builtin.command:
+    argv: >-
+      {{ ['step', 'ca', 'init',
+          '--deployment-type=standalone',
+          '--name=' ~ step_ca_name,
+          '--address=' ~ step_ca_address,
+          '--provisioner=' ~ step_ca_provisioner,
+          '--password-file=' ~ step_ca_secrets_dir ~ '/password',
+          '--provisioner-password-file=' ~ step_ca_secrets_dir ~ '/password']
+         + (step_ca_dns_names | unique | map('regex_replace', '^', '--dns=') | list) }}
+    creates: "{{ step_ca_config_dir }}/ca.json"
+  environment:
+    STEPPATH: "{{ step_ca_home }}"
+  become: true
+  become_user: "{{ step_ca_user }}"
+  when:
+    - __step_ca_has_password | bool
+    - not step_ca_config_stat.stat.exists
+  register: step_ca_init_result
+
+- name: Check the CA files again
+  ansible.builtin.stat:
+    path: "{{ step_ca_config_dir }}/ca.json"
+  register: step_ca_config_stat
+
+- name: Set the mode of the public certificates
+  ansible.builtin.file:
+    path: "{{ step_ca_certs_dir }}/{{ item }}"
+    mode: "{{ step_ca_public_certs_mode }}"
+  loop:
+    - root_ca.crt
+    - intermediate_ca.crt
+  when: step_ca_config_stat.stat.exists

@@ -26,3 +26,5 @@ documents one feature as it exists in the code.
    tokens and the Redis cache.
 8. [Token exchange](08-token-exchange.md) - scopes granted by the auth
    server (RFC 8693).
+9. [Running and deployment](09-deployment.md) - local development and
+   Ansible deployment.

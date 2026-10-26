@@ -7,7 +7,8 @@ and to send messages to the other connected clients.
 
 `WS /ws`. The endpoint is not in the OpenAPI schema and does **not** check a
 bearer token: access is restricted by the network (the nginx virtual host
-only allows the VPN and the local LAN).
+only allows the VPN and the local LAN, see
+[Running and deployment](09-deployment.md)).
 
 ## Protocol
 

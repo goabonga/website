@@ -1,0 +1,15 @@
+# Reachy Mini API
+
+Internal FastAPI service used by the Reachy Mini robot to fetch reports,
+notifications and server status, and to exchange real-time messages over a
+WebSocket. It is a member of the uv workspace under `apps/reachy-mini-api`
+(distribution `reachy-mini-api`, import package `reachy_mini_api`).
+
+The service is stateless: no database, no Celery worker and no beat
+scheduler.
+
+The application is built as a sequence of features. Each page below
+documents one feature as it exists in the code.
+
+1. [Application foundation](01-foundation.md) - settings, FastAPI
+   application, CORS and health endpoint.

@@ -17,6 +17,7 @@ from frontend import __version__
 
 from .config import Settings, settings
 from .logging import get_logger, setup_logging
+from .security_txt import create_router as create_security_txt_router
 
 logger = get_logger(__name__)
 
@@ -72,6 +73,7 @@ Frontend application server.
 
 - **Single Page Application**: Vite-built frontend served via FastAPI
 - **Health check**: liveness endpoint for monitoring
+- **security.txt**: RFC 9116 compliant security contact information
 - **Logging**: INFO/DEBUG to stdout, WARNING and above to stderr
 - **CORS**: configurable cross-origin policy
         """,
@@ -96,6 +98,8 @@ Frontend application server.
         """Health check endpoint for monitoring."""
         logger.info("Health check requested")
         return HealthResponse(status="healthy")
+
+    app.include_router(create_security_txt_router(cfg))
 
     # Mount static files (Vite build output)
     static_dir = Path(cfg.static_dir) if cfg.static_dir else DEFAULT_STATIC_DIR

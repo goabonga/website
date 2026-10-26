@@ -102,8 +102,15 @@ class Settings(BaseSettings):
     redis_key_prefix: str = "apt_server"
 
     # APT repository
+    apt_suites: str = "stable"
     apt_components: str = "main"
     apt_public_components: str = "main"
+    apt_architectures: str = "amd64"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def apt_suites_list(self) -> list[str]:
+        return [s.strip() for s in self.apt_suites.split(",") if s.strip()]
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -114,6 +121,18 @@ class Settings(BaseSettings):
     @property
     def apt_public_components_list(self) -> list[str]:
         return [s.strip() for s in self.apt_public_components.split(",") if s.strip()]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def apt_architectures_list(self) -> list[str]:
+        return [s.strip() for s in self.apt_architectures.split(",") if s.strip()]
+
+    apt_origin: str = "apt-server"
+    apt_label: str = "apt-server"
+    # GPG key ID (or fingerprint) used to sign Release. Empty disables signing.
+    apt_gpg_key_id: str = ""
+    # Seconds a rendered per-caller Packages index lives in index_cache.
+    apt_index_cache_ttl: int = 60
 
 
 @lru_cache

@@ -315,3 +315,20 @@ async def test_download_latest_release_fn_no_asset_for_platform(mock_db):
         await download_latest_release(platform="linux-x86_64", db=mock_db)
     assert exc_info.value.status_code == 404
     assert "No asset found" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_download_latest_is_not_resolved_as_a_version(client: AsyncClient, mock_db):
+    """The 'latest' path must reach the latest-release handler, not the versioned one."""
+    release = _make_mock_release()
+
+    async def execute(statement):
+        result = MagicMock()
+        looked_up_by_version = "version_1" in statement.compile().params
+        result.scalar_one_or_none.return_value = None if looked_up_by_version else release
+        return result
+
+    mock_db.execute = AsyncMock(side_effect=execute)
+
+    response = await client.get("/api/v1/mcp/download/latest/linux-x86_64", follow_redirects=False)
+    assert response.status_code == 302

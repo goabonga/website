@@ -25,6 +25,7 @@ The application is documented feature by feature, in the order in which each fea
 10. [OAuth2 and OIDC authorization server](10-oauth2-server.md): Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
 11. [Device authorization and pushed authorization requests](11-device-par.md): RFC 8628 device flow and RFC 9126 pushed authorization requests.
 12. [Identity provider federation](12-federation.md): Login through external OIDC identity providers.
+13. [REST API v1](13-rest-api.md): Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
 
 ## Testing
 

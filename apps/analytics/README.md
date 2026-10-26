@@ -28,6 +28,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/stats/referrers` | scope `analytics:read` | Get statistics by referrer |
 | GET | `/api/v1/stats/pages` | scope `analytics:read` | Get statistics by page |
 | GET | `/api/v1/stats/events` | scope `analytics:read` | Get statistics by event type |
+| GET | `/api/v1/stats/campaigns` | scope `analytics:read` | Get all campaigns with statistics |
+| GET | `/api/v1/stats/campaigns/{campaign_id}` | scope `analytics:read` | Get detailed campaign statistics |
+| GET | `/api/v1/stats/campaigns/{campaign_id}/pixels` | scope `analytics:read` | Get pixels for a campaign |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -35,7 +38,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `analytics:read` - checked by 10 routes
+- `analytics:read` - checked by 13 routes
 
 ## Run
 
@@ -59,6 +62,7 @@ directory; see `.env.example`.
 - OAuth2/OIDC bearer authentication with scope checks (token introspection, token exchange).
 - Secured traffic statistics under `/api/v1/stats`.
 - Per-IP statistics.
+- Campaign statistics: list, detail and pixels.
 
 Each feature has a page in `docs/apps/analytics/`.
 

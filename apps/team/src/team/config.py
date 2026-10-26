@@ -4,6 +4,7 @@
 """Application configuration."""
 
 import os
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 
@@ -83,6 +84,13 @@ class Settings(BaseSettings):
     analytics_base_url: str = ""
     auth_base_url: str = ""
 
+    # Workspace
+    workspace_dir: str = os.path.join(tempfile.gettempdir(), "team-workspace")
+
+    # GitHub (global defaults, can be overridden per agent via config.credentials)
+    github_token: str = ""
+    github_owner: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -91,6 +99,10 @@ def get_settings() -> Settings:
         openai_api_key=get_credential(
             "OPENAI_API_KEY",
             os.environ.get("OPENAI_API_KEY", ""),
+        ),
+        github_token=get_credential(
+            "GITHUB_TOKEN",
+            os.environ.get("GITHUB_TOKEN", ""),
         ),
         oauth2_client_secret=get_credential(
             "OAUTH2_CLIENT_SECRET",

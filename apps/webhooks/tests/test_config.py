@@ -167,3 +167,29 @@ class TestBrevoSettings:
         assert s.brevo_internal_api_socket == "/run/brevo-internal.sock"
         assert s.brevo_internal_api_token == "brevo-token"
         assert s.brevo_webhook_secret == "brevo-secret"
+
+
+class TestSESSettings:
+    """Tests for the SES settings."""
+
+    def test_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.ses_enabled is False
+        assert s.ses_internal_api_url == ""
+        assert s.ses_internal_api_socket == ""
+        assert s.ses_internal_api_token == ""
+
+    def test_env_override(self):
+        env = {
+            "SES_ENABLED": "true",
+            "SES_INTERNAL_API_URL": "http://ses-api:8000",
+            "SES_INTERNAL_API_SOCKET": "/run/ses-internal.sock",
+            "SES_INTERNAL_API_TOKEN": "ses-token",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.ses_enabled is True
+        assert s.ses_internal_api_url == "http://ses-api:8000"
+        assert s.ses_internal_api_socket == "/run/ses-internal.sock"
+        assert s.ses_internal_api_token == "ses-token"

@@ -779,3 +779,102 @@ argument_specs:
         description:
         - Base URL of the mailler API (MAILLER_API_URL of internal), required; the host name of
           mailler by default.
+      website_knowledge_celery_queue:
+        type: str
+        description:
+        - Celery queue of the three knowledge processes (CELERY_QUEUE); the worker consumes it
+          (--queues), the API and beat publish to it.
+        default: knowledge
+      website_knowledge_celery_timezone:
+        type: str
+        description:
+        - Time zone of the Celery schedule of the three knowledge processes (CELERY_TIMEZONE).
+        default: UTC
+      website_knowledge_billing_saas_id:
+        type: str
+        description:
+        - Identifier of the SaaS application of knowledge in billing (BILLING_SAAS_ID),
+          returned by billing when it creates the application. Billing is not used while it is
+          empty.
+        default: ''
+      website_knowledge_billing_app_slug:
+        type: str
+        description:
+        - Slug of the SaaS application of knowledge in billing (BILLING_APP_SLUG), the one of
+          the entry of website_billing_saas_apps.
+        default: ''
+      website_knowledge_billing_checkout_success_url:
+        type: str
+        description:
+        - Where Stripe sends the customer back after a checkout
+          (BILLING_CHECKOUT_SUCCESS_URL). Must be covered by the checkout_urls of the SaaS
+          application; required with website_knowledge_billing_saas_id.
+        default: ''
+      website_knowledge_billing_checkout_cancel_url:
+        type: str
+        description:
+        - Where Stripe sends the customer back when a checkout is cancelled
+          (BILLING_CHECKOUT_CANCEL_URL). Must be covered by the checkout_urls of the SaaS
+          application; required with website_knowledge_billing_saas_id.
+        default: ''
+      website_knowledge_quota_fallback_limits:
+        type: dict
+        description:
+        - Limits applied while billing cannot answer (QUOTA_FALLBACK_LIMITS), by plan slug;
+          the key * applies to every other plan, a limit that is not listed is 0 and -1 is
+          unlimited.
+        default: {}
+      website_knowledge_custom_domain_cname_target:
+        type: str
+        description:
+        - CNAME target shown to the customers before they register a domain
+          (CUSTOM_DOMAIN_CNAME_TARGET); website_custom_domain_cname_target by default.
+      website_knowledge_mailler_client_id:
+        type: str
+        description:
+        - OAuth2 client of the calls of knowledge to mailler (MAILLER_CLIENT_ID). Empty uses
+          the client of the application, with the OAUTH2_CLIENT_SECRET secret.
+        default: ''
+      website_knowledge_custom_domain_client_id:
+        type: str
+        description:
+        - OAuth2 client of the calls of knowledge to custom_domain (CUSTOM_DOMAIN_CLIENT_ID).
+          Empty uses the client of the application.
+        default: ''
+      website_knowledge_billing_client_id:
+        type: str
+        description:
+        - OAuth2 client of the calls of knowledge to billing (BILLING_CLIENT_ID). Empty uses
+          the client of the application.
+        default: ''
+      website_knowledge_operator_name:
+        type: str
+        description:
+        - Who publishes the service, shown on the legal notice and the pricing page
+          (OPERATOR_NAME). An empty value is left out of the pages.
+        default: ''
+      website_knowledge_contact_email:
+        type: str
+        description:
+        - General contact address of the service (CONTACT_EMAIL).
+        default: ''
+      website_knowledge_sales_email:
+        type: str
+        description:
+        - Address of the contact sales button of the plans with a custom price (SALES_EMAIL).
+        default: ''
+      website_knowledge_legal_email:
+        type: str
+        description:
+        - Address of the legal notice and the terms of service (LEGAL_EMAIL).
+        default: ''
+      website_knowledge_privacy_email:
+        type: str
+        description:
+        - Address of the privacy policy and of the data subject requests (PRIVACY_EMAIL).
+        default: ''
+      website_knowledge_support_url:
+        type: str
+        description:
+        - Where the customers of a deleted workspace can get help (SUPPORT_URL).
+        default: ''

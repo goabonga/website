@@ -1,0 +1,69 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Settings of the knowledge application, which is a client of the mailler,
+# custom_domain and billing services: it sends no email, serves no customer
+# domain and holds no plan itself. The values it needs about itself are neutral
+# when empty (the pages leave them out, the feature that needs one is
+# unavailable); none is built into the application or into this catalog. What
+# to create in the three services is described by website_mailler_clients,
+# website_mailler_template_dirs, website_custom_domain_clients,
+# website_billing_saas_apps and website_billing_client_bindings.
+
+# Celery queue of the three processes (CELERY_QUEUE); the worker consumes it
+# (--queues), the API and beat publish to it.
+website_knowledge_celery_queue: knowledge
+
+# Time zone of the Celery schedule (CELERY_TIMEZONE) of the three processes.
+# The schedule only uses intervals, so it matters only if a crontab is added.
+website_knowledge_celery_timezone: UTC
+
+# Identifier of the SaaS application of knowledge in billing (BILLING_SAAS_ID),
+# the value billing returns when it creates the application (`billing-admin
+# saas list`). Billing is not used while it is empty, so it is known only after
+# the first onboarding run.
+website_knowledge_billing_saas_id: ""
+
+# Slug of the SaaS application in billing (BILLING_APP_SLUG), the one of the
+# entry of website_billing_saas_apps. Plans are looked up with it.
+website_knowledge_billing_app_slug: ""
+
+# Where Stripe sends the customer back after a checkout
+# (BILLING_CHECKOUT_SUCCESS_URL, BILLING_CHECKOUT_CANCEL_URL). Both must be
+# covered by the checkout_urls of the SaaS application, otherwise billing
+# refuses them. Required with website_knowledge_billing_saas_id.
+website_knowledge_billing_checkout_success_url: ""
+website_knowledge_billing_checkout_cancel_url: ""
+
+# Limits applied while billing cannot answer (QUOTA_FALLBACK_LIMITS), by plan
+# slug; "*" applies to every other plan, a limit that is not listed is 0 and -1
+# is unlimited. For example
+#   {"free": {"max_collections": 3}, "*": {"max_collections": 1}}
+# Empty: nothing is allowed during an outage.
+website_knowledge_quota_fallback_limits: {}
+
+# CNAME target shown to the customers before they register a domain
+# (CUSTOM_DOMAIN_CNAME_TARGET). It is a hint: the one that counts is the cname
+# of the entry of website_custom_domain_clients. The default target of the
+# custom-domain service is used when empty.
+website_knowledge_custom_domain_cname_target: "{{ website_custom_domain_cname_target }}"
+
+# OAuth2 clients of the calls to each service (MAILLER_CLIENT_ID,
+# CUSTOM_DOMAIN_CLIENT_ID, BILLING_CLIENT_ID). Empty: the client of the
+# application (website_oauth2_clients.knowledge.client_id) is used, with the
+# OAUTH2_CLIENT_SECRET secret. A client of its own needs the matching
+# MAILLER_CLIENT_SECRET, CUSTOM_DOMAIN_CLIENT_SECRET or BILLING_CLIENT_SECRET
+# secret.
+website_knowledge_mailler_client_id: ""
+website_knowledge_custom_domain_client_id: ""
+website_knowledge_billing_client_id: ""
+
+# The operator of the service, shown on the legal notice, the pricing page and
+# in the emails. An empty value is left out of the pages.
+website_knowledge_operator_name: ""
+website_knowledge_contact_email: ""
+website_knowledge_sales_email: ""
+website_knowledge_legal_email: ""
+website_knowledge_privacy_email: ""
+website_knowledge_support_url: ""

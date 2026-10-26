@@ -29,12 +29,16 @@ applications. It is a member of the `website` uv workspace.
 - Celery worker and beat for email delivery and scheduled workspace deletion.
 - Custom domains for Enterprise organizations, registered in the
   custom-domain service (status webhooks and reconciliation).
+- Custom domain provisioning (DNS check, nginx virtual host, Let's Encrypt)
+  for Enterprise organizations.
+- Server-rendered signin, signup and account pages backed by the platform
+  authentication service.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. `session` routes need a signed-in user and redirect to the login page otherwise. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
@@ -42,6 +46,32 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/webhooks/billing` | public; HMAC signature required (`BILLING_WEBHOOK_SECRET`) | Receive billing webhook events |
 | POST | `/webhooks/custom-domain` | public; HMAC signature required (`CUSTOM_DOMAIN_WEBHOOK_SECRET`) | Receive a status notification of the custom-domain service |
 | POST | `/webhooks/github/releases` | public; HMAC signature checked when `GITHUB_WEBHOOK_SECRET` is set | Receive GitHub release webhook events |
+| GET | `/auth/login` | public | Redirect to OAuth2 authorization endpoint with PKCE |
+| GET | `/auth/callback` | public | OAuth2 callback - exchange code for tokens |
+| GET | `/auth/logout` | public | Log out by clearing cookies |
+| POST | `/auth/refresh` | refresh token cookie | Refresh the access token |
+| GET | `/auth/signup` | public | Display signup form |
+| POST | `/auth/signup` | public | Process signup form submission |
+| GET | `/auth/verify` | public | Display email verification form |
+| POST | `/auth/verify` | public | Process email verification |
+| POST | `/auth/verify/resend` | public | Resend verification email |
+| GET | `/auth/signin` | public | Display signin form |
+| POST | `/auth/signin` | public | Process signin form submission (ROPC grant) |
+| GET | `/auth/create-workspace` | session | Display workspace creation form for users without a workspace |
+| POST | `/auth/create-workspace` | session | Create a workspace for an authenticated user who has none |
+| GET | `/auth/forgot-password` | public | Display forgot password form |
+| POST | `/auth/forgot-password` | public | Process forgot password form submission |
+| GET | `/auth/reset-password` | public | Display reset password form |
+| POST | `/auth/reset-password` | public | Process reset password form submission |
+| GET | `/auth/account` | session | Display account profile page |
+| POST | `/auth/account` | session | Update account profile |
+| GET | `/auth/account/security` | session | Display account security (MFA) page |
+| POST | `/auth/account/security/setup` | session | Start TOTP setup |
+| POST | `/auth/account/security/verify` | session | Verify TOTP code and enable MFA |
+| POST | `/auth/account/security/disable` | session | Disable MFA |
+| POST | `/auth/account/security/regenerate-codes` | session | Regenerate backup codes |
+| GET | `/auth/account/password` | public | Redirect to security page (password is now part of security) |
+| POST | `/auth/account/password` | session | Change password (redirects back to security page) |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |
@@ -118,3 +148,7 @@ The suites use mocks and need no running database or Redis:
 uv run --package knowledge --group dev pytest apps/knowledge
 uv run --package knowledge --group dev behave apps/knowledge/features
 ```
+
+The behave scenarios tagged `@browser` drive the web pages in a real Chromium; they are
+skipped when the browser is not installed or when `E2E_SKIP_BROWSER=1`, and
+`behave ... -t ~@browser` leaves them out.

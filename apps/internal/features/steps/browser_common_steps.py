@@ -4,6 +4,7 @@
 """Steps shared by the ``@browser`` scenarios: signing in, signing out, the cookies."""
 
 import re
+import time
 import uuid
 
 import browser_support
@@ -225,18 +226,22 @@ def step_dismiss_next(context):
     context.dialogs.dismiss_next = True
 
 
+def _wait_for_dialog(context, text):
+    """Wait until a dialog containing ``text`` was shown (the page may show it later)."""
+    deadline = time.monotonic() + context.e2e.settings.timeout / 1000
+    while not any(text in message for message in context.dialogs.messages):
+        assert time.monotonic() < deadline, f"dialogs shown: {context.dialogs.messages}"
+        context.page.wait_for_timeout(50)
+
+
 @then('the page should have asked for a confirmation containing "{text}"')
 def step_confirmation_asked(context, text):
-    assert any(text in message for message in context.dialogs.messages), (
-        f"confirmations asked: {context.dialogs.messages}"
-    )
+    _wait_for_dialog(context, text)
 
 
 @then('the page should have alerted "{text}"')
 def step_alerted(context, text):
-    assert any(text in message for message in context.dialogs.messages), (
-        f"dialogs shown: {context.dialogs.messages}"
-    )
+    _wait_for_dialog(context, text)
 
 
 @then("the page should not have asked for any confirmation")

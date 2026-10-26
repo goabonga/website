@@ -1,0 +1,23 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install dnsmasq
+  ansible.builtin.import_tasks: install.yml
+  when: dnsmasq_enabled | bool
+  tags: [dnsmasq]
+
+- name: Configure dnsmasq
+  ansible.builtin.import_tasks: configure.yml
+  when: dnsmasq_enabled | bool
+  tags: [dnsmasq]
+
+- name: Start dnsmasq
+  ansible.builtin.import_tasks: service.yml
+  when: dnsmasq_enabled | bool
+  tags: [dnsmasq]
+
+- name: Configure the system resolver
+  ansible.builtin.import_tasks: resolver.yml
+  when: dnsmasq_enabled | bool
+  tags: [dnsmasq]

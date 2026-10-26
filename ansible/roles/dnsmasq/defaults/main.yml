@@ -1,0 +1,120 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Master toggle. When false the role does nothing.
+dnsmasq_enabled: true
+
+# Refresh the apt cache before installing packages.
+dnsmasq_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+dnsmasq_apt_cache_valid_time: 3600
+
+# Packages to install.
+dnsmasq_packages:
+- dnsmasq
+
+# systemd unit name.
+dnsmasq_service_name: dnsmasq
+
+# State of the service after configuration.
+dnsmasq_service_state: started
+
+# Enable the service at boot.
+dnsmasq_service_enabled: true
+
+# Path of the configuration file written by the role.
+dnsmasq_config_file: /etc/dnsmasq.conf
+
+# Directory of additional configuration files (*.conf) included by the main
+# file.
+dnsmasq_config_dir: /etc/dnsmasq.d
+
+# File that holds the host records.
+dnsmasq_hosts_file: /etc/dnsmasq.hosts
+
+# Keep a timestamped backup of the configuration file when it changes.
+dnsmasq_backup_config: false
+
+# Addresses dnsmasq listens on.
+dnsmasq_listen_addresses:
+- 127.0.0.1
+
+# DNS port.
+dnsmasq_port: 53
+
+# Bind only to the listed addresses instead of the wildcard address.
+dnsmasq_bind_interfaces: true
+
+# Do not read upstream servers from resolv.conf.
+dnsmasq_no_resolv: true
+
+# Upstream DNS servers.
+dnsmasq_upstream_servers:
+- 1.1.1.1
+- 1.0.0.1
+
+# Never forward names without a dot.
+dnsmasq_domain_needed: true
+
+# Never forward reverse lookups for private ranges.
+dnsmasq_bogus_priv: true
+
+# Local domain answered from local data only. Disabled when empty.
+dnsmasq_local_domain: internal
+
+# Append the local domain to simple names in host records.
+dnsmasq_expand_hosts: true
+
+# Number of cached DNS records.
+dnsmasq_cache_size: 1000
+
+# Log every query.
+dnsmasq_log_queries: false
+
+# Log file or syslog facility for dnsmasq messages. The default destination is
+# kept when empty.
+dnsmasq_log_facility: ''
+
+# Host (A and AAAA) records.
+# Item keys: ip, hostname.
+dnsmasq_hosts: []
+
+# CNAME records.
+# Item keys: alias, target.
+dnsmasq_cnames: []
+
+# Answers for a whole domain, for example a wildcard development domain.
+# Item keys: domain, ip.
+dnsmasq_addresses: []
+
+# Forward selected domains to specific servers.
+# Item keys: domain, server.
+dnsmasq_domain_servers: []
+
+# Extra raw configuration lines.
+dnsmasq_extra_config: []
+
+# Write DNSMASQ_EXCEPT in /etc/default/dnsmasq so the resolvconf integration
+# does not interfere.
+dnsmasq_manage_default_file: true
+
+# Value of DNSMASQ_EXCEPT.
+dnsmasq_except_interface: lo
+
+# Stop and disable systemd-resolved when it is present.
+dnsmasq_disable_systemd_resolved: false
+
+# Point the resolver configuration file at dnsmasq.
+dnsmasq_manage_resolv_conf: false
+
+# Resolver configuration file written when dnsmasq_manage_resolv_conf is true.
+dnsmasq_resolv_conf_file: /etc/resolv.conf
+
+# Name servers written to resolv.conf.
+dnsmasq_resolv_nameservers:
+- 127.0.0.1
+
+# Search domains written to resolv.conf.
+dnsmasq_resolv_search: []

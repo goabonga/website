@@ -1,0 +1,84 @@
+{{ ansible_managed | comment }}
+{% if dnsmasq_no_resolv | bool %}
+
+# Do not read upstream servers from /etc/resolv.conf
+no-resolv
+{% endif %}
+
+# Listen addresses and port
+{% for address in dnsmasq_listen_addresses %}
+listen-address={{ address }}
+{% endfor %}
+port={{ dnsmasq_port }}
+{% if dnsmasq_bind_interfaces | bool %}
+bind-interfaces
+{% endif %}
+{% if dnsmasq_domain_needed | bool %}
+
+# Never forward plain names (without a dot)
+domain-needed
+{% endif %}
+{% if dnsmasq_bogus_priv | bool %}
+
+# Never forward reverse lookups of private ranges
+bogus-priv
+{% endif %}
+
+# Upstream DNS servers
+{% for server in dnsmasq_upstream_servers %}
+server={{ server }}
+{% endfor %}
+{% if dnsmasq_domain_servers | length > 0 %}
+
+# Per-domain upstream servers
+{% for entry in dnsmasq_domain_servers %}
+server=/{{ entry.domain }}/{{ entry.server }}
+{% endfor %}
+{% endif %}
+{% if dnsmasq_local_domain | length > 0 %}
+
+# Local domain
+local=/{{ dnsmasq_local_domain }}/
+domain={{ dnsmasq_local_domain }}
+{% if dnsmasq_expand_hosts | bool %}
+expand-hosts
+{% endif %}
+{% endif %}
+
+# Cache
+cache-size={{ dnsmasq_cache_size }}
+
+# Host records
+addn-hosts={{ dnsmasq_hosts_file }}
+{% if dnsmasq_cnames | length > 0 %}
+
+# CNAME records
+{% for cname in dnsmasq_cnames %}
+cname={{ cname.alias }},{{ cname.target }}
+{% endfor %}
+{% endif %}
+{% if dnsmasq_addresses | length > 0 %}
+
+# Domain wide answers
+{% for entry in dnsmasq_addresses %}
+address=/{{ entry.domain }}/{{ entry.ip }}
+{% endfor %}
+{% endif %}
+{% if dnsmasq_log_queries | bool %}
+
+# Query logging
+log-queries
+{% endif %}
+{% if dnsmasq_log_facility | length > 0 %}
+log-facility={{ dnsmasq_log_facility }}
+{% endif %}
+{% if dnsmasq_extra_config | length > 0 %}
+
+# Extra configuration
+{% for line in dnsmasq_extra_config %}
+{{ line }}
+{% endfor %}
+{% endif %}
+
+# Additional configuration files
+conf-dir={{ dnsmasq_config_dir }}/,*.conf

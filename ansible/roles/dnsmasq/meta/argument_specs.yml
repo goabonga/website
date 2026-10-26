@@ -1,0 +1,251 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install dnsmasq as a local caching DNS resolver with custom records.
+    description:
+    - 'Installs dnsmasq and renders its configuration from variables: listen addresses, upstream
+      servers, local domain, host records, CNAMEs, wildcard addresses, per-domain upstreams
+      and raw extra lines. Taking over resolv.conf and disabling systemd-resolved are opt-in.'
+    author: Chris
+    options:
+      dnsmasq_enabled:
+        type: bool
+        description:
+        - Master toggle. When false the role does nothing.
+        default: true
+      dnsmasq_apt_update_cache:
+        type: bool
+        description:
+        - Refresh the apt cache before installing packages.
+        default: true
+      dnsmasq_apt_cache_valid_time:
+        type: int
+        description:
+        - Seconds the apt cache is considered fresh.
+        default: 3600
+      dnsmasq_packages:
+        type: list
+        description:
+        - Packages to install.
+        default:
+        - dnsmasq
+        elements: str
+      dnsmasq_service_name:
+        type: str
+        description:
+        - systemd unit name.
+        default: dnsmasq
+      dnsmasq_service_state:
+        type: str
+        description:
+        - State of the service after configuration.
+        default: started
+        choices:
+        - started
+        - stopped
+      dnsmasq_service_enabled:
+        type: bool
+        description:
+        - Enable the service at boot.
+        default: true
+      dnsmasq_config_file:
+        type: path
+        description:
+        - Path of the configuration file written by the role.
+        default: /etc/dnsmasq.conf
+      dnsmasq_config_dir:
+        type: path
+        description:
+        - Directory of additional configuration files (*.conf) included by the main file.
+        default: /etc/dnsmasq.d
+      dnsmasq_hosts_file:
+        type: path
+        description:
+        - File that holds the host records.
+        default: /etc/dnsmasq.hosts
+      dnsmasq_backup_config:
+        type: bool
+        description:
+        - Keep a timestamped backup of the configuration file when it changes.
+        default: false
+      dnsmasq_listen_addresses:
+        type: list
+        description:
+        - Addresses dnsmasq listens on.
+        default:
+        - 127.0.0.1
+        elements: str
+      dnsmasq_port:
+        type: int
+        description:
+        - DNS port.
+        default: 53
+      dnsmasq_bind_interfaces:
+        type: bool
+        description:
+        - Bind only to the listed addresses instead of the wildcard address.
+        default: true
+      dnsmasq_no_resolv:
+        type: bool
+        description:
+        - Do not read upstream servers from resolv.conf.
+        default: true
+      dnsmasq_upstream_servers:
+        type: list
+        description:
+        - Upstream DNS servers.
+        default:
+        - 1.1.1.1
+        - 1.0.0.1
+        elements: str
+      dnsmasq_domain_needed:
+        type: bool
+        description:
+        - Never forward names without a dot.
+        default: true
+      dnsmasq_bogus_priv:
+        type: bool
+        description:
+        - Never forward reverse lookups for private ranges.
+        default: true
+      dnsmasq_local_domain:
+        type: str
+        description:
+        - Local domain answered from local data only. Disabled when empty.
+        default: internal
+      dnsmasq_expand_hosts:
+        type: bool
+        description:
+        - Append the local domain to simple names in host records.
+        default: true
+      dnsmasq_cache_size:
+        type: int
+        description:
+        - Number of cached DNS records.
+        default: 1000
+      dnsmasq_log_queries:
+        type: bool
+        description:
+        - Log every query.
+        default: false
+      dnsmasq_log_facility:
+        type: str
+        description:
+        - Log file or syslog facility for dnsmasq messages. The default destination is kept
+          when empty.
+        default: ''
+      dnsmasq_hosts:
+        type: list
+        description:
+        - Host (A and AAAA) records.
+        default: []
+        elements: dict
+        options:
+          ip:
+            type: str
+            description:
+            - IPv4 or IPv6 address.
+            required: true
+          hostname:
+            type: str
+            description:
+            - Host name; several names may be separated by spaces.
+            required: true
+      dnsmasq_cnames:
+        type: list
+        description:
+        - CNAME records.
+        default: []
+        elements: dict
+        options:
+          alias:
+            type: str
+            description:
+            - Alias name.
+            required: true
+          target:
+            type: str
+            description:
+            - Target name.
+            required: true
+      dnsmasq_addresses:
+        type: list
+        description:
+        - Answers for a whole domain, for example a wildcard development domain.
+        default: []
+        elements: dict
+        options:
+          domain:
+            type: str
+            description:
+            - Domain, matches the domain and all of its subdomains.
+            required: true
+          ip:
+            type: str
+            description:
+            - Address returned.
+            required: true
+      dnsmasq_domain_servers:
+        type: list
+        description:
+        - Forward selected domains to specific servers.
+        default: []
+        elements: dict
+        options:
+          domain:
+            type: str
+            description:
+            - Domain to forward.
+            required: true
+          server:
+            type: str
+            description:
+            - Upstream server.
+            required: true
+      dnsmasq_extra_config:
+        type: list
+        description:
+        - Extra raw configuration lines.
+        default: []
+        elements: str
+      dnsmasq_manage_default_file:
+        type: bool
+        description:
+        - Write DNSMASQ_EXCEPT in /etc/default/dnsmasq so the resolvconf integration does
+          not interfere.
+        default: true
+      dnsmasq_except_interface:
+        type: str
+        description:
+        - Value of DNSMASQ_EXCEPT.
+        default: lo
+      dnsmasq_disable_systemd_resolved:
+        type: bool
+        description:
+        - Stop and disable systemd-resolved when it is present.
+        default: false
+      dnsmasq_manage_resolv_conf:
+        type: bool
+        description:
+        - Point the resolver configuration file at dnsmasq.
+        default: false
+      dnsmasq_resolv_conf_file:
+        type: path
+        description:
+        - Resolver configuration file written when dnsmasq_manage_resolv_conf is true.
+        default: /etc/resolv.conf
+      dnsmasq_resolv_nameservers:
+        type: list
+        description:
+        - Name servers written to resolv.conf.
+        default:
+        - 127.0.0.1
+        elements: str
+      dnsmasq_resolv_search:
+        type: list
+        description:
+        - Search domains written to resolv.conf.
+        default: []
+        elements: str

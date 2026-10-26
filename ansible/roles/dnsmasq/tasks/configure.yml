@@ -1,0 +1,54 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Stop systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+  register: dnsmasq__resolved
+  failed_when:
+    - dnsmasq__resolved is failed
+    - "'Could not find' not in (dnsmasq__resolved.msg | default(''))"
+  when: dnsmasq_disable_systemd_resolved | bool
+
+- name: Keep the resolvconf integration away from dnsmasq
+  ansible.builtin.lineinfile:
+    path: /etc/default/dnsmasq
+    regexp: "^#?DNSMASQ_EXCEPT="
+    line: "DNSMASQ_EXCEPT={{ dnsmasq_except_interface }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: dnsmasq_manage_default_file | bool
+  notify: dnsmasq | restart
+
+- name: Create the additional configuration directory
+  ansible.builtin.file:
+    path: "{{ dnsmasq_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the dnsmasq configuration
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: "{{ dnsmasq_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: "{{ dnsmasq_backup_config }}"
+    validate: dnsmasq --test --conf-file=%s
+  notify: dnsmasq | restart
+
+- name: Render the host records
+  ansible.builtin.template:
+    src: dnsmasq.hosts.j2
+    dest: "{{ dnsmasq_hosts_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: dnsmasq | restart

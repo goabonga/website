@@ -1,0 +1,17 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Restart dnsmasq
+  ansible.builtin.systemd:
+    name: "{{ dnsmasq_service_name }}"
+    state: restarted
+  when: dnsmasq_service_state == 'started'
+  listen: dnsmasq | restart
+
+- name: Reload dnsmasq
+  ansible.builtin.systemd:
+    name: "{{ dnsmasq_service_name }}"
+    state: reloaded
+  when: dnsmasq_service_state == 'started'
+  listen: dnsmasq | reload

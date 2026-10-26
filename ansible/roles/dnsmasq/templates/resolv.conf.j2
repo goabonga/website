@@ -1,0 +1,7 @@
+{{ ansible_managed | comment }}
+{% for nameserver in dnsmasq_resolv_nameservers %}
+nameserver {{ nameserver }}
+{% endfor %}
+{% if dnsmasq_resolv_search | length > 0 %}
+search {{ dnsmasq_resolv_search | join(' ') }}
+{% endif %}

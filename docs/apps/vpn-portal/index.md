@@ -30,6 +30,7 @@ each feature builds on the previous ones.
 3. [Certificate records and migrations](03-certificate-records.md): the PostgreSQL model of issued certificates and its Alembic migration.
 4. [Step-CA root certificate](04-step-ca-root-certificate.md): the Step-CA client and the root CA endpoint.
 5. [Certificate issuance and lifecycle](05-certificate-issuance.md): short-lived certificates, OpenVPN profile, RBAC routes, revocation and status.
+6. [Internal API and connection tracking](06-internal-api.md): certificate validation and connection records for the OpenVPN server.
 
 ## Testing
 

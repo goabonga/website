@@ -219,3 +219,18 @@ class TestCampaignSettings:
     def test_from_environment(self, monkeypatch):
         monkeypatch.setenv("DEFAULT_PROVIDER", "some-provider")
         assert Settings(_env_file=None).default_provider == "some-provider"
+
+
+class TestInboundSettings:
+    """Inbound mail settings introduced with inbound processing."""
+
+    def test_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.inbound_enabled is False
+        assert s.inbound_imap_port == 0
+        assert s.inbound_poll_interval == 30
+        assert s.inbound_webhook_url == ""
+        assert s.inbound_webhook_secret == ""
+        assert s.inbound_processed_folder == "Processed"
+        assert s.inbound_attachments_dir == ""
+        assert s.inbound_attachment_ttl == 86400

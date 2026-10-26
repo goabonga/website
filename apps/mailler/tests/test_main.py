@@ -260,3 +260,52 @@ class TestWebhooksRoutes:
         from mailler.main import app
 
         assert app.url_path_for("brevo_webhook") == "/api/v1/webhooks/brevo"
+
+
+class TestInboundRoutes:
+    """Tests for conditional inbound route registration ."""
+
+    def test_inbound_routes_when_disabled(self):
+        """When inbound_enabled is False, inbound router is not included."""
+        from mailler.config import settings
+        from mailler.main import app
+
+        # Check if inbound routes are registered based on settings
+        route_paths = list(app.openapi()["paths"])
+        if not settings.inbound_enabled:
+            # If inbound is disabled, no /api/v1/inbound routes
+            inbound_routes = [p for p in route_paths if "/inbound" in p]
+            assert len(inbound_routes) == 0
+
+    def test_inbound_routes_registration_logic(self):
+        """Verify the conditional import logic for inbound routes."""
+        from mailler.config import settings
+
+        if settings.inbound_enabled:
+            # If enabled, we can import the router
+            from mailler.routes.inbound import router as inbound_router
+
+            assert inbound_router is not None
+
+    def test_inbound_routes_when_enabled(self):
+        """Cover lines 130-132: inbound_enabled=True triggers route registration.
+
+        Reloads the mailler.main module with inbound_enabled patched to True to
+        exercise the conditional import and include_router for inbound routes.
+        """
+        import importlib
+
+        import mailler.main as main_module
+        from mailler.config import settings
+
+        with patch.object(settings, "inbound_enabled", True):
+            importlib.reload(main_module)
+
+            # After reload with inbound_enabled=True, the inbound router should
+            # have been included. Check route paths for /inbound endpoints.
+            route_paths = list(main_module.app.openapi()["paths"])
+            inbound_routes = [p for p in route_paths if "/inbound" in p]
+            assert len(inbound_routes) > 0
+
+        # Reload to restore original state
+        importlib.reload(main_module)

@@ -19,6 +19,7 @@ The application is documented feature by feature, in the order in which each fea
 4. [Multi-tenancy and OIDC discovery](04-tenancy.md): Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
 5. [Outbound webhooks and Celery](05-webhooks.md): Signed webhook deliveries to tenant endpoints through a Celery worker.
 6. [Registration and email verification](06-registration.md): User accounts, password hashing, email delivery and verification.
+7. [Sessions and logout](07-sessions.md): Cookie sessions, sliding expiry middleware and logout.
 
 ## Testing
 

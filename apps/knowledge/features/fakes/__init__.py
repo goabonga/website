@@ -10,6 +10,7 @@ stand-ins so that no database is needed.
 
 import hashlib
 import math
+import operator
 import re
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -19,7 +20,14 @@ from sqlalchemy import inspect
 
 from knowledge.auth.dependencies import AuthContext
 from knowledge.auth.models import User
-from knowledge.models import Collection, CollectionCollaborator, CollectionInvitation, Document
+from knowledge.models import (
+    Collection,
+    CollectionCollaborator,
+    CollectionInvitation,
+    Document,
+    McpRelease,
+    McpReleaseAsset,
+)
 from knowledge.models.enums import CollaboratorPermission, OwnerType
 from knowledge.schemas.search import SearchResponse, SearchResult
 from knowledge.services.collaborators import CollaboratorService
@@ -35,6 +43,8 @@ class Store:
         self.documents: dict[UUID, Document] = {}
         self.collaborators: dict[UUID, CollectionCollaborator] = {}
         self.invitations: dict[UUID, CollectionInvitation] = {}
+        self.releases: dict[UUID, McpRelease] = {}
+        self.release_assets: dict[UUID, McpReleaseAsset] = {}
 
     def bucket_for(self, obj):
         """Return the in-memory table holding objects of this type, if any."""
@@ -43,6 +53,8 @@ class Store:
             (Document, self.documents),
             (CollectionCollaborator, self.collaborators),
             (CollectionInvitation, self.invitations),
+            (McpRelease, self.releases),
+            (McpReleaseAsset, self.release_assets),
         ):
             if isinstance(obj, cls):
                 return bucket
@@ -75,16 +87,48 @@ class FakeSession:
         self.commit = AsyncMock()
         self.rollback = AsyncMock()
         self.add = MagicMock(side_effect=self._add)
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = None
-        result.all.return_value = []
-        self.execute = AsyncMock(return_value=result)
 
     def _add(self, obj):
         bucket = self.store.bucket_for(obj)
         if bucket is not None:
             apply_flush_defaults(obj)
             bucket[obj.id] = obj
+            if isinstance(obj, McpReleaseAsset):
+                self.store.releases[obj.release_id].assets.append(obj)
+
+    async def execute(self, statement):
+        """Evaluate the simple SELECTs on releases and assets; anything else is empty."""
+        rows = self._select(statement)
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = rows[0] if rows else None
+        result.scalars.return_value.all.return_value = rows
+        result.all.return_value = []
+        return result
+
+    def _select(self, statement):
+        if not hasattr(statement, "column_descriptions"):
+            return []
+        entity = statement.column_descriptions[0].get("entity")
+        bucket = {
+            McpRelease: self.store.releases,
+            McpReleaseAsset: self.store.release_assets,
+        }.get(entity)
+        if bucket is None:
+            return []
+        rows = list(bucket.values())
+        for criterion in statement._where_criteria:
+            attribute, expected, op = criterion.left.key, criterion.right.value, criterion.operator
+            if op is operator.eq:
+                rows = [r for r in rows if getattr(r, attribute) == expected]
+            elif op is operator.ne:
+                rows = [r for r in rows if getattr(r, attribute) != expected]
+            else:
+                raise NotImplementedError(f"unsupported operator {op}")
+        for clause in statement._order_by_clauses[:1]:
+            rows.sort(key=lambda r: getattr(r, clause.element.key), reverse=True)
+        if statement._limit_clause is not None:
+            rows = rows[: statement._limit_clause.value]
+        return rows
 
     async def delete(self, obj):
         bucket = self.store.bucket_for(obj)

@@ -31,6 +31,28 @@ celery_app.conf.update(
 )
 
 
+def from_cron(expression: str) -> crontab:
+    """Build a Celery schedule from a five-field cron expression.
+
+    The fields are minute, hour, day of month, month and day of week, in the usual
+    cron order.
+
+    Raises:
+        ValueError: If the expression does not have exactly five fields
+    """
+    fields = expression.split()
+    if len(fields) != 5:
+        raise ValueError(f"Expected 5 cron fields, got {expression!r}")
+    minute, hour, day_of_month, month_of_year, day_of_week = fields
+    return crontab(
+        minute=minute,
+        hour=hour,
+        day_of_month=day_of_month,
+        month_of_year=month_of_year,
+        day_of_week=day_of_week,
+    )
+
+
 def periodic(task_name: str, schedule) -> dict:
     """Build a beat entry that publishes to the queue the worker consumes."""
     return {
@@ -45,6 +67,25 @@ celery_app.conf.beat_schedule = {
     "check-pending-domains": periodic(
         "custom_domain.tasks.verification.check_pending_domains",
         crontab(minute=f"*/{settings.dns_check_interval_minutes}"),
+    ),
+    "check-certificate-expiry": periodic(
+        "custom_domain.tasks.maintenance.check_certificate_expiry",
+        from_cron(settings.certificate_expiry_check_cron),
+    ),
+    "check-domain-health": periodic(
+        "custom_domain.tasks.maintenance.check_domain_health",
+        crontab(
+            hour=f"*/{settings.domain_health_check_interval_hours}",
+            minute=settings.domain_health_check_minute,
+        ),
+    ),
+    "cleanup-stale-domains": periodic(
+        "custom_domain.tasks.maintenance.cleanup_stale_domains",
+        from_cron(settings.stale_cleanup_cron),
+    ),
+    "purge-deleted-domains": periodic(
+        "custom_domain.tasks.maintenance.purge_deleted_domains",
+        from_cron(settings.purge_deleted_cron),
     ),
 }
 

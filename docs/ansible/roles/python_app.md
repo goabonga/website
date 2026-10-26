@@ -215,6 +215,28 @@ them against `meta/argument_specs.yml` before running.
 | `website_asterisk_user` | `{{ asterisk_user \| default('asterisk') }}` | Account that owns the Asterisk configuration (follows the asterisk role). |
 | `website_asterisk_group` | `{{ asterisk_group \| default('asterisk') }}` | Group that owns the Asterisk configuration (follows the asterisk role). |
 
+### Custom domain
+
+Settings of the `custom_domain` application. The paths and binaries are the values of the matching settings of the service; they feed both the environment of the worker and the sudoers rules of its privileged helper, so the two always agree. The worker fails to deploy when one of them is empty: `website_custom_domain_certbot_email` or `website_certbot_email` must give an address.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_custom_domain_celery_queue` | `"custom-domain"` | Celery queue of the three custom_domain processes (CELERY_QUEUE); the worker consumes it (--queues), the API and beat publish to it. |
+| `website_custom_domain_cname_target` | `""` | Default CNAME target handed to the customers (DEFAULT_CNAME_TARGET of the API). Empty means every authorized client must carry its own. |
+| `website_custom_domain_helper` | `"/usr/local/sbin/custom-domain-privileged"` | Where the privileged helper is installed (PRIVILEGED_HELPER). Owned by root and not writable by anyone else. |
+| `website_custom_domain_staging_dir` | `"/var/lib/custom-domain/staging"` | Directory the worker stages the rendered virtual hosts in, read back by the helper (PRIVILEGED_STAGING_DIR). |
+| `website_custom_domain_sites_dir` | `"/etc/nginx/sites-enabled"` | nginx directory receiving the virtual hosts of the customers (NGINX_SITES_DIR). |
+| `website_custom_domain_config_prefix` | `"custom-domain-"` | Prefix of the file names written in that directory (NGINX_CONFIG_PREFIX). |
+| `website_custom_domain_nginx_bin` | `"/usr/sbin/nginx"` | nginx binary (NGINX_BIN), owned by root and not writable by others. |
+| `website_custom_domain_systemctl_bin` | `"/usr/bin/systemctl"` | systemctl binary (SYSTEMCTL_BIN), owned by root and not writable by others. |
+| `website_custom_domain_certbot_bin` | `"/usr/bin/certbot"` | certbot binary (CERTBOT_BIN), owned by root and not writable by others. |
+| `website_custom_domain_openssl_bin` | `"/usr/bin/openssl"` | openssl binary (OPENSSL_BIN), owned by root and not writable by others. |
+| `website_custom_domain_nginx_service` | `"nginx"` | systemd unit reloaded after a change (NGINX_SERVICE). |
+| `website_custom_domain_webroot` | `"/var/www/certbot"` | Webroot of the HTTP-01 challenge (CERTBOT_WEBROOT). nginx must serve it on /.well-known/acme-challenge/ for the customer domains; it is created when missing. |
+| `website_custom_domain_letsencrypt_dir` | `{{ website_letsencrypt_dir }}` | Directory of the certificates (LETSENCRYPT_DIR); website_letsencrypt_dir by default. |
+| `website_custom_domain_certbot_email` | `""` | Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email when empty. One of the two is required by the worker. |
+| `website_custom_domain_clients` | `[]` | Applications allowed to register customer domains, created in the database after the migrations when missing and never modified afterwards. Each entry has client_id and name (required), and optionally description, upstream (socket path or host:port), cname, max_domains, webhook_url and webhook_secret (at least 32 characters, required with webhook_url). |
+
 ### Host names
 
 | Variable | Default | Description |
@@ -260,10 +282,12 @@ application has the name of the application; the others set `app`.
 | `extra_path` | `[]` | Directories appended to `PATH`. |
 | `sudoers` | `[]` | Commands the account may run through sudo without a password. `NoNewPrivileges` is lifted for the units of the components that set it. |
 | `stepca_group_member` | `false` | Join the `step` group to read the provisioner password. |
+| `custom_domain_helper.enabled` | `false` | Privileged helper of the `custom_domain` worker: installs `privileged_helper.py` of the release at `website_custom_domain_helper`, creates its staging directory and the ACME webroot, and writes the nine sudoers rules of its command table (see [Custom domain helper](#custom-domain-helper)). `NoNewPrivileges` is lifted like for `sudoers`. |
 | `healthcheck.enabled` | `false` | The unit only counts as started once the probe answers. |
 | `healthcheck.path` | `/health` | Path of the probe. |
 | `healthcheck.timeout` | `10` | Seconds to wait. |
 | `oauth2.enabled` | `false` | Generate `OAUTH2_ISSUER` from `website_oauth2_issuer`, and `OAUTH2_CLIENT_ID`, `OAUTH2_SWAGGER_CLIENT_ID` and `OAUTH2_FRONTEND_CLIENT_ID` from `website_oauth2_clients.<app>` (`client_id`, `swagger_client_id`, `frontend_client_id`). |
+| `env_defaults` | `{}` | Variables shared by several components, merged under `env_vars` (an entry of `env_vars` wins). Used by billing for the settings its three units must share. |
 | `env_vars` | `{}` | Content of the environment file, merged over the generated variables. Lists and dictionaries are written as JSON. |
 | `secret_names` | `[]` | Secrets that must be provided through `website_secrets`. |
 | `optional_secret_names` | `[]` | Secrets deployed only when provided. |
@@ -304,7 +328,7 @@ application has the name of the application; the others set `app`.
 | `postgres.shared` | `false` | Several applications share a database owned by a group role named like the database. |
 | `postgres.pgvector` | `false` | Enable the `vector` extension. |
 | `postgres.async_db` | `false` | Use the `postgresql+asyncpg` driver in `DATABASE_URL`. |
-| `alembic.enabled` | `false` | Run `alembic -c apps/<package>/alembic.ini upgrade head` before the unit starts. |
+| `alembic.enabled` | `false` | Run `alembic -c alembic.ini upgrade head` from `apps/<package>` before the unit starts (some `alembic.ini` files use a path relative to the working directory). |
 | `pg_backup.*` | enabled, 02:00, 7 days, `custom` | `enabled`, `dir`, `hour`, `minute`, `retention` (days), `format` (`custom`, `plain`, `tar`). Not done for shared databases. |
 
 ### Web front
@@ -357,6 +381,40 @@ application has the name of the application; the others set `app`.
   `www-data` joins the group of a socket; dnsmasq, fail2ban and Asterisk are
   reloaded or restarted when their configuration changed; OpenVPN is restarted
   when its hooks changed.
+
+### Custom domain helper
+
+The worker of `custom_domain` never writes to `/etc/nginx` nor runs certbot
+itself: every privileged operation is one command of a standard-library script
+that it starts with `sudo`. For a component with `custom_domain_helper.enabled`
+(the `custom_domain_worker` of the catalog) the role:
+
+1. checks that no path, binary or the e-mail address is empty or relative;
+2. writes `/etc/sudoers.d/<account>` with one rule per command, in the format
+   of `custom-domain sudoers --user <account>`:
+   `<account> ALL=(root) NOPASSWD: <helper> <options> <command> [*]`. The
+   options of each rule are the values of the `website_custom_domain_*`
+   variables, the same that the role writes into the environment file of the
+   worker, so a rule and the setting it matches cannot drift. Characters that
+   sudoers treats specially are escaped like the application does. The file is
+   checked with `visudo -cf` before it is installed;
+3. copies `privileged_helper.py` from the release to
+   `website_custom_domain_helper` (`root:root`, `0755`) on every run, so the
+   helper and the application always come from the same release;
+4. creates the staging directory (`0750`, owned by the account of the
+   application) and the ACME webroot;
+5. keeps `sudo` usable in the unit of the worker (no `NoNewPrivileges`) and
+   makes the paths the helper writes to writable: the staging directory, the
+   nginx sites directory, the webroot, `/var/log/nginx` and the Let's Encrypt
+   directories (`-` prefixed when they may not exist yet).
+
+The API unit (`custom_domain`) needs none of this and receives neither the
+nginx nor the certbot settings: deleting a domain only marks it, the worker
+finishes.
+
+After the migrations the role also seeds the default nginx template and
+creates the missing entries of `website_custom_domain_clients` with the
+`custom-domain` command.
 
 ## Tags
 

@@ -8,9 +8,17 @@ from knowledge.schemas.collection import (
     CollectionResponse,
     CollectionUpdate,
 )
+from knowledge.schemas.document import (
+    DocumentCreate,
+    DocumentResponse,
+    DocumentsCreate,
+)
 
 __all__ = [
     "CollectionCreate",
     "CollectionResponse",
     "CollectionUpdate",
+    "DocumentCreate",
+    "DocumentResponse",
+    "DocumentsCreate",
 ]

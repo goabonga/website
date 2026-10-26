@@ -40,6 +40,7 @@ directory; see `.env.example`.
 - Event collection: `POST /collect` and the `GET /collect` beacon with session cookies.
 - Campaigns and email tracking pixels (`/p/{key}.gif`, Alembic revision `002`).
 - Campaign link redirects with click tracking (`/t/{key}`).
+- OAuth2/OIDC bearer authentication with scope checks (token introspection, token exchange).
 
 Each feature has a page in `docs/apps/analytics/`.
 

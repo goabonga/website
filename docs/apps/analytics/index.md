@@ -7,6 +7,7 @@ file and the page listed below.
 - Workspace member: `apps/analytics` (distribution `analytics`, import package `analytics`)
 - ASGI entry point: `analytics.main:app` (FastAPI)
 - Data store: PostgreSQL through async SQLAlchemy and Alembic
+- Cache: Redis (token introspection and scope caches)
 
 ## Features
 
@@ -17,3 +18,4 @@ file and the page listed below.
 - [Event collection](04-collection.md): `/collect` endpoints and session cookies.
 - [Campaigns and pixels](05-pixels.md): email tracking pixels, Alembic revision `002`.
 - [Campaign links](06-links.md): redirects with click tracking.
+- [Authentication](07-auth.md): OAuth2/OIDC bearer tokens and scopes.

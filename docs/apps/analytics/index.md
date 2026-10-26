@@ -13,3 +13,4 @@ file and the page listed below.
 - [Foundation](00-foundation.md): settings, logging, application and `/health`.
 - [security.txt](01-security-txt.md): RFC 9116 vulnerability disclosure file.
 - [Storage](02-storage.md): PostgreSQL models for sessions and events, Alembic revision `001`.
+- [Visitor enrichment](03-enrichment.md): user agent parsing and optional GeoIP lookups.

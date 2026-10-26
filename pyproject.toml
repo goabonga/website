@@ -42,7 +42,7 @@ doc = [
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-extend-exclude = ["ansible"]
+extend-exclude = ["ansible", "docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]

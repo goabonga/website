@@ -161,3 +161,19 @@ bump_files = [
 ]
 changelog = "apps/internal/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.analytics]
+tag_format = "analytics-v{version}"
+paths = [
+    "apps/analytics/src/**",
+    "apps/analytics/features/**",
+    "apps/analytics/tests/**",
+    "apps/analytics/alembic/**",
+    "apps/analytics/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/analytics/pyproject.toml", key = "project.version" },
+    { file = "apps/analytics/src/analytics/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/analytics/CHANGELOG.md"
+post_bump = ["uv lock"]

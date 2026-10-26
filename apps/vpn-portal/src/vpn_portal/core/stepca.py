@@ -1,18 +1,39 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-"""Step-CA client."""
+"""Step-CA client for certificate generation."""
 
+import asyncio
+import contextlib
 import logging
+import subprocess
+import tempfile
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import httpx
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
 from vpn_portal.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CertificateBundle:
+    """Generated certificate bundle."""
+
+    certificate_pem: str
+    private_key_pem: str
+    ca_certificate_pem: str
+    serial_number: str
+    common_name: str
+    not_before: datetime
+    not_after: datetime
 
 
 class StepCAError(Exception):
@@ -22,7 +43,7 @@ class StepCAError(Exception):
 
 
 class StepCAClient:
-    """Client for interacting with the Step-CA certificate authority."""
+    """Client for interacting with Step-CA to generate short-lived certificates."""
 
     def __init__(
         self,
@@ -114,6 +135,215 @@ class StepCAClient:
         except (httpx.RequestError, KeyError) as e:
             logger.error("Failed to fetch root CA from %s: %s", self.ca_url, e)
             raise StepCAError(f"Failed to fetch root CA: {e}")
+
+    async def generate_certificate(
+        self,
+        common_name: str,
+        san_email: str | None = None,
+        duration_minutes: int | None = None,
+    ) -> CertificateBundle:
+        """Generate a short-lived certificate using Step-CA.
+
+        Args:
+            common_name: Certificate common name (e.g., "vpn-<user_id>-<timestamp>").
+            san_email: Subject Alternative Name email (optional).
+            duration_minutes: Certificate duration in minutes (default from settings).
+
+        Returns:
+            CertificateBundle with certificate, key, and metadata.
+
+        Raises:
+            StepCAError: If certificate generation fails.
+        """
+        duration = duration_minutes or settings.cert_default_duration_minutes
+
+        # Enforce maximum duration
+        if duration > settings.cert_max_duration_minutes:
+            duration = settings.cert_max_duration_minutes
+
+        logger.info(
+            "Generating certificate: CN=%s, duration=%dm",
+            common_name,
+            duration,
+        )
+
+        # Generate private key
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+
+        # Build CSR
+        csr_builder = x509.CertificateSigningRequestBuilder().subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+                ]
+            )
+        )
+
+        # Add SAN if email provided
+        if san_email:
+            csr_builder = csr_builder.add_extension(
+                x509.SubjectAlternativeName(
+                    [
+                        x509.RFC822Name(san_email),
+                    ]
+                ),
+                critical=False,
+            )
+
+        # Sign CSR
+        csr = csr_builder.sign(private_key, hashes.SHA256())
+        csr_pem = csr.public_bytes(serialization.Encoding.PEM).decode()
+
+        # Write CSR to temp file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csr", delete=False) as csr_file:
+            csr_file.write(csr_pem)
+            csr_path = csr_file.name
+
+        # Write password to temp file (step CLI requires file)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pass", delete=False) as pass_file:
+            pass_file.write(self._get_provisioner_password())
+            pass_path = pass_file.name
+
+        # Output certificate path
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".crt", delete=False) as cert_file:
+            cert_path = cert_file.name
+
+        try:
+            # Run step CA sign command
+            # Use full path as gunicorn may not have /usr/bin in PATH
+            # --force skips interactive confirmations when running without a TTY
+            cmd = [
+                "/usr/bin/step",
+                "ca",
+                "sign",
+                "--force",
+                "--ca-url",
+                self.ca_url,
+                "--root",
+                self.root_ca_path,
+                "--provisioner",
+                self.provisioner,
+                "--provisioner-password-file",
+                pass_path,
+                "--not-after",
+                f"{duration}m",
+                csr_path,
+                cert_path,
+            ]
+
+            # Run in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                ),
+            )
+
+            if result.returncode != 0:
+                logger.error("step ca sign failed: %s", result.stderr)
+                raise StepCAError(f"Certificate signing failed: {result.stderr}")
+
+            # Read generated certificate
+            cert_pem = Path(cert_path).read_text()
+
+            # Parse certificate to extract metadata
+            cert = x509.load_pem_x509_certificate(cert_pem.encode())
+            serial_number = format(cert.serial_number, "x")
+            not_before = cert.not_valid_before_utc
+            not_after = cert.not_valid_after_utc
+
+            # Export private key
+            private_key_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            ).decode()
+
+            # Load CA certificate
+            ca_certificate_pem = self._load_ca_certificate()
+
+            logger.info(
+                "Certificate generated: serial=%s, expires=%s",
+                serial_number,
+                not_after.isoformat(),
+            )
+
+            return CertificateBundle(
+                certificate_pem=cert_pem,
+                private_key_pem=private_key_pem,
+                ca_certificate_pem=ca_certificate_pem,
+                serial_number=serial_number,
+                common_name=common_name,
+                not_before=not_before,
+                not_after=not_after,
+            )
+
+        finally:
+            # Clean up temp files
+            for path in [csr_path, pass_path, cert_path]:
+                with contextlib.suppress(Exception):
+                    Path(path).unlink(missing_ok=True)
+
+    async def revoke_certificate(self, serial_number: str) -> None:
+        """Revoke a certificate via Step-CA (passive revocation).
+
+        Args:
+            serial_number: Certificate serial number to revoke.
+
+        Raises:
+            StepCAError: If revocation fails.
+        """
+        logger.info("Revoking certificate via Step-CA: serial=%s", serial_number)
+
+        # Write password to temp file (step CLI requires file)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pass", delete=False) as pass_file:
+            pass_file.write(self._get_provisioner_password())
+            pass_path = pass_file.name
+
+        try:
+            cmd = [
+                "/usr/bin/step",
+                "ca",
+                "revoke",
+                "--force",
+                "--ca-url",
+                self.ca_url,
+                "--root",
+                self.root_ca_path,
+                "--provisioner",
+                self.provisioner,
+                "--provisioner-password-file",
+                pass_path,
+                serial_number,
+            ]
+
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                ),
+            )
+
+            if result.returncode != 0:
+                logger.error("step ca revoke failed: %s", result.stderr)
+                raise StepCAError(f"Certificate revocation failed: {result.stderr}")
+
+            logger.info("Certificate revoked via Step-CA: serial=%s", serial_number)
+
+        finally:
+            with contextlib.suppress(Exception):
+                Path(pass_path).unlink(missing_ok=True)
 
 
 # Default client instance

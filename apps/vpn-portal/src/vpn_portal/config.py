@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     stepca_provisioner_password: str = ""
     stepca_provisioner_password_file: str = "/etc/step-ca/secrets/vpn-portal-password"
 
+    # Certificate settings
+    cert_default_duration_minutes: int = 10
+    cert_max_duration_minutes: int = 15
+
     # OAuth2 / OIDC configuration
     oauth2_issuer: str = ""  # OIDC issuer URL (e.g., https://auth.example.com)
     oauth2_swagger_client_id: str = ""  # OAuth2 PKCE client ID for Swagger UI
@@ -75,6 +79,26 @@ class Settings(BaseSettings):
 
     # Trusted issuers (comma-separated, in addition to oauth2_issuer)
     oauth2_trusted_issuers: str = ""
+
+    # OpenVPN configuration
+    openvpn_server: str = "vpn.example.com"
+    openvpn_port: int = 1194
+    openvpn_proto: str = "udp"
+    openvpn_ca_path: str = "/etc/openvpn/server/ca.crt"
+    openvpn_ta_key_path: str = "/etc/openvpn/server/ta.key"
+
+    # RBAC: Scope to routes mapping
+    # Format: {"scope": ["route1", "route2"]}
+    scope_routes: dict[str, list[str]] = {
+        "vpn:connect": ["10.8.0.0/24"],
+        "vpn:internal": ["10.8.0.0/24", "10.0.0.0/8"],
+        "vpn:infrastructure": ["10.8.0.0/24", "192.168.0.0/16"],
+        "vpn:development": ["10.8.0.0/24", "10.100.0.0/16"],
+        "vpn:production": ["10.8.0.0/24", "10.200.0.0/16"],
+    }
+
+    # Default routes for all authenticated users
+    default_routes: list[str] = ["10.8.0.0/24"]
 
     model_config = SettingsConfigDict(env_file=".env")
 

@@ -25,6 +25,8 @@ how it is tested with pytest and behave.
    with other users.
 8. [Usage quotas](07-quotas.md): plan limits and per-tenant API call
    tracking.
+9. [Multi-tenant resolution](08-multi-tenancy.md): tenants from path,
+   subdomain or custom domain.
 
 ## Running the tests
 

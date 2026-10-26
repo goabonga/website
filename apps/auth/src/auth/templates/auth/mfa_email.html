@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Email Verification - Auth{% endblock %}
+
+{% block content %}
+<h1>Email Verification</h1>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% elif email_masked %}
+<div class="mfa-email" data-tenant-prefix="{{ tenant_prefix }}">
+    <p>We'll send a verification code to your email address:</p>
+    <p class="email-display"><strong>{{ email_masked }}</strong></p>
+
+    <div id="send-section">
+        <button type="button" id="send-code-btn" onclick="sendCode()">Send Verification Code</button>
+    </div>
+
+    <div id="verify-section" style="display: none;">
+        <div class="success" id="sent-message">
+            Code sent! Check your email.
+        </div>
+
+        <form method="post" action="{{ tenant_prefix }}/auth/mfa/email/verify" id="verify-form">
+            <div class="form-group">
+                <label for="code">Enter the 6-digit code:</label>
+                <input type="text" id="code" name="code" required pattern="[0-9]{6}"
+                       maxlength="6" autocomplete="one-time-code" inputmode="numeric"
+                       placeholder="000000">
+            </div>
+
+            <button type="submit">Verify Code</button>
+        </form>
+
+        <p class="resend-link">
+            Didn't receive the code? <a href="#" onclick="sendCode(); return false;">Resend code</a>
+        </p>
+    </div>
+</div>
+{% else %}
+<p>Unable to verify email. Please try again.</p>
+{% endif %}
+
+<p class="link">
+    <a href="{{ tenant_prefix }}/auth/login">Back to login</a>
+</p>
+
+<style>
+.mfa-email {
+    max-width: 400px;
+    margin: 0 auto;
+}
+.email-display {
+    background: var(--surface-color);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.1em;
+    margin: 20px 0;
+    border: 1px solid var(--border-color);
+}
+.email-display strong {
+    color: var(--primary-color);
+}
+input#code {
+    font-size: 1.5em;
+    text-align: center;
+    letter-spacing: 8px;
+    font-family: monospace;
+}
+.resend-link {
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-muted-color);
+}
+.resend-link a {
+    color: var(--primary-color);
+}
+#sent-message {
+    margin-bottom: 20px;
+}
+</style>
+
+<script>
+const tenantPrefix = document.querySelector('.mfa-email')?.dataset.tenantPrefix || '';
+
+async function sendCode() {
+    const sendBtn = document.getElementById('send-code-btn');
+    const sendSection = document.getElementById('send-section');
+    const verifySection = document.getElementById('verify-section');
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+
+    try {
+        const response = await fetch(tenantPrefix + '/auth/mfa/email/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            sendSection.style.display = 'none';
+            verifySection.style.display = 'block';
+            document.getElementById('code').focus();
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Failed to send code');
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send Verification Code';
+        }
+    } catch (error) {
+        alert('Failed to send code. Please try again.');
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Verification Code';
+    }
+}
+
+document.getElementById('verify-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const code = document.getElementById('code').value;
+    const submitBtn = this.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verifying...';
+
+    try {
+        const response = await fetch(tenantPrefix + '/auth/mfa/email/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code: code }),
+        });
+
+        if (response.ok) {
+            window.location.href = tenantPrefix + '/auth/login?success=mfa_verified';
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Invalid code');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Verify Code';
+        }
+    } catch (error) {
+        alert('Verification failed. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Verify Code';
+    }
+});
+</script>
+{% endblock %}

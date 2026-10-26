@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# First run on a fresh host, with the account the provider created (root or a
+# sudo user):
+#
+#   ansible-playbook goabonga.website.bootstrap -u root -i inventory/hosts
+#
+# It creates the deploy account and hardens SSH. Every later run uses the
+# deploy account, so site.yml and apps.yml do not touch these two roles.
+
+- name: Bootstrap the hosts
+  hosts: "{{ website_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  vars:
+    website_playbook_version: "0.0.0"
+  pre_tasks:
+    # Hardening SSH without a key for the deploy account locks everybody out.
+    - name: Check that the deploy account can log in with a key
+      ansible.builtin.assert:
+        that:
+          - >-
+            not (users_deploy_enabled | default(true) | bool)
+            or users_deploy_ssh_public_keys | default([]) | length > 0
+            or not (security_ssh_enabled | default(true) | bool)
+            or security_ssh_password_authentication | default(false) | bool
+        fail_msg: >-
+          Set users_deploy_ssh_public_keys before hardening SSH: with password logins disabled the
+          deploy account would have no way in.
+        quiet: true
+      tags: [always]
+  roles:
+    - role: goabonga.website.users
+      when: bootstrap_users | default(true) | bool
+    - role: goabonga.website.security
+      when: bootstrap_security | default(true) | bool

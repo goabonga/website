@@ -12,6 +12,7 @@ authors = [{ name = "Chris", email = "goabonga@pm.me" }]
 dependencies = [
     "numpy>=1.24.0",
     "python-dotenv>=1.0.0",
+    "websockets>=12.0",
 ]
 
 [build-system]

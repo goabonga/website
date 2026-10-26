@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
 """Step definitions for hooks.feature.
 
 The hook script runs for real. Its synchronous HTTP client is given a transport that serves

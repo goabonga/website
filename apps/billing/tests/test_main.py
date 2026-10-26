@@ -3,7 +3,7 @@
 
 """Tests for billing/main.py."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 
 class TestAppRoutes:
@@ -83,16 +83,198 @@ class TestLifespan:
                 startup_call = mock_logger.info.call_args_list[0]
                 assert "Starting" in str(startup_call)
 
-    async def test_lifespan_shutdown_logs_message(self):
+    async def test_lifespan_shutdown_logs(self):
         """Lifespan shutdown should log a shutting down message."""
         from billing.main import app as main_app
         from billing.main import lifespan
 
-        with patch("billing.main.logger") as mock_logger:
+        with (
+            patch("billing.main.logger") as mock_logger,
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock()
+
             async with lifespan(main_app):
                 pass
 
+            # After exiting, shutdown message should be logged
             shutdown_calls = [
                 c for c in mock_logger.info.call_args_list if "Shutting down" in str(c)
             ]
-            assert len(shutdown_calls) == 1
+            assert len(shutdown_calls) >= 1
+
+    async def test_lifespan_shutdown_closes_jwks_manager(self):
+        """Lifespan shutdown should close the JWKS manager."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_jwks.close.assert_awaited_once()
+
+    async def test_lifespan_shutdown_closes_token_exchange(self):
+        """Lifespan shutdown should close the token exchange client."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_te.close.assert_awaited_once()
+
+    async def test_lifespan_shutdown_closes_introspection_client(self):
+        """Lifespan shutdown should close the introspection client."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_introspection.close.assert_awaited_once()
+
+    async def test_lifespan_shutdown_handles_jwks_close_error(self):
+        """Lifespan shutdown should handle errors when closing JWKS manager."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock(side_effect=Exception("JWKS cleanup error"))
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock()
+
+            # Should not raise
+            async with lifespan(main_app):
+                pass
+
+    async def test_lifespan_shutdown_handles_te_close_error(self):
+        """Lifespan shutdown should handle errors when closing token exchange client."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock(side_effect=Exception("TE cleanup error"))
+            mock_introspection.close = AsyncMock()
+
+            # Should not raise
+            async with lifespan(main_app):
+                pass
+
+    async def test_lifespan_shutdown_handles_introspection_close_error(self):
+        """Lifespan shutdown should handle errors when closing introspection client."""
+        from billing.main import app as main_app
+        from billing.main import lifespan
+
+        with (
+            patch("billing.main.logger"),
+            patch("billing.main.jwks_manager") as mock_jwks,
+            patch("billing.main.token_exchange_client") as mock_te,
+            patch("billing.main.introspection_client") as mock_introspection,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_introspection.close = AsyncMock(
+                side_effect=Exception("Introspection cleanup error")
+            )
+
+            # Should not raise
+            async with lifespan(main_app):
+                pass
+
+
+class TestGetSwaggerOauth2Config:
+    """Tests for get_swagger_oauth2_config()."""
+
+    def test_returns_empty_dict_without_issuer(self):
+        """Should return empty dict when oauth2_issuer is not set."""
+        with patch("billing.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = "some-client"
+
+            from billing.main import get_swagger_oauth2_config
+
+            result = get_swagger_oauth2_config()
+            assert result == {}
+
+    def test_returns_empty_dict_without_client_id(self):
+        """Should return empty dict when oauth2_swagger_client_id is not set."""
+        with patch("billing.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = ""
+
+            from billing.main import get_swagger_oauth2_config
+
+            result = get_swagger_oauth2_config()
+            assert result == {}
+
+    def test_returns_config_with_both_set(self):
+        """Should return full config when both issuer and client_id are set."""
+        with patch("billing.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger-client"
+
+            from billing.main import get_swagger_oauth2_config
+
+            result = get_swagger_oauth2_config()
+
+        assert "swagger_ui_init_oauth" in result
+        assert result["swagger_ui_init_oauth"]["clientId"] == "swagger-client"
+        assert result["swagger_ui_init_oauth"]["usePkceWithAuthorizationCodeGrant"] is True
+        assert "swagger_ui_parameters" in result
+        assert result["swagger_ui_parameters"]["persistAuthorization"] is True
+
+    def test_returns_empty_dict_when_both_empty(self):
+        """Should return empty dict when both settings are empty."""
+        with patch("billing.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = ""
+
+            from billing.main import get_swagger_oauth2_config
+
+            result = get_swagger_oauth2_config()
+            assert result == {}

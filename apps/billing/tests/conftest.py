@@ -6,11 +6,12 @@
 import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from billing.auth.models import User
 from billing.database import get_db
 from billing.main import app
 from httpx import ASGITransport, AsyncClient
@@ -59,6 +60,92 @@ def mock_db_session():
     return session
 
 
+@pytest.fixture
+def test_user() -> User:
+    """Create a test user with standard billing scopes."""
+    return User(
+        id=uuid4(),
+        email="test@example.com",
+        name="Test User",
+        scopes=[
+            "billing:platform:read",
+            "billing:platform:write",
+            "billing:checkout:write",
+            "billing:usage:write",
+        ],
+        is_machine_client=False,
+        client_id="test-client-id",
+    )
+
+
+@pytest.fixture
+def admin_user() -> User:
+    """Create an admin user with wildcard billing scope."""
+    return User(
+        id=uuid4(),
+        email="admin@example.com",
+        name="Admin User",
+        scopes=["billing:*"],
+        is_machine_client=False,
+        client_id="admin-client-id",
+    )
+
+
+@pytest.fixture
+def machine_user() -> User:
+    """Create a machine client user."""
+    return User(
+        id="billing-service",
+        email=None,
+        name=None,
+        scopes=["billing:platform:read", "billing:usage:write"],
+        is_machine_client=True,
+        client_id="billing-service",
+    )
+
+
+def _create_jwt_claims(user: User) -> dict:
+    """Create JWT claims dict from a User instance."""
+    return {
+        "sub": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "scope": " ".join(user.scopes) if user.scopes else "",
+        "client_id": user.client_id,
+    }
+
+
+def _setup_auth_mocks(user: User):
+    """Set up authentication mocks for a given user.
+
+    Patches jwks_manager, introspection_client, and token_exchange_client
+    in the auth dependencies module so that token validation returns claims
+    for the given user.
+
+    Returns:
+        Tuple of patchers that must be stopped.
+    """
+    claims = _create_jwt_claims(user)
+
+    jwks_patcher = patch("billing.auth.dependencies.jwks_manager")
+    introspection_patcher = patch("billing.auth.dependencies.introspection_client")
+    exchange_patcher = patch("billing.auth.dependencies.token_exchange_client")
+
+    mock_jwks = jwks_patcher.start()
+    mock_introspection = introspection_patcher.start()
+    mock_exchange = exchange_patcher.start()
+
+    mock_jwks.is_configured = True
+    mock_jwks.validate_token = AsyncMock(return_value=claims)
+
+    mock_introspection.validate_token_with_introspection = AsyncMock(return_value=claims)
+    mock_introspection.validate_opaque_token = AsyncMock(return_value=claims)
+
+    mock_exchange.is_configured = False
+
+    return jwks_patcher, introspection_patcher, exchange_patcher
+
+
 @pytest_asyncio.fixture
 async def client(mock_db_session) -> AsyncGenerator[AsyncClient, None]:
     """Create an unauthenticated test client."""
@@ -73,3 +160,47 @@ async def client(mock_db_session) -> AsyncGenerator[AsyncClient, None]:
     ) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def auth_client(mock_db_session, test_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client with standard user scopes."""
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(test_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer mock.jwt.token"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client with admin (wildcard) scopes."""
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(admin_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer mock.jwt.token"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()

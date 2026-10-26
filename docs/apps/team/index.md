@@ -21,6 +21,7 @@ is tested with pytest and behave.
 | [Tasks](09-tasks.md) | tasks, agent state, execution log and cancellation |
 | [Usage reporting](10-usage.md) | execution events reported by services |
 | [Tool registry](11-tools.md) | tool catalog and the platform tools |
+| [Service tools](12-service-tools.md) | tools calling the other platform services |
 
 ## Running the tests
 

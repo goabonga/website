@@ -11,6 +11,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint (hidden from Swagger) |
+| WS | `/ws` | public (the socket accepts every connection) | WebSocket endpoint for real-time robot communication |
 | GET | `/api/reports/daily` | scope `reachy:reports:read` | Get today's daily report for Reachy to announce |
 | GET | `/api/reports/quick` | scope `reachy:reports:read` | Get a quick update for immediate announcement |
 | GET | `/api/reports/notifications` | scope `reachy:notifications:read` | Get pending notifications |

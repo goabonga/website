@@ -60,3 +60,10 @@ website_mailler_clients: []
 #   directory   path of the directory on the host (required)
 #   status      status of the templates that do not state one (active by default)
 website_mailler_template_dirs: []
+
+# Provider the applications that send through mailler ask for (the
+# MAILLER_PROVIDER setting of auth, apt_server and knowledge, and
+# MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client
+# of the application may use (allowed_providers or default_provider). The
+# value is the default of those applications.
+website_mailler_provider: brevo

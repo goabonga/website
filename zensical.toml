@@ -8,19 +8,3 @@ site_author = "Chris"
 site_url = "https://goabonga.github.io/website/"
 repo_url = "https://github.com/goabonga/website"
 repo_name = "goabonga/website"
-
-nav = [
-    { "Introduction" = "index.md" },
-    { "Applications" = [
-        { "Overview" = "apps/index.md" },
-    ] },
-    { "Ansible" = [
-        { "Roles" = [
-            { "common" = "ansible/roles/common.md" },
-            { "PostgreSQL" = "ansible/roles/postgres.md" },
-            { "Redis" = "ansible/roles/redis.md" },
-            { "security" = "ansible/roles/security.md" },
-            { "users" = "ansible/roles/users.md" },
-        ] },
-    ] },
-]

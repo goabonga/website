@@ -18,6 +18,7 @@ documented on its own page.
 | [Email providers](03-providers.md) | Brevo, SendGrid, AWS SES and Protonmail adapters, signatures |
 | [Sending emails](04-send.md) | `POST /send`, Celery worker, first migration |
 | [Listing and reading emails](05-emails.md) | Paginated list and detail of stored emails |
+| [Sending statistics](06-stats.md) | Totals, per-provider and per-day counters |
 
 ## Running the tests
 

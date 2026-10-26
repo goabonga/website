@@ -823,7 +823,7 @@ website_apps_catalog:
     env_vars:
       OPENVPN_OAUTH2_TOKEN_URL: "https://{{ website_hostnames.auth }}/oauth2/token"
       OPENVPN_API_BASE_URL: "https://{{ website_hostnames.vpn_portal }}"
-      OPENVPN_OAUTH2_CLIENT_ID: "vpn-portal-openvpn"
+      OPENVPN_OAUTH2_CLIENT_ID: "{{ (website_oauth2_clients.get('vpn_portal') or {}).get('openvpn_client_id', '') }}"
       OPENVPN_OAUTH2_SCOPE: "vpn:server"
       OPENVPN_TOKEN_CACHE_PATH: "/var/run/vpn-portal-openvpn/token.json"
       OPENVPN_MANAGEMENT_HOST: "127.0.0.1"

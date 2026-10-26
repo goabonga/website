@@ -29,8 +29,8 @@ authentication](14-web-authentication.md)). For the active workspace it shows:
 - the number of collections and documents;
 - the five most recently updated collections;
 - the plan and the usage against the plan limits (collections, documents,
-  storage), with progress bars that turn orange above 70 percent and red above
-  90 percent, computed by the [quota service](07-quotas.md);
+  storage), with progress bars styled as a warning above 70 percent and as
+  critical above 90 percent, computed by the [quota service](07-quotas.md);
 - the name of the active workspace, in the sidebar.
 
 A user who has no workspace still gets the page, with an invitation to create

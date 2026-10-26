@@ -52,3 +52,19 @@ ignore = ["E501", "B008", "B904"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+# Run: uvx --from 'bandit[toml]' bandit -c pyproject.toml -r apps/*/src
+# Each skip is a reviewed class of false positive:
+# - B101: assert statements narrow types; no security check relies on them.
+# - B105, B106: OAuth token-type constants ("access_token", "Bearer",
+#   "urn:ietf:params:oauth:token-type:...") and enum values, not secrets.
+# - B110: best-effort cleanup and optional-claim parsing where the failure
+#   is deliberately ignored.
+# - B324: MD5 and SHA-1 are mandated by the APT Release/Packages formats and
+#   by Gravatar avatar URLs; they are never used for security.
+# - B404, B603: subprocess is called with argument lists (never a shell) for
+#   openssl, step and system tools, with validated inputs.
+# - B608: the dynamic SQL in the knowledge base search only joins fixed
+#   clause strings; every value is a bound parameter.
+[tool.bandit]
+skips = ["B101", "B105", "B106", "B110", "B324", "B404", "B603", "B608"]

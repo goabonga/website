@@ -688,8 +688,9 @@ argument_specs:
         type: list
         description:
         - Directories of <slug>.mjml and <slug>.json files imported as the templates of a client
-          on every run. Each entry has client_id and directory (a path on the host) and optionally
-          status.
+          on every run. Each entry has client_id and either directory (a path on the host) or app
+          (a catalog application, deployed before mailler) and module (run with the Python of that
+          application, it prints the directory), and optionally status.
         default: []
         elements: dict
       website_billing_celery_queue:

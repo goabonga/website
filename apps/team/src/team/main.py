@@ -16,6 +16,7 @@ from team.routes import health
 from team.routes.team import (
     agents,
     conversations,
+    memory,
     messages,
     team_conversations,
     teams,
@@ -71,6 +72,7 @@ Multi-agent orchestration platform for managing autonomous AI workers.
 - **Team management**: Create and manage agent teams
 - **Agent orchestration**: Configure autonomous AI workers
 - **Conversation management**: Track agent conversations and messages
+- **Memory management**: Persistent agent memory storage
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -111,4 +113,5 @@ app.include_router(teams.router)
 app.include_router(agents.router)
 app.include_router(conversations.router)
 app.include_router(messages.router)
+app.include_router(memory.router)
 app.include_router(team_conversations.router)

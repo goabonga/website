@@ -4,7 +4,9 @@
 """Service layer."""
 
 from team.services.agent_service import AgentService
+from team.services.memory_service import MemoryService
 
 __all__ = [
     "AgentService",
+    "MemoryService",
 ]

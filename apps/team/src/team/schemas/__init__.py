@@ -5,6 +5,7 @@
 
 from team.schemas.agent import AgentCreate, AgentResponse, AgentUpdate
 from team.schemas.conversation import ConversationCreate, ConversationResponse, ConversationUpdate
+from team.schemas.memory import MemoryEntryCreate, MemoryEntryResponse, MemoryEntryUpdate
 from team.schemas.message import MessageCreate, MessageResponse
 from team.schemas.team import TeamCreate, TeamResponse, TeamUpdate
 
@@ -15,6 +16,9 @@ __all__ = [
     "ConversationCreate",
     "ConversationResponse",
     "ConversationUpdate",
+    "MemoryEntryCreate",
+    "MemoryEntryResponse",
+    "MemoryEntryUpdate",
     "MessageCreate",
     "MessageResponse",
     "TeamCreate",

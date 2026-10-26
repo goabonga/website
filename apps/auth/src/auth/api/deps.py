@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.core.database import async_session_factory
+from auth.db.models.rbac import Role
+from auth.db.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,10 @@ class PATAuth:
     scopes: list[str]
     tenant_id: str | None = None
     target_client_id: str | None = None
+
+
+# Type alias for authentication result (either user session, bearer token, or PAT)
+AuthResult = tuple[User, list[Role]] | BearerTokenAuth | PATAuth
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -84,3 +90,88 @@ def token_has_scope(scopes: list[str], required_scope: str) -> bool:
         or scope == "*"
         for scope in scopes
     )
+
+
+def user_has_scope(roles: list[Role], required_scope: str) -> bool:
+    """Check if user has the required scope through any of their roles.
+
+    Args:
+        roles: List of user's roles.
+        required_scope: The scope to check for.
+
+    Returns:
+        True if user has the scope.
+    """
+    return any(role.has_scope(required_scope) for role in roles)
+
+
+def get_user_admin_permissions(roles: list[Role]) -> dict[str, bool]:
+    """Get admin permissions for a user based on their roles.
+
+    Args:
+        roles: List of user's roles with scopes loaded.
+
+    Returns:
+        Dictionary with permission flags for each admin section.
+        Includes both legacy can_view_* format and direct scope format (e.g., clients:write).
+    """
+    return {
+        # Legacy format for backward compatibility
+        "can_view_dashboard": any(
+            user_has_scope(roles, scope)
+            for scope in [
+                "users:read",
+                "clients:read",
+                "sessions:read",
+                "jwks:read",
+                "roles:read",
+                "scopes:read",
+                "org:read",
+                "pats:read",
+                "*",
+            ]
+        ),
+        "can_view_jwks": user_has_scope(roles, "jwks:read"),
+        "can_view_users": user_has_scope(roles, "users:read"),
+        "can_view_clients": user_has_scope(roles, "clients:read"),
+        "can_view_sessions": user_has_scope(roles, "sessions:read"),
+        "can_view_roles": user_has_scope(roles, "roles:read"),
+        "can_view_scopes": user_has_scope(roles, "scopes:read"),
+        "can_view_orgs": user_has_scope(roles, "org:read"),
+        "can_view_pats": user_has_scope(roles, "pats:read"),
+        # Users permissions
+        "users:read": user_has_scope(roles, "users:read"),
+        "users:write": user_has_scope(roles, "users:write"),
+        "users:delete": user_has_scope(roles, "users:delete"),
+        "users:disable": user_has_scope(roles, "users:disable"),
+        # Clients permissions
+        "clients:read": user_has_scope(roles, "clients:read"),
+        "clients:write": user_has_scope(roles, "clients:write"),
+        "clients:delete": user_has_scope(roles, "clients:delete"),
+        "clients:rotate": user_has_scope(roles, "clients:rotate"),
+        # Sessions permissions
+        "sessions:read": user_has_scope(roles, "sessions:read"),
+        "sessions:revoke": user_has_scope(roles, "sessions:revoke"),
+        # Roles permissions
+        "roles:read": user_has_scope(roles, "roles:read"),
+        "roles:write": user_has_scope(roles, "roles:write"),
+        "roles:delete": user_has_scope(roles, "roles:delete"),
+        "roles:assign": user_has_scope(roles, "roles:assign"),
+        # Scopes permissions
+        "scopes:read": user_has_scope(roles, "scopes:read"),
+        "scopes:write": user_has_scope(roles, "scopes:write"),
+        "scopes:delete": user_has_scope(roles, "scopes:delete"),
+        # JWKS permissions
+        "jwks:read": user_has_scope(roles, "jwks:read"),
+        "jwks:write": user_has_scope(roles, "jwks:write"),
+        "jwks:delete": user_has_scope(roles, "jwks:delete"),
+        "jwks:revoke": user_has_scope(roles, "jwks:revoke"),
+        "jwks:rotate": user_has_scope(roles, "jwks:rotate"),
+        # Org permissions
+        "org:read": user_has_scope(roles, "org:read"),
+        "org:write": user_has_scope(roles, "org:write"),
+        "org:delete": user_has_scope(roles, "org:delete"),
+        # PATs permissions (admin)
+        "pats:read": user_has_scope(roles, "pats:read"),
+        "pats:revoke": user_has_scope(roles, "pats:revoke"),
+    }

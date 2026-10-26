@@ -174,6 +174,60 @@ async def get_release(
     }
 
 
+# The fixed 'latest' path must be declared before the '{version}' one, otherwise
+# 'latest' would be captured as a version number.
+@router.get("/download/latest/{platform}")
+async def download_latest_release(
+    platform: str,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Download the latest release for a platform.
+
+    Redirects to the GitHub release asset URL and increments the download counter.
+    """
+    # Validate platform
+    try:
+        platform_enum = Platform(platform)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid platform '{platform}'. Valid platforms: {[p.value for p in Platform]}",
+        )
+
+    # Find the latest published release
+    result = await db.execute(
+        select(McpRelease)
+        .options(selectinload(McpRelease.assets))
+        .where(McpRelease.status == ReleaseStatus.PUBLISHED)
+        .order_by(desc(McpRelease.published_at))
+        .limit(1)
+    )
+    release = result.scalar_one_or_none()
+
+    if not release:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No published releases found",
+        )
+
+    # Find the asset for the platform
+    asset = next((a for a in release.assets if a.platform == platform_enum), None)
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No asset found for platform '{platform}' in latest release",
+        )
+
+    # Increment download counter
+    asset.download_count += 1
+    await db.commit()
+
+    logger.info(f"Download latest: {release.version}/{platform} (count: {asset.download_count})")
+
+    # Redirect to GitHub download URL
+    return RedirectResponse(url=asset.download_url, status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/download/{version}/{platform}")
 async def download_release(
     version: str,
@@ -224,58 +278,6 @@ async def download_release(
     await db.commit()
 
     logger.info(f"Download: {release.version}/{platform} (count: {asset.download_count})")
-
-    # Redirect to GitHub download URL
-    return RedirectResponse(url=asset.download_url, status_code=status.HTTP_302_FOUND)
-
-
-@router.get("/download/latest/{platform}")
-async def download_latest_release(
-    platform: str,
-    db: AsyncSession = Depends(get_db),
-) -> RedirectResponse:
-    """Download the latest release for a platform.
-
-    Redirects to the GitHub release asset URL and increments the download counter.
-    """
-    # Validate platform
-    try:
-        platform_enum = Platform(platform)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid platform '{platform}'. Valid platforms: {[p.value for p in Platform]}",
-        )
-
-    # Find the latest published release
-    result = await db.execute(
-        select(McpRelease)
-        .options(selectinload(McpRelease.assets))
-        .where(McpRelease.status == ReleaseStatus.PUBLISHED)
-        .order_by(desc(McpRelease.published_at))
-        .limit(1)
-    )
-    release = result.scalar_one_or_none()
-
-    if not release:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No published releases found",
-        )
-
-    # Find the asset for the platform
-    asset = next((a for a in release.assets if a.platform == platform_enum), None)
-    if not asset:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No asset found for platform '{platform}' in latest release",
-        )
-
-    # Increment download counter
-    asset.download_count += 1
-    await db.commit()
-
-    logger.info(f"Download latest: {release.version}/{platform} (count: {asset.download_count})")
 
     # Redirect to GitHub download URL
     return RedirectResponse(url=asset.download_url, status_code=status.HTTP_302_FOUND)

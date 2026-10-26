@@ -31,6 +31,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/stats/campaigns` | scope `analytics:read` | Get all campaigns with statistics |
 | GET | `/api/v1/stats/campaigns/{campaign_id}` | scope `analytics:read` | Get detailed campaign statistics |
 | GET | `/api/v1/stats/campaigns/{campaign_id}/pixels` | scope `analytics:read` | Get pixels for a campaign |
+| POST | `/api/v1/stats/campaigns` | scope `analytics:write` | Create a new analytics campaign for email tracking |
+| POST | `/api/v1/stats/campaigns/{campaign_id}/pixels` | scope `analytics:write` | Create a tracking pixel for an email recipient |
+| DELETE | `/api/v1/stats/campaigns/{campaign_id}` | scope `analytics:write` | Delete an analytics campaign and all its associated data |
+| POST | `/api/v1/stats/campaigns/{campaign_id}/pixels/batch` | scope `analytics:write` | Create multiple tracking pixels at once for email campaign recipients |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -39,6 +43,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `analytics:read` - checked by 13 routes
+- `analytics:write` - checked by 4 routes
 
 ## Run
 
@@ -63,6 +68,7 @@ directory; see `.env.example`.
 - Secured traffic statistics under `/api/v1/stats`.
 - Per-IP statistics.
 - Campaign statistics: list, detail and pixels.
+- Campaign and pixel management through the API (create, batch create, delete).
 
 Each feature has a page in `docs/apps/analytics/`.
 

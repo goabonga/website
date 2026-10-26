@@ -49,6 +49,7 @@ jobs:
       - name: Check SPDX headers
         run: |
           uv run --no-project python scripts/add_license_header.py --path apps --types py --check
+          uv run --no-project python scripts/add_license_header.py --path libs --types py --check
           uv run --no-project python scripts/add_license_header.py --path scripts --types py,sh --check
           uv run --no-project python scripts/add_license_header.py --path .github --types yml --check
           uv run --no-project python scripts/add_license_header.py --path . --types toml --check

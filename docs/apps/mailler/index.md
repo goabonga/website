@@ -32,6 +32,7 @@ documented on its own page.
 | [Command line](17-command-line.md) | `mailler` command: clients and template import |
 | [Sending from a template](18-template-sending.md) | `template_slug` and `variables` in one call |
 | [Idempotent sending](19-idempotency.md) | `Idempotency-Key` header on send and schedule |
+| [Status callbacks](20-status-callbacks.md) | Signed notifications of the status of the emails |
 
 ## Running the tests
 

@@ -23,6 +23,7 @@ application are issued to (the `client_id` claim, or `azp`, see
 | `allowed_providers` | Providers the client may use |
 | `default_provider` | Provider used when the request names none (always allowed) |
 | `rate_limit_per_minute`, `daily_quota` | Optional [sending limits](16-client-limits.md) |
+| `callback_url`, `callback_secret` | Optional [status callback](20-status-callbacks.md); the secret is never returned |
 
 Provider names must be adapters of the service (`brevo`, `sendgrid`, `ses`,
 `protonmail`, see [providers](03-providers.md)); the registry rejects any other

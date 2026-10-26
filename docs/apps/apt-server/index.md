@@ -17,3 +17,4 @@ model and how it is tested (pytest and behave).
 - [APT indexes](04-apt-indexes.md)
 - [APT client endpoints](05-apt-endpoints.md)
 - [Package API](06-package-api.md)
+- [Chunked upload](07-chunked-upload.md)

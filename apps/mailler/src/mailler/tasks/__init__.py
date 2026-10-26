@@ -4,4 +4,10 @@
 """Celery tasks for Mailler."""
 
 # Import tasks explicitly so they are registered with Celery
+from mailler.tasks.scheduler import (  # noqa: F401
+    aggregate_daily_stats,
+    cleanup_old_emails,
+    process_scheduled_emails,
+    requeue_stuck_emails,
+)
 from mailler.tasks.send import send_email_task  # noqa: F401

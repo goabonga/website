@@ -17,6 +17,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Onboarding of SaaS applications
 - Product catalog per SaaS application
 - One-time, recurring and metered prices
+- Customers synchronized with Stripe
 
 ## Routes and scopes
 
@@ -38,6 +39,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/{saas_id}/products/{product_id}/prices` | scope `billing:platform:read` | List all prices for a product |
 | GET | `/platform/{saas_id}/products/{product_id}/prices/{price_id}` | scope `billing:platform:read` | Get a price by ID |
 | PATCH | `/platform/{saas_id}/products/{product_id}/prices/{price_id}` | scope `billing:platform:write` | Update a price (limited fields - Stripe prices are mostly immutable) |
+| POST | `/platform/{saas_id}/customers` | scope `billing:platform:write` | Create a new customer (syncs to Stripe) |
+| GET | `/platform/{saas_id}/customers` | scope `billing:platform:read` | List all customers for a SaaS app |
+| GET | `/platform/{saas_id}/customers/{customer_id}` | scope `billing:platform:read` | Get a customer by ID |
+| PATCH | `/platform/{saas_id}/customers/{customer_id}` | scope `billing:platform:write` | Update a customer (syncs to Stripe) |
+| GET | `/platform/{saas_id}/customers/{customer_id}/portal` | scope `billing:platform:read` | Generate a Customer Portal URL for managing billing |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -45,8 +51,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `billing:platform:write` - checked by 7 routes
-- `billing:platform:read` - checked by 6 routes
+- `billing:platform:write` - checked by 9 routes
+- `billing:platform:read` - checked by 9 routes
 
 ## Usage
 

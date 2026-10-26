@@ -4,6 +4,7 @@
 """Tests for the Alembic environment and revisions."""
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import analytics
 import pytest
@@ -58,4 +59,45 @@ class TestOfflineUpgrade:
 
     def test_stamps_head_version(self, sql):
         assert "alembic_version" in sql
-        assert "'001'" in sql
+        assert "'002'" in sql
+
+    def test_creates_campaign_and_pixel_tables(self, sql):
+        assert "CREATE TABLE analytics_campaigns" in sql
+        assert "CREATE TABLE analytics_pixels" in sql
+        assert "CREATE TABLE analytics_pixel_opens" in sql
+
+    def test_campaign_and_pixel_keys_are_unique(self, sql):
+        assert "CREATE UNIQUE INDEX ix_analytics_campaigns_tracking_key" in sql
+        assert "CREATE UNIQUE INDEX ix_analytics_pixels_pixel_key" in sql
+
+
+class TestExistingTables:
+    """Revisions skip tables created by the original single revision."""
+
+    def test_existing_tables_is_empty_offline(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "rev_002", APP_DIR / "alembic/versions/002_campaigns_and_pixels.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with patch.object(module.context, "is_offline_mode", return_value=True):
+            assert module._existing_tables() == set()
+
+    def test_existing_tables_reads_the_database(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "rev_002", APP_DIR / "alembic/versions/002_campaigns_and_pixels.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        inspector = MagicMock()
+        inspector.get_table_names.return_value = ["analytics_campaigns"]
+        with (
+            patch.object(module.context, "is_offline_mode", return_value=False),
+            patch.object(module.op, "get_bind", return_value=MagicMock()),
+            patch.object(module.sa, "inspect", return_value=inspector),
+        ):
+            assert module._existing_tables() == {"analytics_campaigns"}

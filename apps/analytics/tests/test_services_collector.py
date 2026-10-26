@@ -461,3 +461,286 @@ class TestCollectorServiceTrackEvent:
         assert created_event.event_data is None
         assert created_event.page_url is None
         assert created_event.page_title is None
+
+
+@pytest.mark.asyncio
+class TestCollectorServiceTrackPixelOpen:
+    """Tests for CollectorService.track_pixel_open."""
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_pixel_found_creates_open_record(self, mock_settings, mock_geoip):
+        """When the pixel is found, a PixelOpen record should be created and
+        pixel stats updated."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        pixel_id = uuid.uuid4()
+        mock_pixel = MagicMock()
+        mock_pixel.id = pixel_id
+        mock_pixel.first_opened_at = datetime(2025, 6, 1)
+        mock_pixel.last_opened_at = datetime(2025, 6, 1)
+        mock_pixel.open_count = 5
+        mock_pixel.pixel_key = "test-pixel-key"
+        mock_result.scalar_one_or_none.return_value = mock_pixel
+
+        mock_geoip.lookup.return_value = _default_geo()
+        request = _make_mock_request()
+
+        result = await service.track_pixel_open(
+            db=mock_db,
+            pixel_key="test-pixel-key",
+            request=request,
+        )
+
+        assert result is mock_pixel
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_awaited_once()
+
+        # Verify PixelOpen record fields
+        pixel_open = mock_db.add.call_args[0][0]
+        assert pixel_open.pixel_id == pixel_id
+        assert pixel_open.ip_address == "1.2.3.4"
+        assert pixel_open.user_agent == "TestAgent/1.0"
+        assert pixel_open.country == "US"
+        assert pixel_open.city == "New York"
+
+        # Verify stats updated
+        assert mock_pixel.open_count == 6
+        assert mock_pixel.last_opened_at is not None
+
+    async def test_pixel_not_found_returns_none(self):
+        """When the pixel is not found, return None without creating records."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_result.scalar_one_or_none.return_value = None
+
+        request = _make_mock_request()
+
+        result = await service.track_pixel_open(
+            db=mock_db,
+            pixel_key="nonexistent-key",
+            request=request,
+        )
+
+        assert result is None
+        mock_db.add.assert_not_called()
+        mock_db.commit.assert_not_awaited()
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_first_open_sets_first_opened_at(self, mock_settings, mock_geoip):
+        """When the pixel has never been opened before, first_opened_at
+        should be set."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        mock_pixel = MagicMock()
+        mock_pixel.id = uuid.uuid4()
+        mock_pixel.first_opened_at = None  # Never opened
+        mock_pixel.last_opened_at = None
+        mock_pixel.open_count = 0
+        mock_pixel.pixel_key = "fresh-pixel"
+        mock_result.scalar_one_or_none.return_value = mock_pixel
+
+        mock_geoip.lookup.return_value = _default_geo()
+        request = _make_mock_request()
+
+        before = datetime.now(UTC)
+        result = await service.track_pixel_open(
+            db=mock_db,
+            pixel_key="fresh-pixel",
+            request=request,
+        )
+        after = datetime.now(UTC)
+
+        assert result is mock_pixel
+        assert mock_pixel.first_opened_at is not None
+        assert before <= mock_pixel.first_opened_at <= after
+        assert mock_pixel.last_opened_at is not None
+        assert mock_pixel.open_count == 1
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_subsequent_open_does_not_change_first_opened_at(self, mock_settings, mock_geoip):
+        """When pixel already has a first_opened_at, it should not be changed."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        original_first_opened = datetime(2025, 1, 1, 12, 0, 0)
+        mock_pixel = MagicMock()
+        mock_pixel.id = uuid.uuid4()
+        mock_pixel.first_opened_at = original_first_opened
+        mock_pixel.last_opened_at = datetime(2025, 6, 1)
+        mock_pixel.open_count = 10
+        mock_pixel.pixel_key = "existing-pixel"
+        mock_result.scalar_one_or_none.return_value = mock_pixel
+
+        mock_geoip.lookup.return_value = _default_geo()
+        request = _make_mock_request()
+
+        await service.track_pixel_open(
+            db=mock_db,
+            pixel_key="existing-pixel",
+            request=request,
+        )
+
+        # first_opened_at must not have changed
+        assert mock_pixel.first_opened_at == original_first_opened
+        assert mock_pixel.open_count == 11
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_unknown_ip_stored_as_none(self, mock_settings, mock_geoip):
+        """When client IP is 'unknown', ip_address on PixelOpen should be None."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        mock_pixel = MagicMock()
+        mock_pixel.id = uuid.uuid4()
+        mock_pixel.first_opened_at = datetime(2025, 1, 1)
+        mock_pixel.open_count = 0
+        mock_pixel.pixel_key = "ip-test-pixel"
+        mock_result.scalar_one_or_none.return_value = mock_pixel
+
+        mock_geoip.lookup.return_value = GeoLocation()
+        request = _make_mock_request(client_host=None)
+
+        await service.track_pixel_open(
+            db=mock_db,
+            pixel_key="ip-test-pixel",
+            request=request,
+        )
+
+        pixel_open = mock_db.add.call_args[0][0]
+        assert pixel_open.ip_address is None
+
+
+@pytest.mark.asyncio
+class TestCollectorServiceCreateCampaign:
+    """Tests for CollectorService.create_campaign."""
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_creates_campaign_with_all_fields(self, mock_gen_key):
+        """create_campaign should create a Campaign with all provided fields."""
+        mock_gen_key.return_value = "generated-tracking-key"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        await service.create_campaign(
+            db=mock_db,
+            name="Black Friday",
+            description="Annual sale",
+            destination_url="https://shop.example.com/sale",
+            extra_data={"discount": "20%"},
+        )
+
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_awaited_once()
+        mock_db.refresh.assert_awaited_once()
+
+        campaign = mock_db.add.call_args[0][0]
+        assert campaign.name == "Black Friday"
+        assert campaign.description == "Annual sale"
+        assert campaign.tracking_key == "generated-tracking-key"
+        assert campaign.destination_url == "https://shop.example.com/sale"
+        assert campaign.extra_data == {"discount": "20%"}
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_creates_campaign_with_minimal_fields(self, mock_gen_key):
+        """create_campaign should work with only the required name field."""
+        mock_gen_key.return_value = "minimal-key"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        await service.create_campaign(
+            db=mock_db,
+            name="Simple Campaign",
+        )
+
+        campaign = mock_db.add.call_args[0][0]
+        assert campaign.name == "Simple Campaign"
+        assert campaign.description is None
+        assert campaign.destination_url is None
+        assert campaign.extra_data is None
+        assert campaign.tracking_key == "minimal-key"
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_create_campaign_calls_generate_tracking_key(self, mock_gen_key):
+        """create_campaign should use generate_tracking_key for the tracking_key."""
+        mock_gen_key.return_value = "abc123"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        await service.create_campaign(db=mock_db, name="Test")
+
+        mock_gen_key.assert_called_once()
+
+
+@pytest.mark.asyncio
+class TestCollectorServiceCreatePixel:
+    """Tests for CollectorService.create_pixel."""
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_creates_pixel_with_all_fields(self, mock_gen_key):
+        """create_pixel should create a Pixel with all provided fields."""
+        mock_gen_key.return_value = "generated-pixel-key"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        campaign_id = uuid.uuid4()
+
+        await service.create_pixel(
+            db=mock_db,
+            campaign_id=campaign_id,
+            recipient_email="user@example.com",
+            recipient_id="user-123",
+            extra_data={"template": "welcome"},
+        )
+
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_awaited_once()
+        mock_db.refresh.assert_awaited_once()
+
+        pixel = mock_db.add.call_args[0][0]
+        assert pixel.campaign_id == campaign_id
+        assert pixel.pixel_key == "generated-pixel-key"
+        assert pixel.recipient_email == "user@example.com"
+        assert pixel.recipient_id == "user-123"
+        assert pixel.extra_data == {"template": "welcome"}
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_creates_pixel_with_minimal_fields(self, mock_gen_key):
+        """create_pixel should work with only the required campaign_id."""
+        mock_gen_key.return_value = "minimal-pixel-key"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        campaign_id = uuid.uuid4()
+
+        await service.create_pixel(
+            db=mock_db,
+            campaign_id=campaign_id,
+        )
+
+        pixel = mock_db.add.call_args[0][0]
+        assert pixel.campaign_id == campaign_id
+        assert pixel.pixel_key == "minimal-pixel-key"
+        assert pixel.recipient_email is None
+        assert pixel.recipient_id is None
+        assert pixel.extra_data is None
+
+    @patch("analytics.services.collector.generate_tracking_key")
+    async def test_create_pixel_calls_generate_tracking_key(self, mock_gen_key):
+        """create_pixel should use generate_tracking_key for the pixel_key."""
+        mock_gen_key.return_value = "xyz789"
+        service = CollectorService()
+        mock_db = _mock_async_session()
+
+        await service.create_pixel(db=mock_db, campaign_id=uuid.uuid4())
+
+        mock_gen_key.assert_called_once()

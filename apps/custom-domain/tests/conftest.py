@@ -249,3 +249,141 @@ def mock_httpx():
         mock.return_value.__aenter__ = AsyncMock(return_value=client_instance)
         mock.return_value.__aexit__ = AsyncMock()
         yield client_instance
+
+
+@pytest.fixture
+def sample_client_data():
+    """Sample authorized client data."""
+    return {
+        "id": 1,
+        "client_id": f"test-client-{uuid4().hex[:8]}",
+        "name": "Test Client",
+        "description": "Test client for testing",
+        "default_upstream_target": "unix:/var/run/app.sock",
+        "default_cname_target": "apps.example.com",
+        "max_domains": 10,
+        "is_active": True,
+    }
+
+
+@pytest.fixture
+def sample_template_data():
+    """Sample nginx template data."""
+    return {
+        "id": 1,
+        "slug": f"template-{uuid4().hex[:8]}",
+        "name": "Default Template",
+        "description": "Default nginx template",
+        "http_template": "server { listen 80; server_name {{ domain }}; }",
+        "https_template": "server { listen 443 ssl; server_name {{ domain }}; }",
+        "is_default": True,
+        "is_active": True,
+        "available_variables": ["domain", "upstream"],
+    }
+
+
+@pytest.fixture
+def sample_domain_data(test_user):
+    """Sample custom domain data."""
+    return {
+        "id": 1,
+        "domain": f"test-{uuid4().hex[:8]}.example.com",
+        "client_id": test_user.client_id,
+        "owner_id": "org_123",
+        "owner_type": "organization",
+        "upstream_target": "unix:/var/run/app.sock",
+        "cname_target": "apps.example.com",
+        "status": "pending",
+    }
+
+
+@pytest.fixture
+def mock_authorized_client(sample_client_data):
+    """Create a mock AuthorizedClient model."""
+    from datetime import UTC, datetime
+
+    from custom_domain.models import AuthorizedClient
+
+    client = MagicMock(spec=AuthorizedClient)
+    for key, value in sample_client_data.items():
+        setattr(client, key, value)
+    # Add optional fields that may be accessed
+    client.metadata_ = None
+    client.default_nginx_template_id = None
+    client.created_at = datetime.now(UTC)
+    client.updated_at = datetime.now(UTC)
+    return client
+
+
+@pytest.fixture
+def mock_nginx_template(sample_template_data):
+    """Create a mock NginxTemplate model."""
+    from custom_domain.models import NginxTemplate
+
+    template = MagicMock(spec=NginxTemplate)
+    for key, value in sample_template_data.items():
+        setattr(template, key, value)
+    return template
+
+
+@pytest.fixture
+def mock_custom_domain(sample_domain_data):
+    """Create a mock CustomDomain model."""
+    from datetime import UTC, datetime
+
+    from custom_domain.models import CustomDomain
+    from custom_domain.models.enums import DomainStatus
+
+    domain = MagicMock(spec=CustomDomain)
+    for key, value in sample_domain_data.items():
+        setattr(domain, key, value)
+    # Add optional fields that may be accessed
+    domain.deleted_at = None
+    domain.error_message = None
+    domain.error = None
+    domain.metadata_ = None
+    domain.nginx_template_id = None
+    domain.verification_token = "test-token"
+    domain.ssl_certificate_expires = None
+    domain.status = DomainStatus.PENDING
+    domain.created_at = datetime.now(UTC)
+    domain.updated_at = datetime.now(UTC)
+    return domain
+
+
+@pytest.fixture
+def test_domain(mock_custom_domain):
+    """Alias for mock_custom_domain - used by existing tests."""
+    return mock_custom_domain
+
+
+@pytest.fixture
+def test_engine():
+    """Mock database engine for tests that need it."""
+    engine = MagicMock()
+    engine.dispose = AsyncMock()
+    return engine
+
+
+@pytest.fixture
+def db_session(mock_db_session):
+    """Alias for mock_db_session - used by existing tests."""
+    return mock_db_session
+
+
+@pytest.fixture
+def sample_client(mock_authorized_client):
+    """Alias for mock_authorized_client."""
+    return mock_authorized_client
+
+
+@pytest.fixture
+def sample_template(mock_nginx_template):
+    """Alias for mock_nginx_template."""
+    return mock_nginx_template
+
+
+@pytest.fixture
+def sample_domain(mock_custom_domain):
+    """Alias for mock_custom_domain."""
+    return mock_custom_domain

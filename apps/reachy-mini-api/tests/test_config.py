@@ -24,6 +24,10 @@ class TestSettings:
         assert s.cors_credentials is True
         assert s.cors_methods == ["GET", "POST"]
         assert s.cors_headers == ["*"]
+        assert s.oauth2_issuer == ""
+        assert s.oauth2_swagger_client_id == ""
+        assert s.oauth2_trusted_issuers == ""
+        assert s.jwks_cache_ttl == 3600
 
     def test_settings_from_env(self):
         """Load settings from environment variables."""
@@ -34,6 +38,10 @@ class TestSettings:
             "DOCS_ENABLED": "true",
             "CORS_ORIGINS": '["https://reachy.internal"]',
             "CORS_CREDENTIALS": "false",
+            "OAUTH2_ISSUER": "https://auth.test.com",
+            "OAUTH2_SWAGGER_CLIENT_ID": "swagger",
+            "OAUTH2_TRUSTED_ISSUERS": "https://other.test.com",
+            "JWKS_CACHE_TTL": "60",
         }
         with patch.dict(os.environ, env, clear=True):
             s = Settings(_env_file=None)
@@ -43,6 +51,10 @@ class TestSettings:
         assert s.docs_enabled is True
         assert s.cors_origins == ["https://reachy.internal"]
         assert s.cors_credentials is False
+        assert s.oauth2_issuer == "https://auth.test.com"
+        assert s.oauth2_swagger_client_id == "swagger"
+        assert s.oauth2_trusted_issuers == "https://other.test.com"
+        assert s.jwks_cache_ttl == 60
 
     def test_settings_from_env_file(self, tmp_path):
         """Load settings from a .env file."""

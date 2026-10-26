@@ -4,11 +4,17 @@
 """Tests for the application object and the health endpoint."""
 
 import re
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 from reachy_mini_api import __version__
-from reachy_mini_api.main import HealthResponse, app, health_check, lifespan
+from reachy_mini_api.main import (
+    HealthResponse,
+    app,
+    get_swagger_ui_oauth2_config,
+    health_check,
+    lifespan,
+)
 
 client = TestClient(app)
 
@@ -79,13 +85,45 @@ class TestLifespan:
         with (
             patch("reachy_mini_api.main.setup_logging") as mock_setup,
             patch("reachy_mini_api.main.logger") as mock_logger,
+            patch("reachy_mini_api.main.jwks_manager") as mock_jwks,
         ):
+            mock_jwks.close = AsyncMock()
             async with lifespan(MagicMock()):
                 mock_setup.assert_called_once_with(level="INFO")
                 assert mock_logger.info.call_count == 1
+                mock_jwks.close.assert_not_awaited()
             assert mock_logger.info.call_count == 2
+            mock_jwks.close.assert_awaited_once()
 
     def test_request_logging_middleware_registered(self):
         """The request logging middleware wraps the application."""
         names = [m.cls.__name__ for m in app.user_middleware]
         assert "RequestLoggingMiddleware" in names
+
+
+class TestGetSwaggerUiOauth2Config:
+    """Tests for get_swagger_ui_oauth2_config."""
+
+    @patch("reachy_mini_api.main.settings")
+    def test_returns_empty_when_no_issuer(self, mock_settings):
+        """Return an empty dict when the OAuth2 issuer is not set."""
+        mock_settings.oauth2_issuer = ""
+        mock_settings.oauth2_swagger_client_id = "some-id"
+        assert get_swagger_ui_oauth2_config() == {}
+
+    @patch("reachy_mini_api.main.settings")
+    def test_returns_empty_when_no_client_id(self, mock_settings):
+        """Return an empty dict when the Swagger client ID is not set."""
+        mock_settings.oauth2_issuer = "https://auth.example.com"
+        mock_settings.oauth2_swagger_client_id = ""
+        assert get_swagger_ui_oauth2_config() == {}
+
+    @patch("reachy_mini_api.main.settings")
+    def test_returns_config_when_fully_set(self, mock_settings):
+        """Return the PKCE configuration when issuer and client ID are set."""
+        mock_settings.oauth2_issuer = "https://auth.example.com"
+        mock_settings.oauth2_swagger_client_id = "swagger-client"
+        result = get_swagger_ui_oauth2_config()
+        assert result["swagger_ui_init_oauth"]["clientId"] == "swagger-client"
+        assert result["swagger_ui_init_oauth"]["usePkceWithAuthorizationCodeGrant"] is True
+        assert result["swagger_ui_parameters"]["persistAuthorization"] is True

@@ -29,6 +29,7 @@ documented on its own page.
 | [Inbound email processing](14-inbound.md) | IMAP polling, storage and webhook forwarding |
 | [Authorized clients](15-authorized-clients.md) | Registry of the applications, forced sender and provider |
 | [Client sending limits](16-client-limits.md) | Rate limit and daily quota per client |
+| [Command line](17-command-line.md) | `mailler` command: clients and template import |
 
 ## Running the tests
 

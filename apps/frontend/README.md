@@ -1,8 +1,10 @@
 # frontend
 
-Frontend application server (FastAPI) for the website. It currently exposes
-a health endpoint, a configurable CORS policy and logging split between
-stdout and stderr.
+Frontend application server (FastAPI) for the website, with its Vite and
+TypeScript web client in `web/`. The server currently exposes a health
+endpoint, a configurable CORS policy and logging split between stdout and
+stderr. The web client build generates the Jinja2 template stored in
+`src/frontend/templates/index.html`.
 
 ## Routes and scopes
 

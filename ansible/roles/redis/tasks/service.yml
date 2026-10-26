@@ -1,0 +1,33 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Manage the Redis service
+  ansible.builtin.systemd:
+    name: "{{ redis_service_name }}"
+    state: "{{ redis_service_state }}"
+    enabled: "{{ redis_service_enabled }}"
+    daemon_reload: true
+
+- name: Apply pending restarts
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the TCP port
+  ansible.builtin.wait_for:
+    host: "{{ redis_bind.split()[0] }}"
+    port: "{{ redis_port }}"
+    timeout: "{{ redis_wait_timeout }}"
+  when:
+    - redis_wait_for_ready | bool
+    - redis_service_state == 'started'
+    - redis_port | int > 0
+
+- name: Wait for the Unix socket
+  ansible.builtin.wait_for:
+    path: "{{ redis_socket }}"
+    timeout: "{{ redis_wait_timeout }}"
+  when:
+    - redis_wait_for_ready | bool
+    - redis_service_state == 'started'
+    - redis_port | int == 0
+    - redis_socket | length > 0

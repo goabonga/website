@@ -1,0 +1,65 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The redis role only supports Debian-family distributions.
+    quiet: true
+
+- name: Install Redis
+  ansible.builtin.apt:
+    name: "{{ redis_packages }}"
+    state: present
+    update_cache: "{{ redis_apt_update_cache }}"
+    cache_valid_time: "{{ redis_apt_cache_valid_time }}"
+
+- name: Ensure the data directory exists
+  ansible.builtin.file:
+    path: "{{ redis_data_dir }}"
+    state: directory
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0750"
+
+- name: Render redis.conf
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: "{{ redis_config_file }}"
+    owner: "{{ redis_user }}"
+    group: "{{ redis_group }}"
+    mode: "0640"
+    backup: "{{ redis_backup_config }}"
+  no_log: "{{ redis_password | length > 0 }}"
+  notify: redis | restart
+
+- name: Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ redis_service_name }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: redis_systemd_override_enabled | bool
+
+- name: Deploy the systemd drop-in
+  ansible.builtin.template:
+    src: override.conf.j2
+    dest: "/etc/systemd/system/{{ redis_service_name }}.service.d/override.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  when: redis_systemd_override_enabled | bool
+  notify:
+    - redis | reload systemd
+    - redis | restart
+
+- name: Remove the systemd drop-in when disabled
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ redis_service_name }}.service.d/override.conf"
+    state: absent
+  when: not (redis_systemd_override_enabled | bool)
+  notify:
+    - redis | reload systemd
+    - redis | restart

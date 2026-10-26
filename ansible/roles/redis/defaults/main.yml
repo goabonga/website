@@ -1,0 +1,196 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the redis role. Every knob is prefixed with `redis_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+redis_enabled: true
+
+# Refresh the apt cache before installing packages.
+redis_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+redis_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation and paths
+# ======================================================================
+# Packages to install.
+redis_packages:
+- redis-server
+
+# systemd unit name.
+redis_service_name: redis-server
+
+# State of the service after configuration.
+redis_service_state: started
+
+# Enable the service at boot.
+redis_service_enabled: true
+
+# Owner of the configuration file and data directory.
+redis_user: redis
+
+# Group of the configuration file and data directory.
+redis_group: redis
+
+# Path of the rendered configuration file.
+redis_config_file: /etc/redis/redis.conf
+
+# Data directory (RDB and AOF files).
+redis_data_dir: /var/lib/redis
+
+# Log file. Use an empty string to log to stdout (journald).
+redis_log_file: /var/log/redis/redis-server.log
+
+# PID file.
+redis_pid_file: /run/redis/redis-server.pid
+
+# Keep a timestamped backup of redis.conf when it changes.
+redis_backup_config: false
+
+
+# ======================================================================
+# Network
+# ======================================================================
+# Addresses to bind (space separated). Use 0.0.0.0 to listen on every interface.
+redis_bind: 127.0.0.1
+
+# TCP port. Set to 0 to disable TCP and use only the Unix socket.
+redis_port: 6379
+
+# Unix socket path, for example /run/redis/redis.sock. Empty disables the socket.
+redis_socket: ''
+
+# Octal permissions of the Unix socket.
+redis_socket_perm: '770'
+
+# TCP listen backlog.
+redis_tcp_backlog: 511
+
+# TCP keepalive in seconds.
+redis_tcp_keepalive: 300
+
+# Close idle client connections after this many seconds (0 disables).
+redis_timeout: 0
+
+# Refuse external connections when no password is set and the server is not bound
+# explicitly.
+redis_protected_mode: true
+
+
+# ======================================================================
+# Security
+# ======================================================================
+# Password for requirepass. Empty disables authentication. Provide it from a vault.
+redis_password: ''
+
+
+# ======================================================================
+# General
+# ======================================================================
+# Log verbosity.
+redis_loglevel: notice
+
+# Number of logical databases.
+redis_databases: 16
+
+# Maximum number of simultaneous clients.
+redis_maxclients: 10000
+
+
+# ======================================================================
+# Memory
+# ======================================================================
+# Memory limit such as 256mb. An empty string removes the limit.
+redis_maxmemory: 256mb
+
+# Eviction policy when the limit is reached.
+redis_maxmemory_policy: allkeys-lru
+
+
+# ======================================================================
+# Persistence
+# ======================================================================
+# Enable RDB snapshots.
+redis_save_enabled: true
+
+# RDB snapshot rules, each formatted as `<seconds> <changes>`.
+redis_save_rules:
+- 900 1
+- 300 10
+- 60 10000
+
+# Compress RDB snapshots.
+redis_rdbcompression: true
+
+# Refuse writes when a background save fails.
+redis_stop_writes_on_bgsave_error: true
+
+# Enable the append-only file.
+redis_appendonly: false
+
+# AOF fsync policy.
+redis_appendfsync: everysec
+
+
+# ======================================================================
+# Slow log
+# ======================================================================
+# Log commands slower than this many microseconds.
+redis_slowlog_threshold: 10000
+
+# Number of entries kept in the slow log.
+redis_slowlog_max_len: 128
+
+
+# ======================================================================
+# Systemd drop-in
+# ======================================================================
+# Deploy a drop-in that raises limits and sets the restart policy.
+redis_systemd_override_enabled: true
+
+# LimitNOFILE of the service.
+redis_limit_nofile: 65535
+
+# Restart= value of the service.
+redis_restart_policy: always
+
+# RestartSec= of the service.
+redis_restart_sec: 5
+
+
+# ======================================================================
+# Kernel tuning
+# ======================================================================
+# Apply the sysctl settings below.
+redis_sysctl_enabled: true
+
+# Kernel parameters set for Redis.
+redis_sysctl_settings:
+  vm.overcommit_memory: '1'
+  net.core.somaxconn: '65535'
+
+# Disable transparent huge pages at runtime (not persisted across reboots).
+redis_disable_thp: true
+
+
+# ======================================================================
+# Extra configuration
+# ======================================================================
+# Raw lines appended to redis.conf, for example `notify-keyspace-events Ex`.
+redis_extra_config: []
+
+
+# ======================================================================
+# Readiness
+# ======================================================================
+# Wait until Redis accepts connections before finishing.
+redis_wait_for_ready: true
+
+# Seconds to wait for readiness.
+redis_wait_timeout: 30

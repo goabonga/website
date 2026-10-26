@@ -1,0 +1,219 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install and configure a Redis server
+    description:
+    - Installs Redis from the distribution packages, renders redis.conf, adds a systemd drop-in and applies
+      the kernel settings Redis recommends.
+    options:
+      redis_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      redis_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      redis_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      redis_packages:
+        type: list
+        description: Packages to install.
+        elements: str
+      redis_service_name:
+        type: str
+        description: systemd unit name.
+        default: redis-server
+      redis_service_state:
+        type: str
+        description: State of the service after configuration.
+        choices:
+        - started
+        - stopped
+        default: started
+      redis_service_enabled:
+        type: bool
+        description: Enable the service at boot.
+        default: true
+      redis_user:
+        type: str
+        description: Owner of the configuration file and data directory.
+        default: redis
+      redis_group:
+        type: str
+        description: Group of the configuration file and data directory.
+        default: redis
+      redis_config_file:
+        type: path
+        description: Path of the rendered configuration file.
+        default: /etc/redis/redis.conf
+      redis_data_dir:
+        type: path
+        description: Data directory (RDB and AOF files).
+        default: /var/lib/redis
+      redis_log_file:
+        type: str
+        description: Log file. Use an empty string to log to stdout (journald).
+        default: /var/log/redis/redis-server.log
+      redis_pid_file:
+        type: path
+        description: PID file.
+        default: /run/redis/redis-server.pid
+      redis_backup_config:
+        type: bool
+        description: Keep a timestamped backup of redis.conf when it changes.
+        default: false
+      redis_bind:
+        type: str
+        description: Addresses to bind (space separated). Use 0.0.0.0 to listen on every interface.
+        default: 127.0.0.1
+      redis_port:
+        type: int
+        description: TCP port. Set to 0 to disable TCP and use only the Unix socket.
+        default: 6379
+      redis_socket:
+        type: str
+        description: Unix socket path, for example /run/redis/redis.sock. Empty disables the socket.
+        default: ''
+      redis_socket_perm:
+        type: str
+        description: Octal permissions of the Unix socket.
+        default: '770'
+      redis_tcp_backlog:
+        type: int
+        description: TCP listen backlog.
+        default: 511
+      redis_tcp_keepalive:
+        type: int
+        description: TCP keepalive in seconds.
+        default: 300
+      redis_timeout:
+        type: int
+        description: Close idle client connections after this many seconds (0 disables).
+        default: 0
+      redis_protected_mode:
+        type: bool
+        description: Refuse external connections when no password is set and the server is not bound explicitly.
+        default: true
+      redis_password:
+        type: str
+        description: Password for requirepass. Empty disables authentication. Provide it from a vault.
+        default: ''
+        no_log: true
+      redis_loglevel:
+        type: str
+        description: Log verbosity.
+        choices:
+        - debug
+        - verbose
+        - notice
+        - warning
+        default: notice
+      redis_databases:
+        type: int
+        description: Number of logical databases.
+        default: 16
+      redis_maxclients:
+        type: int
+        description: Maximum number of simultaneous clients.
+        default: 10000
+      redis_maxmemory:
+        type: str
+        description: Memory limit such as 256mb. An empty string removes the limit.
+        default: 256mb
+      redis_maxmemory_policy:
+        type: str
+        description: Eviction policy when the limit is reached.
+        choices:
+        - noeviction
+        - allkeys-lru
+        - volatile-lru
+        - allkeys-lfu
+        - volatile-lfu
+        - allkeys-random
+        - volatile-random
+        - volatile-ttl
+        default: allkeys-lru
+      redis_save_enabled:
+        type: bool
+        description: Enable RDB snapshots.
+        default: true
+      redis_save_rules:
+        type: list
+        description: RDB snapshot rules, each formatted as `<seconds> <changes>`.
+        elements: str
+      redis_rdbcompression:
+        type: bool
+        description: Compress RDB snapshots.
+        default: true
+      redis_stop_writes_on_bgsave_error:
+        type: bool
+        description: Refuse writes when a background save fails.
+        default: true
+      redis_appendonly:
+        type: bool
+        description: Enable the append-only file.
+        default: false
+      redis_appendfsync:
+        type: str
+        description: AOF fsync policy.
+        choices:
+        - always
+        - everysec
+        - 'no'
+        default: everysec
+      redis_slowlog_threshold:
+        type: int
+        description: Log commands slower than this many microseconds.
+        default: 10000
+      redis_slowlog_max_len:
+        type: int
+        description: Number of entries kept in the slow log.
+        default: 128
+      redis_systemd_override_enabled:
+        type: bool
+        description: Deploy a drop-in that raises limits and sets the restart policy.
+        default: true
+      redis_limit_nofile:
+        type: int
+        description: LimitNOFILE of the service.
+        default: 65535
+      redis_restart_policy:
+        type: str
+        description: Restart= value of the service.
+        choices:
+        - 'no'
+        - on-failure
+        - always
+        default: always
+      redis_restart_sec:
+        type: int
+        description: RestartSec= of the service.
+        default: 5
+      redis_sysctl_enabled:
+        type: bool
+        description: Apply the sysctl settings below.
+        default: true
+      redis_sysctl_settings:
+        type: dict
+        description: Kernel parameters set for Redis.
+      redis_disable_thp:
+        type: bool
+        description: Disable transparent huge pages at runtime (not persisted across reboots).
+        default: true
+      redis_extra_config:
+        type: list
+        description: Raw lines appended to redis.conf, for example `notify-keyspace-events Ex`.
+        elements: str
+      redis_wait_for_ready:
+        type: bool
+        description: Wait until Redis accepts connections before finishing.
+        default: true
+      redis_wait_timeout:
+        type: int
+        description: Seconds to wait for readiness.
+        default: 30

@@ -1,0 +1,33 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Apply kernel parameters recommended for Redis
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ redis_sysctl_settings | dict2items }}"
+  when: redis_sysctl_enabled | bool
+
+- name: Read the transparent huge pages mode
+  ansible.builtin.slurp:
+    src: /sys/kernel/mm/transparent_hugepage/enabled
+  register: redis_thp_mode
+  failed_when: false
+  changed_when: false
+  when: redis_disable_thp | bool
+
+- name: Disable transparent huge pages until the next reboot
+  ansible.builtin.shell:
+    cmd: |
+      echo never > /sys/kernel/mm/transparent_hugepage/enabled
+      echo never > /sys/kernel/mm/transparent_hugepage/defrag
+  changed_when: true
+  when:
+    - redis_disable_thp | bool
+    - redis_thp_mode is not skipped
+    - redis_thp_mode.content is defined
+    - "'[never]' not in (redis_thp_mode.content | b64decode)"

@@ -1,0 +1,143 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Namespace: {{ namespace.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .namespace-meta {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #1a1a2e;
+        border-radius: 4px;
+        flex-wrap: wrap;
+    }
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .meta-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .meta-value {
+        font-size: 0.9rem;
+        color: #e0e0e0;
+    }
+    .description-section {
+        margin-bottom: 1.5rem;
+    }
+    .description-section h3 {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+    .description-content {
+        background: #1a1a2e;
+        border-radius: 4px;
+        padding: 1rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    .scopes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .scope-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        background-color: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+        border-radius: 4px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ namespace.name }}</h1>
+    <a href="/namespaces" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if request.query_params.get('success') %}
+<div class="alert alert-success">{{ request.query_params.get('success') }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div class="namespace-meta">
+        <div class="meta-item">
+            <span class="meta-label">Slug</span>
+            <span class="meta-value mono">{{ namespace.slug }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Public</span>
+            <span class="meta-value">
+                {% if namespace.is_public %}
+                <span class="badge badge-success">Yes</span>
+                {% else %}
+                <span class="badge badge-warning">No</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Entries</span>
+            <span class="meta-value">
+                {{ entry_count }} entries
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Created</span>
+            <span class="meta-value">{{ namespace.created_at.strftime('%Y-%m-%d %H:%M:%S') if namespace.created_at else '-' }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Updated</span>
+            <span class="meta-value">{{ namespace.updated_at.strftime('%Y-%m-%d %H:%M:%S') if namespace.updated_at else '-' }}</span>
+        </div>
+    </div>
+
+    {% if namespace.description %}
+    <div class="description-section">
+        <h3>Description</h3>
+        <div class="description-content">{{ namespace.description }}</div>
+    </div>
+    {% endif %}
+
+    <div class="description-section">
+        <h3>Required Scopes</h3>
+        {% if namespace.required_scopes %}
+        <div class="scopes-list">
+            {% for scope in namespace.required_scopes %}
+            <span class="scope-badge">{{ scope }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No scopes required (accessible by anyone{% if not namespace.is_public %} who is authenticated{% endif %}).</p>
+        {% endif %}
+    </div>
+
+    <div class="action-buttons">
+        {% if user.can_write('namespaces') %}
+        <a href="/namespaces/{{ namespace.id }}/edit" class="btn btn-primary">Edit Namespace</a>
+        {% endif %}
+        {% if user.can_delete('namespaces') and namespace.slug != 'general' %}
+        <form method="post" action="/namespaces/{{ namespace.id }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this namespace? Entries will have their namespace set to null.')">
+                Delete Namespace
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

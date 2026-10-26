@@ -24,3 +24,7 @@ dependencies = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/team"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

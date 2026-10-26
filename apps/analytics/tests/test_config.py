@@ -5,7 +5,55 @@
 
 from unittest.mock import patch
 
-from analytics.config import Settings
+from analytics.config import Settings, get_credential
+
+
+class TestGetCredential:
+    """Tests for get_credential function."""
+
+    def test_returns_default_when_no_env(self):
+        with patch.dict("os.environ", {}, clear=True):
+            result = get_credential("TEST_SECRET", "default_value")
+        assert result == "default_value"
+
+    def test_returns_env_variable(self):
+        with patch.dict("os.environ", {"MY_SECRET": "env_value"}, clear=True):
+            result = get_credential("MY_SECRET", "default")
+        assert result == "env_value"
+
+    def test_reads_from_credentials_directory(self, tmp_path):
+        cred_file = tmp_path / "MY_SECRET"
+        cred_file.write_text("  credential_value  ")
+
+        with patch.dict("os.environ", {"CREDENTIALS_DIRECTORY": str(tmp_path)}, clear=True):
+            result = get_credential("MY_SECRET", "default")
+        assert result == "credential_value"
+
+    def test_credentials_directory_takes_priority(self, tmp_path):
+        cred_file = tmp_path / "MY_SECRET"
+        cred_file.write_text("cred_value")
+
+        with patch.dict(
+            "os.environ",
+            {"CREDENTIALS_DIRECTORY": str(tmp_path), "MY_SECRET": "env_value"},
+            clear=True,
+        ):
+            result = get_credential("MY_SECRET", "default")
+        assert result == "cred_value"
+
+    def test_falls_back_to_env_when_cred_file_missing(self, tmp_path):
+        with patch.dict(
+            "os.environ",
+            {"CREDENTIALS_DIRECTORY": str(tmp_path), "MY_SECRET": "env_value"},
+            clear=True,
+        ):
+            result = get_credential("MY_SECRET", "default")
+        assert result == "env_value"
+
+    def test_empty_default(self):
+        with patch.dict("os.environ", {}, clear=True):
+            result = get_credential("NONEXISTENT")
+        assert result == ""
 
 
 class TestSettings:
@@ -114,3 +162,31 @@ class TestSettings:
         with patch.dict("os.environ", {"ANONYMIZE_IP": "true"}, clear=True):
             s = Settings(_env_file=None)
         assert s.anonymize_ip is True
+
+    def test_oauth2_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.oauth2_issuer == ""
+        assert s.oauth2_swagger_client_id == ""
+        assert s.oauth2_client_id == ""
+        assert s.oauth2_client_secret == ""
+        assert s.token_introspection_cache_ttl == 60
+        assert s.oauth2_client_cache_ttl == 300
+
+    def test_redis_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.redis_url == "redis://localhost:6379/7"
+        assert s.cache_ttl == 300
+
+    def test_oauth2_client_secret_comes_from_credential(self, tmp_path):
+        from analytics.config import get_settings
+
+        (tmp_path / "OAUTH2_CLIENT_SECRET").write_text("from-credential\n")
+        get_settings.cache_clear()
+        try:
+            with patch.dict("os.environ", {"CREDENTIALS_DIRECTORY": str(tmp_path)}, clear=True):
+                s = get_settings()
+            assert s.oauth2_client_secret == "from-credential"
+        finally:
+            get_settings.cache_clear()

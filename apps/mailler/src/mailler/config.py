@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     scheduled_email_batch: int = 100  # due scheduled emails queued per run
     email_retention_days: int = 90  # emails older than this are deleted
 
+    # Campaigns
+    campaign_batch_size: int = 50  # contacts processed between two checks for a pause
+    default_provider: str = ""  # optional platform provider, used when nothing else is set
+
     # Default sender
     default_from: str = ""  # optional platform sender, used when the caller has none
     default_from_name: str = ""

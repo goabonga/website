@@ -11,8 +11,10 @@ from mailler.celery import celery_app
 from mailler.config import settings
 from mailler.database import get_sync_db
 from mailler.logging import get_logger
+from mailler.models.campaign import CampaignStatus, EmailCampaign
+from mailler.models.contact import Contact, ContactGroupMember
 from mailler.models.email import Email, EmailStatus, ProviderStats
-from mailler.tasks.send import send_email_task
+from mailler.tasks.send import send_campaign_task, send_email_task
 
 logger = get_logger(__name__)
 
@@ -237,3 +239,79 @@ def aggregate_daily_stats() -> dict:
         )
 
         return {"date": str(yesterday), "stats": stats_by_provider}
+
+
+@celery_app.task(name="mailler.tasks.scheduler.check_scheduled_campaigns")
+def check_scheduled_campaigns() -> dict:
+    """Check for campaigns that should be sent based on their schedule.
+
+    Finds campaigns with status=SCHEDULED and scheduled_at <= now,
+    changes their status to SENDING, and triggers the send task.
+
+    Runs every minute via Celery Beat.
+
+    Returns:
+        Dict with count of started campaigns
+    """
+    with get_sync_db() as db:
+        now = datetime.now(UTC)
+
+        # Find scheduled campaigns that are due
+        stmt = select(EmailCampaign).where(
+            EmailCampaign.status == CampaignStatus.SCHEDULED.value,
+            EmailCampaign.scheduled_at <= now,
+        )
+
+        scheduled_campaigns = db.execute(stmt).scalars().all()
+
+        started_count = 0
+        for campaign in scheduled_campaigns:
+            # Count total recipients
+            count_stmt = (
+                select(func.count(Contact.id))
+                .join(ContactGroupMember)
+                .where(ContactGroupMember.group_id == campaign.group_id)
+                .where(Contact.client_id == campaign.client_id)
+                .where(Contact.status == "active")
+            )
+            total_recipients = db.execute(count_stmt).scalar() or 0
+
+            if total_recipients == 0:
+                logger.warning(
+                    "Skipping scheduled campaign with no active contacts",
+                    extra={
+                        "campaign_id": campaign.id,
+                        "group_id": campaign.group_id,
+                    },
+                )
+                continue
+
+            logger.info(
+                "Starting scheduled campaign",
+                extra={
+                    "campaign_id": campaign.id,
+                    "scheduled_at": str(campaign.scheduled_at),
+                    "total_recipients": total_recipients,
+                },
+            )
+
+            # Update status to SENDING
+            campaign.status = CampaignStatus.SENDING.value
+            campaign.started_at = now
+            campaign.total_recipients = total_recipients
+            db.commit()
+
+            # Trigger send task
+            task = send_campaign_task.delay(campaign.id)
+            campaign.task_id = task.id
+            db.commit()
+
+            started_count += 1
+
+        if started_count > 0:
+            logger.info(
+                "Started scheduled campaigns",
+                extra={"started_count": started_count},
+            )
+
+        return {"started": started_count}

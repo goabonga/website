@@ -58,6 +58,10 @@ celery_app.conf.update(
             "task": "mailler.tasks.scheduler.aggregate_daily_stats",
             "schedule": crontab(hour=0, minute=5),  # Daily at 00:05
         },
+        "check-scheduled-campaigns": {
+            "task": "mailler.tasks.scheduler.check_scheduled_campaigns",
+            "schedule": crontab(minute="*"),  # Every minute
+        },
     },
 )
 

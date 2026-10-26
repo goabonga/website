@@ -86,6 +86,14 @@ class TestSettingsDefaults:
         assert s.session_create_limit == 3
         assert s.session_create_window == 86400
 
+    def test_session_defaults(self, monkeypatch):
+        """Session data is cached in Redis for one hour."""
+        for name in ("SESSION_REDIS_URL", "SESSION_REDIS_TTL"):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.session_redis_url == "redis://localhost:6379/2"
+        assert s.session_redis_ttl == 3600
+
 
 class TestGetCredential:
     """Tests for get_credential."""

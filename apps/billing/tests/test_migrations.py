@@ -88,3 +88,16 @@ class TestScopingRevision:
         assert "INSERT INTO saas_apps" not in sql
         assert "INSERT INTO billing_products" not in sql
         assert "prod_" not in sql
+
+
+class TestClientBindingRevision:
+    """Tests for revision 006 (bindings between OAuth clients and SaaS applications)."""
+
+    def test_binding_table_is_created_empty(self, capsys):
+        command.upgrade(_config(), "head", sql=True)
+        sql = capsys.readouterr().out
+
+        assert "CREATE TABLE saas_client_bindings" in sql
+        assert "uq_binding_saas_client UNIQUE (saas_app_id, client_id)" in sql
+        assert "CREATE INDEX ix_saas_client_bindings_client" in sql
+        assert "INSERT INTO saas_client_bindings" not in sql

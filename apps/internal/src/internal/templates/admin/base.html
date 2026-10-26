@@ -453,6 +453,16 @@
             <h2><span>&#9881;</span> Internal Admin</h2>
             <ul class="admin-nav">
                 <li>
+                    <a href="/" class="{% if active_section == 'dashboard' %}active{% endif %}">
+                        <span class="nav-icon">&#128200;</span>Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="/conversations" class="{% if active_section == 'conversations' %}active{% endif %}">
+                        <span class="nav-icon">&#128172;</span>Chat History
+                    </a>
+                </li>
+                <li>
                     <a href="/analytics" class="{% if active_section == 'analytics' %}active{% endif %}">
                         <span class="nav-icon">&#128202;</span>Analytics
                     </a>

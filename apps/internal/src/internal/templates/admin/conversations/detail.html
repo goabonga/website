@@ -1,0 +1,285 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Conversation Detail{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+    .message-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .message {
+        padding: 1rem;
+        border-radius: 8px;
+        max-width: 85%;
+    }
+    .message-user {
+        background-color: #0f3460;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+    }
+    .message-assistant {
+        background-color: #1a1a2e;
+        border: 1px solid #0f3460;
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }
+    .message-system {
+        background-color: rgba(253, 203, 110, 0.1);
+        border: 1px solid rgba(253, 203, 110, 0.3);
+        align-self: center;
+        font-style: italic;
+        max-width: 95%;
+    }
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        gap: 1rem;
+    }
+    .message-role {
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    .message-time {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    .message-plain {
+        white-space: pre-wrap;
+    }
+    .message-content {
+        word-wrap: break-word;
+        line-height: 1.6;
+    }
+    .message-content h1, .message-content h2, .message-content h3, .message-content h4 {
+        color: #ffffff;
+        margin: 0.75rem 0 0.5rem;
+    }
+    .message-content h1 { font-size: 1.3rem; }
+    .message-content h2 { font-size: 1.15rem; }
+    .message-content h3 { font-size: 1.05rem; }
+    .message-content p {
+        margin: 0.4rem 0;
+    }
+    .message-content code {
+        background-color: rgba(0, 0, 0, 0.35);
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.85em;
+    }
+    .message-content pre {
+        background-color: rgba(0, 0, 0, 0.4);
+        padding: 0.75rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0.5rem 0;
+    }
+    .message-content pre code {
+        background: none;
+        padding: 0;
+        font-size: 0.85em;
+    }
+    .message-content ul, .message-content ol {
+        padding-left: 1.5rem;
+        margin: 0.4rem 0;
+    }
+    .message-content li {
+        margin: 0.2rem 0;
+    }
+    .message-content blockquote {
+        border-left: 3px solid #74b9ff;
+        margin: 0.5rem 0;
+        padding: 0.25rem 0.75rem;
+        color: #b0b0b0;
+    }
+    .message-content table {
+        border-collapse: collapse;
+        margin: 0.5rem 0;
+        width: 100%;
+    }
+    .message-content th, .message-content td {
+        border: 1px solid #2d2d4a;
+        padding: 0.4rem 0.6rem;
+        text-align: left;
+    }
+    .message-content th {
+        background: rgba(0, 0, 0, 0.3);
+        color: #ffffff;
+    }
+    .message-content a {
+        color: #74b9ff;
+    }
+    .message-content hr {
+        border: none;
+        border-top: 1px solid #2d2d4a;
+        margin: 0.75rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Conversation Detail</h1>
+    <a href="/conversations{% if back_params %}?{{ back_params }}{% endif %}" class="btn btn-secondary">
+        <span>&larr;</span> Back to Conversations
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Conversation Information</h2>
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">ID</div>
+        <div class="mono">{{ conversation.id }}</div>
+
+        <div class="text-muted">Type</div>
+        <div>
+            {% if conversation.user_id %}
+            <span class="badge badge-success">Authenticated User</span>
+            {% elif conversation.session_id %}
+            <span class="badge badge-warning">Anonymous Session</span>
+            {% else %}
+            <span class="badge badge-secondary">Unknown</span>
+            {% endif %}
+        </div>
+
+        {% if conversation.user_id %}
+        <div class="text-muted">User ID</div>
+        <div class="mono">{{ conversation.user_id }}</div>
+
+        {% if owner %}
+        <div class="text-muted">Owner Name</div>
+        <div>
+            {% if owner.name %}
+            {{ owner.name }}
+            {% else %}
+            <span class="text-muted">Not set</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Owner Email</div>
+        <div>
+            {% if owner.email %}
+            <a href="mailto:{{ owner.email }}" style="color: #74b9ff;">{{ owner.email }}</a>
+            {% else %}
+            <span class="text-muted">Not set</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Account Status</div>
+        <div>
+            {% if owner.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Inactive</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if conversation.session_id %}
+        <div class="text-muted">Session ID</div>
+        <div class="mono">{{ conversation.session_id }}</div>
+        {% endif %}
+
+        <div class="text-muted">Title</div>
+        <div>
+            {% if conversation.title %}
+            {{ conversation.title }}
+            {% else %}
+            <span class="text-muted">No title</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Messages</div>
+        <div>
+            <span class="badge badge-info">{{ messages | length }} messages</span>
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ conversation.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+
+        <div class="text-muted">Last Update</div>
+        <div>{{ conversation.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Messages <span class="text-muted">({{ messages | length }})</span></h2>
+        {% if messages %}
+        <div style="display: flex; gap: 0.5rem;">
+            <span class="text-muted" style="font-size: 0.85rem;">
+                {{ user_message_count }} user, {{ assistant_message_count }} assistant
+                {% if system_message_count %}, {{ system_message_count }} system{% endif %}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+    <div class="message-list">
+        {% for msg in messages %}
+        <div class="message message-{{ msg.role }}">
+            <div class="message-header">
+                <span class="message-role">
+                    {% if msg.role == 'user' %}
+                    <span style="color: #74b9ff;">&#128100; User</span>
+                    {% elif msg.role == 'assistant' %}
+                    <span style="color: #00b894;">&#129302; Assistant</span>
+                    {% else %}
+                    <span style="color: #fdcb6e;">&#9881; System</span>
+                    {% endif %}
+                </span>
+                <span class="message-time">{{ msg.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            </div>
+            <div class="message-content message-plain" data-raw="{{ msg.content | e }}">{{ msg.content or 'No content' }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128172;</p>
+        <p>No messages in this conversation.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% include "admin/_markdown.html" %}
+<script>
+    document.querySelectorAll('.message-content[data-raw]').forEach(function(el) {
+        var raw = el.getAttribute('data-raw');
+        var html = raw ? window.renderMarkdown(raw) : null;
+        if (html !== null) {
+            el.classList.remove('message-plain');
+            el.innerHTML = html;
+        }
+    });
+</script>
+
+{% if user.can_delete('conversations') %}
+<div class="admin-card">
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem;">
+        <form method="post" action="/conversations/{{ conversation.id }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-danger"
+                    onclick="return confirm('Are you sure you want to permanently delete this conversation and all its messages? This action cannot be undone.')">
+                Delete Conversation
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

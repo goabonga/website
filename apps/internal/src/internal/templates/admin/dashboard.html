@@ -1,0 +1,120 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Dashboard</h1>
+</div>
+
+<!-- Chat Statistics -->
+<h2 style="margin-bottom: 1rem; font-size: 1.1rem; color: #a0a0a0;">Chat Statistics</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total Conversations</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #74b9ff;">{{ stats.total_conversations }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total Messages</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #00b894;">{{ stats.total_messages }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Authenticated Users</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #e94560;">{{ stats.authenticated_conversations }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Anonymous Sessions</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #fdcb6e;">{{ stats.anonymous_conversations }}</div>
+    </div>
+</div>
+
+{% if analytics_stats %}
+<!-- Analytics Statistics (Last 30 days) -->
+<h2 style="margin-bottom: 1rem; font-size: 1.1rem; color: #a0a0a0;">
+    Analytics <span style="font-weight: normal; font-size: 0.9rem;">(Last 30 days)</span>
+    <a href="/analytics" class="btn btn-secondary btn-sm" style="float: right;">View Details &rarr;</a>
+</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total Sessions</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #a29bfe;">{{ analytics_stats.total_sessions }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Unique Visitors</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #fd79a8;">{{ analytics_stats.unique_visitors }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Page Views</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #81ecec;">{{ analytics_stats.total_pageviews }}</div>
+    </div>
+    <div class="admin-card">
+        <div class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total Events</div>
+        <div style="font-size: 2rem; font-weight: 600; color: #ffeaa7;">{{ analytics_stats.total_events }}</div>
+    </div>
+</div>
+{% elif user.has_scope('analytics:read') %}
+<!-- Analytics error state -->
+<div class="admin-card" style="margin-bottom: 2rem;">
+    <h2>Analytics</h2>
+    <p class="text-muted">Unable to fetch analytics data. The analytics service may be unavailable.</p>
+</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2>Recent Conversations</h2>
+    {% if recent_conversations %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User / Session</th>
+                <th>Title</th>
+                <th>Messages</th>
+                <th>Last Update</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conv in recent_conversations %}
+            <tr>
+                <td>
+                    {% if conv.user_id %}
+                    <span class="badge badge-success">Auth</span>
+                    <span class="mono text-muted" style="margin-left: 0.5rem;">{{ conv.user_id | string | truncate(8, True, '') }}...</span>
+                    {% elif conv.session_id %}
+                    <span class="badge badge-warning">Anon</span>
+                    <span class="mono text-muted" style="margin-left: 0.5rem;">{{ conv.session_id | truncate(8, True, '') }}...</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Unknown</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if conv.title %}
+                    {{ conv.title | truncate(30) }}
+                    {% else %}
+                    <span class="text-muted">No title</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ conv.message_count }}</span>
+                </td>
+                <td class="text-muted">
+                    {{ conv.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td>
+                    <a href="/conversations/{{ conv.id }}" class="btn btn-secondary btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="margin-top: 1rem;">
+        <a href="/conversations" class="btn btn-secondary btn-sm">View All Conversations &rarr;</a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128172;</p>
+        <p>No conversations yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

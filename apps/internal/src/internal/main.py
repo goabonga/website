@@ -18,6 +18,7 @@ from internal.auth.dependencies import (
 from internal.config import settings
 from internal.logging import setup_logging
 from internal.routes import (
+    admin_router,
     analytics_router,
     auth_router,
 )
@@ -108,6 +109,7 @@ Access is controlled per resource via scoped permissions.
 ## Required Scopes
 
 - `analytics:write`, `analytics:delete` - Manage analytics
+- `conversations:delete` - Delete conversations
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -142,4 +144,5 @@ async def health_check() -> HealthResponse:
 
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(analytics_router)

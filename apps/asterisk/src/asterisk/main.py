@@ -4,10 +4,13 @@
 """Entry point of the asterisk voice bot daemon."""
 
 import asyncio
+import functools
 import logging
+import signal
 import sys
 
 from asterisk import __version__
+from asterisk.audiosocket import AudioSocketServer
 from asterisk.config import config
 
 
@@ -44,9 +47,38 @@ def log_configuration():
     )
 
 
+async def shutdown(server: AudioSocketServer, sig: signal.Signals):
+    """Graceful shutdown handler."""
+    logger.info(f"Received signal {sig.name}, shutting down...")
+
+    await server.stop()
+
+    logger.info("Shutdown complete")
+
+
 async def main():
-    """Run the daemon."""
+    """Start the AudioSocket server."""
     log_configuration()
+
+    server = AudioSocketServer(config.AUDIOSOCKET_HOST, config.AUDIOSOCKET_PORT)
+
+    # Set up signal handlers for graceful shutdown
+    loop = asyncio.get_running_loop()
+
+    def schedule_shutdown(sig: signal.Signals) -> None:
+        asyncio.create_task(shutdown(server, sig))
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, functools.partial(schedule_shutdown, sig))
+
+    logger.info(
+        f"Starting AudioSocket server on {config.AUDIOSOCKET_HOST}:{config.AUDIOSOCKET_PORT}"
+    )
+
+    try:
+        await server.start()
+    except asyncio.CancelledError:
+        logger.info("Server task cancelled")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ subset of the ``AsyncSession`` API the application uses on top of a synchronous 
 
 from contextlib import contextmanager
 
+import httpx
 from custom_domain.database import get_db
 from custom_domain.models import Base
 from sqlalchemy import create_engine, text
@@ -101,3 +102,28 @@ class FakeDatabase:
                 session.close()
 
         app.dependency_overrides[get_db] = override_get_db
+
+
+class AsgiBridgeTransport(httpx.BaseTransport):
+    """Let a synchronous httpx client talk to an ASGI application in-process."""
+
+    def __init__(self, app, loop) -> None:
+        self._app = app
+        self._loop = loop
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        async def call():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=self._app), base_url="http://test"
+            ) as client:
+                return await client.request(
+                    request.method,
+                    str(request.url),
+                    headers=request.headers,
+                    content=request.content,
+                )
+
+        response = self._loop.run_until_complete(call())
+        return httpx.Response(
+            response.status_code, headers=response.headers, content=response.content
+        )

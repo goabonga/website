@@ -63,6 +63,7 @@ Zero-Trust VPN authentication and certificate issuance service.
 - **Certificate issuance**: Short-lived VPN certificates via Step-CA
 - **RBAC routing**: Route assignment based on user scopes
 - **OpenVPN integration**: Generate ready-to-use OVPN configurations
+- **Session tracking**: Record connections reported by the OpenVPN server
 - **Root CA distribution**: serve the Step-CA root certificate to clients
 
 ## Authentication
@@ -74,6 +75,7 @@ the user has the required `vpn:*` scopes via token exchange.
 ## Required Scopes
 
 - `vpn:connect` - Connect to VPN and obtain certificates
+- `vpn:server` - Internal API used by the OpenVPN server hooks
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,

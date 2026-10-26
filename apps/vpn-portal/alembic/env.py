@@ -12,7 +12,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from vpn_portal.config import settings
 from vpn_portal.db.base import Base
-from vpn_portal.db.models import VPNCertificate  # noqa: F401
+from vpn_portal.db.models import VPNCertificate, VPNConnection  # noqa: F401
 
 # Alembic Config object
 config = context.config

@@ -13,6 +13,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/api/v1/vpn/disconnect` | scope `vpn:connect` | Disconnect and revoke current certificate |
 | GET | `/api/v1/vpn/status` | scope `vpn:connect` | Get current VPN connection status |
 | GET | `/api/v1/vpn/ca` | scope `vpn:connect` | Get the root CA certificate from the Step-CA server |
+| POST | `/api/v1/internal/validate` | scope `vpn:server` | Validate certificate for OpenVPN client-connect script |
+| POST | `/api/v1/internal/connect` | scope `vpn:server` | Record VPN connection for OpenVPN client-connect script |
+| POST | `/api/v1/internal/disconnect` | scope `vpn:server` | Record VPN disconnection for OpenVPN client-disconnect script |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -21,6 +24,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `vpn:connect` - checked by 4 routes
+- `vpn:server` - scope of the machine client that calls the internal API from the OpenVPN hooks; checked by 3 routes
 
 ## Development
 

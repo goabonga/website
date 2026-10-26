@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vpn_portal.config import settings
 from vpn_portal.core.ovpn import generate_ovpn_config
 from vpn_portal.core.stepca import CertificateBundle, StepCAClient, stepca_client
-from vpn_portal.db.models.certificate import VPNCertificate
+from vpn_portal.db.models.certificate import VPNCertificate, VPNConnection
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +185,25 @@ class CertificateService:
 
         return cert
 
+    async def get_certificate_by_cn(
+        self,
+        db: AsyncSession,
+        common_name: str,
+    ) -> VPNCertificate | None:
+        """Get certificate by common name.
+
+        Args:
+            db: Database session.
+            common_name: Certificate common name.
+
+        Returns:
+            Certificate record or None.
+        """
+        result = await db.execute(
+            select(VPNCertificate).where(VPNCertificate.common_name == common_name)
+        )
+        return result.scalar_one_or_none()
+
     async def get_user_active_certificate(
         self,
         db: AsyncSession,
@@ -208,6 +227,102 @@ class CertificateService:
             .order_by(VPNCertificate.created_at.desc())
         )
         return result.scalars().first()
+
+    async def record_connection(
+        self,
+        db: AsyncSession,
+        common_name: str,
+        client_ip: str,
+        assigned_ip: str,
+    ) -> VPNConnection | None:
+        """Record a new VPN connection.
+
+        Args:
+            db: Database session.
+            common_name: Certificate common name.
+            client_ip: Client's real IP address.
+            assigned_ip: Assigned VPN IP address.
+
+        Returns:
+            Connection record or None if certificate not found.
+        """
+        cert = await self.get_certificate_by_cn(db, common_name)
+        if not cert:
+            logger.warning("Connection attempt with unknown certificate: %s", common_name)
+            return None
+
+        connection = VPNConnection(
+            id=uuid.uuid4(),
+            certificate_id=cert.id,
+            connected_at=datetime.now(UTC),
+            assigned_ip=assigned_ip,
+            client_ip=client_ip,
+        )
+
+        db.add(connection)
+        await db.commit()
+        await db.refresh(connection)
+
+        logger.info(
+            "Recorded connection: CN=%s, assigned_ip=%s, client_ip=%s",
+            common_name,
+            assigned_ip,
+            client_ip,
+        )
+
+        return connection
+
+    async def record_disconnection(
+        self,
+        db: AsyncSession,
+        common_name: str,
+        bytes_received: int = 0,
+        bytes_sent: int = 0,
+    ) -> VPNConnection | None:
+        """Record VPN disconnection.
+
+        Args:
+            db: Database session.
+            common_name: Certificate common name.
+            bytes_received: Bytes received during session.
+            bytes_sent: Bytes sent during session.
+
+        Returns:
+            Updated connection record or None.
+        """
+        cert = await self.get_certificate_by_cn(db, common_name)
+        if not cert:
+            return None
+
+        # Find active connection
+        result = await db.execute(
+            select(VPNConnection)
+            .where(VPNConnection.certificate_id == cert.id)
+            .where(VPNConnection.disconnected_at.is_(None))
+            .order_by(VPNConnection.connected_at.desc())
+        )
+        connection = result.scalars().first()
+
+        if not connection:
+            logger.warning("No active connection found for certificate: %s", common_name)
+            return None
+
+        connection.disconnected_at = datetime.now(UTC)
+        connection.bytes_received = bytes_received
+        connection.bytes_sent = bytes_sent
+
+        await db.commit()
+        await db.refresh(connection)
+
+        logger.info(
+            "Recorded disconnection: CN=%s, duration=%ds, rx=%d, tx=%d",
+            common_name,
+            connection.duration_seconds or 0,
+            bytes_received,
+            bytes_sent,
+        )
+
+        return connection
 
 
 # Default service instance

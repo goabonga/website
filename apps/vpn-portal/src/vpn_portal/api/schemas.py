@@ -63,3 +63,46 @@ class VPNStatusResponse(BaseModel):
     common_name: str | None = Field(description="Certificate common name")
     expires_at: datetime | None = Field(description="Certificate expiration")
     assigned_routes: list[str] | None = Field(description="Assigned routes")
+
+
+# ============================================================================
+# Internal API Schemas (OpenVPN scripts)
+# ============================================================================
+
+
+class InternalValidateRequest(BaseModel):
+    """Request to validate certificate from OpenVPN."""
+
+    common_name: str = Field(description="Certificate common name")
+    client_ip: str = Field(description="Client's real IP address")
+    assigned_ip: str | None = Field(default=None, description="Assigned VPN IP")
+
+
+class InternalValidateResponse(BaseModel):
+    """Response for certificate validation."""
+
+    valid: bool = Field(description="Whether certificate is valid")
+    reason: str | None = Field(default=None, description="Rejection reason if invalid")
+    routes: list[str] = Field(default_factory=list, description="Routes to push")
+
+
+class InternalConnectRequest(BaseModel):
+    """Request to record connection from OpenVPN."""
+
+    common_name: str = Field(description="Certificate common name")
+    client_ip: str = Field(description="Client's real IP address")
+    assigned_ip: str = Field(description="Assigned VPN IP")
+
+
+class InternalDisconnectRequest(BaseModel):
+    """Request to record disconnection from OpenVPN."""
+
+    common_name: str = Field(description="Certificate common name")
+    bytes_received: int = Field(default=0, description="Bytes received")
+    bytes_sent: int = Field(default=0, description="Bytes sent")
+
+
+class InternalStatusResponse(BaseModel):
+    """Generic status response."""
+
+    status: str = Field(description="Operation status")

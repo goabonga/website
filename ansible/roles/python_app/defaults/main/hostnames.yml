@@ -1,0 +1,60 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Public DNS zone the applications are served under. There is no default:
+# deploying an application with a public virtual host fails until it is set.
+website_domain: ""
+
+# Zone suffix of the applications that are only reachable internally.
+website_internal_domain: internal
+
+# Applications served under website_internal_domain instead of website_domain.
+website_internal_apps:
+  - billing
+  - custom_domain
+  - internal
+  - mailler
+  - reachy_mini_api
+  - team
+
+# Label prepended to the zone for each application. An empty label serves the
+# application on the bare zone. Override single entries with
+# website_subdomains_overrides.
+website_subdomains_defaults:
+  analytics: ua
+  apt_server: apt
+  auth: auth
+  backend: api
+  billing: billing
+  custom_domain: custom-domain
+  frontend: ""
+  internal: admin
+  knowledge: knowledge
+  mailler: mailler
+  mta_sts: mta-sts
+  reachy_mini_api: reachy
+  team: team
+  vpn_portal: vpn
+  webhooks: webhooks
+
+# Labels merged over website_subdomains_defaults.
+website_subdomains_overrides: {}
+
+# Labels in effect.
+website_subdomains: "{{ website_subdomains_defaults | combine(website_subdomains_overrides) }}"
+
+# Complete host names that replace the derived ones, keyed by application.
+website_hostnames_overrides: {}
+
+# Host name of each application: the label in front of the zone, or the bare
+# zone for an empty label. Host names are not derived for applications without
+# a label.
+website_hostnames: >-
+  {%- set ns = namespace(out={}) -%}
+  {%- for app, label in website_subdomains.items() -%}
+  {%- set zone = website_internal_domain if app in website_internal_apps else website_domain -%}
+  {%- set host = (label ~ '.' ~ zone) if label | length > 0 else zone -%}
+  {%- set ns.out = ns.out | combine({app: host}) -%}
+  {%- endfor -%}
+  {{ ns.out | combine(website_hostnames_overrides) }}

@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Select the components of the application
+  ansible.builtin.import_tasks: context.yml
+
+- name: Create the directories of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ python_app__releases_dir }}", mode: "0755" }
+    - { path: "{{ python_app__logs_dir }}", mode: "0755" }
+    - { path: "{{ python_app__env_dir }}", mode: "0750" }
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Deploy the release of {{ python_app__app }}
+  ansible.builtin.import_tasks: release.yml
+
+- name: Deploy the components of {{ python_app__app }}
+  ansible.builtin.include_tasks: component.yml
+  loop: "{{ python_app__comps }}"
+  loop_control:
+    loop_var: python_app__c
+    label: "{{ python_app__c.id }}"
+  when: python_app__sha | length > 0
+
+- name: Configure the log rotation of {{ python_app__app }}
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: "/etc/logrotate.d/{{ python_app__p.name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: python_app__p.logrotate.enabled | bool
+
+- name: Remove the log rotation of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "/etc/logrotate.d/{{ python_app__p.name }}"
+    state: absent
+  when: not (python_app__p.logrotate.enabled | bool)
+

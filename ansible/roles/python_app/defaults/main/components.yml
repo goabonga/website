@@ -1,0 +1,111 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Every catalog entry is a component: one systemd unit (or one set of wrapper
+# scripts) of an application. The catalog entry and the matching
+# website_apps_overrides entry are deep-merged over these defaults, so a
+# component only states what differs.
+python_app_component_defaults:
+  # Set to false to skip this component (for example a worker or a beat).
+  enabled: true
+  # Application the component belongs to (catalog key of the primary one).
+  app: ""
+  # The primary component of an application owns the application directory,
+  # the account, the database and the release; the others are additional
+  # units running the same code.
+  primary: false
+  # systemd unit name and file name prefix of the component.
+  name: ""
+  # Import package of the application (apps/<name>/src/<module>); defaults to
+  # the application name.
+  module: ""
+  # uv workspace package; defaults to the application name with dashes.
+  package: ""
+  # Kind of process. gunicorn runs an ASGI service, celery_worker and
+  # celery_beat run Celery and daemon runs python -m <module>.
+  type: gunicorn
+  # Branch, tag or commit of the application (primary component only);
+  # website_repo_version when empty.
+  version: ""
+  # System account running the application (primary component only); the
+  # application name with dashes when empty.
+  user: ""
+  group: ""
+  # Extra groups of the account, merged for every component of the
+  # application. Used for access to the sockets of other applications.
+  extra_groups: []
+  # Extra entries appended to PATH in the unit.
+  extra_path: []
+  # Commands the application account may run through sudo without password.
+  # NoNewPrivileges is lifted for the units of components that set it.
+  sudoers: []
+  # Join the step group to read the provisioner password.
+  stepca_group_member: false
+
+  # Health probe: the unit is only considered started once it answers.
+  healthcheck:
+    enabled: false
+    path: /health
+    # Seconds to wait for the probe.
+    timeout: 10
+
+  gunicorn:
+    workers: 2
+    # Listen on /run/<name>/<name>.sock instead of host:port.
+    socket: true
+    host: 127.0.0.1
+    port: 8000
+    # ASGI path, <module>.main:app when empty.
+    module: ""
+    worker_class: uvicorn.workers.UvicornWorker
+  celery:
+    # Celery application, <module>.celery:celery_app when empty.
+    app: ""
+    loglevel: info
+    concurrency: 2
+    queues: []
+    # Beat scheduler class (empty uses the default one).
+    scheduler: ""
+  daemon:
+    # Module run with python -m, <module>.main when empty.
+    module: ""
+    args: ""
+    stop_timeout: 30
+
+  # Commands run in the release as the application account, after uv sync, for
+  # example the build of a web client.
+  build_commands: []
+  # Directory the commands run in, relative to the release root.
+  build_chdir: ""
+  # Install Node.js on the host before running build_commands.
+  build_node: false
+
+
+
+  # Generate OAUTH2_ISSUER, OAUTH2_CLIENT_ID, OAUTH2_SWAGGER_CLIENT_ID and
+  # OAUTH2_FRONTEND_CLIENT_ID from website_oauth2_issuer and
+  # website_oauth2_clients.<app>.
+  oauth2:
+    enabled: false
+
+  # Environment file content, merged over the generated variables.
+  env_vars: {}
+  # Names of secrets that must be provided through website_secrets.
+  secret_names: []
+  # Names of secrets that are deployed only when provided.
+  optional_secret_names: []
+
+  hardening:
+    enabled: true
+    # Extra writable paths of the unit.
+    read_write_paths: []
+  logrotate:
+    enabled: true
+    frequency: daily
+    rotate: 14
+    max_size: 100M
+    compress: true
+    delay_compress: true
+    missing_ok: true
+    not_if_empty: true

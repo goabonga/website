@@ -1,0 +1,18 @@
+# Gunicorn configuration of {{ python_app__unit }}
+# Managed by Ansible (goabonga.website.python_app). Do not edit.
+
+workers = {{ python_app__c.gunicorn.workers }}
+worker_class = "{{ python_app__c.gunicorn.worker_class }}"
+{% if python_app__c.gunicorn.socket | bool %}
+bind = "unix:{{ python_app__socket }}"
+# Group members (the reverse proxy, other applications) may use the socket.
+umask = 0o007
+{% else %}
+bind = "{{ python_app__c.gunicorn.host }}:{{ python_app__c.gunicorn.port }}"
+{% endif %}
+
+# Access logs are written by the reverse proxy, which knows the client address.
+accesslog = None
+errorlog = "-"
+capture_output = True
+loglevel = "warning"

@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Select the components of the application
+  ansible.builtin.import_tasks: context.yml
+
+- name: Read the groups of the host
+  ansible.builtin.getent:
+    database: group
+
+- name: Work out the supplementary groups of {{ python_app__user }}
+  ansible.builtin.set_fact:
+    python_app__groups_wanted: >-
+      {{ ((['step'] if python_app__comps | selectattr('stepca_group_member') | list | length > 0 else [])
+         + ([website_redis_group] if website_redis_socket | length > 0 else [])
+         + (python_app__comps | map(attribute='extra_groups') | flatten | list)) | unique | list }}
+
+- name: Keep the groups that exist
+  ansible.builtin.set_fact:
+    python_app__groups_present: "{{ python_app__groups_wanted | select('in', ansible_facts.getent_group) | list }}"
+
+- name: Report the groups that do not exist
+  ansible.builtin.debug:
+    msg: >-
+      Skipping the groups {{ python_app__groups_wanted | difference(python_app__groups_present) | join(', ') }}
+      for {{ python_app__user }}: they do not exist on the host.
+  when: python_app__groups_wanted | difference(python_app__groups_present) | length > 0
+
+- name: Add {{ python_app__user }} to the supplementary groups
+  ansible.builtin.user:
+    name: "{{ python_app__user }}"
+    groups: "{{ python_app__groups_present }}"
+    append: true
+  when: python_app__groups_present | length > 0
+
+- name: Grant sudo rights to {{ python_app__user }}
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ python_app__user }}"
+    content: |
+      # Managed by Ansible (goabonga.website.python_app)
+      {% for command in python_app__comps | map(attribute='sudoers') | flatten | unique %}
+      {{ python_app__user }} ALL=(ALL) NOPASSWD: {{ command }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  when: python_app__comps | map(attribute='sudoers') | flatten | length > 0
+
+- name: Revoke the sudo rights of {{ python_app__user }}
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ python_app__user }}"
+    state: absent
+  when: python_app__comps | map(attribute='sudoers') | flatten | length == 0

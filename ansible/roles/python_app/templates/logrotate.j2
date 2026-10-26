@@ -1,0 +1,22 @@
+# Managed by Ansible (goabonga.website.python_app)
+{% set lr = python_app__p.logrotate %}
+{{ python_app__logs_dir }}/*.log
+{
+    su {{ python_app__user }} {{ python_app__group }}
+    {{ lr.frequency }}
+    rotate {{ lr.rotate }}
+    maxsize {{ lr.max_size }}
+{% if lr.compress | bool %}
+    compress
+{% endif %}
+{% if lr.delay_compress | bool %}
+    delaycompress
+{% endif %}
+{% if lr.missing_ok | bool %}
+    missingok
+{% endif %}
+{% if lr.not_if_empty | bool %}
+    notifempty
+{% endif %}
+    copytruncate
+}

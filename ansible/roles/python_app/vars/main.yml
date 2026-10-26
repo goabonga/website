@@ -1,0 +1,66 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Internal variables. The facts python_app__all (every merged component),
+# python_app__comps (the components of the application being deployed),
+# python_app__p (its primary component) and python_app__c (the component being
+# deployed) are set by the tasks.
+
+# Applications deployed by this run, in the order of website_apps_enabled.
+python_app__apps: >-
+  {{ website_apps_enabled
+     if website_apps_limit | length == 0
+     else website_apps_enabled | select('in', website_apps_limit) | list }}
+
+# Catalog with the overrides applied.
+python_app__catalog: "{{ website_apps_catalog | combine(website_apps_overrides, recursive=True) }}"
+
+# Component types the role knows.
+python_app__types:
+  - gunicorn
+  - celery_worker
+  - celery_beat
+  - daemon
+
+# Application directory layout, named after the primary component.
+python_app__user: "{{ python_app__p.user | default('', true) or python_app__p.name }}"
+python_app__group: "{{ python_app__p.group | default('', true) or python_app__user }}"
+python_app__dir: "{{ website_base_dir }}/{{ python_app__p.name }}"
+python_app__releases_dir: "{{ python_app__dir }}/releases"
+python_app__current: "{{ python_app__dir }}/current"
+python_app__venv: "{{ python_app__dir }}/venv"
+python_app__logs_dir: "{{ python_app__dir }}/logs"
+python_app__env_dir: "{{ python_app__dir }}/env"
+python_app__bin_dir: "{{ python_app__dir }}/bin"
+python_app__app_package: "{{ python_app__p.package | default('', true) or (python_app__p.app | replace('_', '-')) }}"
+python_app__version: "{{ python_app__p.version | default('', true) or website_repo_version }}"
+python_app__repo_dir: "{{ website_state_dir }}/repo"
+
+# Component being deployed.
+python_app__unit: "{{ python_app__c.name }}"
+python_app__env_file: "{{ python_app__env_dir }}/{{ python_app__unit }}.env"
+python_app__module: "{{ python_app__c.module | default('', true) or python_app__c.app }}"
+python_app__package: "{{ python_app__c.package | default('', true) or (python_app__c.app | replace('_', '-')) }}"
+python_app__socket: "/run/{{ python_app__unit }}/{{ python_app__unit }}.sock"
+python_app__hardened: "{{ website_hardening_enabled | bool and python_app__c.hardening.enabled | bool }}"
+
+# Group and mode of the environment file.
+python_app__env_group: "{{ python_app__group }}"
+python_app__env_mode: "0600"
+
+# Value of the secret named by the loop item: the component entry of
+# website_secrets, else the application entry when the component declares the
+# name. Empty when the secret is not provided.
+python_app__secret_value: >-
+  {{ website_secrets[python_app__c.id][item]
+     if (python_app__c.id in website_secrets and item in website_secrets[python_app__c.id])
+     else (website_secrets[python_app__c.app][item]
+           if (python_app__c.app in website_secrets and item in website_secrets[python_app__c.app]
+               and item in (python_app__c.secret_names + python_app__c.optional_secret_names))
+           else '') }}
+
+# Names of the secrets the component declares or receives.
+python_app__secret_names: >-
+  {{ (python_app__c.secret_names + python_app__c.optional_secret_names
+      + ((website_secrets[python_app__c.id] | default({})) | list)) | unique | list }}

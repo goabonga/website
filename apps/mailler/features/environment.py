@@ -13,12 +13,17 @@ broker is needed:
   (API) and the synchronous engine (Celery tasks), emptied after each
   scenario;
 - Celery tasks are never sent to a broker, ``delay`` calls are recorded in
-  ``context.delayed`` and tasks are run directly by the steps.
+  ``context.delayed`` and tasks are run directly by the steps;
+- PostgreSQL-only column types (UUID, JSONB, ARRAY, timezone-aware datetimes)
+  are swapped for portable equivalents on the SQLite test database;
+- the inbound router is registered even though ``INBOUND_ENABLED`` is off by
+  default.
 """
 
 import asyncio
 import shutil
 import tempfile
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
@@ -31,10 +36,12 @@ from mailler.config import settings
 from mailler.database import AsyncSessionLocal, SyncSessionLocal
 from mailler.main import app
 from mailler.models import Base
+from mailler.routes.inbound import router as inbound_router
 from mailler.services.providers import factory
-from sqlalchemy import CHAR, JSON, TypeDecorator, create_engine, delete
+from sqlalchemy import CHAR, JSON, DateTime, TypeDecorator, create_engine, delete
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import create_async_engine
+from starlette.routing import NoMatchFound
 
 # Probe routes protected by scopes, so authentication can be exercised before
 # the feature routes exist and independently of them.
@@ -71,6 +78,21 @@ class PortableUuid(TypeDecorator):
         return None if value is None else UUID(value)
 
 
+class PortableDateTime(TypeDecorator):
+    """Timezone-aware datetime for SQLite, which stores naive UTC values."""
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and value.tzinfo is not None:
+            value = value.astimezone(UTC).replace(tzinfo=None)
+        return value
+
+    def process_result_value(self, value, dialect):
+        return None if value is None else value.replace(tzinfo=UTC)
+
+
 def _make_metadata_portable():
     """Swap PostgreSQL-only column types for portable ones so SQLite can host them."""
     for table in Base.metadata.tables.values():
@@ -79,6 +101,8 @@ def _make_metadata_portable():
                 column.type = JSON()
             elif isinstance(column.type, postgresql.UUID):
                 column.type = PortableUuid()
+            elif isinstance(column.type, DateTime):
+                column.type = PortableDateTime()
 
 
 def _delayed_task(context, name):
@@ -158,6 +182,12 @@ def before_all(context):
     ):
         context._patchers.append(patch(target, _delayed_task(context, name)))
         context._patchers[-1].start()
+
+    # Inbound routes are only registered when INBOUND_ENABLED is set at start-up.
+    try:
+        app.url_path_for("list_inbound_emails")
+    except NoMatchFound:
+        app.include_router(inbound_router, prefix="/api/v1")
 
     app.include_router(probe)
     context.client = httpx.AsyncClient(

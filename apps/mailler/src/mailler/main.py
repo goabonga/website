@@ -12,6 +12,7 @@ from mailler import __version__
 from mailler.config import settings
 from mailler.logging import get_logger, setup_logging
 from mailler.routes import (
+    emails,
     health,
     providers,
     send,
@@ -88,6 +89,7 @@ the user has the required `mailler:*` scopes via token exchange.
 ## Required Scopes
 
 - `mailler:send` - Send and schedule emails
+- `mailler:read` - Read email details and list emails
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -109,4 +111,5 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router)
 app.include_router(send.router, prefix="/api/v1")
+app.include_router(emails.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")

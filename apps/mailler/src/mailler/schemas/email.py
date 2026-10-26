@@ -3,6 +3,7 @@
 
 """Email request/response schemas."""
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -46,3 +47,60 @@ class SendEmailResponse(BaseModel):
     status: str = Field(..., description="Email status")
     message: str = Field(..., description="Status message")
     task_id: str | None = Field(None, description="Celery task ID (for immediate sends)")
+
+
+class EmailDetailResponse(BaseModel):
+    """Detailed email response."""
+
+    id: str
+    to_email: str
+    to_name: str | None
+    from_email: str | None
+    from_name: str | None
+    reply_to: str | None
+    subject: str
+    html_content: str
+    text_content: str | None
+    provider: str
+    provider_message_id: str | None
+    status: str
+    error_message: str | None
+    retry_count: int
+    scheduled_at: datetime | None
+    queued_at: datetime | None
+    sent_at: datetime | None
+    delivered_at: datetime | None
+    bounced_at: datetime | None
+    failed_at: datetime | None
+    created_at: datetime
+    metadata: dict[str, Any]
+    client_id: str | None
+    user_id: str | None
+    task_id: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmailListItem(BaseModel):
+    """Email list item for pagination."""
+
+    id: str
+    to_email: str
+    subject: str
+    provider: str
+    status: str
+    created_at: datetime
+    scheduled_at: datetime | None
+    sent_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmailListResponse(BaseModel):
+    """Paginated email list response."""
+
+    items: list[EmailListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int

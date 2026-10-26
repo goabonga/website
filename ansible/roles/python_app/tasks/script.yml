@@ -1,0 +1,132 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Component without a unit: wrapper scripts that run an entry point of the
+# application with its environment, and the OpenVPN hook integration.
+
+- name: Create the bin directory of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "{{ python_app__bin_dir }}"
+    state: directory
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0755"
+  when: python_app__c.script.wrappers | length > 0
+
+- name: Deploy the wrapper scripts of {{ python_app__unit }}
+  ansible.builtin.copy:
+    dest: "{{ python_app__bin_dir }}/{{ item.name }}"
+    content: |
+      #!/bin/bash
+      # Managed by Ansible (goabonga.website.python_app)
+      # The environment file is optional: another service may already provide
+      # the variables.
+      if [ -r {{ python_app__env_file }} ]; then
+          set -a
+          . {{ python_app__env_file }}
+          set +a
+      fi
+      exec {{ python_app__venv }}/bin/python \
+          {{ python_app__current }}/apps/{{ python_app__package }}/{{ item.entrypoint }} \
+          {{ item.args | default('') }} "$@"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ python_app__c.script.wrappers }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# OpenVPN runs the hooks as nobody:nogroup, with its own environment: the
+# wrapper reads the environment file itself and the secrets come from a
+# systemd drop-in of the OpenVPN service.
+- name: Integrate {{ python_app__unit }} with OpenVPN
+  when: python_app__c.openvpn | length > 0
+  vars:
+    python_app__ovpn: "{{ python_app__c.openvpn }}"
+    python_app__ovpn_conf: "{{ python_app__ovpn.server_conf | default(website_openvpn_server_conf, true) }}"
+  block:
+    - name: Recreate the token cache directory at boot
+      ansible.builtin.copy:
+        dest: "/etc/tmpfiles.d/{{ python_app__unit }}.conf"
+        content: "d /run/{{ python_app__unit }} 0750 nobody nogroup -\n"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create the token cache directory
+      ansible.builtin.file:
+        path: "/run/{{ python_app__unit }}"
+        state: directory
+        owner: nobody
+        group: nogroup
+        mode: "0750"
+
+    - name: Find the OpenVPN AppArmor profile
+      ansible.builtin.find:
+        paths: /etc/apparmor.d
+        patterns: "*openvpn*"
+        file_type: file
+        recurse: false
+      register: python_app__apparmor
+
+    - name: Allow OpenVPN to run the hook scripts
+      ansible.builtin.blockinfile:
+        path: "{{ website_apparmor_local_dir }}/{{ python_app__apparmor.files[0].path | basename }}"
+        marker: "# {mark} ANSIBLE MANAGED - {{ python_app__unit }} hook scripts"
+        block: |
+          {{ python_app__bin_dir }}/* ux,
+          /tmp/openvpn_cc*.tmp rw,
+        create: true
+        mode: "0644"
+      when: python_app__apparmor.files | length > 0
+      notify: python_app | reload apparmor
+
+    - name: Add the hooks to the OpenVPN server configuration
+      ansible.builtin.blockinfile:
+        path: "{{ python_app__ovpn_conf }}"
+        marker: "# {mark} ANSIBLE MANAGED - {{ python_app__unit }} hook scripts"
+        insertbefore: "^status "
+        block: |
+          script-security 2
+          management 127.0.0.1 {{ python_app__ovpn.management_port | default(7505) }}
+          {% if python_app__ovpn.hook_connect | default('') | length > 0 %}
+          client-connect {{ python_app__bin_dir }}/{{ python_app__ovpn.hook_connect }}
+          {% endif %}
+          {% if python_app__ovpn.hook_disconnect | default('') | length > 0 %}
+          client-disconnect {{ python_app__bin_dir }}/{{ python_app__ovpn.hook_disconnect }}
+          {% endif %}
+          {% if python_app__ovpn.hook_reneg | default('') | length > 0 %}
+          tls-verify {{ python_app__bin_dir }}/{{ python_app__ovpn.hook_reneg }}
+          reneg-sec {{ python_app__ovpn.reneg_sec | default(300) }}
+          {% endif %}
+      notify: python_app | restart openvpn
+
+    - name: Create the systemd drop-in directory of OpenVPN
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ website_openvpn_service }}.service.d"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Give OpenVPN the environment and the secrets of {{ python_app__unit }}
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ website_openvpn_service }}.service.d/{{ python_app__unit }}.conf"
+        content: |
+          # Managed by Ansible (goabonga.website.python_app)
+          [Service]
+          EnvironmentFile={{ python_app__env_file }}
+          {% for name in python_app__secrets_deployed %}
+          LoadCredentialEncrypted={{ name }}:{{ website_credstore_dir }}/{{ python_app__unit }}.{{ name }}.cred
+          {% endfor %}
+        owner: root
+        group: root
+        mode: "0644"
+      register: python_app__ovpn_dropin
+      notify: python_app | restart openvpn
+
+    - name: Reload systemd for the OpenVPN drop-in
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: python_app__ovpn_dropin is changed

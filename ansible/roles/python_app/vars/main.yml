@@ -24,6 +24,7 @@ python_app__types:
   - daemon
   - audiosocket
   - fastagi
+  - script
 
 # Application directory layout, named after the primary component.
 python_app__user: "{{ python_app__p.user | default('', true) or python_app__p.name }}"
@@ -48,8 +49,9 @@ python_app__socket: "/run/{{ python_app__unit }}/{{ python_app__unit }}.sock"
 python_app__hardened: "{{ website_hardening_enabled | bool and python_app__c.hardening.enabled | bool }}"
 
 # Group and mode of the environment file.
-python_app__env_group: "{{ python_app__group }}"
-python_app__env_mode: "0600"
+# The hook scripts of OpenVPN run as nobody:nogroup and read the file.
+python_app__env_group: "{{ 'nogroup' if python_app__c.openvpn | length > 0 else python_app__group }}"
+python_app__env_mode: "{{ '0640' if python_app__c.openvpn | length > 0 else '0600' }}"
 
 # Value of the secret named by the loop item: the component entry of
 # website_secrets, else the application entry when the component declares the

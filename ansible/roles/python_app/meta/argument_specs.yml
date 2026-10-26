@@ -8,8 +8,9 @@ argument_specs:
     - Checks out the monorepo, installs each selected application into its own virtualenv
       with uv and renders its environment file, encrypted credentials and systemd units, and
       optionally sets up the PostgreSQL database and migrations, an nginx virtual host with
-      its certificate, fail2ban rate limits and the Asterisk dialplan. Applications are described
-      by a catalog of components that is merged with the user overrides.
+      its certificate, fail2ban rate limits, the Asterisk dialplan and wrapper scripts and
+      OpenVPN hooks. Applications are described by a catalog of components that is merged
+      with the user overrides.
     author: Chris
     options:
       website_apps_catalog:
@@ -73,6 +74,9 @@ argument_specs:
             enabled: false
             context: fastagi-bot
             test_extension: ''
+          script:
+            wrappers: []
+          openvpn: {}
           build_commands: []
           build_chdir: ''
           build_node: false
@@ -507,6 +511,20 @@ argument_specs:
         description:
         - website_aws_route53_secret_access_key
         default: ''
+      website_openvpn_server_conf:
+        type: str
+        description:
+        - Configuration file of the OpenVPN server that calls the hook scripts of the script
+          components (follows the openvpn role).
+      website_openvpn_service:
+        type: str
+        description:
+        - systemd unit of that server.
+      website_apparmor_local_dir:
+        type: str
+        description:
+        - Directory of the AppArmor local overrides.
+        default: /etc/apparmor.d/local
       website_asterisk_config_dir:
         type: str
         description:

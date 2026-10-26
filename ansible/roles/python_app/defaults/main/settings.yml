@@ -211,6 +211,20 @@ website_aws_route53_access_key_id: ""
 website_aws_route53_secret_access_key: ""
 
 # ---------------------------------------------------------------------------
+# OpenVPN hooks
+# ---------------------------------------------------------------------------
+
+# Configuration file of the OpenVPN server that calls the hook scripts of the
+# script components (follows the openvpn role).
+website_openvpn_server_conf: "{{ openvpn_config_dir | default('/etc/openvpn/server') }}/{{ openvpn_server_name | default('server') }}.conf"
+
+# systemd unit of that server.
+website_openvpn_service: "openvpn-server@{{ openvpn_server_name | default('server') }}"
+
+# Directory of the AppArmor local overrides.
+website_apparmor_local_dir: /etc/apparmor.d/local
+
+# ---------------------------------------------------------------------------
 # Asterisk
 # ---------------------------------------------------------------------------
 

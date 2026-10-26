@@ -81,6 +81,10 @@
   register: python_app__r_gconf
   when: python_app__c.type == 'gunicorn'
 
+- name: Deploy the wrapper scripts of {{ python_app__unit }}
+  ansible.builtin.include_tasks: script.yml
+  when: python_app__c.type == 'script'
+
 - name: Deploy the unit of {{ python_app__unit }}
   ansible.builtin.template:
     src: unit.service.j2
@@ -89,6 +93,7 @@
     group: root
     mode: "0644"
   register: python_app__r_unit
+  when: python_app__c.type != 'script'
 
 - name: Enable and start {{ python_app__unit }}
   ansible.builtin.systemd:
@@ -98,6 +103,7 @@
     daemon_reload: true
   register: python_app__r_start
   ignore_errors: "{{ ansible_check_mode }}"
+  when: python_app__c.type != 'script'
 
 - name: Work out whether {{ python_app__unit }} must restart
   ansible.builtin.set_fact:
@@ -115,6 +121,7 @@
   when:
     - python_app__restart | bool
     - not (python_app__r_start is changed)
+    - python_app__c.type != 'script'
 
 - name: Publish {{ python_app__unit }} through nginx
   ansible.builtin.include_tasks: nginx.yml

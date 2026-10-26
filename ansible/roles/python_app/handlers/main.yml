@@ -38,3 +38,15 @@
     state: reloaded
   listen: python_app | reload asterisk
 
+- name: Reload apparmor
+  ansible.builtin.systemd:
+    name: apparmor
+    state: reloaded
+  listen: python_app | reload apparmor
+
+- name: Restart openvpn
+  ansible.builtin.systemd:
+    name: "{{ website_openvpn_service }}"
+    state: restarted
+  listen: python_app | restart openvpn
+

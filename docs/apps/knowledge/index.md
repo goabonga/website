@@ -23,6 +23,8 @@ how it is tested with pytest and behave.
    collections.
 7. [Collaborators and invitations](06-collaboration.md): sharing collections
    with other users.
+8. [Usage quotas](07-quotas.md): plan limits and per-tenant API call
+   tracking.
 
 ## Running the tests
 

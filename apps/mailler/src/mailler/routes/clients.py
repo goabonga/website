@@ -83,19 +83,7 @@ async def create_client(
     auth: AuthContext = Depends(require_scopes(settings.admin_scope)),
 ) -> ClientResponse:
     """Register a client (administrators only)."""
-    client = AuthorizedClient(
-        client_id=request.client_id,
-        name=request.name,
-        is_active=request.is_active,
-        from_email=request.from_email,
-        from_name=request.from_name,
-        reply_to=request.reply_to,
-        allowed_senders=[s.model_dump() for s in request.allowed_senders],
-        allowed_providers=request.allowed_providers,
-        default_provider=request.default_provider,
-        rate_limit_per_minute=request.rate_limit_per_minute,
-        daily_quota=request.daily_quota,
-    )
+    client = client_service.new_client(request)
 
     try:
         db.add(client)
@@ -138,13 +126,7 @@ async def update_client(
     """
     client = await _get_or_404(db, client_id)
 
-    changes = request.model_dump(exclude_unset=True)
-    if "allowed_senders" in changes and changes["allowed_senders"] is not None:
-        changes["allowed_senders"] = [s.model_dump() for s in request.allowed_senders or []]
-    for field, value in changes.items():
-        if value is None and field in ("is_active", "allowed_senders", "allowed_providers"):
-            continue
-        setattr(client, field, value)
+    client_service.apply_update(client, request)
 
     await db.commit()
     await db.refresh(client)

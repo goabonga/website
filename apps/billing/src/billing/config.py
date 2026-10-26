@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     database_pool_size: int = 10
     database_max_overflow: int = 20
 
+    # Catalog
+    default_currency: str = "usd"  # ISO 4217 code used when a price does not give one
+
     # Redis
     redis_url: str = "redis://localhost:6379/10"
     redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens

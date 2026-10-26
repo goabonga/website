@@ -12,18 +12,34 @@ applications. It is a member of the `website` uv workspace.
   migrations.
 - OAuth2 bearer authentication with JWKS validation, token exchange and
   scope checks.
+- Collections REST API (`/api/v1/collections`) with personal and
+  organization ownership.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint |
+| POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
+| GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
+| GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |
+| PATCH | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:write` | Update a collection |
+| DELETE | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:write` | Delete a collection and all its documents |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+The API routes also apply the per-collection access rules of the handlers (owner, collaborator permission, organization membership) on top of the scope.
+
+### Scopes
+
+The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
+
+- `collections:write` - checked by 3 routes
+- `collections:read` - checked by 2 routes
 
 ## Local development
 

@@ -16,6 +16,8 @@ how it is tested with pytest and behave.
    Alembic migration chain.
 3. [OAuth2 authentication](02-authentication.md): bearer token validation,
    token exchange, scopes and tenant resolution.
+4. [Collections](03-collections.md): collection API, ownership and access
+   levels.
 
 ## Running the tests
 

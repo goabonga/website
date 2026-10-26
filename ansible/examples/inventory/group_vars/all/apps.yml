@@ -60,3 +60,14 @@ website_secrets:
     OAUTH2_CLIENT_SECRET: "{{ vault_backend_oauth2_client_secret }}"
   analytics:
     OAUTH2_CLIENT_SECRET: "{{ vault_analytics_oauth2_client_secret }}"
+
+# Clients of the shared services (custom_domain, mailler, billing) are
+# registered after the migrations of each service. See the "Onboarding a SaaS
+# application" page; for example, once mailler is in website_apps_enabled:
+#
+# website_mailler_clients:
+#   - client_id: "{{ vault_my_app_oauth2_client_id }}"
+#     name: My application
+#     from_email: no-reply@my-app.example.com
+#     allowed_providers: [brevo]
+#     default_provider: brevo

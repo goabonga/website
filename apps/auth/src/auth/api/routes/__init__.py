@@ -4,6 +4,7 @@
 """API routes."""
 
 from fastapi import APIRouter
+from fastapi.responses import RedirectResponse
 
 from auth.api.routes import discovery, health, jwks, me_legacy, userinfo
 from auth.api.routes.admin import pages_router as admin_pages_router
@@ -13,6 +14,12 @@ from auth.api.routes.federation import router as federation_router
 from auth.api.routes.oauth2 import router as oauth2_router
 
 router = APIRouter()
+
+
+@router.get("/", include_in_schema=False)
+async def root_redirect() -> RedirectResponse:
+    """Redirect root to user settings page."""
+    return RedirectResponse(url="/auth/settings", status_code=302)
 
 
 router.include_router(health.router, tags=["health"])

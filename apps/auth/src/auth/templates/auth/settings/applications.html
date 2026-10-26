@@ -1,0 +1,60 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Applications{% endblock %}
+
+{% block content %}
+<div class="settings-card">
+    <h1>Connected Applications</h1>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p class="section-description">
+        These are the third-party applications that have access to your account. You can revoke access for any application you no longer use.
+    </p>
+
+    {% if applications %}
+    <div style="margin-top: 1.5rem;">
+        {% for app in applications %}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: var(--background-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    {% if app.homepage_url %}
+                    <a href="{{ app.homepage_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">{{ app.name }}</a>
+                    {% else %}
+                    <strong>{{ app.name }}</strong>
+                    {% endif %}
+                    <br>
+                    <span style="color: var(--text-muted-color); font-size: 0.9rem;">
+                        Scopes: {{ app.scopes|join(', ') if app.scopes else 'None' }}
+                    </span>
+                    <br>
+                    <span style="color: var(--text-muted-color); font-size: 0.8rem;">
+                        Authorized: {{ app.authorized_at.strftime('%Y-%m-%d') if app.authorized_at else 'Unknown' }}
+                        {% if app.last_used %}
+                        &bull; Last used: {{ app.last_used.strftime('%Y-%m-%d') }}
+                        {% endif %}
+                    </span>
+                </div>
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/applications/{{ app.client_id }}/revoke">
+                    <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        Revoke
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="info" style="margin-top: 1rem;">
+        You haven't authorized any third-party applications yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

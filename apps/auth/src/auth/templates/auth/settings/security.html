@@ -1,0 +1,125 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Security{% endblock %}
+
+{% block content %}
+<div class="settings-card">
+    <h1>Security</h1>
+
+    <div class="section-title">Two-Factor Authentication (2FA)</div>
+    <p class="section-description">
+        Add an extra layer of security to your account by requiring a verification code in addition to your password.
+    </p>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+            <strong>Authenticator App (TOTP)</strong>
+            <br>
+            <span class="status-badge {% if totp_enabled %}status-enabled{% else %}status-disabled{% endif %}">
+                {% if totp_enabled %}Enabled{% else %}Disabled{% endif %}
+            </span>
+        </div>
+        <div>
+            {% if totp_enabled %}
+            <a href="{{ tenant_prefix }}/auth/mfa/setup" class="btn btn-secondary">Reconfigure</a>
+            {% else %}
+            <a href="{{ tenant_prefix }}/auth/mfa/setup" class="btn btn-success">Enable</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if totp_enabled %}
+    <div class="divider"></div>
+
+    <div class="section-title">Backup Codes</div>
+    <p class="section-description">
+        Backup codes can be used to access your account if you lose access to your authenticator app.
+    </p>
+
+    <div style="margin-bottom: 1rem;">
+        {% if backup_codes_remaining is not none %}
+        <strong>{{ backup_codes_remaining }}</strong> of <strong>{{ backup_codes_total }}</strong> codes remaining
+        {% else %}
+        No backup codes generated
+        {% endif %}
+    </div>
+
+    <form class="mfa-action" id="regenerate-form" data-url="{{ tenant_prefix }}/auth/mfa/backup-codes/regenerate">
+        <div class="form-group">
+            <label for="regenerate-code">Code from your authenticator app</label>
+            <input type="text" id="regenerate-code" name="code" required pattern="[0-9]{6}" maxlength="6"
+                   autocomplete="one-time-code" inputmode="numeric" placeholder="000000">
+        </div>
+        <button type="submit" class="btn btn-secondary">Regenerate backup codes</button>
+        <div class="mfa-feedback" role="status"></div>
+        <ul class="mfa-backup-codes" id="new-backup-codes"></ul>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Disable 2FA</div>
+    <p class="section-description">
+        If you want to disable two-factor authentication, you will need to enter a verification code from your authenticator app.
+    </p>
+    <form class="mfa-action" id="disable-form" data-url="{{ tenant_prefix }}/auth/mfa/totp/disable">
+        <div class="form-group">
+            <label for="disable-code">Code from your authenticator app</label>
+            <input type="text" id="disable-code" name="code" required pattern="[0-9]{6}" maxlength="6"
+                   autocomplete="one-time-code" inputmode="numeric" placeholder="000000">
+        </div>
+        <button type="submit" class="btn btn-danger">Disable 2FA</button>
+        <div class="mfa-feedback" role="status"></div>
+    </form>
+    {% endif %}
+</div>
+{% if totp_enabled %}
+<script>
+// The MFA endpoints take JSON, so the two forms above are sent with fetch.
+document.querySelectorAll('.mfa-action').forEach(function(form) {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const feedback = form.querySelector('.mfa-feedback');
+        const button = form.querySelector('button[type="submit"]');
+        feedback.textContent = '';
+        button.disabled = true;
+
+        try {
+            const response = await fetch(form.dataset.url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: form.querySelector('input[name="code"]').value}),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                feedback.textContent = data.detail || 'The code was not accepted';
+                feedback.className = 'mfa-feedback error';
+                button.disabled = false;
+                return;
+            }
+
+            if (data.backup_codes) {
+                const list = form.querySelector('.mfa-backup-codes');
+                list.replaceChildren();
+                for (const backupCode of data.backup_codes) {
+                    const item = document.createElement('li');
+                    item.textContent = backupCode;
+                    list.appendChild(item);
+                }
+                feedback.textContent = 'New backup codes generated. The previous ones no longer work.';
+                feedback.className = 'mfa-feedback success';
+                button.disabled = false;
+            } else {
+                window.location.reload();
+            }
+        } catch (error) {
+            feedback.textContent = 'The request failed. Please try again.';
+            feedback.className = 'mfa-feedback error';
+            button.disabled = false;
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

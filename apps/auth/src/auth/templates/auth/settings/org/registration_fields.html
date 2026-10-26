@@ -1,0 +1,139 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Registration Fields - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h1 style="margin: 0;">Registration Fields</h1>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">{{ tenant.display_name }}</p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Back</a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        Configure which groups and fields are visible on the registration form.
+        Unchecked items will be hidden. Email and password are always required.
+    </p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/registration-fields">
+        <fieldset{% if not can['settings:write'] %} disabled{% endif %} style="border: 0; margin: 0; padding: 0; min-width: 0;">
+        <!-- Profile Section -->
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Profile Information</h3>
+
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.75rem;">
+                <input type="checkbox" name="profile" value="true" {{ 'checked' if fields.get('profile', true) }}>
+                <div>
+                    <strong>Profile section</strong>
+                    <div class="text-muted" style="font-size: 0.8rem;">Show the entire profile information fieldset</div>
+                </div>
+            </label>
+
+            <div style="margin-left: 2rem; display: grid; gap: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="nickname" value="true" {{ 'checked' if fields.get('nickname', true) }}>
+                    <strong>Nickname</strong> <span class="text-muted" style="font-size: 0.8rem;">(required)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="firstname" value="true" {{ 'checked' if fields.get('firstname', true) }}>
+                    <strong>First Name</strong> <span class="text-muted" style="font-size: 0.8rem;">(required)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="middle_name" value="true" {{ 'checked' if fields.get('middle_name', true) }}>
+                    <strong>Middle Name</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="lastname" value="true" {{ 'checked' if fields.get('lastname', true) }}>
+                    <strong>Last Name</strong> <span class="text-muted" style="font-size: 0.8rem;">(required)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="preferred_username" value="true" {{ 'checked' if fields.get('preferred_username', true) }}>
+                    <strong>Preferred Username</strong>
+                </label>
+            </div>
+        </div>
+
+        <!-- Optional Sections -->
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Optional Sections</h3>
+
+            <!-- Personal Details -->
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.5rem;">
+                <input type="checkbox" name="personal_details" value="true" {{ 'checked' if fields.get('personal_details', true) }}>
+                <div>
+                    <strong>Personal Details</strong>
+                    <div class="text-muted" style="font-size: 0.8rem;">Gender, birthdate, language, timezone, phone</div>
+                </div>
+            </label>
+            <div style="margin-left: 2rem; margin-bottom: 1rem; display: grid; gap: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="gender" value="true" {{ 'checked' if fields.get('gender', true) }}>
+                    <strong>Gender</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="birthdate" value="true" {{ 'checked' if fields.get('birthdate', true) }}>
+                    <strong>Birthdate</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="locale" value="true" {{ 'checked' if fields.get('locale', true) }}>
+                    <strong>Language</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="zoneinfo" value="true" {{ 'checked' if fields.get('zoneinfo', true) }}>
+                    <strong>Timezone</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="phone_number" value="true" {{ 'checked' if fields.get('phone_number', true) }}>
+                    <strong>Phone Number</strong>
+                </label>
+            </div>
+
+            <!-- Address -->
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.75rem;">
+                <input type="checkbox" name="address" value="true" {{ 'checked' if fields.get('address', true) }}>
+                <div>
+                    <strong>Address</strong>
+                    <div class="text-muted" style="font-size: 0.8rem;">Street, city, region, postal code, country</div>
+                </div>
+            </label>
+
+            <!-- Profile Picture -->
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.75rem;">
+                <input type="checkbox" name="picture" value="true" {{ 'checked' if fields.get('picture', true) }}>
+                <div>
+                    <strong>Profile Picture</strong>
+                    <div class="text-muted" style="font-size: 0.8rem;">Avatar upload and picture URL</div>
+                </div>
+            </label>
+
+            <!-- Web Presence -->
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer;">
+                <input type="checkbox" name="web_presence" value="true" {{ 'checked' if fields.get('web_presence', true) }}>
+                <div>
+                    <strong>Web Presence</strong>
+                    <div class="text-muted" style="font-size: 0.8rem;">Website and profile URL</div>
+                </div>
+            </label>
+        </div>
+
+        </fieldset>
+
+        <div style="display: flex; gap: 0.75rem;">
+            {% if can['settings:write'] %}
+            <button type="submit">Save Configuration</button>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">{% if can['settings:write'] %}Cancel{% else %}Back{% endif %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

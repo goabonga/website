@@ -1,0 +1,219 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Templates - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">Templates</h1>
+            <p style="color: var(--text-muted-color); margin: 0.25rem 0 0 0;">
+                Customize Jinja2 templates for login, registration, consent, and other pages.
+            </p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+            &larr; Back
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+        Click on a template to customize it. Templates marked as "Custom" have been modified for this organization.
+    </p>
+
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th style="text-align: left; padding: 0.75rem; font-weight: 500; font-size: 0.85rem; color: var(--text-muted-color); text-transform: uppercase; letter-spacing: 0.5px;">Template Name</th>
+                    <th style="text-align: left; padding: 0.75rem; font-weight: 500; font-size: 0.85rem; color: var(--text-muted-color); text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
+                    <th style="text-align: left; padding: 0.75rem; font-weight: 500; font-size: 0.85rem; color: var(--text-muted-color); text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                    {% if can['templates:write'] %}
+                    <th style="text-align: right; padding: 0.75rem; font-weight: 500; font-size: 0.85rem; color: var(--text-muted-color); text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for tpl_name in customizable_templates %}
+                {% set custom_tpl = namespace(found=none) %}
+                {% for t in tenant_templates %}
+                    {% if t.template_name == tpl_name %}
+                        {% set custom_tpl.found = t %}
+                    {% endif %}
+                {% endfor %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.75rem;">
+                        <span style="font-family: monospace; font-size: 0.9rem; color: var(--text-color);">{{ tpl_name }}</span>
+                    </td>
+                    <td style="padding: 0.75rem;">
+                        {% if custom_tpl.found %}
+                            {% if custom_tpl.found.is_active %}
+                            <span style="background: rgba(0, 255, 0, 0.15); color: var(--success-color); padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">Custom</span>
+                            {% else %}
+                            <span style="background: rgba(255, 152, 0, 0.15); color: #ff9800; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">Custom (Disabled)</span>
+                            {% endif %}
+                        {% else %}
+                        <span style="background: var(--border-color); color: var(--text-muted-color); padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">Default</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; color: var(--text-muted-color); font-size: 0.85rem;">
+                        {% if tpl_name == 'base.html' %}
+                        Base template (layout, head, footer)
+                        {% elif tpl_name == 'auth/login.html' %}
+                        Login page
+                        {% elif tpl_name == 'auth/register.html' %}
+                        Registration page
+                        {% elif tpl_name == 'auth/forgot_password.html' %}
+                        Password reset request page
+                        {% elif tpl_name == 'auth/reset_password.html' %}
+                        Password reset form
+                        {% elif tpl_name == 'auth/verify_email.html' %}
+                        Email verification page
+                        {% elif tpl_name == 'auth/mfa_setup.html' %}
+                        MFA setup page
+                        {% elif tpl_name == 'auth/mfa_email.html' %}
+                        MFA email code page
+                        {% elif tpl_name == 'oauth2/consent.html' %}
+                        OAuth consent screen
+                        {% elif tpl_name == 'oauth2/device.html' %}
+                        Device flow code entry
+                        {% elif tpl_name == 'oauth2/device_consent.html' %}
+                        Device flow consent screen
+                        {% elif tpl_name == 'oauth2/device_complete.html' %}
+                        Device flow completion page
+                        {% elif tpl_name == 'oauth2/error.html' %}
+                        OAuth error page
+                        {% elif tpl_name == 'emails/mjml/password_reset.mjml' %}
+                        Password reset email (MJML)
+                        {% elif tpl_name == 'emails/mjml/email_verification.mjml' %}
+                        Email verification email (MJML)
+                        {% elif tpl_name == 'emails/mjml/mfa_code.mjml' %}
+                        MFA verification code email (MJML)
+                        {% elif tpl_name == 'auth/settings/base.html' %}
+                        Settings layout (sidebar, navigation)
+                        {% elif tpl_name == 'auth/settings/profile.html' %}
+                        Profile settings page
+                        {% elif tpl_name == 'auth/settings/password.html' %}
+                        Password change page
+                        {% elif tpl_name == 'auth/settings/security.html' %}
+                        Security settings (MFA)
+                        {% elif tpl_name == 'auth/settings/sessions.html' %}
+                        Active sessions page
+                        {% elif tpl_name == 'auth/settings/applications.html' %}
+                        Connected applications page
+                        {% elif tpl_name == 'auth/settings/emails.html' %}
+                        Email addresses management page
+                        {% elif tpl_name == 'auth/settings/tokens.html' %}
+                        Personal access tokens page
+                        {% elif tpl_name == 'auth/settings/tenants.html' %}
+                        Organisations membership page
+                        {% else %}
+                        {{ custom_tpl.found.description if custom_tpl.found and custom_tpl.found.description else '-' }}
+                        {% endif %}
+                    </td>
+                    {% if can['templates:write'] %}
+                    <td style="padding: 0.75rem; text-align: right;">
+                        <div style="display: flex; gap: 0.25rem; justify-content: flex-end; flex-wrap: wrap;">
+                            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates/{{ tpl_name }}/edit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                {% if custom_tpl.found %}Edit{% else %}Customize{% endif %}
+                            </a>
+                            {% if custom_tpl.found %}
+                            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates/{{ tpl_name }}/toggle" style="display: inline;">
+                                {% if custom_tpl.found.is_active %}
+                                <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; background: rgba(255, 152, 0, 0.15); color: #ff9800; border-color: rgba(255, 152, 0, 0.3);">Disable</button>
+                                {% else %}
+                                <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; background: rgba(0, 255, 0, 0.15); color: var(--success-color); border-color: rgba(0, 255, 0, 0.3);">Enable</button>
+                                {% endif %}
+                            </form>
+                            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates/{{ tpl_name }}/delete" style="display: inline;">
+                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="return confirm('Delete this custom template? It will revert to the default.')">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="settings-card settings-card-wide">
+    <div class="section-title">Template Variables</div>
+    <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+        These variables are available in all templates:
+    </p>
+
+    <div style="background: var(--background-color); border-radius: 8px; padding: 1rem; overflow-x: auto; border: 1px solid var(--border-color);">
+        <pre style="margin: 0; font-size: 0.85rem; color: var(--text-muted-color); line-height: 1.6;"><code>{% raw %}{# Branding Variables #}
+{{ branding.tenant_id }}        {# Tenant UUID #}
+{{ branding.tenant_slug }}      {# Tenant slug #}
+{{ branding.display_name }}     {# Tenant display name #}
+{{ branding.logo_url }}         {# Logo URL #}
+{{ branding.logo_dark_url }}    {# Dark mode logo URL #}
+{{ branding.favicon_url }}      {# Favicon URL #}
+{{ branding.primary_color }}    {# Primary color (hex) #}
+{{ branding.secondary_color }}  {# Secondary color (hex) #}
+{{ branding.accent_color }}     {# Accent color (hex) #}
+{{ branding.background_color }} {# Background color (hex) #}
+{{ branding.surface_color }}    {# Surface/card color (hex) #}
+{{ branding.text_color }}       {# Text color (hex) #}
+{{ branding.text_muted_color }} {# Muted text color (hex) #}
+{{ branding.error_color }}      {# Error color (hex) #}
+{{ branding.success_color }}    {# Success color (hex) #}
+{{ branding.font_family }}      {# CSS font-family #}
+{{ branding.font_url }}         {# Font import URL #}
+{{ branding.custom_css }}       {# Custom CSS #}
+{{ branding.custom_js }}        {# Custom JavaScript #}
+{{ branding.show_powered_by }}  {# Show powered by badge #}
+
+{# Helper Methods #}
+{{ branding.to_css_variables() | safe }}  {# Generate CSS :root variables #}
+{{ branding.get_font_import() | safe }}   {# Generate @import for fonts #}{% endraw %}</code></pre>
+    </div>
+</div>
+
+<div class="settings-card settings-card-wide">
+    <div class="section-title">Email Template Variables (MJML)</div>
+    <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+        Email templates use <code style="font-size: 0.8rem;">%variable%</code> placeholders instead of Jinja2 syntax. These are converted automatically during rendering.
+    </p>
+
+    <div style="background: var(--background-color); border-radius: 8px; padding: 1rem; overflow-x: auto; border: 1px solid var(--border-color);">
+        <pre style="margin: 0; font-size: 0.85rem; color: var(--text-muted-color); line-height: 1.6;"><code>{# Branding Colors (available in all email templates) #}
+%display_name%         {# Tenant display name #}
+%logo_url%             {# Logo URL #}
+%primary_color%        {# Primary color (hex) #}
+%secondary_color%      {# Secondary color (hex) #}
+%accent_color%         {# Accent color (hex) #}
+%background_color%     {# Background color (hex) #}
+%surface_color%        {# Surface/card color (hex) #}
+%text_color%           {# Text color (hex) #}
+%text_muted_color%     {# Muted text color (hex) #}
+%error_color%          {# Error color (hex) #}
+%success_color%        {# Success color (hex) #}
+%border_color%         {# Border color (hex) #}
+%warning_color%        {# Warning color (hex) #}
+%info_color%           {# Info color (hex) #}
+%font_family%          {# CSS font-family #}
+%year%                 {# Current year #}
+
+{# Password Reset Email #}
+%reset_url%                       {# Password reset link #}
+%password_reset_expiry_hours%     {# Link expiry in hours #}
+
+{# Email Verification Email #}
+%code%                            {# Verification code #}
+%verify_url%                      {# Verification link #}
+%verification_code_expiry_hours%  {# Code expiry in hours #}</code></pre>
+    </div>
+</div>
+{% endblock %}

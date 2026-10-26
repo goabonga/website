@@ -1,0 +1,215 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Trust Policy - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 800px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">Trust Policy</h1>
+            <p style="color: var(--text-muted-color); margin: 0.25rem 0 0 0;">Control who can sign in to this organization</p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+            &larr; Back
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+</div>
+
+<!-- Trust Mode Section -->
+<div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+    <div class="section-title">Trust Mode</div>
+    <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+        Define how this organization handles users from other tenants.
+    </p>
+
+    {% if can['trust:write'] %}
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/mode">
+        <div class="form-group">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'none' %}var(--primary-color){% else %}transparent{% endif %};">
+                    <input type="radio" name="trust_mode" value="none" {% if trust_mode == 'none' %}checked{% endif %} style="margin-top: 0.2rem;">
+                    <div>
+                        <strong style="color: var(--text-color);">Strict (None)</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted-color);">
+                            Only users who registered on this organization can sign in. Most restrictive.
+                        </p>
+                    </div>
+                </label>
+
+                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'members_only' %}var(--primary-color){% else %}transparent{% endif %};">
+                    <input type="radio" name="trust_mode" value="members_only" {% if trust_mode == 'members_only' %}checked{% endif %} style="margin-top: 0.2rem;">
+                    <div>
+                        <strong style="color: var(--text-color);">Members Only</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted-color);">
+                            Only users who are members of this organization can sign in, regardless of where they registered.
+                        </p>
+                    </div>
+                </label>
+
+                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'specific' %}var(--primary-color){% else %}transparent{% endif %};">
+                    <input type="radio" name="trust_mode" value="specific" {% if trust_mode == 'specific' %}checked{% endif %} style="margin-top: 0.2rem;">
+                    <div>
+                        <strong style="color: var(--text-color);">Specific Tenants</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted-color);">
+                            Only users from specific trusted tenants (or members) can sign in. Configure trusted sources below.
+                        </p>
+                    </div>
+                </label>
+
+                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'all' %}var(--primary-color){% else %}transparent{% endif %};">
+                    <input type="radio" name="trust_mode" value="all" {% if trust_mode == 'all' %}checked{% endif %} style="margin-top: 0.2rem;">
+                    <div>
+                        <strong style="color: var(--text-color);">Open (All)</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted-color);">
+                            Any authenticated user can sign in to this organization. Least restrictive.
+                        </p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Trust Mode</button>
+    </form>
+    {% else %}
+    <p>Current mode: <strong>{{ trust_mode }}</strong></p>
+    {% endif %}
+</div>
+
+<!-- Trusted Sources Section (visible when mode is 'specific') -->
+<div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;" id="trusted-sources-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <div class="section-title" style="margin-bottom: 0.25rem;">Trusted Sources</div>
+            <p style="color: var(--text-muted-color); font-size: 0.9rem; margin: 0;">
+                When using "Specific Tenants" mode, only users from these sources can sign in.
+            </p>
+        </div>
+    </div>
+
+    {% if trust_mode != 'specific' %}
+    <div style="padding: 1.5rem; background: var(--background-color); border-radius: 8px; text-align: center; color: var(--text-muted-color);">
+        <p style="margin: 0;">Select "Specific Tenants" trust mode to configure trusted sources.</p>
+    </div>
+    {% else %}
+
+    <!-- Current Trusted Sources -->
+    {% if trusted_sources %}
+    <div style="margin-bottom: 1.5rem;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Description</th>
+                    {% if can['trust:write'] %}
+                    <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for source in trusted_sources %}
+                <tr>
+                    <td>
+                        {% if source.is_platform %}
+                        <span class="badge badge-success">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">Main domain users</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">{{ source.trusted_tenant_slug }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size: 0.85rem;">{{ source.description or '-' }}</td>
+                    {% if can['trust:write'] %}
+                    <td>
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/remove-source/{{ source.id }}" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Remove this trusted source?')">Remove</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 1.5rem; background: var(--background-color); border-radius: 8px; text-align: center; color: var(--text-muted-color); margin-bottom: 1.5rem;">
+        <p style="margin: 0;">No trusted sources configured. Add tenants below to allow their users to sign in.</p>
+    </div>
+    {% endif %}
+
+    {% if can['trust:write'] %}
+    <!-- Add Trusted Source -->
+    <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <h3 style="font-size: 0.95rem; margin-bottom: 1rem;">Add Trusted Source</h3>
+
+        {% if available_tenants %}
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/add-source">
+            <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.85rem;">Select Organization</label>
+                    <select name="trusted_tenant_id" required>
+                        <option value="">-- Choose an organization --</option>
+                        {% for t in available_tenants %}
+                        <option value="{{ t.id }}">
+                            {% if t.is_platform %}
+                            {{ t.display_name }} (Main domain)
+                            {% else %}
+                            {{ t.display_name }} ({{ t.slug }})
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.85rem;">Description (optional)</label>
+                    <input type="text" name="description" placeholder="e.g., Partner organization" maxlength="255">
+                </div>
+                <button type="submit" class="btn btn-success btn-sm" style="margin-bottom: 0;">Add</button>
+            </div>
+        </form>
+        {% else %}
+        <p style="color: var(--text-muted-color); font-size: 0.9rem;">
+            All available organizations have been added as trusted sources.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<!-- Help Section -->
+<div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+    <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-color);">About Trust Policies</h2>
+    <p style="color: var(--text-muted-color); line-height: 1.6; font-size: 0.9rem;">
+        Trust policies control which users can sign in to your organization. This is useful for multi-tenant
+        environments where you want to restrict access based on where users registered.
+    </p>
+    <ul style="color: var(--text-muted-color); line-height: 1.8; font-size: 0.9rem; margin-top: 0.5rem; padding-left: 1.5rem;">
+        <li><strong style="color: var(--text-color);">Strict (None)</strong>: Only users who created their account on this specific organization can sign in</li>
+        <li><strong style="color: var(--text-color);">Members Only</strong>: Only organization members can sign in, regardless of registration origin</li>
+        <li><strong style="color: var(--text-color);">Specific Tenants</strong>: Users from selected trusted organizations (or members) can sign in</li>
+        <li><strong style="color: var(--text-color);">Open (All)</strong>: Any authenticated user in the system can sign in</li>
+    </ul>
+    <p style="color: var(--text-muted-color); line-height: 1.6; font-size: 0.9rem; margin-top: 1rem;">
+        <strong style="color: var(--warning-color);">Note:</strong> Changing the trust mode may immediately affect who can access your organization.
+    </p>
+</div>
+
+<script>
+// Highlight selected radio option
+document.querySelectorAll('input[name="trust_mode"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('input[name="trust_mode"]').forEach(function(r) {
+            r.closest('label').style.borderColor = r.checked ? 'var(--primary-color)' : 'transparent';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Sessions{% endblock %}
+
+{% block content %}
+<div class="settings-card">
+    <h1>Active Sessions</h1>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p class="section-description">
+        These are the devices that are currently logged into your account. You can revoke any session that you don't recognize.
+    </p>
+
+    {% if sessions %}
+    <div style="margin-top: 1.5rem;">
+        {% for session in sessions %}
+        <div style="border: 1px solid {% if session.id|string == current_session_id %}var(--primary-color){% else %}var(--border-color){% endif %}; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: var(--background-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <strong>{{ session.user_agent[:60] + '...' if session.user_agent and session.user_agent|length > 60 else session.user_agent or 'Unknown Device' }}</strong>
+                    {% if session.id|string == current_session_id %}
+                    <span class="status-badge status-enabled" style="margin-left: 0.5rem;">Current</span>
+                    {% endif %}
+                    <br>
+                    <span style="color: var(--text-muted-color); font-size: 0.9rem;">
+                        IP: {{ session.ip_address or 'Unknown' }}
+                    </span>
+                    <br>
+                    <span style="color: var(--text-muted-color); font-size: 0.8rem;">
+                        Created: {{ session.created_at.strftime('%Y-%m-%d %H:%M UTC') if session.created_at else 'Unknown' }}
+                    </span>
+                </div>
+                {% if session.id|string != current_session_id %}
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/sessions/{{ session.id }}/revoke">
+                    <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        Revoke
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if sessions|length > 1 %}
+    <div class="divider"></div>
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/sessions/revoke-all">
+        <button type="submit" class="btn btn-danger">
+            Revoke all other sessions
+        </button>
+    </form>
+    {% endif %}
+
+    {% else %}
+    <p style="color: var(--text-muted-color); margin-top: 1rem;">
+        No active sessions found.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

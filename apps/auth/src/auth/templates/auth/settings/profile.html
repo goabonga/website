@@ -1,0 +1,314 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="settings-card">
+    <h1>Profile</h1>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    {% set pf = pf|default({}) %}
+
+    {% if pf.get('avatar', true) %}
+    <div class="form-group" style="margin-bottom: 2rem;">
+        <label>Profile picture</label>
+        <div style="display: flex; align-items: flex-start; gap: 1.5rem; margin-top: 0.5rem;">
+            <div style="flex-shrink: 0;">
+                {% if profile and profile.picture_url %}
+                <img src="{{ profile.picture_url }}" alt="Profile picture" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+                {% else %}
+                <div style="width: 100px; height: 100px; border-radius: 50%; background: var(--surface-color); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--text-muted-color);">
+                    {{ (profile.nickname or profile.given_name or email or '?')[0]|upper if profile else '?' }}
+                </div>
+                {% endif %}
+            </div>
+            <div style="flex: 1;">
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/profile/avatar" enctype="multipart/form-data" style="margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <input type="file" name="avatar" id="avatar" accept="image/jpeg,image/png,image/gif,image/webp" style="flex: 1; min-width: 200px;">
+                        <button type="submit" style="white-space: nowrap;">Upload</button>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">
+                        Max 5MB. Supported: JPEG, PNG, GIF, WebP.
+                    </p>
+                </form>
+                <p style="font-size: 0.8rem; color: var(--text-muted-color);">
+                    Or enter a URL below to use an external image.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/profile">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ email or '' }}" disabled>
+            <p style="font-size: 0.8rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Email cannot be changed here.
+            </p>
+        </div>
+
+        <!-- Identity Section -->
+        {% if pf.get('identity', true) %}
+        <fieldset class="profile-fieldset">
+            <legend>Identity</legend>
+
+            {% if pf.get('nickname', true) %}
+            <div class="form-group">
+                <label for="nickname">Display name</label>
+                <input type="text" id="nickname" name="nickname" value="{{ profile.nickname or '' if profile else '' }}" placeholder="How you want to be called">
+            </div>
+            {% endif %}
+
+            {% if pf.get('preferred_username', true) %}
+            <div class="form-group">
+                <label for="preferred_username">Preferred username</label>
+                <input type="text" id="preferred_username" name="preferred_username" value="{{ profile.preferred_username or '' if profile else '' }}" placeholder="username">
+            </div>
+            {% endif %}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                {% if pf.get('given_name', true) %}
+                <div class="form-group">
+                    <label for="given_name">First name</label>
+                    <input type="text" id="given_name" name="given_name" value="{{ profile.given_name or '' if profile else '' }}">
+                </div>
+                {% endif %}
+
+                {% if pf.get('middle_name', true) %}
+                <div class="form-group">
+                    <label for="middle_name">Middle name</label>
+                    <input type="text" id="middle_name" name="middle_name" value="{{ profile.middle_name or '' if profile else '' }}">
+                </div>
+                {% endif %}
+
+                {% if pf.get('family_name', true) %}
+                <div class="form-group">
+                    <label for="family_name">Last name</label>
+                    <input type="text" id="family_name" name="family_name" value="{{ profile.family_name or '' if profile else '' }}">
+                </div>
+                {% endif %}
+            </div>
+        </fieldset>
+        {% endif %}
+
+        <!-- Personal Information Section (Collapsible) -->
+        {% if pf.get('personal_info', true) %}
+        <details class="optional-section">
+            <summary>Personal Information (Optional)</summary>
+            <div class="section-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    {% if pf.get('gender', true) %}
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender" name="gender">
+                            <option value="">-- Select --</option>
+                            <option value="male" {% if profile and profile.gender == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if profile and profile.gender == 'female' %}selected{% endif %}>Female</option>
+                            <option value="other" {% if profile and profile.gender == 'other' %}selected{% endif %}>Other</option>
+                            <option value="prefer_not_to_say" {% if profile and profile.gender == 'prefer_not_to_say' %}selected{% endif %}>Prefer not to say</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    {% if pf.get('birthdate', true) %}
+                    <div class="form-group">
+                        <label for="birthdate">Birthdate</label>
+                        <input type="date" id="birthdate" name="birthdate" value="{{ profile.birthdate or '' if profile else '' }}">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    {% if pf.get('locale', true) %}
+                    <div class="form-group">
+                        <label for="locale">Locale</label>
+                        <input type="text" id="locale" name="locale" value="{{ profile.locale or '' if profile else '' }}" placeholder="en-US, fr-FR, etc.">
+                    </div>
+                    {% endif %}
+
+                    {% if pf.get('zoneinfo', true) %}
+                    <div class="form-group">
+                        <label for="zoneinfo">Timezone</label>
+                        <input type="text" id="zoneinfo" name="zoneinfo" value="{{ profile.zoneinfo or '' if profile else '' }}" placeholder="Europe/Paris, America/New_York, etc.">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+        {% endif %}
+
+        <!-- Contact Section (Collapsible) -->
+        {% if pf.get('contact', true) %}
+        <details class="optional-section">
+            <summary>Contact (Optional)</summary>
+            <div class="section-content">
+                {% if pf.get('phone_number', true) %}
+                <div class="form-group">
+                    <label for="phone_number">Phone number</label>
+                    <input type="tel" id="phone_number" name="phone_number" value="{{ profile.phone_number or '' if profile else '' }}" placeholder="+33 6 12 34 56 78">
+                </div>
+                {% endif %}
+
+                {% if pf.get('website', true) %}
+                <div class="form-group">
+                    <label for="website">Website</label>
+                    <input type="url" id="website" name="website" value="{{ profile.website or '' if profile else '' }}" placeholder="https://yourwebsite.com">
+                </div>
+                {% endif %}
+
+                {% if pf.get('profile_url', true) %}
+                <div class="form-group">
+                    <label for="profile_url">Profile URL</label>
+                    <input type="url" id="profile_url" name="profile_url" value="{{ profile.profile_url or '' if profile else '' }}" placeholder="https://linkedin.com/in/yourprofile">
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% endif %}
+
+        <!-- Picture URL Section (Collapsible) -->
+        {% if pf.get('picture_url', true) %}
+        <details class="optional-section">
+            <summary>Picture URL (Optional)</summary>
+            <div class="section-content">
+                <div class="form-group">
+                    <label for="picture_url">Profile picture URL</label>
+                    <input type="text" id="picture_url" name="picture_url" value="{{ profile.picture_url or '' if profile else '' }}" placeholder="https://example.com/avatar.jpg or /uploads/...">
+                    <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                        Use this field if you prefer to link to an external image instead of uploading. Supports both full URLs and relative paths.
+                    </p>
+                </div>
+            </div>
+        </details>
+        {% endif %}
+
+        <!-- Address Section (Collapsible) -->
+        {% if pf.get('address', true) %}
+        <details class="optional-section">
+            <summary>Address (Optional)</summary>
+            <div class="section-content">
+                <div class="form-group">
+                    <label for="address_street">Street address</label>
+                    <input type="text" id="address_street" name="address_street" value="{{ profile.address_street or '' if profile else '' }}" placeholder="123 Main Street">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="address_locality">City</label>
+                        <input type="text" id="address_locality" name="address_locality" value="{{ profile.address_locality or '' if profile else '' }}" placeholder="Paris">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address_region">Region / State</label>
+                        <input type="text" id="address_region" name="address_region" value="{{ profile.address_region or '' if profile else '' }}" placeholder="Île-de-France">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="address_postal_code">Postal code</label>
+                        <input type="text" id="address_postal_code" name="address_postal_code" value="{{ profile.address_postal_code or '' if profile else '' }}" placeholder="75001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address_country">Country</label>
+                        <input type="text" id="address_country" name="address_country" value="{{ profile.address_country or '' if profile else '' }}" placeholder="France">
+                    </div>
+                </div>
+            </div>
+        </details>
+        {% endif %}
+
+        <button type="submit" style="margin-top: 1.5rem;">Save changes</button>
+    </form>
+</div>
+
+{% if pf.get('roles_permissions', true) %}
+<div class="settings-card">
+    <h2>Roles & Permissions</h2>
+
+    {% if user_roles %}
+    <div style="margin-top: 1rem;">
+        <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Your Roles</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+            {% for role in user_roles %}
+            <span class="badge {% if role.is_system %}badge-warning{% else %}badge-info{% endif %}" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;" title="{{ role.description or '' }}">
+                {{ role.name }}
+            </span>
+            {% endfor %}
+        </div>
+
+        <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Available Scopes</h3>
+        {% if '*' in user_scopes %}
+        <div class="warning" style="margin-bottom: 1rem;">
+            <strong>Full Access</strong> - You have the wildcard scope (*) granting all permissions.
+        </div>
+        {% endif %}
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            {% for scope in user_scopes %}
+            <span class="badge {% if scope == '*' %}badge-danger{% elif scope.endswith(':*') %}badge-warning{% else %}badge-secondary{% endif %}" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">
+                {{ scope }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <p class="text-muted" style="margin-top: 1rem;">No roles assigned to your account.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.profile-fieldset {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.profile-fieldset legend {
+    font-weight: 600;
+    padding: 0 0.5rem;
+    font-size: 1rem;
+}
+
+.optional-section {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+
+.optional-section summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background-color: var(--background-color, #1a1a2e);
+    border-radius: 4px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.optional-section summary:hover {
+    background-color: var(--surface-color, #16213e);
+}
+
+.optional-section[open] summary {
+    border-bottom: 1px solid var(--border-color, #ddd);
+    border-radius: 4px 4px 0 0;
+}
+
+.optional-section .section-content {
+    padding: 1rem 1.5rem;
+}
+</style>
+{% endblock %}

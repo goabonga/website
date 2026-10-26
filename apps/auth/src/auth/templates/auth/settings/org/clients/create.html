@@ -1,0 +1,158 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Create OAuth2 Client - {{ tenant.display_name }}{% endblock %}
+
+{% block head %}
+<style>
+    .scopes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .scope-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.4rem;
+        border-radius: 4px;
+    }
+    .scope-item label {
+        margin: 0;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    .scope-name {
+        font-family: monospace;
+        color: var(--primary-color);
+    }
+    .scope-desc {
+        font-size: 0.75rem;
+        color: var(--text-muted-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">Create OAuth2 Client</h1>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">{{ tenant.display_name }}</p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients" class="btn btn-secondary">Back</a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/create">
+        <div class="form-group">
+            <label for="name">Client Name *</label>
+            <input type="text" name="name" id="name" required style="max-width: 400px;">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" style="max-width: 400px;">
+        </div>
+
+        <div class="form-group">
+            <label for="homepage_url">Homepage URL</label>
+            <input type="url" name="homepage_url" id="homepage_url" style="max-width: 400px;" placeholder="https://myapp.example.com">
+        </div>
+
+        <div class="form-group">
+            <label for="redirect_uris">Redirect URIs</label>
+            <textarea name="redirect_uris" id="redirect_uris" rows="3" style="max-width: 400px;" placeholder="https://myapp.example.com/callback&#10;One URI per line"></textarea>
+            <p style="font-size: 0.8rem; color: var(--text-muted-color);">One URI per line. Required for Authorization Code flow.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="allowed_origins">Allowed CORS Origins</label>
+            <textarea name="allowed_origins" id="allowed_origins" rows="2" style="max-width: 400px;" placeholder="https://myapp.example.com&#10;One origin per line"></textarea>
+        </div>
+
+        <!-- Scopes -->
+        <div class="form-group">
+            <label>Allowed Scopes</label>
+            <p style="font-size: 0.8rem; color: var(--text-muted-color); margin-bottom: 0.75rem;">Select the scopes this client is allowed to request.</p>
+            {% for category_name, resources in scope_groups.items() %}
+            <div style="margin-bottom: 1.25rem;">
+                <div style="font-weight: 600; font-size: 1rem; border-bottom: 1px solid var(--border-color, #0f3460); padding-bottom: 0.4rem; margin-bottom: 0.75rem;">{{ category_name }}</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
+                    {% for resource_name, resource_scopes in resources.items() %}
+                    <div style="border: 1px solid var(--border-color, #0f3460); border-radius: 8px; padding: 0.75rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">{{ resource_name }}</div>
+                        {% for scope_name, description in resource_scopes %}
+                        <div class="scope-item">
+                            <input type="checkbox" name="scope_{{ scope_name }}" value="true" id="scope_{{ scope_name }}"
+                                   {{ 'checked' if scope_name in ['openid', 'profile', 'email'] }}>
+                            <label for="scope_{{ scope_name }}">
+                                <span class="scope-name">{{ scope_name }}</span>
+                                <span class="scope-desc">{{ description }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Grant Types -->
+        <div class="form-group">
+            <label>Grant Types</label>
+            <div style="display: grid; gap: 0.5rem; margin-top: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_authorization_code" value="true" checked> Authorization Code
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_refresh_token" value="true" checked> Refresh Token
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_client_credentials" value="true"> Client Credentials
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="grant_device_code" value="true"> Device Code
+                </label>
+            </div>
+        </div>
+
+        <!-- Security -->
+        <div class="form-group">
+            <label>Security Options</label>
+            <div style="display: grid; gap: 0.5rem; margin-top: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="is_confidential" value="true" checked> Confidential Client (has a secret)
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="require_pkce" value="true"> Require PKCE
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="require_consent" value="true" checked> Require User Consent
+                </label>
+            </div>
+        </div>
+
+        <!-- Token Expiry -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 400px;">
+            <div class="form-group">
+                <label for="access_token_expiry_seconds">Access Token Expiry (s)</label>
+                <input type="number" name="access_token_expiry_seconds" id="access_token_expiry_seconds" placeholder="3600">
+            </div>
+            <div class="form-group">
+                <label for="refresh_token_expiry_seconds">Refresh Token Expiry (s)</label>
+                <input type="number" name="refresh_token_expiry_seconds" id="refresh_token_expiry_seconds" placeholder="2592000">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="submit">Create Client</button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

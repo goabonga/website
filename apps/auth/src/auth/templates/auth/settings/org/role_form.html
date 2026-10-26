@@ -1,0 +1,195 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}{{ form_title }} - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1 style="margin-bottom: 0;">{{ form_title }}</h1>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles" class="btn btn-secondary btn-sm">
+            <span>&larr;</span> Back to Roles
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ form_action }}">
+        <!-- Name (only editable for new roles) -->
+        {% if not role %}
+        <div class="form-group">
+            <label for="role_name">Role Name</label>
+            <input type="text" id="role_name" name="name" class="form-control"
+                   placeholder="e.g., editor, viewer, moderator"
+                   pattern="[a-z0-9_-]+"
+                   title="Lowercase letters, numbers, underscores, and hyphens only"
+                   required>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">
+                Used internally. Lowercase letters, numbers, underscores, and hyphens only.
+            </div>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label>Role Name</label>
+            <input type="text" class="form-control" value="{{ role.name }}" disabled>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">
+                Role names cannot be changed after creation.
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Display Name -->
+        <div class="form-group">
+            <label for="role_display_name">Display Name</label>
+            <input type="text" id="role_display_name" name="display_name" class="form-control"
+                   placeholder="e.g., Content Editor"
+                   value="{{ role.display_name if role else '' }}"
+                   required>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">
+                Human-readable name shown in the UI.
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="role_description">Description</label>
+            <textarea id="role_description" name="description" class="form-control" rows="2"
+                      placeholder="Describe what this role can do...">{{ role.description if role else '' }}</textarea>
+        </div>
+
+        <!-- Default role for new registrants -->
+        {% if role %}
+        <div class="form-group" style="background: var(--background-color); padding: 0.75rem 1rem; border-radius: 6px;">
+            <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; margin: 0;">
+                <input type="checkbox" name="is_default" value="true"
+                       {% if role.is_default %}checked{% endif %}
+                       style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Default role for new registrants</strong>
+                    <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.2rem;">
+                        Users who self-register on this organization, or who sign in for the
+                        first time via an auto-provisioning identity provider, will receive
+                        this role automatically. Only one role per organization can be set
+                        as default — enabling this unsets the previous one.
+                    </div>
+                    {% if "*" in role.scopes %}
+                    <div class="alert-warning" style="margin-top: 0.5rem; font-size: 0.8rem;">
+                        &#9888; This role has the <code>*</code> scope (full access).
+                        Setting it as default would grant every new registrant owner-level
+                        privileges. Proceed only if you are absolutely sure.
+                    </div>
+                    {% endif %}
+                </div>
+            </label>
+        </div>
+        {% endif %}
+
+        <!-- Scopes -->
+        {% if role and role.is_system %}
+        <div class="form-group">
+            <label>Scopes</label>
+            <div class="text-muted" style="margin-bottom: 0.5rem;">
+                System role scopes cannot be modified.
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {% for scope in role.scopes %}
+                <span class="badge badge-success">{{ scope }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label>Scopes</label>
+            <div class="text-muted" style="margin-bottom: 0.5rem;">
+                Select the permissions this role should have.
+            </div>
+
+            <!-- Organization Management Scopes -->
+            {% if available_scopes.tenant %}
+            <div style="margin-bottom: 1rem;">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-primary, #e0e0e0);">
+                    Organization Management
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto; padding: 0.5rem; background: var(--bg-secondary, #1a1a2e); border-radius: 4px;">
+                    {% for scope, description in available_scopes.tenant.items() %}
+                    <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; cursor: pointer; background: var(--bg-primary, #0f0f23); border-radius: 4px;">
+                        <input type="checkbox" name="scopes" value="{{ scope }}"
+                               {% if role and scope in role.scopes %}checked{% endif %}
+                               style="margin-top: 0.2rem;">
+                        <div>
+                            <code style="color: var(--accent-color, #00d9ff); font-size: 0.85rem;">{{ scope }}</code>
+                            <div class="text-muted" style="font-size: 0.7rem;">{{ description }}</div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Application Scopes -->
+            {% if available_scopes.application %}
+            <div>
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-primary, #e0e0e0);">
+                    Application Permissions
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto; padding: 0.5rem; background: var(--bg-secondary, #1a1a2e); border-radius: 4px;">
+                    {% for scope, description in available_scopes.application.items() %}
+                    <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; cursor: pointer; background: var(--bg-primary, #0f0f23); border-radius: 4px;">
+                        <input type="checkbox" name="scopes" value="{{ scope }}"
+                               {% if role and scope in role.scopes %}checked{% endif %}
+                               style="margin-top: 0.2rem;">
+                        <div>
+                            <code style="color: #ff9f43; font-size: 0.85rem;">{{ scope }}</code>
+                            <div class="text-muted" style="font-size: 0.7rem;">{{ description }}</div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                {% if role %}Update Role{% else %}Create Role{% endif %}
+            </button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Quick select helpers
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const checkboxes = form.querySelectorAll('input[name="scopes"]');
+
+    // Add select all / none buttons
+    const scopesLabel = form.querySelector('label[for="scopes"], .form-group label');
+    if (scopesLabel && checkboxes.length > 0) {
+        const btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display: flex; gap: 0.5rem; margin-top: 0.5rem;';
+
+        const selectAll = document.createElement('button');
+        selectAll.type = 'button';
+        selectAll.className = 'btn btn-secondary btn-sm';
+        selectAll.textContent = 'Select All';
+        selectAll.onclick = () => checkboxes.forEach(cb => cb.checked = true);
+
+        const selectNone = document.createElement('button');
+        selectNone.type = 'button';
+        selectNone.className = 'btn btn-secondary btn-sm';
+        selectNone.textContent = 'Select None';
+        selectNone.onclick = () => checkboxes.forEach(cb => cb.checked = false);
+
+        btnContainer.appendChild(selectAll);
+        btnContainer.appendChild(selectNone);
+        scopesLabel.parentNode.insertBefore(btnContainer, scopesLabel.nextSibling);
+    }
+});
+</script>
+{% endblock %}

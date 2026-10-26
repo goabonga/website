@@ -1,0 +1,170 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Organizations{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 800px;">
+    <h1>Organizations</h1>
+    <p style="color: var(--text-muted-color); margin-bottom: 1.5rem;">
+        Manage your organization memberships and connected identity providers.
+    </p>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    {% if memberships %}
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% for m in memberships %}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <!-- Organization Header -->
+            <div style="padding: 1rem 1.25rem; background: var(--background-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-color);">{{ m.tenant_name }}</div>
+                    <div style="color: var(--text-muted-color); font-size: 0.85rem;">
+                        <span style="font-family: monospace;">{{ m.tenant_slug }}</span>
+                        {% if not m.tenant_active %}
+                        <span style="background: rgba(255, 68, 68, 0.15); color: var(--error-color); padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; margin-left: 0.5rem;">Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    {% if m.role == 'owner' %}
+                    <span class="badge badge-warning">{{ m.role_display_name or 'Owner' }}</span>
+                    {% elif m.role == 'admin' %}
+                    <span class="badge badge-info">{{ m.role_display_name or 'Admin' }}</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ m.role_display_name or 'Member' }}</span>
+                    {% endif %}
+                    {% if m.can_manage %}
+                    <a href="{{ tenant_prefix }}/auth/settings/org/{{ m.tenant_id }}" class="btn btn-primary btn-sm">Manage</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Organization Body -->
+            <div style="padding: 1.25rem;">
+                {% if m.joined_at %}
+                <p style="color: var(--text-muted-color); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Joined {{ m.joined_at[:10] }}
+                </p>
+                {% endif %}
+
+                <!-- Linked Identity Providers -->
+                {% if m.linked_idps %}
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="font-size: 0.9rem; color: var(--text-color); margin-bottom: 0.75rem;">Connected Identity Providers</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        {% for idp in m.linked_idps %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--background-color); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div>
+                                <span style="font-weight: 500; color: var(--text-color);">{{ idp.name }}</span>
+                                <span style="color: var(--text-muted-color); font-size: 0.8rem; margin-left: 0.5rem;">
+                                    {% if idp.provider_type == 'google' %}
+                                    (Google)
+                                    {% elif idp.provider_type == 'github' %}
+                                    (GitHub)
+                                    {% elif idp.provider_type == 'microsoft' %}
+                                    (Microsoft)
+                                    {% else %}
+                                    ({{ idp.provider_type|upper }})
+                                    {% endif %}
+                                </span>
+                                {% if idp.external_email %}
+                                <div style="color: var(--text-muted-color); font-size: 0.8rem;">{{ idp.external_email }}</div>
+                                {% endif %}
+                            </div>
+                            <form method="post" action="{{ tenant_prefix }}/auth/settings/organisations/{{ m.tenant_id }}/unlink-idp/{{ idp.id }}" style="margin: 0;">
+                                <button type="submit" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;" onclick="return confirm('Unlink this identity provider? You will need to re-link it to sign in with this provider.')">
+                                    Unlink
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Available Identity Providers to Link -->
+                {% if m.available_idps %}
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="font-size: 0.9rem; color: var(--text-color); margin-bottom: 0.75rem;">Link Additional Providers</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for idp in m.available_idps %}
+                        <a href="/t/{{ m.tenant_slug }}/federation/{{ idp.id }}/authorize?redirect_uri={{ (tenant_prefix ~ '/auth/settings/organisations')|urlencode }}" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            {% if idp.provider_type == 'google' %}
+                            <span style="color: var(--info-color);">G</span>
+                            {% elif idp.provider_type == 'github' %}
+                            <span>GH</span>
+                            {% elif idp.provider_type == 'microsoft' %}
+                            <span style="color: var(--info-color);">M</span>
+                            {% else %}
+                            <span>+</span>
+                            {% endif %}
+                            {{ idp.button_text or 'Link ' + idp.name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Leave Organization -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+                    <form method="post" action="{{ tenant_prefix }}/auth/settings/organisations/{{ m.tenant_id }}/leave" style="margin: 0;">
+                        <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="return confirm('Leave this organization? You will lose access to all resources associated with {{ m.tenant_name }}.')">
+                            Leave Organization
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted-color);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">&#127970;</div>
+        <p style="margin-bottom: 0.5rem;">You are not a member of any organization.</p>
+        <p style="font-size: 0.9rem;">Create a new organization below or ask an administrator to invite you.</p>
+    </div>
+    {% endif %}
+
+    {% if admin_permissions and admin_permissions['org:write'] %}
+    <!-- Create New Organization -->
+    <div class="divider"></div>
+
+    <div class="section-title">Create new organization</div>
+    <p class="section-description">Start a new organization and become its owner.</p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/organisations/create"
+          style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+            <label for="organization_name">Organization name</label>
+            <input type="text" id="organization_name" name="organization_name"
+                   required minlength="1" maxlength="255" placeholder="My Company">
+        </div>
+        <button type="submit" class="btn btn-success" style="margin-bottom: 0;">Create</button>
+    </form>
+
+    <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">
+        A URL-friendly slug will be generated automatically from the name.
+    </p>
+    {% endif %}
+</div>
+
+<div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+    <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-color);">About Organizations</h2>
+    <p style="color: var(--text-muted-color); line-height: 1.6; font-size: 0.9rem;">
+        Organizations (tenants) allow companies to manage their users and configure single sign-on (SSO)
+        with external identity providers like Google, GitHub, or corporate SAML/OIDC providers.
+    </p>
+    <ul style="color: var(--text-muted-color); line-height: 1.8; font-size: 0.9rem; margin-top: 0.5rem; padding-left: 1.5rem;">
+        <li><strong style="color: var(--text-color);">Owner</strong>: Full control over the organization, including managing other owners</li>
+        <li><strong style="color: var(--text-color);">Admin</strong>: Can manage members, IdPs, branding and templates (except owner roles)</li>
+        <li><strong style="color: var(--text-color);">Member</strong>: Basic access to organization resources</li>
+    </ul>
+</div>
+{% endblock %}

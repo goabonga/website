@@ -1,0 +1,989 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Manage {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1 style="margin-bottom: 0;">Organization Details</h1>
+        <a href="{{ tenant_prefix }}/auth/settings/organisations" class="btn btn-secondary">
+            <span>&larr;</span> Back to Organizations
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert-success">{{ success }}</div>
+    {% endif %}
+
+    <h2>Organization Information</h2>
+
+    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 1rem; margin-top: 1rem;">
+        <div class="text-muted">Display Name</div>
+        <div>{{ tenant.display_name }}</div>
+
+        <div class="text-muted">Slug</div>
+        <div class="mono" style="word-break: break-all;">{{ tenant.slug }}</div>
+
+        <div class="text-muted">Custom Domain</div>
+        <div id="domain-status-row">
+            {% if tenant.custom_domain %}
+            <span class="mono">{{ tenant.custom_domain }}</span>
+            <span id="domain-badge">
+            {% if tenant.custom_domain_status == 'active' %}
+            <span class="badge badge-success" style="margin-left: 0.5rem;">Active</span>
+            {% elif tenant.custom_domain_status == 'ssl_provisioning' %}
+            <span class="badge badge-info" style="margin-left: 0.5rem;">SSL Provisioning...</span>
+            {% elif tenant.custom_domain_status == 'dns_verified' %}
+            <span class="badge badge-info" style="margin-left: 0.5rem;">DNS Verified</span>
+            {% elif tenant.custom_domain_status == 'dns_verifying' %}
+            <span class="badge badge-secondary" style="margin-left: 0.5rem;">Verifying DNS...</span>
+            {% elif tenant.custom_domain_status == 'failed' %}
+            <span class="badge badge-danger" style="margin-left: 0.5rem;">Failed</span>
+            {% elif tenant.custom_domain_status == 'pending' %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">Pending DNS</span>
+            {% else %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">Pending DNS</span>
+            {% endif %}
+            </span>
+            <div id="domain-error" class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem; {% if not tenant.custom_domain_error %}display: none;{% endif %}">{{ tenant.custom_domain_error or '' }}</div>
+            {% else %}
+            <span class="mono">-</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if tenant.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Access URLs</div>
+        <div>
+            <div class="mono" style="font-size: 0.85rem; margin-bottom: 0.25rem;">
+                <span class="text-muted">Path:</span> /t/{{ tenant.slug }}/...
+            </div>
+            {% if tenant.custom_domain %}
+            <div class="mono" style="font-size: 0.85rem;">
+                <span class="text-muted">Custom:</span> {{ tenant.custom_domain }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ tenant.created_at[:19] if tenant.created_at else 'N/A' }}</div>
+
+        <div class="text-muted">Updated</div>
+        <div>{{ tenant.updated_at[:19] if tenant.updated_at else 'N/A' }}</div>
+    </div>
+
+    {% if can['settings:write'] or can['domain:read'] or can['domain:write'] %}
+    <div style="margin-top: 1.5rem;">
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/edit" class="btn btn-primary">
+            <span>&#9998;</span> Edit Info
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Members Section -->
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Members ({{ members|length }})</h2>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if can['roles:read'] %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles" class="btn btn-secondary btn-sm">
+                Manage Roles
+            </a>
+            {% endif %}
+            {% if can['members:invite'] %}
+            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('add-member-form').style.display = document.getElementById('add-member-form').style.display === 'none' ? 'block' : 'none'">
+                <span>+</span> Add Member
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if can['members:invite'] %}
+    <!-- Add Member Form (hidden by default) -->
+    <div id="add-member-form" style="display: none; background: var(--background-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/members/add" style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="member_email" style="font-size: 0.8rem;">User Email</label>
+                <input type="email" id="member_email" name="email" required placeholder="user@example.com" style="width: 250px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="member_role" style="font-size: 0.8rem;">Role</label>
+                <select id="member_role" name="role_id">
+                    {% for role in tenant_roles %}
+                    <option value="{{ role.id }}" {% if role.name == 'member' %}selected{% endif %}>{{ role.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success btn-sm">Add</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('add-member-form').style.display = 'none'">Cancel</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if members %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Joined</th>
+                {% if can['members:update'] or can['members:remove'] %}
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>
+                    <div>{{ member.user_name or member.user_email or 'Unknown' }}</div>
+                    {% if member.user_email and member.user_name %}
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ member.user_email }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if member.is_owner %}
+                    <span class="badge badge-warning">{{ member.role_display_name }}</span>
+                    {% elif member.role == 'admin' %}
+                    <span class="badge badge-info">{{ member.role_display_name }}</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ member.role_display_name }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ member.joined_at[:10] if member.joined_at else member.created_at[:10] if member.created_at else 'N/A' }}</td>
+                {% if can['members:update'] or can['members:remove'] %}
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        {% if can['members:update'] %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/members/{{ member.id }}/update-role" style="display: flex; gap: 0.25rem;">
+                            <select name="role_id" style="padding: 0.25rem; font-size: 0.8rem;">
+                                {% for role in tenant_roles %}
+                                <option value="{{ role.id }}" {% if role.id == member.role_id %}selected{% endif %}>{{ role.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Update</button>
+                        </form>
+                        {% endif %}
+                        {% if can['members:remove'] %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/members/{{ member.id }}/remove" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Remove this member?')">Remove</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem; text-align: center;">
+        <p style="font-size: 1.5rem;">&#128100;</p>
+        <p class="text-muted">No members yet. Add users to this organization.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Roles Section -->
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Roles ({{ tenant_roles|length }})</h2>
+        {% if can['roles:write'] %}
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/create" class="btn btn-primary btn-sm">
+            <span>+</span> Create Role
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+        Define custom roles with specific permissions for organization members.
+    </p>
+
+    {% if tenant_roles %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Scopes</th>
+                <th>Members</th>
+                {% if can['roles:write'] or can['roles:delete'] %}
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in tenant_roles %}
+            <tr>
+                <td>
+                    <div>
+                        <strong>{{ role.display_name }}</strong>
+                        {% if role.is_system %}
+                        <span class="badge badge-secondary" style="margin-left: 0.25rem; font-size: 0.65rem;">System</span>
+                        {% endif %}
+                        {% if role.is_default %}
+                        <span class="badge badge-info" style="margin-left: 0.25rem; font-size: 0.65rem;" title="Assigned to new registrants">Default</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted mono" style="font-size: 0.75rem;">{{ role.name }}</div>
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem; max-width: 200px;">
+                    {{ role.description or '-' }}
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 250px;">
+                        {% for scope in role.scopes[:3] %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">{{ scope }}</span>
+                        {% endfor %}
+                        {% if role.scopes|length > 3 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ role.scopes|length - 3 }} more</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ role_member_counts.get(role.id, 0) }}</span>
+                </td>
+                {% if can['roles:write'] or can['roles:delete'] %}
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        {% if can['roles:write'] %}
+                        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/{{ role.id }}/edit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Edit</a>
+                        {% endif %}
+                        {% if can['roles:delete'] and not role.is_system %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/{{ role.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Delete this role? Members with this role will need to be reassigned.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem; text-align: center;">
+        <p class="text-muted">No roles defined. Create roles to manage member permissions.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Identity Providers Section -->
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Identity Providers ({{ identity_providers|length }})</h2>
+        {% if can['idp:write'] %}
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/create" class="btn btn-primary btn-sm">
+            <span>+</span> Add IdP
+        </a>
+        {% endif %}
+    </div>
+
+    {% if identity_providers %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Users</th>
+                <th>Status</th>
+                {% if can['idp:write'] or can['idp:delete'] %}
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for idp in identity_providers %}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        {% if idp.icon_url %}
+                        <img src="{{ idp.icon_url }}" alt="" style="width: 20px; height: 20px; border-radius: 2px;">
+                        {% endif %}
+                        <span>{{ idp.name }}</span>
+                        {% if idp.is_default %}
+                        <span class="badge badge-info" style="font-size: 0.65rem;">Default</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if idp.provider_type == 'google' %}
+                    <span class="badge badge-success">Google</span>
+                    {% elif idp.provider_type == 'github' %}
+                    <span class="badge badge-secondary">GitHub</span>
+                    {% elif idp.provider_type == 'microsoft' %}
+                    <span class="badge badge-info">Microsoft</span>
+                    {% elif idp.provider_type == 'saml' %}
+                    <span class="badge badge-warning">SAML</span>
+                    {% else %}
+                    <span class="badge badge-secondary">OIDC</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ idp.federated_count }}</span>
+                </td>
+                <td>
+                    {% if idp.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                </td>
+                {% if can['idp:write'] or can['idp:delete'] %}
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        {% if can['idp:write'] %}
+                        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/{{ idp.id }}/edit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Edit</a>
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/{{ idp.id }}/toggle" style="display: inline;">
+                            {% if idp.is_active %}
+                            <button type="submit" class="btn btn-warning btn-sm" style="padding: 0.25rem 0.5rem;">Disable</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-success btn-sm" style="padding: 0.25rem 0.5rem;">Enable</button>
+                            {% endif %}
+                        </form>
+                        {% endif %}
+                        {% if can['idp:delete'] %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/{{ idp.id }}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Delete this identity provider? Users linked to it will need to re-link their accounts.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem; text-align: center;">
+        <p style="font-size: 1.5rem;">&#128273;</p>
+        <p class="text-muted">No identity providers configured. Add an IdP to enable SSO.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Trust Policy Section -->
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Trust Policy</h2>
+        <div>
+            {% if trust_mode == 'none' %}
+            <span class="badge badge-secondary" style="background: #0f3460;">Strict</span>
+            {% elif trust_mode == 'members_only' %}
+            <span class="badge badge-info">Members Only</span>
+            {% elif trust_mode == 'specific' %}
+            <span class="badge badge-warning">Specific Tenants</span>
+            {% elif trust_mode == 'all' %}
+            <span class="badge badge-success">Open</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+        Control who can sign in to this organization.
+    </p>
+
+    {% if can['trust:write'] %}
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/mode">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'none' %}var(--accent-color, #74b9ff){% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="none" {% if trust_mode == 'none' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Strict (None)</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only users who registered on this tenant can sign in. Most restrictive.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'members_only' %}var(--accent-color, #74b9ff){% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="members_only" {% if trust_mode == 'members_only' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Members Only</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only tenant members can sign in, regardless of registration origin.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'specific' %}var(--accent-color, #74b9ff){% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="specific" {% if trust_mode == 'specific' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Specific Tenants</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Only users from specific trusted tenants (or members) can sign in.
+                    </p>
+                </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: var(--background-color); border-radius: 8px; border: 2px solid {% if trust_mode == 'all' %}var(--accent-color, #74b9ff){% else %}transparent{% endif %};">
+                <input type="radio" name="trust_mode" value="all" {% if trust_mode == 'all' %}checked{% endif %} style="margin-top: 0.2rem;">
+                <div>
+                    <strong>Open (All)</strong>
+                    <p class="text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                        Any authenticated user can sign in. Least restrictive.
+                    </p>
+                </div>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm">Update Trust Mode</button>
+    </form>
+    {% endif %}
+
+    <!-- Trusted Sources (visible when mode is 'specific') -->
+    {% if trust_mode == 'specific' %}
+    <div style="border-top: 1px solid var(--border-color, #0f3460); margin-top: 1.5rem; padding-top: 1.5rem;">
+        <h3 style="font-size: 1rem; margin-bottom: 1rem;">Trusted Sources</h3>
+
+        {% if trusted_sources %}
+        <table class="table" style="margin-bottom: 1.5rem;">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Description</th>
+                    {% if can['trust:write'] %}
+                    <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for source in trusted_sources %}
+                <tr>
+                    <td>
+                        {% if source.is_platform %}
+                        <span class="badge badge-success">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">Main domain</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ source.trusted_tenant_name }}</span>
+                        <span class="text-muted" style="font-size: 0.8rem; margin-left: 0.5rem;">{{ source.trusted_tenant_slug }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size: 0.85rem;">{{ source.description or '-' }}</td>
+                    {% if can['trust:write'] %}
+                    <td>
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/remove-source/{{ source.id }}" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Remove this trusted source?')">Remove</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding: 1.5rem; background: var(--background-color); border-radius: 8px; text-align: center; margin-bottom: 1.5rem;">
+            <p class="text-muted" style="margin: 0;">No trusted sources configured.</p>
+        </div>
+        {% endif %}
+
+        {% if can['trust:write'] %}
+        <!-- Add Trusted Source -->
+        <div style="background: var(--background-color); padding: 1rem; border-radius: 8px;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Add Trusted Source</h4>
+            {% if available_tenants %}
+            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/trust/add-source" style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.8rem;">Organization</label>
+                    <select name="trusted_tenant_id" required class="form-control">
+                        <option value="">-- Select --</option>
+                        {% for t in available_tenants %}
+                        <option value="{{ t.id }}">
+                            {% if t.is_platform %}{{ t.display_name }} (Platform){% else %}{{ t.display_name }} ({{ t.slug }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.8rem;">Description (optional)</label>
+                    <input type="text" name="description" placeholder="e.g., Partner org" maxlength="255" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-success btn-sm">Add</button>
+            </form>
+            {% else %}
+            <p class="text-muted" style="font-size: 0.85rem; margin: 0;">All available organizations are already trusted.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Customization Section -->
+<div class="settings-card settings-card-wide">
+    <h2>Customization</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">Customize the look and feel for your organization.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        {% if can['branding:read'] %}
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/branding" style="text-decoration: none; color: inherit;">
+            <div style="background: var(--background-color); border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--info-color)';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#127912;</span>
+                    <strong>Branding</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Colors, logos, fonts, and custom CSS/JS</p>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if can['templates:read'] %}
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates" style="text-decoration: none; color: inherit;">
+            <div style="background: var(--background-color); border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--info-color)';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128196;</span>
+                    <strong>Templates</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Custom login, register, and consent pages</p>
+            </div>
+        </a>
+        {% endif %}
+
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/profile-fields" style="text-decoration: none; color: inherit;">
+            <div style="background: var(--background-color); border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--info-color)';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128100;</span>
+                    <strong>Profile Fields</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Configure which fields are visible on the profile settings page</p>
+            </div>
+        </a>
+
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/registration-fields" style="text-decoration: none; color: inherit;">
+            <div style="background: var(--background-color); border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--info-color)';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128221;</span>
+                    <strong>Registration Fields</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Configure which fields are visible on the registration form</p>
+            </div>
+        </a>
+
+    </div>
+</div>
+
+<!-- Developer Section -->
+{% if can['clients:read'] %}
+<div class="settings-card settings-card-wide">
+    <h2>Developer</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">Manage OAuth2 applications for your organization.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients" style="text-decoration: none; color: inherit;">
+            <div style="background: var(--background-color); border-radius: 8px; padding: 1.25rem; transition: transform 0.2s; border: 1px solid transparent;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--info-color)';" onmouseout="this.style.transform=''; this.style.borderColor='transparent';">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.5rem;">&#128187;</span>
+                    <strong>OAuth2 Clients</strong>
+                </div>
+                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">Create and manage OAuth2 client applications</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% if can['webhooks:read'] %}
+<!-- Webhooks Section -->
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Webhooks ({{ webhooks|length }})</h2>
+        {% if can['webhooks:write'] %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('add-webhook-form').style.display = document.getElementById('add-webhook-form').style.display === 'none' ? 'block' : 'none'">
+            <span>+</span> Add Webhook
+        </button>
+        {% endif %}
+    </div>
+
+    <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+        Notify external services when events happen in this organization.
+        Payloads are signed with HMAC-SHA256 using a secret and sent with
+        <code>X-Webhook-Signature: t=&lt;ts&gt;,v1=&lt;hex&gt;</code>.
+    </p>
+
+    {% if new_webhook_secret %}
+    <div style="background: rgba(40, 167, 69, 0.08); border: 1px solid var(--success-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <span style="font-size: 1.2rem;">&#128273;</span>
+            <strong>Save this signing secret now — it will not be shown again.</strong>
+        </div>
+        <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 0.5rem;">
+            Use it to verify the <code>X-Webhook-Signature</code> header on your receiver.
+            Compute <code>HMAC-SHA256(secret, "{t}." + raw_body)</code> and compare it to
+            the <code>v1=</code> value. If you lose it, use "Rotate" to get a new one.
+        </p>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input
+                id="new-webhook-secret-{{ new_webhook_id }}"
+                type="text"
+                readonly
+                value="{{ new_webhook_secret }}"
+                class="mono"
+                style="flex: 1; font-size: 0.8rem; padding: 0.5rem; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; font-family: monospace;"
+                onclick="this.select()">
+            <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                onclick="(async () => {
+                    const input = document.getElementById('new-webhook-secret-{{ new_webhook_id }}');
+                    try {
+                        await navigator.clipboard.writeText(input.value);
+                        this.textContent = 'Copied!';
+                        setTimeout(() => this.textContent = 'Copy', 2000);
+                    } catch (e) {
+                        input.select();
+                        document.execCommand('copy');
+                        this.textContent = 'Copied!';
+                        setTimeout(() => this.textContent = 'Copy', 2000);
+                    }
+                })()">
+                Copy
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if can['webhooks:write'] %}
+    <!-- Add Webhook Form (hidden by default) -->
+    <div id="add-webhook-form" style="display: none; background: var(--background-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/create">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label for="webhook_name" style="font-size: 0.85rem;">Name</label>
+                <input type="text" id="webhook_name" name="name" required maxlength="100" placeholder="Slack notifier" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label for="webhook_url" style="font-size: 0.85rem;">Target URL</label>
+                <input type="url" id="webhook_url" name="url" required placeholder="https://example.com/hooks/auth" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label style="font-size: 0.85rem;">Events</label>
+                <p class="text-muted" style="font-size: 0.75rem; margin-bottom: 0.5rem;">Tick the events you want to receive. Group wildcards (e.g. <code>user.*</code>) and the global <code>*</code> wildcard are supported — use "Select all" per group or tick <code>*</code> at the top.</p>
+                <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.5rem; padding: 0.4rem; background: var(--surface-color); border-radius: 6px;">
+                    <input type="checkbox" name="events" value="*" id="wh-ev-all">
+                    <label for="wh-ev-all" style="margin: 0;"><code>*</code> &mdash; subscribe to <em>every</em> event</label>
+                </div>
+                {% for group, events in webhook_events_by_group.items() %}
+                <details style="margin-bottom: 0.4rem; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem 0.6rem;" {% if group == 'user' %}open{% endif %}>
+                    <summary style="cursor: pointer; font-size: 0.85rem;">
+                        <strong>{{ group }}.*</strong>
+                        <span class="text-muted" style="font-size: 0.75rem;">({{ events|length }} events)</span>
+                        <label style="float: right; font-size: 0.75rem; font-weight: normal; cursor: pointer;">
+                            <input type="checkbox" name="events" value="{{ group }}.*">
+                            subscribe to all <code>{{ group }}.*</code>
+                        </label>
+                    </summary>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.25rem; padding: 0.5rem 0 0.25rem 0.5rem;">
+                        {% for ev in events %}
+                        <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem;">
+                            <input type="checkbox" name="events" value="{{ ev }}">
+                            <code>{{ ev }}</code>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-success btn-sm">Create Webhook</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('add-webhook-form').style.display = 'none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if webhooks %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name / URL</th>
+                <th>Events</th>
+                <th>Status</th>
+                <th>Last delivery</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wh in webhooks %}
+            <tr>
+                <td>
+                    <div><strong>{{ wh.name }}</strong></div>
+                    <div class="text-muted mono" style="font-size: 0.75rem; word-break: break-all; max-width: 280px;">{{ wh.url }}</div>
+                    {% if wh.failure_count >= 3 %}
+                    <div style="margin-top: 0.25rem;">
+                        <span class="badge badge-danger" style="font-size: 0.7rem;">{{ wh.failure_count }} consecutive failures</span>
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 240px;">
+                        {% for ev in wh.events[:3] %}
+                        <span class="badge badge-info" style="font-size: 0.7rem;">{{ ev }}</span>
+                        {% endfor %}
+                        {% if wh.events|length > 3 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ wh.events|length - 3 }}</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if wh.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Paused</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.8rem;">
+                    {% if wh.last_triggered_at %}
+                    {{ wh.last_triggered_at[:19] }}
+                    <div style="margin-top: 0.25rem;">
+                        {% if wh.last_status_code and wh.last_status_code < 400 %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">{{ wh.last_status_code }}</span>
+                        {% elif wh.last_status_code %}
+                        <span class="badge badge-danger" style="font-size: 0.7rem;">{{ wh.last_status_code }}</span>
+                        {% elif wh.last_error %}
+                        <span class="badge badge-danger" style="font-size: 0.7rem;">error</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    Never
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                        {% if can['webhooks:write'] %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/test" style="margin: 0;">
+                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">Ping</button>
+                        </form>
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/toggle" style="margin: 0;">
+                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">
+                                {% if wh.is_active %}Pause{% else %}Resume{% endif %}
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;" onclick="document.getElementById('edit-webhook-{{ wh.id }}').style.display = document.getElementById('edit-webhook-{{ wh.id }}').style.display === 'none' ? 'table-row' : 'none'">Edit</button>
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/rotate-secret" style="margin: 0;">
+                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Rotate the signing secret? Your endpoint will start receiving a new signature — update your verification code before resuming.')">Rotate</button>
+                        </form>
+                        {% endif %}
+                        {% if can['webhooks:delete'] %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/delete" style="margin: 0;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="return confirm('Delete this webhook? All delivery history will also be removed.')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+
+            {% if can['webhooks:write'] %}
+            <!-- Inline Edit Form (hidden by default) -->
+            <tr id="edit-webhook-{{ wh.id }}" style="display: none;">
+                <td colspan="5" style="background: var(--background-color); padding: 1rem;">
+                    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/update">
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.8rem;">Name</label>
+                                <input type="text" name="name" required maxlength="100" value="{{ wh.name }}" class="form-control">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.8rem;">Target URL</label>
+                                <input type="url" name="url" required value="{{ wh.url }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0.75rem;">
+                            <label style="font-size: 0.8rem;">Events</label>
+                            <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; margin-bottom: 0.4rem;">
+                                <input type="checkbox" name="events" value="*" id="edit-wh-all-{{ wh.id }}" {% if '*' in wh.events %}checked{% endif %}>
+                                <label for="edit-wh-all-{{ wh.id }}" style="margin: 0;"><code>*</code> (all events)</label>
+                            </div>
+                            {% for group, events in webhook_events_by_group.items() %}
+                            <details style="margin-bottom: 0.25rem; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.3rem 0.5rem;" {% if (group + '.*') in wh.events or events|select('in', wh.events)|list %}open{% endif %}>
+                                <summary style="cursor: pointer; font-size: 0.8rem;">
+                                    <strong>{{ group }}.*</strong>
+                                    <label style="float: right; font-size: 0.72rem; font-weight: normal;">
+                                        <input type="checkbox" name="events" value="{{ group }}.*" {% if (group + '.*') in wh.events %}checked{% endif %}>
+                                        all
+                                    </label>
+                                </summary>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.25rem; padding: 0.3rem 0 0.2rem 0.3rem;">
+                                    {% for ev in events %}
+                                    <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;">
+                                        <input type="checkbox" name="events" value="{{ ev }}" {% if ev in wh.events %}checked{% endif %}>
+                                        <code>{{ ev }}</code>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                            {% endfor %}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="submit" class="btn btn-success btn-sm">Save changes</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('edit-webhook-{{ wh.id }}').style.display = 'none'">Cancel</button>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endif %}
+
+            <!-- Recent deliveries (expandable) -->
+            <tr>
+                <td colspan="5" style="background: var(--background-color); padding: 0;">
+                    <details>
+                        <summary style="padding: 0.5rem 1rem; cursor: pointer; font-size: 0.85rem;">
+                            Recent deliveries ({{ wh.recent_deliveries|length }})
+                        </summary>
+                        {% if wh.recent_deliveries %}
+                        <table class="table" style="margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="font-size: 0.75rem;">When</th>
+                                    <th style="font-size: 0.75rem;">Event</th>
+                                    <th style="font-size: 0.75rem;">Status</th>
+                                    <th style="font-size: 0.75rem;">HTTP</th>
+                                    <th style="font-size: 0.75rem;">Duration</th>
+                                    <th style="font-size: 0.75rem;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for d in wh.recent_deliveries %}
+                                <tr>
+                                    <td class="mono" style="font-size: 0.72rem;">{{ (d.delivered_at or d.created_at)[:19] if (d.delivered_at or d.created_at) else '-' }}</td>
+                                    <td><code style="font-size: 0.72rem;">{{ d.event }}</code></td>
+                                    <td>
+                                        {% if d.status == 'success' %}
+                                        <span class="badge badge-success" style="font-size: 0.68rem;">Success</span>
+                                        {% elif d.status == 'failed' %}
+                                        <span class="badge badge-danger" style="font-size: 0.68rem;">Failed</span>
+                                        {% elif d.status == 'retrying' %}
+                                        <span class="badge badge-warning" style="font-size: 0.68rem;">Retry {{ d.attempt }}/{{ d.max_attempts }}</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary" style="font-size: 0.68rem;">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-size: 0.72rem;">{{ d.response_status or '-' }}</td>
+                                    <td class="text-muted" style="font-size: 0.72rem;">{{ d.duration_ms or '-' }} ms</td>
+                                    <td>
+                                        {% if can['webhooks:write'] %}
+                                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/webhooks/{{ wh.id }}/deliveries/{{ d.id }}/replay" style="margin: 0;">
+                                            <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.72rem;">Replay</button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if d.error %}
+                                <tr>
+                                    <td colspan="6" style="padding: 0.25rem 1rem; background: var(--surface-color);">
+                                        <span class="text-muted" style="font-size: 0.7rem;">error:</span>
+                                        <code style="font-size: 0.7rem; color: var(--error-color);">{{ d.error }}</code>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div style="padding: 0.75rem 1rem;" class="text-muted">
+                            <span style="font-size: 0.8rem;">No deliveries yet.</span>
+                        </div>
+                        {% endif %}
+                    </details>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem; text-align: center;">
+        <p style="font-size: 1.5rem;">&#128257;</p>
+        <p class="text-muted">No webhooks configured yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if tenant.custom_domain and can['domain:read'] %}
+<script>
+(function() {
+    const tenantId = "{{ tenant.id }}";
+    const tenantPrefix = "{{ tenant_prefix }}";
+    const pollInterval = 5000; // 5 seconds
+    let currentStatus = "{{ tenant.custom_domain_status or '' }}";
+    let pollTimer = null;
+
+    // Status states that require polling
+    const pollingStatuses = ['pending', 'dns_verifying', 'dns_verified', 'ssl_provisioning'];
+
+    const statusConfig = {
+        'active': { badge: 'badge-success', text: 'Active' },
+        'ssl_provisioning': { badge: 'badge-info', text: 'SSL Provisioning...' },
+        'dns_verified': { badge: 'badge-info', text: 'DNS Verified' },
+        'dns_verifying': { badge: 'badge-secondary', text: 'Verifying DNS...' },
+        'failed': { badge: 'badge-danger', text: 'Failed' },
+        'pending': { badge: 'badge-warning', text: 'Pending DNS' }
+    };
+
+    function updateBadge(data) {
+        const badgeContainer = document.getElementById('domain-badge');
+        const errorDiv = document.getElementById('domain-error');
+
+        if (!badgeContainer) return;
+
+        const status = data.status || 'pending';
+        const config = statusConfig[status] || statusConfig['pending'];
+
+        badgeContainer.innerHTML = `<span class="badge ${config.badge}" style="margin-left: 0.5rem;">${config.text}</span>`;
+
+        if (errorDiv) {
+            if (status === 'failed' && data.error) {
+                errorDiv.textContent = data.error;
+                errorDiv.style.display = 'block';
+            } else {
+                errorDiv.style.display = 'none';
+            }
+        }
+
+        currentStatus = status;
+    }
+
+    async function pollStatus() {
+        try {
+            const response = await fetch(`${tenantPrefix}/auth/settings/org/${tenantId}/domain-status`);
+            if (response.ok) {
+                const data = await response.json();
+                updateBadge(data);
+
+                // Continue polling only for in-progress statuses
+                if (pollingStatuses.includes(data.status)) {
+                    pollTimer = setTimeout(pollStatus, pollInterval);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to poll domain status:', error);
+            // Retry after interval even on error
+            if (pollingStatuses.includes(currentStatus)) {
+                pollTimer = setTimeout(pollStatus, pollInterval);
+            }
+        }
+    }
+
+    // Start polling if current status requires it
+    if (pollingStatuses.includes(currentStatus)) {
+        pollTimer = setTimeout(pollStatus, pollInterval);
+    }
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (pollTimer) clearTimeout(pollTimer);
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Settings{% endblock %} - Account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {% if branding and branding.font_url %}
+    <link href="{{ branding.font_url }}" rel="stylesheet">
+    {% endif %}
+    <style>
+        /* CSS Variables - Tenant Branding (Admin dark theme by default) */
+        :root {
+            --primary-color: {{ branding.primary_color if branding and branding.primary_color else '#e94560' }};
+            --secondary-color: {{ branding.secondary_color if branding and branding.secondary_color else '#0f3460' }};
+            --accent-color: {{ branding.accent_color if branding and branding.accent_color else '#e94560' }};
+            --background-color: {{ branding.background_color if branding and branding.background_color else '#1a1a2e' }};
+            --surface-color: {{ branding.surface_color if branding and branding.surface_color else '#16213e' }};
+            --text-color: {{ branding.text_color if branding and branding.text_color else '#e0e0e0' }};
+            --text-muted-color: {{ branding.text_muted_color if branding and branding.text_muted_color else '#a0a0a0' }};
+            --error-color: {{ branding.error_color if branding and branding.error_color else '#ff6b6b' }};
+            --success-color: {{ branding.success_color if branding and branding.success_color else '#00b894' }};
+            --border-color: {{ branding.border_color if branding and branding.border_color else '#0f3460' }};
+            --warning-color: {{ branding.warning_color if branding and branding.warning_color else '#fdcb6e' }};
+            --info-color: {{ branding.info_color if branding and branding.info_color else '#74b9ff' }};
+            --input-bg-color: {{ branding.input_background_color if branding and branding.input_background_color else 'var(--background-color)' }};
+            --input-focus-bg-color: {{ branding.input_focus_background_color if branding and branding.input_focus_background_color else 'var(--input-bg-color)' }};
+            --input-border-color: {{ branding.input_border_color if branding and branding.input_border_color else 'var(--border-color)' }};
+            --input-focus-border-color: {{ branding.input_focus_border_color if branding and branding.input_focus_border_color else 'var(--primary-color)' }};
+            --input-text-color: {{ branding.input_text_color if branding and branding.input_text_color else 'var(--text-color)' }};
+            --font-family: {{ (branding.font_family if branding and branding.font_family else "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif") | safe }};
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+        .settings-layout {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        .settings-sidebar {
+            width: 250px;
+            background: var(--surface-color);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 0;
+            flex-shrink: 0;
+        }
+        .settings-sidebar h2 {
+            padding: 0 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .settings-nav {
+            list-style: none;
+        }
+        .settings-nav li {
+            margin-bottom: 0.25rem;
+        }
+        .settings-nav a {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-muted-color);
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .settings-nav a:hover {
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+        .settings-nav a.active {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+        .settings-nav .nav-icon {
+            margin-right: 0.75rem;
+            width: 20px;
+            display: inline-block;
+            text-align: center;
+        }
+        .settings-content {
+            flex: 1;
+            padding: 2rem;
+        }
+        .settings-card {
+            background: var(--surface-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            max-width: 600px;
+            margin-bottom: 1.5rem;
+        }
+        .settings-card:last-child {
+            margin-bottom: 0;
+        }
+        .settings-card-wide {
+            max-width: 900px;
+        }
+        .settings-card h1 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted-color);
+            font-size: 0.9rem;
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"],
+        input[type="url"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--input-border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: var(--font-family);
+            background-color: var(--input-bg-color);
+            color: var(--input-text-color);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted-color);
+        }
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--input-focus-border-color);
+            background-color: var(--input-focus-bg-color);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-border-color) 20%, transparent);
+        }
+        input:disabled,
+        textarea:disabled,
+        select:disabled {
+            background-color: var(--surface-color);
+            color: var(--text-muted-color);
+        }
+        button[type="submit"],
+        .btn {
+            padding: 0.5rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: var(--font-family);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        button[type="submit"]:hover,
+        .btn:hover {
+            background-color: #d63651;
+        }
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+        }
+        .btn-secondary:hover {
+            background-color: #1a4a7a;
+        }
+        .btn-danger {
+            background-color: #d63031;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #00a382;
+        }
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: #1a1a2e;
+        }
+        .btn-warning:hover {
+            background-color: #f9b32f;
+        }
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        .error,
+        .alert-error {
+            background-color: rgba(214, 48, 49, 0.2);
+            color: var(--error-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(214, 48, 49, 0.3);
+        }
+        .success,
+        .alert-success {
+            background-color: rgba(0, 184, 148, 0.2);
+            color: var(--success-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(0, 184, 148, 0.3);
+        }
+        .info,
+        .alert-info {
+            background-color: rgba(116, 185, 255, 0.2);
+            color: var(--info-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(116, 185, 255, 0.3);
+        }
+        .warning,
+        .alert-warning {
+            background-color: rgba(253, 203, 110, 0.2);
+            color: var(--warning-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(253, 203, 110, 0.3);
+        }
+        .badge,
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-success,
+        .status-enabled {
+            background-color: rgba(0, 184, 148, 0.2);
+            color: var(--success-color);
+        }
+        .badge-warning {
+            background-color: rgba(253, 203, 110, 0.2);
+            color: var(--warning-color);
+        }
+        .badge-danger,
+        .status-disabled {
+            background-color: rgba(214, 48, 49, 0.2);
+            color: var(--error-color);
+        }
+        .badge-info {
+            background-color: rgba(116, 185, 255, 0.2);
+            color: var(--info-color);
+        }
+        .badge-secondary {
+            background-color: var(--border-color);
+            color: var(--text-muted-color);
+        }
+        .divider {
+            border-top: 1px solid var(--border-color);
+            margin: 1.5rem 0;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+        .section-description {
+            color: var(--text-muted-color);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .text-muted {
+            color: var(--text-muted-color);
+        }
+        .text-success {
+            color: var(--success-color);
+        }
+        .text-danger {
+            color: var(--error-color);
+        }
+        .text-warning {
+            color: var(--warning-color);
+        }
+        .mono {
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .table th {
+            color: var(--text-muted-color);
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .table tbody tr:hover {
+            background-color: var(--background-color);
+        }
+        button.logout-link {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-muted-color);
+            text-decoration: none;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            background: none;
+            border-radius: 0;
+            border-left: 3px solid transparent;
+            border-right: none;
+            border-bottom: none;
+            text-align: left;
+            width: 100%;
+            cursor: pointer;
+            font-size: inherit;
+            font-family: inherit;
+            text-transform: none;
+            letter-spacing: normal;
+            font-weight: normal;
+        }
+        button.logout-link:hover {
+            background-color: var(--border-color);
+            color: var(--error-color);
+        }
+
+        /* Mobile Hamburger Menu */
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .mobile-header h2 {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        .hamburger-toggle {
+            display: none;
+        }
+        .hamburger-btn {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 28px;
+            height: 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 110;
+        }
+        .hamburger-btn span {
+            display: block;
+            width: 100%;
+            height: 3px;
+            background-color: var(--text-color);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-header {
+                display: flex;
+            }
+            .settings-sidebar {
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100%;
+                z-index: 100;
+                border-right: 1px solid var(--border-color);
+                transition: left 0.3s ease;
+                overflow-y: auto;
+            }
+            .settings-content {
+                padding: 1rem;
+            }
+            .settings-card {
+                padding: 1.25rem;
+                max-width: 100% !important; /* Override inline styles on mobile */
+            }
+
+            /* Hamburger animation when open */
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(1) {
+                transform: rotate(45deg) translate(5px, 6px);
+            }
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(2) {
+                opacity: 0;
+            }
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(3) {
+                transform: rotate(-45deg) translate(5px, -6px);
+            }
+
+            /* Show sidebar when toggle is checked */
+            .hamburger-toggle:checked ~ .settings-layout .settings-sidebar {
+                left: 0;
+            }
+
+            /* Show overlay when toggle is checked */
+            .hamburger-toggle:checked ~ .menu-overlay {
+                display: block;
+                opacity: 1;
+            }
+
+            /* Hide sidebar title on mobile (shown in mobile-header) */
+            .settings-sidebar > h2 {
+                display: none;
+            }
+
+            /* Add top padding to sidebar nav on mobile */
+            .settings-sidebar {
+                padding-top: 1.5rem;
+            }
+        }
+
+        /* Extra small screens (phones in portrait) */
+        @media (max-width: 420px) {
+            .settings-content {
+                padding: 1rem 0.75rem;
+            }
+            .settings-card {
+                padding: 1rem;
+                border-radius: 6px;
+                max-width: 100% !important; /* Override inline styles */
+            }
+            .settings-card h1 {
+                font-size: 1.5rem;
+            }
+            .mobile-header {
+                padding: 0.75rem 1rem;
+            }
+        }
+
+        /* Custom CSS from tenant branding */
+        {% if branding and branding.custom_css %}
+        {{ branding.custom_css | safe }}
+        {% endif %}
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Mobile hamburger menu toggle (CSS-only) -->
+    <input type="checkbox" id="hamburger-toggle" class="hamburger-toggle">
+
+    <!-- Mobile header with hamburger -->
+    <header class="mobile-header">
+        <h2>Account Settings</h2>
+        <label for="hamburger-toggle" class="hamburger-btn" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </label>
+    </header>
+
+    <!-- Overlay to close menu when clicking outside -->
+    <label for="hamburger-toggle" class="menu-overlay"></label>
+
+    <div class="settings-layout">
+        <aside class="settings-sidebar">
+            <h2>Account Settings</h2>
+            <ul class="settings-nav">
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/profile" class="{% if active_section == 'profile' %}active{% endif %}">
+                        <span class="nav-icon">&#128100;</span>Profile
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/emails" class="{% if active_section == 'emails' %}active{% endif %}">
+                        <span class="nav-icon">&#9993;</span>Emails
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/password" class="{% if active_section == 'password' %}active{% endif %}">
+                        <span class="nav-icon">&#128274;</span>Password
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/security" class="{% if active_section == 'security' %}active{% endif %}">
+                        <span class="nav-icon">&#128737;</span>Security
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/sessions" class="{% if active_section == 'sessions' %}active{% endif %}">
+                        <span class="nav-icon">&#128187;</span>Sessions
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/applications" class="{% if active_section == 'applications' %}active{% endif %}">
+                        <span class="nav-icon">&#128279;</span>Applications
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/tokens" class="{% if active_section == 'tokens' %}active{% endif %}">
+                        <span class="nav-icon">&#128273;</span>Personal Tokens
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ tenant_prefix }}/auth/settings/organisations" class="{% if active_section == 'tenants' %}active{% endif %}">
+                        <span class="nav-icon">&#127970;</span>Organizations
+                    </a>
+                </li>
+                {% if is_admin and admin_permissions %}
+                <li style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                    <a href="{{ tenant_prefix }}/admin/" style="color: var(--error-color);">
+                        <span class="nav-icon">&#9881;</span>Administration
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            <form method="post" action="{{ tenant_prefix }}/auth/logout" style="margin: 0;">
+                <button type="submit" class="logout-link">
+                    <span class="nav-icon">&#128682;</span>Sign out
+                </button>
+            </form>
+        </aside>
+        <main class="settings-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% if branding and branding.custom_js %}
+    <script>
+    {{ branding.custom_js | safe }}
+    </script>
+    {% endif %}
+</body>
+</html>

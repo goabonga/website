@@ -1,0 +1,124 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Roles - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1 style="margin-bottom: 0;">Roles</h1>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if can['roles:write'] %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/create" class="btn btn-primary btn-sm">
+                <span>+</span> Create Role
+            </a>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary btn-sm">
+                <span>&larr;</span> Back
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert-success">{{ success }}</div>
+    {% endif %}
+
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        Define custom roles with specific permissions for your organization members.
+        System roles (Owner, Admin, Member) cannot be deleted but their display names can be customized.
+    </p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color, #333);">
+                <th style="text-align: left; padding: 0.75rem 0.5rem;">Role</th>
+                <th style="text-align: left; padding: 0.75rem 0.5rem;">Description</th>
+                <th style="text-align: center; padding: 0.75rem 0.5rem;">Members</th>
+                <th style="text-align: left; padding: 0.75rem 0.5rem;">Scopes</th>
+                {% if can['roles:write'] or can['roles:delete'] %}
+                <th style="text-align: right; padding: 0.75rem 0.5rem;">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in roles %}
+            <tr style="border-bottom: 1px solid var(--border-color, #333);">
+                <td style="padding: 0.75rem 0.5rem;">
+                    <strong>{{ role.display_name }}</strong>
+                    {% if role.is_system %}
+                    <span class="badge badge-secondary" style="margin-left: 0.25rem; font-size: 0.65rem;">System</span>
+                    {% endif %}
+                    {% if role.is_default %}
+                    <span class="badge badge-info" style="margin-left: 0.25rem; font-size: 0.65rem;" title="New registrants get this role automatically">Default</span>
+                    {% endif %}
+                    <div class="text-muted" style="font-size: 0.75rem;">{{ role.name }}</div>
+                </td>
+                <td style="padding: 0.75rem 0.5rem; max-width: 200px;">
+                    <span class="text-muted" style="font-size: 0.85rem;">{{ role.description or '-' }}</span>
+                </td>
+                <td style="padding: 0.75rem 0.5rem; text-align: center;">
+                    <span class="badge badge-info">{{ role_stats.get(role.id|string, 0) }}</span>
+                </td>
+                <td style="padding: 0.75rem 0.5rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 300px;">
+                        {% for scope in role.scopes[:5] %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">{{ scope }}</span>
+                        {% endfor %}
+                        {% if role.scopes|length > 5 %}
+                        <span class="badge badge-secondary" style="font-size: 0.7rem;">+{{ role.scopes|length - 5 }} more</span>
+                        {% endif %}
+                    </div>
+                </td>
+                {% if can['roles:write'] or can['roles:delete'] %}
+                <td style="padding: 0.75rem 0.5rem; text-align: right;">
+                    <div style="display: flex; gap: 0.25rem; justify-content: flex-end;">
+                        {% if can['roles:write'] %}
+                        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/{{ role.id }}/edit"
+                           class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;">
+                            Edit
+                        </a>
+                        {% endif %}
+                        {% if can['roles:delete'] and not role.is_system %}
+                        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/roles/{{ role.id }}/delete"
+                              onsubmit="return confirm('Are you sure you want to delete this role? This cannot be undone.');"
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;">
+                                Delete
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="padding: 2rem; text-align: center;" class="text-muted">
+                    No roles defined. Create your first role to get started.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Scopes Reference -->
+<div class="settings-card settings-card-wide">
+    <h2>Available Scopes</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">
+        These scopes can be assigned to roles to control what actions members can perform.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.5rem;">
+        {% for scope, description in available_scopes.items() %}
+        <div style="padding: 0.5rem; background: var(--bg-secondary, #1a1a2e); border-radius: 4px;">
+            <code style="color: var(--accent-color, #00d9ff); font-size: 0.85rem;">{{ scope }}</code>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">{{ description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

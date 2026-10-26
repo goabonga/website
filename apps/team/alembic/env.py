@@ -17,6 +17,7 @@ from team.config import get_settings
 # Import Base and all models to register them with Base.metadata
 # This avoids importing the async engine from database.py
 from team.models import (  # noqa: F401
+    Agent,
     Base,
     Team,
 )

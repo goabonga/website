@@ -14,6 +14,7 @@ from team.auth import introspection_client, jwks_manager, token_exchange_client
 from team.config import get_settings
 from team.routes import health
 from team.routes.team import (
+    agents,
     teams,
 )
 
@@ -65,6 +66,7 @@ Multi-agent orchestration platform for managing autonomous AI workers.
 ## Features
 
 - **Team management**: Create and manage agent teams
+- **Agent orchestration**: Configure autonomous AI workers
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -102,3 +104,4 @@ app.include_router(health.router)
 
 # Platform routes (authenticated)
 app.include_router(teams.router)
+app.include_router(agents.router)

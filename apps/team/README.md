@@ -15,6 +15,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/team/{team_id}` | scope `team:platform:read` | Get team by ID |
 | PATCH | `/platform/team/{team_id}` | scope `team:platform:write` | Update team configuration |
 | DELETE | `/platform/team/{team_id}` | scope `team:platform:write` | Delete a team |
+| POST | `/platform/{team_id}/agents` | scope `team:platform:write` | Create a new AI agent |
+| GET | `/platform/{team_id}/agents` | scope `team:platform:read` | List agents for a team |
+| GET | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:read` | Get agent by ID |
+| PATCH | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:write` | Update agent configuration |
+| DELETE | `/platform/{team_id}/agents/{agent_id}` | scope `team:platform:write` | Delete an agent |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -22,8 +27,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `team:platform:write` - checked by 3 routes
-- `team:platform:read` - checked by 2 routes
+- `team:platform:write` - checked by 6 routes
+- `team:platform:read` - checked by 4 routes
 
 ## Development
 

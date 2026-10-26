@@ -236,3 +236,49 @@ class TestNginxManager:
         mock_domain.domain = "test.example.com"
         with pytest.raises(ConfigurationError, match=setting.upper()):
             nginx_manager._get_template_context(mock_domain)
+
+
+class TestUpstreamInTheContext:
+    """The template context says how to reach the upstream."""
+
+    @staticmethod
+    def context_for(target):
+        domain = MagicMock()
+        domain.domain = "test.example.com"
+        domain.upstream_target = target
+        domain.metadata_ = {}
+        return nginx_manager._get_template_context(domain)
+
+    def test_unix_socket(self):
+        context = self.context_for("/run/app.sock")
+        assert context["upstream_server"] == "unix:/run/app.sock"
+        assert context["upstream_type"] == "unix"
+        assert context["upstream_target"] == "/run/app.sock"
+
+    def test_tcp_address(self):
+        context = self.context_for("10.0.0.5:8000")
+        assert context["upstream_server"] == "10.0.0.5:8000"
+        assert context["upstream_type"] == "tcp"
+
+    def test_invalid_upstream_is_refused(self):
+        from custom_domain.services.upstream import InvalidUpstreamError
+
+        with pytest.raises(InvalidUpstreamError):
+            self.context_for("http://app:8000")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("target", "expected"),
+        [
+            ("/run/app.sock", "server unix:/run/app.sock;"),
+            ("app.internal:8000", "server app.internal:8000;"),
+        ],
+    )
+    async def test_default_https_template(self, target, expected):
+        domain = MagicMock()
+        domain.domain = "test.example.com"
+        domain.upstream_target = target
+        domain.metadata_ = {}
+        config = await nginx_manager.generate_https_config(domain)
+        assert expected in config
+        assert "unix:unix:" not in config

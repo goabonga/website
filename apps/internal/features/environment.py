@@ -18,7 +18,7 @@ import os
 import shutil
 import tempfile
 import uuid
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 # Set required env vars BEFORE any internal import
 os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.local")
@@ -238,6 +238,36 @@ def before_all(context):
     context.mock_prompt_generator_cls = p.start()
     context._patchers.append(p)
 
+    p = patch("internal.routes.knowledge.get_embedding_service")
+    context.mock_get_embedding_service = p.start()
+    context._patchers.append(p)
+
+    # Knowledge generator (local import in route function, patch at source)
+    p = patch("internal.services.knowledge_generator.KnowledgeGeneratorService")
+    context.mock_knowledge_generator_cls = p.start()
+    context._patchers.append(p)
+
+    # Celery task - knowledge generation (prevent Redis connection on dispatch)
+    from internal.tasks.knowledge_generation import generate_knowledge_entries
+
+    mock_gen_result = MagicMock()
+    mock_gen_result.id = "test-task-id-bdd"
+    p = patch.object(generate_knowledge_entries, "delay", return_value=mock_gen_result)
+    context.mock_generation_task_delay = p.start()
+    context._patchers.append(p)
+
+    # Celery task - validation (prevent Redis connection on dispatch)
+    from internal.tasks.knowledge_validation import validate_knowledge_entry
+
+    p = patch.object(validate_knowledge_entry, "delay")
+    context.mock_validation_task_delay = p.start()
+    context._patchers.append(p)
+
+    # Celery AsyncResult (for polling endpoint)
+    p = patch("internal.celery.celery_app.AsyncResult")
+    context.mock_celery_async_result = p.start()
+    context._patchers.append(p)
+
 
 def before_scenario(context, scenario):
     """Reset state before each scenario."""
@@ -267,8 +297,16 @@ def before_scenario(context, scenario):
         context.mock_mailler_templates,
         context.mock_mailler_campaigns,
         context.mock_prompt_generator_cls,
+        context.mock_get_embedding_service,
+        context.mock_knowledge_generator_cls,
+        context.mock_generation_task_delay,
+        context.mock_validation_task_delay,
+        context.mock_celery_async_result,
     ]:
         p_mock.reset_mock()
+
+    # Default: embedding service not configured
+    context.mock_get_embedding_service.return_value = None
 
     # Clean database tables (children first)
     async def _clean_db():

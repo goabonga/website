@@ -33,6 +33,7 @@ documented on its own page.
 | [Sending from a template](18-template-sending.md) | `template_slug` and `variables` in one call |
 | [Idempotent sending](19-idempotency.md) | `Idempotency-Key` header on send and schedule |
 | [Status callbacks](20-status-callbacks.md) | Signed notifications of the status of the emails |
+| [Deployment](21-deployment.md) | Processes, backing services, configuration and secrets |
 
 ## Running the tests
 

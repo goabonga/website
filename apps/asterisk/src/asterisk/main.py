@@ -11,6 +11,7 @@ import sys
 
 from asterisk import __version__
 from asterisk.audiosocket import AudioSocketServer
+from asterisk.call_handler import handle_call
 from asterisk.config import config
 
 
@@ -61,6 +62,7 @@ async def main():
     log_configuration()
 
     server = AudioSocketServer(config.AUDIOSOCKET_HOST, config.AUDIOSOCKET_PORT)
+    server.set_handler(handle_call)
 
     # Set up signal handlers for graceful shutdown
     loop = asyncio.get_running_loop()

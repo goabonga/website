@@ -71,10 +71,10 @@ class TestCreateSaasApp:
     """Tests for POST /platform/saas."""
 
     @pytest.mark.asyncio
-    async def test_create_success(self, auth_client: AsyncClient, mock_db_session):
+    async def test_create_success(self, admin_client: AsyncClient, mock_db_session):
         mock_db_session.execute.side_effect = [_mock_result(None)]  # no conflict
 
-        response = await auth_client.post(
+        response = await admin_client.post(
             "/platform/saas",
             json={
                 "name": "New App",
@@ -88,11 +88,11 @@ class TestCreateSaasApp:
 
     @pytest.mark.asyncio
     async def test_create_stores_checkout_url_allowlist(
-        self, auth_client: AsyncClient, mock_db_session
+        self, admin_client: AsyncClient, mock_db_session
     ):
         mock_db_session.execute.side_effect = [_mock_result(None)]
 
-        response = await auth_client.post(
+        response = await admin_client.post(
             "/platform/saas",
             json={
                 "name": "New App",
@@ -109,8 +109,8 @@ class TestCreateSaasApp:
         ]
 
     @pytest.mark.asyncio
-    async def test_create_rejects_invalid_allowlist_entry(self, auth_client: AsyncClient):
-        response = await auth_client.post(
+    async def test_create_rejects_invalid_allowlist_entry(self, admin_client: AsyncClient):
+        response = await admin_client.post(
             "/platform/saas",
             json={"name": "New App", "slug": "new-app", "checkout_url_allowlist": ["not a url"]},
         )
@@ -118,10 +118,12 @@ class TestCreateSaasApp:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_slug_conflict(self, auth_client: AsyncClient, mock_db_session, mock_saas):
+    async def test_create_slug_conflict(
+        self, admin_client: AsyncClient, mock_db_session, mock_saas
+    ):
         mock_db_session.execute.side_effect = [_mock_result(mock_saas)]
 
-        response = await auth_client.post(
+        response = await admin_client.post(
             "/platform/saas",
             json={
                 "name": "New App",

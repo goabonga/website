@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 from billing.auth import AuthContext, require_scopes
 from billing.database import get_db
 from billing.models import BillingProduct, SaasApp
+from billing.partition import Guard, require_admin, require_saas_scopes
 from billing.schemas import SaasAppCreate, SaasAppResponse, SaasAppUpdate
 from billing.services import get_stripe_service
 
@@ -27,10 +28,10 @@ router = APIRouter(prefix="/platform/saas", tags=["Platform - SaaS Apps"])
 @router.post("", response_model=SaasAppResponse, status_code=status.HTTP_201_CREATED)
 async def create_saas_app(
     data: SaasAppCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SaasApp:
-    """Create a new SaaS application."""
+    """Create a new SaaS application (admin scope: it is not bound to any client yet)."""
     # Check if slug already exists
     result = await db.execute(select(SaasApp).where(SaasApp.slug == data.slug))
     if result.scalar_one_or_none():
@@ -58,12 +59,18 @@ async def create_saas_app(
 
 @router.get("", response_model=list[SaasAppResponse])
 async def list_saas_apps(
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    guard: Guard,
     db: Annotated[AsyncSession, Depends(get_db)],
     include_inactive: bool = False,
 ) -> list[SaasApp]:
-    """List all SaaS applications."""
+    """List the SaaS applications the caller may act on (all of them for the admin scope)."""
+    allowed = await guard.authorized_saas_ids(auth, db)
     query = select(SaasApp).order_by(SaasApp.created_at.desc())
+    if allowed is not None:
+        if not allowed:
+            return []
+        query = query.where(SaasApp.id.in_(allowed))
     if not include_inactive:
         query = query.where(SaasApp.is_active == True)  # noqa: E712
 
@@ -74,7 +81,7 @@ async def list_saas_apps(
 @router.get("/{saas_id}", response_model=SaasAppResponse)
 async def get_saas_app(
     saas_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SaasApp:
     """Get a SaaS application by ID."""
@@ -92,7 +99,7 @@ async def get_saas_app(
 async def update_saas_app(
     saas_id: str,
     data: SaasAppUpdate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SaasApp:
     """Update a SaaS application."""
@@ -142,7 +149,7 @@ def is_placeholder_stripe_id(stripe_id: str, pattern: re.Pattern) -> bool:
 @router.post("/{saas_id}/sync-stripe", response_model=StripeSyncResult)
 async def sync_saas_to_stripe(
     saas_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StripeSyncResult:
     """Sync products and prices to Stripe.

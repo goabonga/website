@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from billing.auth import AuthContext, require_scopes
+from billing.auth import AuthContext
 from billing.config import settings
 from billing.database import get_db
 from billing.models import (
@@ -22,6 +22,7 @@ from billing.models import (
     Subscription,
     SubscriptionStatus,
 )
+from billing.partition import require_saas_scopes
 from billing.schemas import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
 from billing.schemas.subscription import (
     ProrationBehavior,
@@ -52,7 +53,7 @@ async def get_saas_app_or_404(saas_id: str, db: AsyncSession) -> SaasApp:
 @router.get("/subscriptions", response_model=list[SubscriptionResponse])
 async def list_subscriptions(
     saas_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: SubscriptionStatus | None = None,
     limit: int = Query(settings.list_default_limit, ge=1, le=settings.list_max_limit),
@@ -77,7 +78,7 @@ async def list_subscriptions(
 async def list_customer_subscriptions(
     saas_id: str,
     customer_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[Subscription]:
     """List all subscriptions for a customer."""
@@ -110,7 +111,7 @@ async def list_customer_subscriptions(
 async def get_subscription_by_external_id(
     saas_id: str,
     external_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription | None:
     """Get the active subscription for a customer by external_id.
@@ -148,7 +149,7 @@ async def get_subscription_by_external_id(
 async def get_subscription(
     saas_id: str,
     subscription_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription:
     """Get a subscription by ID."""
@@ -181,7 +182,7 @@ async def create_subscription(
     saas_id: str,
     customer_id: str,
     data: SubscriptionCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription:
     """Create a new subscription for a customer (syncs to Stripe)."""
@@ -256,7 +257,7 @@ async def update_subscription(
     saas_id: str,
     subscription_id: str,
     data: SubscriptionUpdate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription:
     """Update a subscription (syncs to Stripe)."""
@@ -303,7 +304,7 @@ async def update_subscription(
 async def cancel_subscription(
     saas_id: str,
     subscription_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     immediately: bool = False,
 ) -> Subscription:
@@ -351,7 +352,7 @@ async def cancel_subscription(
 async def sync_subscription(
     saas_id: str,
     subscription_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription:
     """Sync subscription data from Stripe."""
@@ -456,7 +457,7 @@ async def preview_subscription_upgrade(
     saas_id: str,
     subscription_id: str,
     data: SubscriptionUpgradeRequest,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SubscriptionUpgradePreview:
     """Preview proration costs for upgrading a subscription.
@@ -590,7 +591,7 @@ async def upgrade_subscription(
     saas_id: str,
     subscription_id: str,
     data: SubscriptionUpgradeRequest,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SubscriptionUpgradeResponse:
     """Upgrade a subscription to a new plan with proration.
@@ -723,7 +724,7 @@ async def _get_tenant_subscription(
 async def cancel_subscription_action(
     saas_id: str,
     subscription_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     data: SubscriptionCancelRequest | None = None,
 ) -> Subscription:
@@ -773,7 +774,7 @@ async def cancel_subscription_action(
 async def reactivate_subscription_action(
     saas_id: str,
     subscription_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Subscription:
     """Undo a cancellation scheduled for the end of the period.

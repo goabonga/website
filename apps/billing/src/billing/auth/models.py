@@ -66,7 +66,7 @@ class User(BaseModel):
             name=claims.get("name") or claims.get("preferred_username"),
             scopes=scopes,
             is_machine_client=is_machine,
-            client_id=client_id,
+            client_id=client_id or claims.get("azp"),
         )
 
     def has_scope(self, scope: str) -> bool:

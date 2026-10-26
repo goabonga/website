@@ -6,13 +6,17 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from billing.auth import AuthContext, require_scopes
+from billing.auth.dependencies import oauth2_scheme
+from billing.config import settings
 from billing.database import get_db
 from billing.models import BillingProduct, SaasApp
+from billing.partition import Guard
 from billing.schemas.plan import (
     PlanFeature,
     PlanLimits,
@@ -47,23 +51,45 @@ def parse_limits(raw: object) -> PlanLimits | None:
     return limits
 
 
+async def plans_auth(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
+) -> AuthContext | None:
+    """Authenticate the caller of the plans, unless ``PLANS_PUBLIC`` is enabled.
+
+    The scope is ``billing:platform:read``; the binding to the SaaS app is
+    checked by the route once the application is known.
+    """
+    if settings.plans_public:
+        return None
+    return await require_scopes("billing:platform:read")(request=request, token=token)
+
+
 @router.get("/{app_slug}", response_model=PlansResponse)
 async def list_plans(
     app_slug: str,
+    auth: Annotated[AuthContext | None, Depends(plans_auth)],
+    guard: Guard,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PlansResponse:
     """List all plans for a SaaS application.
 
-    This is a public endpoint for pricing pages. Returns active products
-    with their prices and metadata (features, limits).
-
-    No authentication required.
+    Returns active products with their prices and metadata (features, limits).
+    The endpoint is served without a token only when ``PLANS_PUBLIC`` is
+    enabled (public pricing page); otherwise the caller needs
+    ``billing:platform:read`` and a binding to the application.
     """
     # Find the SaaS app by slug
     result = await db.execute(
         select(SaasApp).where(SaasApp.slug == app_slug, SaasApp.is_active == True)  # noqa: E712
     )
     saas_app = result.scalar_one_or_none()
+
+    if auth is not None:
+        # Same answer for an unknown application and one the client may not see
+        allowed = await guard.authorized_saas_ids(auth, db)
+        if not saas_app or (allowed is not None and saas_app.id not in allowed):
+            saas_app = None
 
     if not saas_app:
         raise HTTPException(

@@ -13,7 +13,7 @@ from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
 from billing.routes import checkout, health, plans, usage
-from billing.routes.platform import customers, prices, products, saas, subscriptions
+from billing.routes.platform import clients, customers, prices, products, saas, subscriptions
 
 settings = get_settings()
 
@@ -91,6 +91,9 @@ the user has the required `billing:*` scopes via token exchange.
 - `billing:usage:write` - Report usage metrics
 - `billing:checkout:write` - Create checkout sessions
 - `billing:webhooks` - Process webhooks
+- `billing:admin` - Act on every SaaS application and manage the client bindings (name set by `PARTITION_ADMIN_SCOPE`)
+
+Every other route only serves the SaaS applications the calling OAuth client is bound to.
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -114,6 +117,7 @@ app.include_router(health.router)
 
 # Platform routes (admin operations - internal VPN only)
 app.include_router(saas.router)
+app.include_router(clients.router)
 app.include_router(products.router)
 app.include_router(prices.router)
 app.include_router(customers.router)

@@ -373,12 +373,16 @@ class TestRequireScopesTokenExchangePath:
             patch("billing.auth.dependencies.settings") as mock_settings,
             patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
             patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+            patch("billing.auth.dependencies.introspection_client") as mock_intro,
             patch("billing.auth.dependencies.set_request_context"),
         ):
             mock_settings.oauth2_client_id = "client"
             mock_jwks.is_configured = True
             mock_tex.is_configured = True
             mock_tex.validate_token_scopes = AsyncMock(return_value=exchange_result)
+            mock_intro.validate_token_with_introspection = AsyncMock(
+                return_value={"sub": uid, "scope": "resource:read", "client_id": "caller"}
+            )
             auth = await dep(request=MagicMock(), token="header.payload.signature")
             assert auth.user.scopes == ["resource:read", "resource:write"]
 
@@ -487,12 +491,16 @@ class TestRequireScopesTokenExchangePath:
             patch("billing.auth.dependencies.settings") as mock_settings,
             patch("billing.auth.dependencies.jwks_manager") as mock_jwks,
             patch("billing.auth.dependencies.token_exchange_client") as mock_tex,
+            patch("billing.auth.dependencies.introspection_client") as mock_intro,
             patch("billing.auth.dependencies.set_request_context") as mock_set_ctx,
         ):
             mock_settings.oauth2_client_id = "fallback"
             mock_jwks.is_configured = True
             mock_tex.is_configured = True
             mock_tex.validate_token_scopes = AsyncMock(return_value=exchange_result)
+            mock_intro.validate_token_with_introspection = AsyncMock(
+                return_value={"sub": uid, "scope": "resource:read", "client_id": "my-client"}
+            )
             await dep(request=request, token="header.payload.signature")
             mock_set_ctx.assert_called_once()
             assert request.state.client_id == "my-client"

@@ -10,9 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.auth import AuthContext, require_scopes
+from billing.auth import AuthContext
 from billing.database import get_db
 from billing.models import BillingProduct, SaasApp
+from billing.partition import require_saas_scopes
 from billing.schemas import ProductCreate, ProductResponse, ProductUpdate
 from billing.services import get_stripe_service
 from billing.services.stripe_service import build_stripe_description
@@ -58,7 +59,7 @@ def with_slug(metadata: dict | None, slug: str) -> dict:
 async def create_product(
     saas_id: str,
     data: ProductCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingProduct:
     """Create a new product (syncs to Stripe)."""
@@ -97,7 +98,7 @@ async def create_product(
 @router.get("", response_model=list[ProductResponse])
 async def list_products(
     saas_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     include_inactive: bool = False,
 ) -> list[BillingProduct]:
@@ -117,7 +118,7 @@ async def list_products(
 async def get_product(
     saas_id: str,
     product_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingProduct:
     """Get a product by ID."""
@@ -143,7 +144,7 @@ async def update_product(
     saas_id: str,
     product_id: str,
     data: ProductUpdate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingProduct:
     """Update a product (syncs to Stripe)."""

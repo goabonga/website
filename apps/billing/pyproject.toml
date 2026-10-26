@@ -25,6 +25,9 @@ dependencies = [
     "email-validator>=2.1.0",
 ]
 
+[project.scripts]
+billing-admin = "billing.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -11,9 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.auth import AuthContext, require_scopes
+from billing.auth import AuthContext
 from billing.database import get_db
 from billing.models import Customer, SaasApp, Subscription, UsageEvent
+from billing.partition import require_saas_scopes
 from billing.schemas import UsageBatchReport, UsageEventResponse, UsageReport
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ async def get_saas_app_or_404(saas_id: str, db: AsyncSession) -> SaasApp:
 async def report_usage(
     saas_id: str,
     data: UsageReport,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:usage:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:usage:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UsageEvent:
     """Report a single usage event.
@@ -110,7 +111,7 @@ async def report_usage(
 async def report_usage_batch(
     saas_id: str,
     data: UsageBatchReport,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:usage:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:usage:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[UsageEvent]:
     """Report multiple usage events in a batch.

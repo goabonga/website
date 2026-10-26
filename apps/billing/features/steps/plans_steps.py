@@ -4,12 +4,22 @@
 """Step definitions for the public plans."""
 
 import json
+from unittest.mock import patch
 
 from behave import given, then
+from billing.config import settings
 
 
 def _run(context, coro):
     return context.loop.run_until_complete(coro)
+
+
+@given("the plans are public")
+def step_plans_public(context):
+    """Serve the plans without a token for the scenario (PLANS_PUBLIC=true)."""
+    patcher = patch.object(settings, "plans_public", True)
+    patcher.start()
+    context.add_cleanup(patcher.stop)
 
 
 @given('a SaaS app "{name}" with slug "{slug}" has a plan "{plan}" with the limits \'{limits}\'')

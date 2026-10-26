@@ -10,10 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.auth import AuthContext, require_scopes
+from billing.auth import AuthContext
 from billing.config import settings
 from billing.database import get_db
 from billing.models import BillingPrice, BillingProduct, BillingType, SaasApp
+from billing.partition import require_saas_scopes
 from billing.schemas import PriceCreate, PriceResponse, PriceUpdate
 from billing.services import get_stripe_service
 
@@ -55,7 +56,7 @@ async def create_price(
     saas_id: str,
     product_id: str,
     data: PriceCreate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingPrice:
     """Create a new price for a product (syncs to Stripe)."""
@@ -105,7 +106,7 @@ async def create_price(
 async def list_prices(
     saas_id: str,
     product_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     include_inactive: bool = False,
 ) -> list[BillingPrice]:
@@ -126,7 +127,7 @@ async def get_price(
     saas_id: str,
     product_id: str,
     price_id: str,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:read"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingPrice:
     """Get a price by ID."""
@@ -153,7 +154,7 @@ async def update_price(
     product_id: str,
     price_id: str,
     data: PriceUpdate,
-    _auth: Annotated[AuthContext, Depends(require_scopes("billing:platform:write"))],
+    _auth: Annotated[AuthContext, Depends(require_saas_scopes("billing:platform:write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BillingPrice:
     """Update a price (limited fields - Stripe prices are mostly immutable)."""

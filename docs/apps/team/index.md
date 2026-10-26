@@ -24,6 +24,7 @@ is tested with pytest and behave.
 | [Service tools](12-service-tools.md) | tools calling the other platform services |
 | [Workspace tools](13-workspace-tools.md) | files, git, GitHub and SQL tools |
 | [LLM completions](14-llm.md) | chat completions with tool calling for OpenAI and Anthropic |
+| [Agent runner](15-agent-runner.md) | Celery worker that executes a task with an agent |
 
 ## Running the tests
 

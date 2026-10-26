@@ -39,6 +39,7 @@ applications. It is a member of the `website` uv workspace.
 - Search page over the documents of the active workspace.
 - Workspace switching, plan upgrade through the billing service and
   workspace settings pages.
+- Workspace members, roles and email invitations.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -109,6 +110,15 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/organizations/upgrade`, `/tenants/upgrade` | session | Upgrade to a new plan with proration |
 | GET | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Organization settings page |
 | POST | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Update organization settings |
+| GET | `/organizations/members`, `/tenants/members` | session; organization admin or owner | Organization members page |
+| GET | `/organizations/invite`, `/tenants/invite` | session; organization admin or owner | Show invitation form |
+| POST | `/organizations/invite`, `/tenants/invite` | session; organization admin or owner | Create a new invitation |
+| POST | `/organizations/invitations/{invitation_id}/resend`, `/tenants/invitations/{invitation_id}/resend` | session; organization admin or owner | Resend an invitation email |
+| POST | `/organizations/invitations/{invitation_id}/revoke`, `/tenants/invitations/{invitation_id}/revoke` | session; organization admin or owner | Revoke a pending invitation |
+| POST | `/organizations/members/{member_id}/remove`, `/tenants/members/{member_id}/remove` | session; organization admin or owner | Remove a member from the organization |
+| POST | `/organizations/members/{member_id}/role`, `/tenants/members/{member_id}/role` | session; organization admin or owner | Update a member's role |
+| GET | `/organizations/invites/{token}`, `/tenants/invites/{token}` | public | View an invitation (public page) |
+| POST | `/organizations/invites/{token}/accept`, `/tenants/invites/{token}/accept` | session | Accept an invitation |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

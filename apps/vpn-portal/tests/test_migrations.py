@@ -39,6 +39,39 @@ def test_single_linear_history(config):
     assert len(revisions) == len(set(revisions))
 
 
+def test_history_is_001_then_002(config):
+    script = ScriptDirectory.from_config(config)
+
+    head = script.get_revision(script.get_current_head())
+    assert head.revision == "002"
+    assert head.down_revision == "001"
+
+
+def test_upgrade_creates_the_connections_table(config):
+    sql = render(config, "upgrade", "head")
+
+    assert "CREATE TABLE vpn_connections" in sql
+    assert "bytes_received BIGINT DEFAULT '0' NOT NULL" in sql
+    assert "FOREIGN KEY(certificate_id) REFERENCES vpn_certificates (id) ON DELETE CASCADE" in sql
+    assert (
+        "CREATE INDEX ix_vpn_connections_certificate_id ON vpn_connections (certificate_id)" in sql
+    )
+
+
+def test_connections_are_created_after_certificates(config):
+    sql = render(config, "upgrade", "head")
+
+    assert sql.index("CREATE TABLE vpn_certificates") < sql.index("CREATE TABLE vpn_connections")
+
+
+def test_upgrade_covers_every_connection_column(config):
+    sql = render(config, "upgrade", "head")
+    table_sql = sql.split("CREATE TABLE vpn_connections", 1)[1].split(");", 1)[0]
+
+    for column in Base.metadata.tables["vpn_connections"].c:
+        assert f"\n    {column.name} " in table_sql, column.name
+
+
 def test_upgrade_creates_the_certificates_table(config):
     sql = render(config, "upgrade", "head")
 
@@ -67,4 +100,6 @@ def test_downgrade_drops_the_table(config):
     sql = render(config, "downgrade", "head:base")
 
     assert "DROP TABLE vpn_certificates" in sql
+    assert "DROP TABLE vpn_connections" in sql
+    assert sql.index("DROP TABLE vpn_connections") < sql.index("DROP TABLE vpn_certificates")
     assert "DROP INDEX ix_vpn_certificates_user_id" in sql

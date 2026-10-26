@@ -102,3 +102,26 @@ def use_fake_db(fake_db):
     app.dependency_overrides[get_db] = override
     yield fake_db
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def server_user() -> User:
+    """The OpenVPN server's machine client, holding ``vpn:server``."""
+    return User(
+        id="openvpn-server",
+        scopes=["vpn:server"],
+        is_machine_client=True,
+        client_id="openvpn-server",
+    )
+
+
+@pytest_asyncio.fixture
+async def server_client(server_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Client authenticated as the OpenVPN server (``vpn:server``)."""
+    with authenticated_as(server_user):
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer header.payload.signature"},
+        ) as test_client:
+            yield test_client

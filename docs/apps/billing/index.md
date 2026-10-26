@@ -31,6 +31,7 @@ tested.
 | 9a | [Subscription actions](09a-subscription-actions.md) | Cancel at period end or immediately, reactivate |
 | 10 | [Plans](10-plans.md) | Public pricing plans |
 | 11 | [Checkout](11-checkout.md) | Stripe Checkout sessions |
+| 12 | [Usage](12-usage.md) | Metered usage events |
 
 ## Running the tests
 

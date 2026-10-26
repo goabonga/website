@@ -54,13 +54,12 @@
       set -a
       . "$ENV_FILE"
       set +a
-      exec "$VENV/bin/alembic" -c "apps/$PACKAGE/alembic.ini" upgrade head
+      exec "$VENV/bin/alembic" -c alembic.ini upgrade head
     executable: /bin/bash
-    chdir: "{{ python_app__current }}"
+    chdir: "{{ python_app__current }}/apps/{{ python_app__package }}"
   environment:
     ENV_FILE: "{{ python_app__env_file }}"
     VENV: "{{ python_app__venv }}"
-    PACKAGE: "{{ python_app__package }}"
     HOME: "{{ python_app__dir }}"
   become: true
   become_user: "{{ python_app__user }}"

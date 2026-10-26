@@ -504,6 +504,8 @@ website_apps_catalog:
       VPN_PORTAL_API_URL: "https://{{ website_hostnames.vpn_portal }}"
       MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
       MAILLER_DEFAULT_PROVIDER: "{{ website_mailler_provider }}"
+      MAILLER_API_URL: "{{ website_internal_mailler_api_url }}"
+      BILLING_API_URL: "{{ website_internal_billing_api_url }}"
       BILLING_SOCKET_PATH: "/run/billing/billing.sock"
       TEAM_SOCKET_PATH: "/run/team/team.sock"
     secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
@@ -525,6 +527,8 @@ website_apps_catalog:
       REDIS_URL: "{{ website_redis_url }}?db=3"
       MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
       MAILLER_DEFAULT_PROVIDER: "{{ website_mailler_provider }}"
+      MAILLER_API_URL: "{{ website_internal_mailler_api_url }}"
+      BILLING_API_URL: "{{ website_internal_billing_api_url }}"
       BILLING_SOCKET_PATH: "/run/billing/billing.sock"
       TEAM_SOCKET_PATH: "/run/team/team.sock"
     secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]

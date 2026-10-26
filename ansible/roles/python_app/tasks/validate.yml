@@ -80,3 +80,15 @@
       needs website_mailler_ses_region.
     quiet: true
   when: "'mailler' in python_app__apps"
+
+- name: Check the service URLs of internal
+  ansible.builtin.assert:
+    that:
+      - website_internal_billing_api_url is match('^https?://[^/]+')
+      - website_internal_mailler_api_url is match('^https?://[^/]+')
+    fail_msg: >-
+      internal needs website_internal_billing_api_url and website_internal_mailler_api_url (BILLING_API_URL
+      and MAILLER_API_URL): they default to the host names of billing and mailler, which are empty
+      without website_domain and website_internal_domain.
+    quiet: true
+  when: "'internal' in python_app__apps"

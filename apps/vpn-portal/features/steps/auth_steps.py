@@ -13,6 +13,15 @@ from vpn_portal.auth.models import User
 @given('I am authenticated with "{scope}" scope')
 def step_authenticated_with_scope(context, scope):
     scopes = [scope] if scope == "vpn:server" else [scope, "openid", "profile", "email"]
+    _authenticate(context, scopes)
+
+
+@given('I am authenticated with the scopes "{scopes}"')
+def step_authenticated_with_scopes(context, scopes):
+    _authenticate(context, scopes.split())
+
+
+def _authenticate(context, scopes):
     user = User(
         id=uuid4(),
         email="test@example.com",

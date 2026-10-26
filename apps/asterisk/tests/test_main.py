@@ -3,8 +3,10 @@
 
 """Tests for asterisk/main.py."""
 
+import asyncio
 import logging
-from unittest.mock import patch
+import signal
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestSetupLogging:
@@ -48,3 +50,81 @@ class TestLogConfiguration:
             log_configuration()
         assert "127.0.0.1:9092" in caplog.text
 
+
+class TestShutdown:
+    async def test_stops_server(self):
+        from asterisk.main import shutdown
+
+        server = AsyncMock()
+
+        await shutdown(server, signal.SIGTERM)
+        server.stop.assert_called_once()
+
+
+class TestMain:
+    @patch("asterisk.main.AudioSocketServer")
+    @patch("asterisk.main.config")
+    async def test_creates_server_with_config(self, mock_config, MockServer):
+        from asterisk.main import main
+
+        mock_config.AUDIOSOCKET_HOST = "127.0.0.1"
+        mock_config.AUDIOSOCKET_PORT = 9092
+
+        mock_server_instance = MagicMock()
+        mock_server_instance.start = AsyncMock(side_effect=asyncio.CancelledError)
+        MockServer.return_value = mock_server_instance
+
+        await main()
+        MockServer.assert_called_once_with("127.0.0.1", 9092)
+        mock_server_instance.start.assert_awaited_once()
+
+    @patch("asterisk.main.AudioSocketServer")
+    @patch("asterisk.main.config")
+    async def test_handles_cancelled_error(self, mock_config, MockServer):
+        from asterisk.main import main
+
+        mock_config.AUDIOSOCKET_HOST = "127.0.0.1"
+        mock_config.AUDIOSOCKET_PORT = 9092
+
+        mock_server_instance = MagicMock()
+        mock_server_instance.start = AsyncMock(side_effect=asyncio.CancelledError)
+        MockServer.return_value = mock_server_instance
+
+        # Should not raise
+        await main()
+
+    @patch("asterisk.main.shutdown", new_callable=AsyncMock)
+    @patch("asterisk.main.AudioSocketServer")
+    @patch("asterisk.main.config")
+    async def test_signal_handler_calls_shutdown(self, mock_config, MockServer, mock_shutdown):
+        """A SIGTERM received while serving schedules the graceful shutdown."""
+        from asterisk.main import main
+
+        mock_config.AUDIOSOCKET_HOST = "127.0.0.1"
+        mock_config.AUDIOSOCKET_PORT = 9092
+
+        mock_server_instance = MagicMock()
+        mock_server_instance.stop = AsyncMock()
+
+        registered_handlers = {}
+
+        async def start_then_signal():
+            # Simulate a signal being received during server.start()
+            if signal.SIGTERM in registered_handlers:
+                registered_handlers[signal.SIGTERM]()
+            # Allow the created task to run
+            await asyncio.sleep(0)
+            raise asyncio.CancelledError
+
+        mock_server_instance.start = start_then_signal
+        MockServer.return_value = mock_server_instance
+
+        loop = asyncio.get_running_loop()
+
+        def capture_handler(sig, callback, *args):
+            registered_handlers[sig] = callback
+
+        with patch.object(loop, "add_signal_handler", side_effect=capture_handler):
+            await main()
+
+        mock_shutdown.assert_called_once()

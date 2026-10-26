@@ -131,6 +131,10 @@ def before_all(context):
         patch("mailler.routes.send.send_email_task", _delayed_task(context, "send_email_task"))
     )
     context._patchers[-1].start()
+    context._patchers.append(
+        patch("mailler.tasks.scheduler.send_email_task", _delayed_task(context, "send_email_task"))
+    )
+    context._patchers[-1].start()
 
     app.include_router(probe)
     context.client = httpx.AsyncClient(

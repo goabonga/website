@@ -57,6 +57,7 @@ def step_task_result(context, key, value):
 
 
 @then('the task "{name}" should have been queued {count:d} time')
+@then('the task "{name}" should have been queued {count:d} times')
 def step_task_queued(context, name, count):
     queued = [call for call in context.delayed if call[0] == name]
     assert len(queued) == count, f"Expected {count}, got {len(queued)}"

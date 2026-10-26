@@ -1,0 +1,144 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Create the deploy user and additional user accounts with SSH keys and
+      sudo rules.
+    description:
+    - 'Manages operating system accounts: an optional deploy account used by application deployments
+      plus any number of additional accounts, each with groups, authorized keys and a sudo
+      policy.'
+    author: Chris
+    options:
+      users_deploy_enabled:
+        type: bool
+        description:
+        - Create the deploy account used by application deployments.
+        default: true
+      users_deploy_name:
+        type: str
+        description:
+        - Login name of the deploy account.
+        default: deploy
+      users_deploy_shell:
+        type: str
+        description:
+        - Login shell of the deploy account.
+        default: /bin/bash
+      users_deploy_groups:
+        type: list
+        description:
+        - Supplementary groups of the deploy account (appended, never replaced).
+        default: []
+        elements: str
+      users_deploy_ssh_public_keys:
+        type: list
+        description:
+        - SSH public keys (full key lines) authorized for the deploy account.
+        default: []
+        elements: str
+      users_deploy_sudo:
+        type: str
+        description:
+        - 'Sudo policy of the deploy account: none removes any rule, nopasswd grants passwordless
+          sudo, password grants sudo with a password.'
+        default: nopasswd
+        choices:
+        - none
+        - nopasswd
+        - password
+      users_deploy_password_hash:
+        type: str
+        description:
+        - Password hash for the deploy account (required when users_deploy_sudo is password).
+          Keep it in an Ansible Vault.
+        default: ''
+      users_accounts:
+        type: list
+        description:
+        - Additional accounts to manage.
+        default: []
+        elements: dict
+        options:
+          name:
+            type: str
+            description:
+            - Login name.
+            required: true
+          state:
+            type: str
+            description:
+            - present (default) or absent.
+            choices:
+            - present
+            - absent
+          shell:
+            type: str
+            description:
+            - Login shell (default /bin/bash).
+          groups:
+            type: list
+            description:
+            - Supplementary groups (appended).
+            elements: str
+          comment:
+            type: str
+            description:
+            - GECOS comment.
+          uid:
+            type: int
+            description:
+            - Fixed numeric user id.
+          system:
+            type: bool
+            description:
+            - Create a system account.
+          home:
+            type: str
+            description:
+            - Home directory path.
+          create_home:
+            type: bool
+            description:
+            - Create the home directory (default true).
+          remove:
+            type: bool
+            description:
+            - Remove the home directory when state is absent.
+          password_hash:
+            type: str
+            description:
+            - Password hash (use a Vault).
+          ssh_public_keys:
+            type: list
+            description:
+            - SSH public keys to authorize.
+            elements: str
+          ssh_exclusive:
+            type: bool
+            description:
+            - Remove authorized keys that are not listed.
+          sudo:
+            type: str
+            description:
+            - Sudo policy (default none).
+            choices:
+            - none
+            - nopasswd
+            - password
+      users_sudoers_dir:
+        type: path
+        description:
+        - Directory holding the per-user sudoers files.
+        default: /etc/sudoers.d
+      users_install_sudo:
+        type: bool
+        description:
+        - Install the sudo package when at least one account has a sudo policy.
+        default: true
+      users_default_shell:
+        type: str
+        description:
+        - Shell used for additional accounts that do not set one.
+        default: /bin/bash

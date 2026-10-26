@@ -1,0 +1,15 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Internal: the deploy account expressed like an entry of users_accounts.
+users__deploy_account:
+  - name: "{{ users_deploy_name }}"
+    shell: "{{ users_deploy_shell }}"
+    groups: "{{ users_deploy_groups }}"
+    ssh_public_keys: "{{ users_deploy_ssh_public_keys }}"
+    sudo: "{{ users_deploy_sudo }}"
+    password_hash: "{{ users_deploy_password_hash }}"
+
+# Internal: every account managed by the role.
+users__managed: "{{ (users__deploy_account if users_deploy_enabled | bool else []) + users_accounts }}"

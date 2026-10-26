@@ -4,6 +4,7 @@
 """Secured analytics stats API routes."""
 
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from analytics.auth.dependencies import require_scopes
 from analytics.auth.models import User
 from analytics.database import get_db
+from analytics.models.campaign import Campaign, CampaignClick, Pixel
 from analytics.models.event import Event
 from analytics.models.session import Session
 
@@ -133,6 +135,50 @@ class EventStats(BaseModel):
     event_type: str
     count: int
     unique_sessions: int
+
+
+class CampaignStats(BaseModel):
+    """Campaign statistics."""
+
+    id: UUID
+    name: str
+    tracking_key: str
+    is_active: bool
+    click_count: int
+    unique_click_count: int
+    pixel_count: int
+    total_opens: int
+    created_at: datetime
+
+
+class CampaignDetail(BaseModel):
+    """Detailed campaign statistics."""
+
+    id: UUID
+    name: str
+    description: str | None
+    tracking_key: str
+    destination_url: str | None
+    is_active: bool
+    click_count: int
+    unique_click_count: int
+    created_at: datetime
+    updated_at: datetime
+    clicks_by_day: list[DailyStats]
+    clicks_by_country: list[CountryStats]
+
+
+class PixelStats(BaseModel):
+    """Pixel statistics."""
+
+    id: UUID
+    pixel_key: str
+    recipient_email: str | None
+    recipient_id: str | None
+    open_count: int
+    first_opened_at: datetime | None
+    last_opened_at: datetime | None
+    created_at: datetime
 
 
 class StatsResponse(BaseModel):
@@ -657,4 +703,181 @@ async def get_event_stats(
             unique_sessions=row.unique_sessions,
         )
         for row in result.all()
+    ]
+
+
+@router.get("/campaigns", response_model=list[CampaignStats])
+async def get_campaigns(
+    include_inactive: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:read")),
+) -> list[CampaignStats]:
+    """Get all campaigns with statistics."""
+    query = select(Campaign).order_by(Campaign.created_at.desc()).limit(limit)
+
+    if not include_inactive:
+        query = query.where(Campaign.is_active == True)  # noqa: E712
+
+    result = await db.execute(query)
+    campaigns = result.scalars().all()
+
+    campaign_stats = []
+    for campaign in campaigns:
+        # Count pixels
+        pixel_count_result = await db.execute(
+            select(func.count(Pixel.id)).where(Pixel.campaign_id == campaign.id)
+        )
+        pixel_count = pixel_count_result.scalar() or 0
+
+        # Total opens
+        opens_result = await db.execute(
+            select(func.sum(Pixel.open_count)).where(Pixel.campaign_id == campaign.id)
+        )
+        total_opens = opens_result.scalar() or 0
+
+        campaign_stats.append(
+            CampaignStats(
+                id=campaign.id,
+                name=campaign.name,
+                tracking_key=campaign.tracking_key,
+                is_active=campaign.is_active,
+                click_count=campaign.click_count,
+                unique_click_count=campaign.unique_click_count,
+                pixel_count=pixel_count,
+                total_opens=total_opens,
+                created_at=campaign.created_at,
+            )
+        )
+
+    return campaign_stats
+
+
+@router.get("/campaigns/{campaign_id}", response_model=CampaignDetail)
+async def get_campaign_detail(
+    campaign_id: UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:read")),
+) -> CampaignDetail:
+    """Get detailed campaign statistics."""
+    from fastapi import HTTPException
+
+    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    start, _ = get_date_range(days)
+
+    # Clicks by day
+    daily_result = await db.execute(
+        select(
+            func.date(CampaignClick.clicked_at).label("date"),
+            func.count(CampaignClick.id).label("sessions"),
+            func.count(func.distinct(CampaignClick.ip_address)).label("unique_visitors"),
+        )
+        .where(
+            CampaignClick.campaign_id == campaign_id,
+            CampaignClick.clicked_at >= start,
+        )
+        .group_by(func.date(CampaignClick.clicked_at))
+        .order_by(func.date(CampaignClick.clicked_at))
+    )
+
+    clicks_by_day = [
+        DailyStats(
+            date=str(row.date),
+            sessions=row.sessions,
+            pageviews=0,
+            unique_visitors=row.unique_visitors,
+        )
+        for row in daily_result.all()
+    ]
+
+    # Clicks by country
+    total_clicks_result = await db.execute(
+        select(func.count(CampaignClick.id)).where(
+            CampaignClick.campaign_id == campaign_id,
+            CampaignClick.clicked_at >= start,
+        )
+    )
+    total_clicks = total_clicks_result.scalar() or 1
+
+    country_result = await db.execute(
+        select(
+            CampaignClick.country,
+            func.count(CampaignClick.id).label("sessions"),
+        )
+        .where(
+            CampaignClick.campaign_id == campaign_id,
+            CampaignClick.clicked_at >= start,
+        )
+        .group_by(CampaignClick.country)
+        .order_by(func.count(CampaignClick.id).desc())
+        .limit(10)
+    )
+
+    clicks_by_country = [
+        CountryStats(
+            country=row.country,
+            sessions=row.sessions,
+            percentage=round(row.sessions / total_clicks * 100, 2),
+        )
+        for row in country_result.all()
+    ]
+
+    return CampaignDetail(
+        id=campaign.id,
+        name=campaign.name,
+        description=campaign.description,
+        tracking_key=campaign.tracking_key,
+        destination_url=campaign.destination_url,
+        is_active=campaign.is_active,
+        click_count=campaign.click_count,
+        unique_click_count=campaign.unique_click_count,
+        created_at=campaign.created_at,
+        updated_at=campaign.updated_at,
+        clicks_by_day=clicks_by_day,
+        clicks_by_country=clicks_by_country,
+    )
+
+
+@router.get("/campaigns/{campaign_id}/pixels", response_model=list[PixelStats])
+async def get_campaign_pixels(
+    campaign_id: UUID,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:read")),
+) -> list[PixelStats]:
+    """Get pixels for a campaign."""
+    from fastapi import HTTPException
+
+    # Verify campaign exists
+    campaign_result = await db.execute(select(Campaign.id).where(Campaign.id == campaign_id))
+    if not campaign_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    result = await db.execute(
+        select(Pixel)
+        .where(Pixel.campaign_id == campaign_id)
+        .order_by(Pixel.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+
+    return [
+        PixelStats(
+            id=pixel.id,
+            pixel_key=pixel.pixel_key,
+            recipient_email=pixel.recipient_email,
+            recipient_id=pixel.recipient_id,
+            open_count=pixel.open_count,
+            first_opened_at=pixel.first_opened_at,
+            last_opened_at=pixel.last_opened_at,
+            created_at=pixel.created_at,
+        )
+        for pixel in result.scalars().all()
     ]

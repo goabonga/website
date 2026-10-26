@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install and configure Redis
+  ansible.builtin.import_tasks: install.yml
+  when: redis_enabled | bool
+  tags: [redis]
+
+- name: Tune the kernel for Redis
+  ansible.builtin.import_tasks: system.yml
+  when: redis_enabled | bool
+  tags: [redis]
+
+- name: Start Redis
+  ansible.builtin.import_tasks: service.yml
+  when: redis_enabled | bool
+  tags: [redis]

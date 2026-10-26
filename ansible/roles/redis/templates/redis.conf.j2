@@ -1,0 +1,63 @@
+{{ ansible_managed | comment }}
+
+# Network
+bind {{ redis_bind }}
+port {{ redis_port }}
+protected-mode {{ 'yes' if redis_protected_mode else 'no' }}
+{% if redis_socket %}
+unixsocket {{ redis_socket }}
+unixsocketperm {{ redis_socket_perm }}
+{% endif %}
+tcp-backlog {{ redis_tcp_backlog }}
+timeout {{ redis_timeout }}
+tcp-keepalive {{ redis_tcp_keepalive }}
+
+# General
+daemonize no
+supervised systemd
+pidfile {{ redis_pid_file }}
+loglevel {{ redis_loglevel }}
+logfile "{{ redis_log_file }}"
+databases {{ redis_databases }}
+
+# Snapshotting
+{% if redis_save_enabled and redis_save_rules | length > 0 %}
+{% for rule in redis_save_rules %}
+save {{ rule }}
+{% endfor %}
+{% else %}
+save ""
+{% endif %}
+stop-writes-on-bgsave-error {{ 'yes' if redis_stop_writes_on_bgsave_error else 'no' }}
+rdbcompression {{ 'yes' if redis_rdbcompression else 'no' }}
+rdbchecksum yes
+dbfilename dump.rdb
+dir {{ redis_data_dir }}
+
+# Security
+{% if redis_password %}
+requirepass {{ redis_password }}
+{% endif %}
+
+# Limits
+maxclients {{ redis_maxclients }}
+{% if redis_maxmemory %}
+maxmemory {{ redis_maxmemory }}
+maxmemory-policy {{ redis_maxmemory_policy }}
+{% endif %}
+
+# Append only mode
+appendonly {{ 'yes' if redis_appendonly else 'no' }}
+appendfilename "appendonly.aof"
+appendfsync {{ redis_appendfsync }}
+
+# Slow log
+slowlog-log-slower-than {{ redis_slowlog_threshold }}
+slowlog-max-len {{ redis_slowlog_max_len }}
+{% if redis_extra_config | length > 0 %}
+
+# Extra configuration
+{% for line in redis_extra_config %}
+{{ line }}
+{% endfor %}
+{% endif %}

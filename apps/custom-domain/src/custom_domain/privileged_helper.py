@@ -6,7 +6,8 @@
 """Root-side helper that performs the few privileged operations of the service.
 
 The API and the Celery worker never run as root. Everything that needs privileges
-(writing and removing nginx virtual hosts, testing and reloading nginx) goes through this one script,
+(writing and removing nginx virtual hosts, testing and reloading nginx,
+requesting, renewing and revoking certificates) goes through this one script,
 which the worker starts with ``sudo``. It is the only thing the sudoers rule has
 to allow, and it validates everything it is given:
 
@@ -83,6 +84,11 @@ OPTIONS: dict[str, Callable[[str], str]] = {
     "nginx-bin": _absolute_path,
     "nginx-service": _regex(UNIT_RE, "service name"),
     "systemctl-bin": _absolute_path,
+    "certbot-bin": _absolute_path,
+    "openssl-bin": _absolute_path,
+    "webroot": _directory,
+    "letsencrypt-dir": _directory,
+    "email": _regex(EMAIL_RE, "e-mail address"),
 }
 
 
@@ -173,6 +179,76 @@ def check_snippet(opts: dict[str, str], token: str) -> int:
         return _run([_trusted_executable(opts["nginx-bin"]), "-t", "-c", str(harness)])
 
 
+def certbot_issue(opts: dict[str, str], domain: str) -> int:
+    """Request a certificate for ``domain`` using the webroot challenge."""
+    return _run(
+        [
+            _trusted_executable(opts["certbot-bin"]),
+            "certonly",
+            "--webroot",
+            "--webroot-path",
+            opts["webroot"],
+            "-d",
+            domain,
+            "--email",
+            opts["email"],
+            "--agree-tos",
+            "--non-interactive",
+            "--quiet",
+        ]
+    )
+
+
+def certbot_renew(opts: dict[str, str], domain: str) -> int:
+    """Renew the certificate of ``domain``."""
+    return _run(
+        [
+            _trusted_executable(opts["certbot-bin"]),
+            "renew",
+            "--cert-name",
+            domain,
+            "--non-interactive",
+            "--quiet",
+        ]
+    )
+
+
+def certbot_revoke(opts: dict[str, str], domain: str) -> int:
+    """Revoke and delete the certificate of ``domain``; succeed when there is none."""
+    certificate = Path(opts["letsencrypt-dir"], "live", domain, "cert.pem")
+    if not certificate.exists():
+        print("certificate absent")
+        return 0
+    return _run(
+        [
+            _trusted_executable(opts["certbot-bin"]),
+            "revoke",
+            "--cert-path",
+            str(certificate),
+            "--delete-after-revoke",
+            "--non-interactive",
+            "--quiet",
+        ]
+    )
+
+
+def cert_dates(opts: dict[str, str], domain: str) -> int:
+    """Print the validity dates of the certificate of ``domain``."""
+    certificate = Path(opts["letsencrypt-dir"], "live", domain, "fullchain.pem")
+    if not certificate.exists():
+        return EXIT_NOT_FOUND
+    return _run(
+        [
+            _trusted_executable(opts["openssl-bin"]),
+            "x509",
+            "-in",
+            str(certificate),
+            "-noout",
+            "-dates",
+        ]
+    )
+
+
 @dataclass(frozen=True)
 class Command:
     """A subcommand: the options it needs, the kind of argument it takes, its action."""
@@ -190,6 +266,10 @@ COMMANDS: dict[str, Command] = {
     "test-nginx": Command(("nginx-bin",), None, check_nginx),
     "reload-nginx": Command(("systemctl-bin", "nginx-service"), None, reload_nginx),
     "check-snippet": Command(("nginx-bin", "staging-dir"), "token", check_snippet),
+    "certbot-issue": Command(("certbot-bin", "webroot", "email"), "domain", certbot_issue),
+    "certbot-renew": Command(("certbot-bin",), "domain", certbot_renew),
+    "certbot-revoke": Command(("certbot-bin", "letsencrypt-dir"), "domain", certbot_revoke),
+    "cert-dates": Command(("openssl-bin", "letsencrypt-dir"), "domain", cert_dates),
 }
 
 ARGUMENT_PATTERNS = {"domain": DOMAIN_RE, "token": TOKEN_RE}

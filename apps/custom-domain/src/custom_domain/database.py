@@ -3,10 +3,12 @@
 
 """Database configuration and session management."""
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from custom_domain.config import settings
 
@@ -16,6 +18,12 @@ def _get_async_url(url: str) -> str:
     return url.replace("postgresql://", "postgresql+asyncpg://").replace(
         "postgresql:///", "postgresql+asyncpg:///"
     )
+
+
+def _get_sync_url(url: str) -> str:
+    """Convert PostgreSQL URL to sync format (psycopg2)."""
+    url = url.replace("postgresql+asyncpg://", "postgresql://")
+    return url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 
 # Async engine for FastAPI
@@ -65,3 +73,34 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
+
+
+# Sync engine for Celery workers
+sync_engine = create_engine(
+    _get_sync_url(settings.database_url),
+    echo=settings.database_echo,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+)
+
+# Sync session factory
+SyncSessionLocal = sessionmaker(
+    bind=sync_engine,
+    autocommit=False,
+    autoflush=False,
+)
+
+
+@contextmanager
+def get_sync_db() -> Generator[Session, None, None]:
+    """Get sync database session for Celery workers.
+
+    Yields:
+        Session: Database session
+    """
+    session = SyncSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

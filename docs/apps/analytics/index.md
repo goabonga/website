@@ -24,3 +24,4 @@ file and the page listed below.
 - [Campaign statistics](10-stats-campaigns.md): campaign list and detail, pixel list.
 - [Campaign management](11-campaign-api.md): creating and deleting campaigns and pixels.
 - [Data reset](12-stats-reset.md): deleting all analytics data.
+- [Deployment](13-deployment.md): production process, data stores, settings and secrets.

@@ -23,3 +23,4 @@ file and the page listed below.
 - [IP statistics](09-stats-ips.md): most active IPs and per-IP detail.
 - [Campaign statistics](10-stats-campaigns.md): campaign list and detail, pixel list.
 - [Campaign management](11-campaign-api.md): creating and deleting campaigns and pixels.
+- [Data reset](12-stats-reset.md): deleting all analytics data.

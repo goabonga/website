@@ -35,6 +35,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/api/v1/stats/campaigns/{campaign_id}/pixels` | scope `analytics:write` | Create a tracking pixel for an email recipient |
 | DELETE | `/api/v1/stats/campaigns/{campaign_id}` | scope `analytics:write` | Delete an analytics campaign and all its associated data |
 | POST | `/api/v1/stats/campaigns/{campaign_id}/pixels/batch` | scope `analytics:write` | Create multiple tracking pixels at once for email campaign recipients |
+| DELETE | `/api/v1/stats/reset` | scope `analytics:delete` | Reset all analytics data |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -44,6 +45,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `analytics:read` - checked by 13 routes
 - `analytics:write` - checked by 4 routes
+- `analytics:delete` - checked by 1 route
 
 ## Run
 
@@ -69,6 +71,7 @@ directory; see `.env.example`.
 - Per-IP statistics.
 - Campaign statistics: list, detail and pixels.
 - Campaign and pixel management through the API (create, batch create, delete).
+- Data reset endpoint.
 
 Each feature has a page in `docs/apps/analytics/`.
 

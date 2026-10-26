@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     # LLM API keys
     openai_api_key: str = ""
 
+    # Internal services
+    services_base_url: str = ""
+
+    # Service-specific base URLs (can be overridden per agent via config.credentials)
+    billing_base_url: str = ""
+    mailler_base_url: str = ""
+    analytics_base_url: str = ""
+    auth_base_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

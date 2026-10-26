@@ -20,6 +20,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Customers synchronized with Stripe
 - Subscription lifecycle (create, update, cancel, upgrade with proration preview)
 - Cancel and reactivate actions for subscriptions
+- Public pricing plans per SaaS application
 
 ## Routes and scopes
 
@@ -58,6 +59,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade` | scope `billing:platform:write` | Upgrade a subscription to a new plan with proration |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/cancel` | scope `billing:platform:write` | Cancel a subscription, at the end of the paid period by default |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/reactivate` | scope `billing:platform:write` | Undo a cancellation scheduled for the end of the period |
+| GET | `/plans/{app_slug}` | public | List all plans for a SaaS application |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

@@ -8,6 +8,13 @@ from billing.schemas.customer import (
     CustomerResponse,
     CustomerUpdate,
 )
+from billing.schemas.plan import (
+    PlanFeature,
+    PlanLimits,
+    PlanPrice,
+    PlanResponse,
+    PlansResponse,
+)
 from billing.schemas.price import (
     PriceCreate,
     PriceResponse,
@@ -55,4 +62,9 @@ __all__ = [
     "SubscriptionUpgradePreview",
     "SubscriptionUpgradeRequest",
     "SubscriptionUpgradeResponse",
+    "PlanFeature",
+    "PlanLimits",
+    "PlanPrice",
+    "PlanResponse",
+    "PlansResponse",
 ]

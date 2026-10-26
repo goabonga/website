@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
-from billing.routes import health
+from billing.routes import health, plans
 from billing.routes.platform import customers, prices, products, saas, subscriptions
 
 settings = get_settings()
@@ -116,3 +116,6 @@ app.include_router(products.router)
 app.include_router(prices.router)
 app.include_router(customers.router)
 app.include_router(subscriptions.router)
+
+# Public routes (no auth required)
+app.include_router(plans.router)

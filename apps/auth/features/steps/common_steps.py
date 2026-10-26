@@ -32,3 +32,8 @@ def step_response_json_field(context, field, value):
 @then('the response body contains "{text}"')
 def step_response_body_contains(context, text):
     assert text in context.response.text, f"{text!r} not found in {context.response.text[:300]!r}"
+
+
+@then('the response body does not contain "{text}"')
+def step_response_body_does_not_contain(context, text):
+    assert text not in context.response.text, f"{text!r} found in the response body"

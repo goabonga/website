@@ -3,8 +3,7 @@
 
 """Tests for analytics.main module."""
 
-import logging
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 
 class TestAppConfiguration:
@@ -57,13 +56,53 @@ class TestVersion:
         assert all(part.isdigit() for part in parts)
 
 
+class TestSwaggerConfig:
+    """Tests for get_swagger_oauth2_config."""
+
+    def test_returns_empty_when_no_issuer(self):
+        from analytics.main import get_swagger_oauth2_config
+
+        with patch("analytics.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = "client"
+            result = get_swagger_oauth2_config()
+        assert result == {}
+
+    def test_returns_empty_when_no_client_id(self):
+        from analytics.main import get_swagger_oauth2_config
+
+        with patch("analytics.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = ""
+            result = get_swagger_oauth2_config()
+        assert result == {}
+
+    def test_returns_config_when_both_set(self):
+        from analytics.main import get_swagger_oauth2_config
+
+        with patch("analytics.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger-client"
+            result = get_swagger_oauth2_config()
+        assert "swagger_ui_init_oauth" in result
+        assert result["swagger_ui_init_oauth"]["clientId"] == "swagger-client"
+
+
 class TestLifespan:
     """Tests for lifespan context manager."""
 
-    async def test_lifespan_logs_startup_and_shutdown(self, caplog):
+    async def test_lifespan_closes_resources_on_shutdown(self):
         from analytics.main import lifespan
 
-        with caplog.at_level(logging.INFO, logger="analytics.main"):
-            async with lifespan(AsyncMock()):
-                assert "Starting Analytics" in caplog.text
-        assert "Shutting down Analytics" in caplog.text
+        mock_app = AsyncMock()
+
+        with (
+            patch("analytics.auth.jwt.jwt_validator") as mock_jwt,
+            patch("analytics.auth.token_exchange.token_exchange_client") as mock_tex,
+        ):
+            mock_jwt.close = AsyncMock()
+            mock_tex.close = AsyncMock()
+            async with lifespan(mock_app):
+                pass
+            mock_jwt.close.assert_called_once()
+            mock_tex.close.assert_called_once()

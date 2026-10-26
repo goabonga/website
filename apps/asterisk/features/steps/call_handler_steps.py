@@ -13,7 +13,7 @@ from asterisk import call_handler
 from asterisk.audiosocket import AudioSocketSession
 from asterisk.config import config
 from behave import given, then, when
-from fakes import PACKET_AUDIO, PACKET_HANGUP, FakeAsterisk, FakeRealtimeSocket
+from fakes import PACKET_AUDIO, PACKET_HANGUP, FakeAsterisk, FakeRealtimeSocket, embed
 
 
 def _wait_until(context, predicate, timeout=3.0):
@@ -194,3 +194,75 @@ def step_call_ended(context):
 @then("the OpenAI connection should be closed")
 def step_openai_closed(context):
     assert context.socket.closed
+
+
+def _function_output(context):
+    outputs = [
+        m
+        for m in context.socket.sent
+        if m["type"] == "conversation.item.create" and m["item"]["type"] == "function_call_output"
+    ]
+    assert outputs, "no function_call_output was sent"
+    return json.loads(outputs[-1]["item"]["output"])
+
+
+@given("the knowledge base contains the entries:")
+def step_knowledge_entries(context):
+    for index, row in enumerate(context.table, start=1):
+        vector = ",".join(str(v) for v in embed(row["question"]))
+        context.database.rows.append(
+            {
+                "id": index,
+                "question": row["question"],
+                "answer": row["answer"],
+                "embedding": f"[{vector}]",
+            }
+        )
+
+
+@when('OpenAI searches the knowledge base for "{query}"')
+def step_search_knowledge(context, query):
+    context.socket.receive(
+        {
+            "type": "response.function_call_arguments.done",
+            "call_id": "call-search",
+            "name": "search_knowledge",
+            "arguments": json.dumps({"query": query}),
+        }
+    )
+    _wait_until(
+        context,
+        lambda: any(
+            m["type"] == "conversation.item.create" and m["item"]["type"] == "function_call_output"
+            for m in context.socket.sent
+        ),
+    )
+
+
+@then('the OpenAI session should declare the "{name}" tool')
+def step_declares_tool(context, name):
+    session = next(m for m in context.socket.sent if m["type"] == "session.update")["session"]
+    assert name in [tool["name"] for tool in session["tools"]]
+
+
+@then("the OpenAI session instructions should mention the knowledge base")
+def step_instructions(context):
+    session = next(m for m in context.socket.sent if m["type"] == "session.update")["session"]
+    assert "KNOWLEDGE BASE INSTRUCTIONS" in session["instructions"]
+
+
+@then('OpenAI should receive the answer "{answer}"')
+def step_received_answer(context, answer):
+    output = _function_output(context)
+    assert output["found"] is True
+    assert output["results"][0]["answer"] == answer
+
+
+@then("OpenAI should be told that nothing was found")
+def step_nothing_found(context):
+    assert _function_output(context)["found"] is False
+
+
+@then('the sample questions should include "{question}"')
+def step_sample_questions(context, question):
+    assert question in _function_output(context)["sample_questions"]

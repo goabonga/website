@@ -4,8 +4,11 @@
 """In-process fakes of the telephony side, shared by the step modules."""
 
 import asyncio
+import hashlib
 import json
+import math
 import struct
+from unittest.mock import AsyncMock, MagicMock, patch
 
 PACKET_HANGUP = 0x00
 PACKET_UUID = 0x01
@@ -110,3 +113,116 @@ class FakeRealtimeSocket:
             raise StopAsyncIteration
         self._in_flight = True
         return item
+
+
+EMBEDDING_SIZE = 64
+
+
+def embed(text: str) -> list[float]:
+    """Deterministic bag-of-words embedding: similar wording gives similar vectors."""
+    vector = [0.0] * EMBEDDING_SIZE
+    for word in "".join(c if c.isalnum() else " " for c in text.lower()).split():
+        index = int(hashlib.md5(word.encode()).hexdigest(), 16) % EMBEDDING_SIZE
+        vector[index] += 1.0
+    norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+    return [v / norm for v in vector]
+
+
+def _parse_vector(text: str) -> list[float]:
+    return [float(v) for v in text.strip("[]").split(",")]
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    return sum(x * y for x, y in zip(a, b, strict=True))
+
+
+class FakePostgres:
+    """In-memory stand-in for the PostgreSQL + pgvector database.
+
+    It understands exactly the statements issued by ``KnowledgeBase`` and
+    doubles as the connection pool, the connection and the acquire() context.
+    """
+
+    def __init__(self, table_exists: bool = False):
+        self.table_exists = table_exists
+        self.extension_created = False
+        self.index_created = False
+        self.rows: list[dict] = []
+        self.closed = False
+        self._next_id = 1
+
+    # pool interface
+    def acquire(self):
+        return self
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def close(self):
+        self.closed = True
+
+    # connection interface
+    async def fetchval(self, sql, *args):
+        return self.table_exists
+
+    async def execute(self, sql, *args):
+        if "CREATE EXTENSION" in sql:
+            self.extension_created = True
+        elif "CREATE TABLE" in sql:
+            self.table_exists = True
+        elif "CREATE INDEX" in sql:
+            self.index_created = True
+        elif "UPDATE knowledge_base" in sql:
+            question, answer, embedding, entry_id = args
+            for row in self.rows:
+                if row["id"] == entry_id:
+                    row.update(question=question, answer=answer, embedding=embedding)
+        elif "DELETE FROM knowledge_base" in sql:
+            self.rows = [row for row in self.rows if row["id"] != args[0]]
+
+    async def fetchrow(self, sql, *args):
+        question, answer, embedding = args
+        row = {"id": self._next_id, "question": question, "answer": answer, "embedding": embedding}
+        self._next_id += 1
+        self.rows.append(row)
+        return {"id": row["id"]}
+
+    async def fetch(self, sql, *args):
+        if "RANDOM()" in sql:
+            return [{"question": row["question"]} for row in self.rows[: args[0]]]
+        query = _parse_vector(args[0])
+        ranked = sorted(
+            (
+                {**row, "similarity": _cosine(query, _parse_vector(row["embedding"]))}
+                for row in self.rows
+            ),
+            key=lambda row: row["similarity"],
+            reverse=True,
+        )
+        return ranked[: args[1]]
+
+
+def install_fake_knowledge_backends(database: FakePostgres):
+    """Patch asyncpg and the OpenAI embeddings client used by the knowledge base.
+
+    Returns the started patchers; the caller must stop them.
+    """
+    embeddings = AsyncMock()
+
+    async def create(model, input):  # noqa: A002 - mirrors the OpenAI signature
+        return MagicMock(data=[MagicMock(embedding=embed(input))])
+
+    embeddings.embeddings.create = create
+    patchers = [
+        patch(
+            "asterisk.knowledge_base.asyncpg.create_pool",
+            new=AsyncMock(return_value=database),
+        ),
+        patch("asterisk.knowledge_base.AsyncOpenAI", return_value=embeddings),
+    ]
+    for patcher in patchers:
+        patcher.start()
+    return patchers

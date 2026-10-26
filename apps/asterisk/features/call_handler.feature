@@ -58,3 +58,34 @@ Feature: Call handler bridging AudioSocket and OpenAI
         And Asterisk hangs up
         Then the call should end
         And the OpenAI connection should be closed
+
+    Scenario: RAG adds the knowledge search tool and its instructions
+        Given a fake Asterisk call
+        And OpenAI Realtime answering through a fake server
+        And RAG is enabled with a fake database
+        When the call is handled
+        Then the OpenAI session should declare the "search_knowledge" tool
+        And the OpenAI session instructions should mention the knowledge base
+
+    Scenario: A question is answered from the knowledge base
+        Given a fake Asterisk call
+        And OpenAI Realtime answering through a fake server
+        And RAG is enabled with a fake database
+        And the knowledge base contains the entries:
+            | question             | answer                 |
+            | What are your hours? | We are open 9am to 5pm |
+        When the call is handled
+        And OpenAI searches the knowledge base for "What are your hours?"
+        Then OpenAI should receive the answer "We are open 9am to 5pm"
+
+    Scenario: An unanswered question returns sample questions
+        Given a fake Asterisk call
+        And OpenAI Realtime answering through a fake server
+        And RAG is enabled with a fake database
+        And the knowledge base contains the entries:
+            | question             | answer                 |
+            | What are your hours? | We are open 9am to 5pm |
+        When the call is handled
+        And OpenAI searches the knowledge base for "bananas pyjamas zeppelin"
+        Then OpenAI should be told that nothing was found
+        And the sample questions should include "What are your hours?"

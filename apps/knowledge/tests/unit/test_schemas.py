@@ -13,6 +13,60 @@ from knowledge.models import Collection
 from knowledge.models.enums import OwnerType
 from knowledge.schemas.collection import CollectionCreate, CollectionResponse, CollectionUpdate
 from knowledge.schemas.document import DocumentCreate, DocumentsCreate
+from knowledge.schemas.search import SearchRequest
+
+
+class TestSearchRequest:
+    def test_valid_minimal(self):
+        req = SearchRequest(query="hello")
+        assert req.query == "hello"
+        assert req.top_k == 10
+        assert req.threshold == 0.7
+        assert req.distance_type == "cosine"
+        assert req.filters is None
+        assert req.include_content is True
+
+    def test_empty_query_fails(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="")
+
+    def test_top_k_below_min(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="test", top_k=0)
+
+    def test_top_k_above_max(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="test", top_k=101)
+
+    def test_threshold_below_min(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="test", threshold=-0.1)
+
+    def test_threshold_above_max(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="test", threshold=1.1)
+
+    def test_invalid_distance_type(self):
+        with pytest.raises(ValidationError):
+            SearchRequest(query="test", distance_type="manhattan")
+
+    def test_valid_distance_types(self):
+        for dt in ("cosine", "l2", "inner_product"):
+            req = SearchRequest(query="test", distance_type=dt)
+            assert req.distance_type == dt
+
+    def test_with_collection_ids(self):
+        req = SearchRequest(query="test", collection_ids=["abc", "def"])
+        assert req.collection_ids == ["abc", "def"]
+
+    def test_with_filters(self):
+        req = SearchRequest(query="test", filters={"category": "python"})
+        assert req.filters == {"category": "python"}
+
+
+# ============================================================
+# CollectionCreate
+# ============================================================
 
 
 class TestCollectionCreate:

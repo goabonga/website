@@ -4,6 +4,7 @@
 """Behave environment: everything runs in-process, no external service is needed."""
 
 import asyncio
+import re
 import shutil
 import tempfile
 from unittest.mock import AsyncMock, patch
@@ -31,6 +32,7 @@ def before_scenario(context, scenario):
     context.app = app
     context.response = None
     context.token = None
+    context.ids = {}
     context.db = FakeDatabase()
     context.db.install(app)
     context.patchers = []
@@ -67,8 +69,14 @@ def after_scenario(context, scenario):
     shutil.rmtree(context.staging_dir, ignore_errors=True)
 
 
+def resolve_path(context, path):
+    """Replace ``{kind:name}`` placeholders with the identifiers registered by the steps."""
+    return re.sub(r"\{(\w+):([^}]+)\}", lambda m: str(context.ids[(m.group(1), m.group(2))]), path)
+
+
 def http_request(context, method, path, **kwargs):
     """Send a request to the ASGI application and keep the response on the context."""
+    path = resolve_path(context, path)
     headers = dict(kwargs.pop("headers", {}))
     if context.token:
         headers["Authorization"] = f"Bearer {context.token}"

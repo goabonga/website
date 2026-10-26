@@ -31,6 +31,7 @@ def _compile_inet_for_sqlite(element, compiler, **kw):
 # when behave loads the step definitions: configure the environment first.
 _tmpdir = tempfile.TemporaryDirectory()
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmpdir.name}/analytics.db"
+os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.local")
 
 
 def before_all(context):

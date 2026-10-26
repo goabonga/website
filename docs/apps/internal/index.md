@@ -13,6 +13,7 @@ feature, in the order they were introduced.
 
 1. [Application foundation](01-foundation.md)
 2. [OAuth2 authentication](02-authentication.md)
+3. [Analytics dashboards](03-analytics.md)
 
 ## Running locally
 

@@ -36,6 +36,7 @@ applications. It is a member of the `website` uv workspace.
 - Landing page, pricing, legal pages, dashboard and MCP download page.
 - Collection and document management pages, with chunked and uploaded
   documents.
+- Search page over the documents of the active workspace.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -97,6 +98,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/documents/{document_id}/edit` | session | Show form to edit a document |
 | POST | `/documents/{document_id}/edit` | session | Update a document and regenerate embedding if content changed |
 | POST | `/documents/{document_id}/delete` | session | Delete a document |
+| GET | `/search` | session | Search interface page |
+| POST | `/search` | session | Handle search form submission - redirect to GET with query params |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

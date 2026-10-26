@@ -26,6 +26,7 @@ The application is documented feature by feature, in the order in which
 each feature builds on the previous ones.
 
 1. [Application foundation](01-foundation.md): package, settings, logging and health check.
+2. [OAuth2 authentication](02-oauth2-authentication.md): token validation, introspection, token exchange and scope checks.
 
 ## Testing
 

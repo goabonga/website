@@ -84,3 +84,18 @@ bump_files = [
 ]
 changelog = "apps/asterisk/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.backend]
+tag_format = "backend-v{version}"
+paths = [
+    "apps/backend/src/**",
+    "apps/backend/features/**",
+    "apps/backend/tests/**",
+    "apps/backend/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/backend/pyproject.toml", key = "project.version" },
+    { file = "apps/backend/src/backend/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/backend/CHANGELOG.md"
+post_bump = ["uv lock"]

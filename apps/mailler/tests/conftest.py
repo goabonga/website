@@ -311,3 +311,45 @@ async def webhook_client(mock_db_session, webhook_user: User) -> AsyncGenerator[
         for p in patchers:
             p.stop()
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sqlite_sessions(tmp_path):
+    """A temporary SQLite database with the registry and template tables.
+
+    Returns a context-manager factory shaped like ``get_sync_db``. The
+    PostgreSQL-only column types of the two tables are swapped for JSON while
+    the fixture is in use.
+    """
+    from contextlib import contextmanager
+
+    from mailler.models import Base, EmailTemplate
+    from sqlalchemy import JSON, create_engine
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.orm import sessionmaker
+
+    tables = [AuthorizedClient.__table__, EmailTemplate.__table__]
+    swapped = []
+    for table in tables:
+        for column in table.columns:
+            if isinstance(column.type, postgresql.JSONB | postgresql.ARRAY):
+                swapped.append((column, column.type))
+                column.type = JSON()
+
+    engine = create_engine(f"sqlite:///{tmp_path}/cli.db")
+    Base.metadata.create_all(engine, tables=tables)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+
+    @contextmanager
+    def get_sync_db():
+        session = factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    yield get_sync_db
+
+    engine.dispose()
+    for column, original in swapped:
+        column.type = original

@@ -64,6 +64,18 @@ class Settings(BaseSettings):
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
     tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup
 
+    # Celery / Redis
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str | None = None  # Disabled by default (fire-and-forget tasks)
+
+    # Outbound tenant webhooks
+    webhook_delivery_timeout_seconds: int = 10  # HTTP timeout per attempt
+    webhook_max_attempts: int = 5  # Retries before giving up
+    webhook_retention_days: int = 30  # Delete delivery rows older than this
+    webhook_retention_max_per_hook: int = 1000  # Cap rows per webhook
+    webhook_response_body_max_bytes: int = 8192  # Truncate captured response body
+    webhook_allow_private_networks: bool = False  # SSRF escape hatch (dev only)
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

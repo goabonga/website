@@ -153,3 +153,17 @@ def login():
 
     yield as_user
     app.dependency_overrides.pop(get_auth_context, None)
+
+
+@pytest.fixture
+def login_caller():
+    """Act as an apt ``Caller`` on routes using the Basic or Bearer or session resolver."""
+    from apt_server.acl.packages import Caller
+    from apt_server.services.apt_auth import resolve_caller
+
+    def as_caller(sub: str | None, scopes: list[str] | None = None, **extra) -> None:
+        caller = None if sub is None else Caller(sub=sub, scopes=frozenset(scopes or []), **extra)
+        app.dependency_overrides[resolve_caller] = lambda: caller
+
+    yield as_caller
+    app.dependency_overrides.pop(resolve_caller, None)

@@ -12,12 +12,14 @@ from custom_domain.tasks.maintenance import (
 from custom_domain.tasks.provisioning import deprovision_domain, provision_domain_ssl
 from custom_domain.tasks.validation import validate_nginx_template
 from custom_domain.tasks.verification import check_pending_domains, verify_domain_dns
+from custom_domain.tasks.webhooks import deliver_webhook
 
 __all__ = [
     "check_certificate_expiry",
     "check_domain_health",
     "check_pending_domains",
     "cleanup_stale_domains",
+    "deliver_webhook",
     "deprovision_domain",
     "provision_domain_ssl",
     "purge_deleted_domains",

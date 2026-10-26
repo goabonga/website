@@ -44,6 +44,19 @@ async def ensure_template_usable(db: AsyncSession, template_id: int | None, clie
         )
 
 
+def ensure_webhook_complete(url: str | None, secret: str | None) -> None:
+    """A webhook URL needs the secret that signs its deliveries.
+
+    Raises:
+        HTTPException: 400 when a URL is set without a secret
+    """
+    if url and not secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="webhook_secret is required with webhook_url",
+        )
+
+
 @router.get("", response_model=ClientListResponse)
 async def list_clients(
     db: AsyncSession = Depends(get_db),
@@ -97,6 +110,7 @@ async def create_client(
         )
 
     await ensure_template_usable(db, data.default_nginx_template_id, data.client_id)
+    ensure_webhook_complete(data.webhook_url, data.webhook_secret)
 
     client = AuthorizedClient(
         client_id=data.client_id,
@@ -107,6 +121,8 @@ async def create_client(
         default_nginx_template_id=data.default_nginx_template_id,
         max_domains=data.max_domains,
         metadata_=data.metadata,
+        webhook_url=data.webhook_url,
+        webhook_secret=data.webhook_secret,
         is_active=True,
     )
 
@@ -162,6 +178,7 @@ async def update_client(
             client.metadata_ = value
         else:
             setattr(client, field, value)
+    ensure_webhook_complete(client.webhook_url, client.webhook_secret)
 
     await db.commit()
     await db.refresh(client)

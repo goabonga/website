@@ -7,7 +7,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from custom_domain.schemas.validators import validate_upstream
+from custom_domain.schemas.validators import (
+    validate_upstream,
+    validate_webhook_secret,
+    validate_webhook_url,
+)
 
 
 class ClientCreate(BaseModel):
@@ -33,8 +37,16 @@ class ClientCreate(BaseModel):
         description="Maximum number of domains (null = unlimited)",
     )
     metadata: dict | None = Field(None, description="Custom metadata")
+    webhook_url: str | None = Field(
+        None, description="URL that receives signed status notifications (https)"
+    )
+    webhook_secret: str | None = Field(
+        None, description="HMAC secret shared with the client (at least 32 characters)"
+    )
 
     _check_upstream = field_validator("default_upstream_target")(validate_upstream)
+    _check_webhook_url = field_validator("webhook_url")(validate_webhook_url)
+    _check_webhook_secret = field_validator("webhook_secret")(validate_webhook_secret)
 
 
 class ClientUpdate(BaseModel):
@@ -47,8 +59,12 @@ class ClientUpdate(BaseModel):
     default_nginx_template_id: int | None = None
     max_domains: int | None = None
     metadata: dict | None = None
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
 
     _check_upstream = field_validator("default_upstream_target")(validate_upstream)
+    _check_webhook_url = field_validator("webhook_url")(validate_webhook_url)
+    _check_webhook_secret = field_validator("webhook_secret")(validate_webhook_secret)
 
 
 class ClientResponse(BaseModel):
@@ -63,11 +79,19 @@ class ClientResponse(BaseModel):
     default_nginx_template_id: int | None = None
     max_domains: int | None = None
     is_active: bool
+    webhook_url: str | None = None
+    has_webhook_secret: bool = Field(False, validation_alias="webhook_secret")
     metadata: dict | None = Field(None, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("has_webhook_secret", mode="before")
+    @classmethod
+    def _secret_is_never_exposed(cls, value: object) -> bool:
+        """Report whether a secret is set; the secret itself is never returned."""
+        return bool(value)
 
 
 class ClientListItem(BaseModel):

@@ -220,6 +220,8 @@ class Client:
     created_at: datetime | None = None
     updated_at: datetime | None = None
     metadata: dict | None = None
+    webhook_url: str | None = None
+    has_webhook_secret: bool = False
 
     @classmethod
     def from_dict(cls, data: dict) -> Client:
@@ -238,6 +240,8 @@ class Client:
             created_at=_parse_datetime(data.get("created_at")),
             updated_at=_parse_datetime(data.get("updated_at")),
             metadata=data.get("metadata"),
+            webhook_url=data.get("webhook_url"),
+            has_webhook_secret=data.get("has_webhook_secret", False),
         )
 
 
@@ -744,12 +748,18 @@ class ClientsAPI:
         default_nginx_template_id: int | None = None,
         max_domains: int | None = None,
         metadata: dict | None = None,
+        webhook_url: str | None = None,
+        webhook_secret: str | None = None,
     ) -> Client:
-        """Create a new client."""
+        """Create a new client (``webhook_url`` needs ``webhook_secret``)."""
         data = {
             "client_id": client_id,
             "name": name,
         }
+        if webhook_url:
+            data["webhook_url"] = webhook_url
+        if webhook_secret:
+            data["webhook_secret"] = webhook_secret
         if description:
             data["description"] = description
         if default_upstream_target:
@@ -781,9 +791,15 @@ class ClientsAPI:
         default_nginx_template_id: int | None = None,
         max_domains: int | None = None,
         metadata: dict | None = None,
+        webhook_url: str | None = None,
+        webhook_secret: str | None = None,
     ) -> Client:
         """Update a client."""
         data = {}
+        if webhook_url is not None:
+            data["webhook_url"] = webhook_url
+        if webhook_secret is not None:
+            data["webhook_secret"] = webhook_secret
         if name is not None:
             data["name"] = name
         if description is not None:

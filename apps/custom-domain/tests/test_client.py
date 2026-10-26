@@ -1563,6 +1563,10 @@ class TestClientInit:
             "TemplateList",
             "TemplatesAPI",
             "ValidationError",
+            "WebhookEvent",
+            "WebhookSignatureError",
+            "construct_event",
+            "verify_webhook_signature",
         ]
         assert sorted(__all__) == sorted(expected)
 

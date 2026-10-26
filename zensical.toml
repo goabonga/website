@@ -17,6 +17,7 @@ nav = [
     { "Ansible" = [
         { "Roles" = [
             { "PostgreSQL" = "ansible/roles/postgres.md" },
+            { "security" = "ansible/roles/security.md" },
             { "users" = "ansible/roles/users.md" },
         ] },
     ] },

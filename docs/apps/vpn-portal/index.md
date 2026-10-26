@@ -28,6 +28,7 @@ each feature builds on the previous ones.
 1. [Application foundation](01-foundation.md): package, settings, logging and health check.
 2. [OAuth2 authentication](02-oauth2-authentication.md): token validation, introspection, token exchange and scope checks.
 3. [Certificate records and migrations](03-certificate-records.md): the PostgreSQL model of issued certificates and its Alembic migration.
+4. [Step-CA root certificate](04-step-ca-root-certificate.md): the Step-CA client and the root CA endpoint.
 
 ## Testing
 

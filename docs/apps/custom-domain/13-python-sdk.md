@@ -50,8 +50,9 @@ An application that sells custom domains to its tenants needs only the
 (`create`), restart verification (`verify`) or provisioning (`provision`), read
 the state (`get`, `get_status`, `get_event_history`, `stream_events`,
 `wait_for_active`), list (`list`), update the upstream or template (`update`),
-delete (`delete`) and look a host name up (`lookup`, which only finds the
-caller's own domains). Onboarding such an application (client registration and
+delete (`delete`), look a host name up (`lookup`, which only finds the
+caller's own domains) and list the nginx templates it may choose
+(`list_available_templates`, per-client template ownership page). Onboarding such an application (client registration and
 scopes) is described in the SaaS onboarding page.
 
 `delete(id)` is asynchronous, like the endpoint: it answers
@@ -85,8 +86,8 @@ HTTP errors become exceptions that carry `status_code` and `detail`:
 `AsyncCustomDomainClient(base_url, access_token, timeout=30)` is an
 `async with` context manager covering the domain lifecycle: `list_domains`,
 `create_domain`, `get_domain`, `update_domain`, `delete_domain`, `verify_domain`,
-`provision_domain`, `lookup_domain`, `get_domain_status` and
-`get_event_history`. HTTP errors raise the same typed exceptions as the
+`provision_domain`, `lookup_domain`, `list_available_templates`, `get_domain_status`
+and `get_event_history`. HTTP errors raise the same typed exceptions as the
 synchronous client (they share one mapping). There is no token refresh, no SSE
 stream and no administration namespace.
 
@@ -109,6 +110,9 @@ talks to. The migrated client fixes them:
 - The async client raised the base error for every failure and could not update,
   verify or provision a domain: it now shares the error mapping and has the
   missing methods. `DomainStatus` knew neither `expired` nor `deprovisioning`.
+- `templates.create` sent no `slug`, which the API requires, and a never-honoured
+  `is_default`; it now takes `slug` first and an optional `client_id` (owner).
+  `Template` carries `slug` and `client_id`.
 - `domains.delete` returns the answer of the (now asynchronous) endpoint instead
   of `None`. The example at the bottom of the module reads its URL and token from
   `CUSTOM_DOMAIN_URL` and `CUSTOM_DOMAIN_TOKEN` instead of defaulting to a local

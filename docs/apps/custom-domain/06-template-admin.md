@@ -14,7 +14,9 @@ Every endpoint requires **both** the administration scope (`ADMIN_SCOPE`,
 During provisioning (SSL provisioning page) a domain uses, in this order, its
 own active template (`nginx_template_id`), then the active default template of
 its client (see the client administration page), then the active template
-flagged as default, then the files shipped with the package. A template holds a
+flagged as default, then the files shipped with the package. Templates can be
+shared or owned by one client (per-client template ownership page); a template
+owned by another client is never used. A template holds a
 `http_template` and a `https_template`, both Jinja2 sources rendered with the
 context listed in the nginx rendering page.
 

@@ -39,14 +39,19 @@ def step_domain_in_db(context, name, status):
         session.commit()
 
 
-def fake_provisioning_environment(context, certbot_result):
-    """Replace the database session, nginx, certbot and event publishing of the task."""
+def fake_provisioning_environment(context, certbot_result, record_events=True):
+    """Replace the database session, nginx, certbot and event publishing of the task.
+
+    With ``record_events=False`` the event publishing is left alone (the webhook
+    scenarios route it to the real function themselves).
+    """
     start_patch(
         context,
         "custom_domain.tasks.provisioning.get_sync_db",
         side_effect=lambda: context.db.session(),
     )
-    context.events = start_patch(context, "custom_domain.tasks.provisioning.publish_event")
+    if record_events:
+        context.events = start_patch(context, "custom_domain.tasks.provisioning.publish_event")
     nginx = start_patch(context, "custom_domain.tasks.provisioning.nginx_manager")
     nginx.generate_http_config = AsyncMock(return_value="http config")
     nginx.generate_https_config = AsyncMock(return_value="https config")

@@ -37,6 +37,7 @@ class TestAppConfiguration:
         assert app.url_path_for("track_pixel", pixel_key="k") == "/p/k.gif"
         assert app.url_path_for("track_pixel_no_extension", pixel_key="k") == "/p/k"
         assert app.url_path_for("track_link", tracking_key="k") == "/t/k"
+        assert app.url_path_for("get_overview_stats") == "/api/v1/stats/overview"
 
 
 class TestVersion:

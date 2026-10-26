@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Auth{% endblock %}
+
+{% block content %}
+<h1>Login</h1>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="success">{{ success }}</div>
+{% endif %}
+
+<form method="post" action="{{ tenant_prefix }}/auth/login">
+    <input type="hidden" name="next" value="{{ next|default('', true) }}">
+    {% if mfa_required %}
+    <input type="hidden" name="email" value="{{ email|default('', true) }}">
+    {% endif %}
+
+    {% if not mfa_required %}
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ email|default('', true) }}" required autocomplete="email">
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    {% endif %}
+
+    {% if mfa_required %}
+    <div class="form-group">
+        <label for="otp">Authenticator code</label>
+        <input
+            type="text"
+            id="otp"
+            name="otp"
+            pattern="[0-9]{6}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4}"
+            maxlength="9"
+            inputmode="text"
+            placeholder="123456 or ABCD-EFGH"
+            autocomplete="one-time-code"
+            required
+        >
+    </div>
+    <div class="form-group">
+        <button type="submit" name="send_email_code" value="1" formnovalidate>
+            Send a code by email
+        </button>
+    </div>
+    {% endif %}
+
+    <button type="submit">Login</button>
+</form>
+
+<p class="link">
+    <a href="{{ tenant_prefix }}/auth/forgot-password">Forgot your password?</a>
+</p>
+
+<p class="link">
+    Don't have an account? <a href="{{ tenant_prefix }}/auth/register{% if next %}?next={{ next|urlencode }}{% endif %}">Register</a>
+</p>
+{% endblock %}

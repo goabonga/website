@@ -39,6 +39,54 @@ celery_app.conf.update(
     },
     # Beat schedule for periodic tasks
     beat_schedule={
+        "cleanup-expired-tokens": {
+            "task": "cleanup_expired_tokens",
+            "schedule": crontab(minute=0),  # Every hour at :00
+        },
+        "cleanup-expired-authorization-codes": {
+            "task": "cleanup_expired_authorization_codes",
+            "schedule": crontab(minute="*/15"),  # Every 15 minutes
+        },
+        "cleanup-expired-device-codes": {
+            "task": "cleanup_expired_device_codes",
+            "schedule": crontab(minute="*/30"),  # Every 30 minutes
+        },
+        "cleanup-expired-par-requests": {
+            "task": "cleanup_expired_par_requests",
+            "schedule": crontab(minute="*/15"),  # Every 15 minutes
+        },
+        "cleanup-expired-verification-codes": {
+            "task": "cleanup_expired_verification_codes",
+            "schedule": crontab(minute=0),  # Every hour at :00
+        },
+        "cleanup-expired-password-reset-tokens": {
+            "task": "cleanup_expired_password_reset_tokens",
+            "schedule": crontab(minute=0),  # Every hour at :00
+        },
+        "cleanup-expired-mfa-email-codes": {
+            "task": "cleanup_expired_mfa_email_codes",
+            "schedule": crontab(minute="*/30"),  # Every 30 minutes
+        },
+        "cleanup-expired-sessions": {
+            "task": "cleanup_expired_sessions",
+            "schedule": crontab(minute=0, hour=0),  # Every day at midnight
+        },
+        "cleanup-expired-pats": {
+            "task": "cleanup_expired_pats",
+            "schedule": crontab(minute=0, hour=3),  # Every day at 3 AM
+        },
+        "cleanup-orphaned-avatars": {
+            "task": "cleanup_orphaned_avatars",
+            "schedule": crontab(minute=0, hour="*/12"),  # Every 12 hours (0:00, 12:00)
+        },
+        "cleanup-unverified-users": {
+            "task": "cleanup_unverified_users",
+            "schedule": crontab(minute=30, hour="*/12"),  # Every 12 hours (0:30, 12:30)
+        },
+        "check-pending-custom-domains": {
+            "task": "check_pending_custom_domains",
+            "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        },
         "retry-pending-webhooks": {
             "task": "retry_pending_webhooks",
             "schedule": crontab(minute="*"),  # Every minute

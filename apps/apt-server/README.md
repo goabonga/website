@@ -14,6 +14,7 @@ access control.
 - APT client endpoints: `dists/`, `pool/`, `pubkey.gpg`, Basic or Bearer auth
 - Package API: `.deb` upload, listing, update, delete, ACL management, reindex
 - Chunked upload sessions for large packages
+- User cache kept in sync by signed webhooks from the auth service
 
 ## Routes and scopes
 
@@ -45,6 +46,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/dists/{suite}/{component}/binary-{architecture}/Packages` | public components, else credentials (token or session) | Serve the `Packages` index of a component and architecture |
 | GET | `/dists/{suite}/{component}/binary-{architecture}/Packages.gz` | public components, else credentials (token or session) | Serve the compressed `Packages.gz` index of a component and architecture |
 | GET | `/pool/{component}/{prefix}/{name}/{filename}` | public package, else credentials (token or session) with read access to the package | Serve a `.deb` via `X-Accel-Redirect` after the ACL check |
+| POST | `/webhooks/auth` | public; `X-Webhook-Signature` HMAC checked when `WEBHOOK_SECRET` is set | Receive and process auth service webhook events |
 
 The built web client and other static files are served publicly under `/static`.
 

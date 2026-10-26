@@ -11,6 +11,7 @@ from apt_server.db.models.acl import ACLRole, PackageACL
 from apt_server.db.models.base import Base
 from apt_server.db.models.index_cache import IndexCache
 from apt_server.db.models.package import Package, PackageVisibility
+from apt_server.db.models.user_cache import UserCache
 
 __all__ = [
     "ACLRole",
@@ -19,4 +20,5 @@ __all__ = [
     "Package",
     "PackageACL",
     "PackageVisibility",
+    "UserCache",
 ]

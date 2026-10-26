@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     cors_methods: list[str] = ["*"]
     cors_headers: list[str] = ["*"]
 
+    # Database (shared with backend - contains chat history)
+    database_url: str = "postgresql://localhost/app"
+
     # Redis
     redis_url: str = "redis://localhost:6379/0"
     redis_key_prefix: str = "internal"

@@ -22,6 +22,7 @@ applications. It is a member of the `website` uv workspace.
 - Multi-tenant resolution from path prefix, subdomain or custom domain.
 - Billing client and subscription webhook that keep organization plans in
   sync.
+- Transactional emails (MJML templates) sent through the mailler service.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 

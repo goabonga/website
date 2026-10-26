@@ -3,7 +3,8 @@
 
 """Email sending route."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mailler.auth import AuthContext, require_scopes
@@ -11,7 +12,7 @@ from mailler.database import get_db
 from mailler.logging import get_logger
 from mailler.models.email import Email, EmailStatus
 from mailler.schemas.email import SendEmailRequest, SendEmailResponse
-from mailler.services import clients
+from mailler.services import clients, idempotency
 from mailler.services.template_content import resolve_content
 from mailler.tasks.send import send_email_task
 
@@ -23,20 +24,34 @@ router = APIRouter(tags=["Send"])
 @router.post("/send", response_model=SendEmailResponse)
 async def send_email(
     request: SendEmailRequest,
+    idempotency_key: str | None = Header(
+        default=None,
+        alias=idempotency.HEADER,
+        min_length=1,
+        max_length=idempotency.MAX_LENGTH,
+        description="Makes the request safe to repeat: the first email is returned again",
+    ),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(require_scopes("mailler:send")),
 ) -> SendEmailResponse:
     """Send an email immediately (async via Celery).
 
     The email is queued for immediate delivery via the specified provider.
+    Repeating a request with the same ``Idempotency-Key`` returns the first
+    email instead of sending a second one.
 
     Args:
         request: Email details
+        idempotency_key: Optional key that makes the request safe to repeat
         db: Database session
 
     Returns:
         SendEmailResponse with email ID and task ID
     """
+    existing = await idempotency.find_replay(db, auth.client_id, idempotency_key, request.to_email)
+    if existing is not None:
+        return idempotency.replay_response(existing)
+
     # The sender and the provider come from the record of the client
     client = await clients.get_client(db, auth.client_id)
     identity = clients.resolve_identity(
@@ -67,10 +82,21 @@ async def send_email(
         client_id=auth.user.client_id,
         user_id=None if auth.user.is_machine_client else auth.user.id,
         status=EmailStatus.PENDING.value,
+        idempotency_key=idempotency_key,
     )
 
-    db.add(email)
-    await db.commit()
+    try:
+        db.add(email)
+        await db.commit()
+    except IntegrityError:
+        # A concurrent request with the same key won the race
+        await db.rollback()
+        existing = await idempotency.find_replay(
+            db, auth.client_id, idempotency_key, request.to_email
+        )
+        if existing is None:
+            raise
+        return idempotency.replay_response(existing)
     await db.refresh(email)
 
     # Queue Celery task for immediate sending

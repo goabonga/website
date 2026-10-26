@@ -2,7 +2,7 @@
 
 The recipients database: contacts with a lifecycle status, custom fields,
 bulk import and unsubscribe. Contact groups, which reuse the same tables,
-are covered by the next feature.
+are described in [Contact groups](10-contact-groups.md).
 
 Contacts are owned by a client (see [client identity](02-authentication.md)):
 a client only lists, reads, edits, unsubscribes and deletes its own contacts,

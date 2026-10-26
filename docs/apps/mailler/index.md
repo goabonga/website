@@ -22,6 +22,7 @@ documented on its own page.
 | [Scheduling and periodic tasks](07-schedule.md) | `POST /schedule`, beat tasks |
 | [MJML email templates](08-templates.md) | Template CRUD, compilation and rendering |
 | [Contacts](09-contacts.md) | Recipients, bulk import and unsubscribe |
+| [Contact groups](10-contact-groups.md) | Named sets of contacts and memberships |
 
 ## Running the tests
 

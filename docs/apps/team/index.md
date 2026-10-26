@@ -23,6 +23,7 @@ is tested with pytest and behave.
 | [Tool registry](11-tools.md) | tool catalog and the platform tools |
 | [Service tools](12-service-tools.md) | tools calling the other platform services |
 | [Workspace tools](13-workspace-tools.md) | files, git, GitHub and SQL tools |
+| [LLM completions](14-llm.md) | chat completions with tool calling for OpenAI and Anthropic |
 
 ## Running the tests
 

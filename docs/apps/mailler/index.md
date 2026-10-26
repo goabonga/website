@@ -14,6 +14,7 @@ documented on its own page.
 | Page | Feature |
 | --- | --- |
 | [Application foundation](01-foundation.md) | Settings, logging, database sessions, health check |
+| [OAuth2 authentication](02-authentication.md) | Bearer token validation and scope checks |
 
 ## Running the tests
 

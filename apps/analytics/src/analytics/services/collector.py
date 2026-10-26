@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from analytics.config import settings
 from analytics.logging import get_logger
-from analytics.models import Campaign, Event, Pixel, PixelOpen, Session
+from analytics.models import Campaign, CampaignClick, Event, Pixel, PixelOpen, Session
 from analytics.services.geoip import geoip_service
 from analytics.services.useragent import useragent_service
 
@@ -221,6 +221,58 @@ class CollectorService:
 
         logger.info(f"Pixel opened: {pixel_key} (count: {pixel.open_count})")
         return pixel
+
+    async def track_campaign_click(
+        self,
+        db: AsyncSession,
+        tracking_key: str,
+        request: Request,
+    ) -> Campaign | None:
+        """Track a campaign link click.
+
+        Args:
+            db: Database session.
+            tracking_key: Campaign tracking key.
+            request: FastAPI request.
+
+        Returns:
+            Campaign if found, None otherwise.
+        """
+        result = await db.execute(
+            select(Campaign).where(
+                Campaign.tracking_key == tracking_key, Campaign.is_active.is_(True)
+            )
+        )
+        campaign = result.scalar_one_or_none()
+
+        if not campaign:
+            logger.warning(f"Campaign not found or inactive: {tracking_key}")
+            return None
+
+        client_ip = get_client_ip(request)
+        user_agent = request.headers.get("user-agent")
+        referrer = request.headers.get("referer")
+        geo = geoip_service.lookup(client_ip)
+
+        # Create click record
+        click = CampaignClick(
+            campaign_id=campaign.id,
+            ip_address=client_ip if client_ip != "unknown" else None,
+            user_agent=user_agent,
+            country=geo.country,
+            city=geo.city,
+            referrer=referrer,
+        )
+        db.add(click)
+
+        # Update campaign stats
+        campaign.click_count += 1
+        # Note: unique_click_count would require checking if IP already clicked
+
+        await db.commit()
+
+        logger.info(f"Campaign click: {campaign.name} (count: {campaign.click_count})")
+        return campaign
 
     async def create_campaign(
         self,

@@ -55,6 +55,11 @@ class Campaign(Base):
         back_populates="campaign",
         cascade="all, delete-orphan",
     )
+    clicks: Mapped[list["CampaignClick"]] = relationship(
+        "CampaignClick",
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Campaign {self.name}>"
@@ -150,3 +155,48 @@ class PixelOpen(Base):
 
     def __repr__(self) -> str:
         return f"<PixelOpen {self.pixel_id} at {self.opened_at}>"
+
+
+class CampaignClick(Base):
+    """Campaign link click tracking."""
+
+    __tablename__ = "analytics_campaign_clicks"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    # Campaign reference
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("analytics_campaigns.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    # Click information
+    clicked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+    ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Geolocation
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Source tracking
+    referrer: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    campaign: Mapped["Campaign"] = relationship(
+        "Campaign",
+        back_populates="clicks",
+    )
+
+    __table_args__ = (Index("ix_analytics_campaign_clicks_clicked_at", "clicked_at"),)
+
+    def __repr__(self) -> str:
+        return f"<CampaignClick {self.campaign_id} at {self.clicked_at}>"

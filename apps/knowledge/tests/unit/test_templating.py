@@ -248,7 +248,7 @@ class TestInvitationPage:
         assert "/auth/register" not in html
 
 
-def _settings_page(**member):
+def _settings_page(enterprise=False, **member):
     from uuid import uuid4
 
     from knowledge.auth.models import User
@@ -258,8 +258,9 @@ def _settings_page(**member):
         name="Acme",
         slug="acme",
         plan=NS(value="free"),
-        is_enterprise=False,
+        is_enterprise=enterprise,
         custom_domain=None,
+        custom_domain_status=None,
     )
     with patch.object(templating, "get_settings", return_value=_settings()):
         return (
@@ -285,3 +286,8 @@ class TestSettingsPage:
         html = _settings_page(is_owner=False, is_admin=True)
         assert 'action="/tenants/delete"' not in html
         assert "Only the workspace owner can delete this workspace." in html
+
+    def test_the_custom_domain_is_offered_to_enterprise_workspaces_only(self):
+        assert "/organizations/domain" not in _settings_page(is_owner=True, is_admin=True)
+        html = _settings_page(enterprise=True, is_owner=True, is_admin=True)
+        assert 'href="/organizations/domain"' in html

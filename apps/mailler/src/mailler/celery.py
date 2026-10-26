@@ -62,8 +62,23 @@ celery_app.conf.update(
             "task": "mailler.tasks.scheduler.check_scheduled_campaigns",
             "schedule": crontab(minute="*"),  # Every minute
         },
+        "cleanup-expired-attachments": {
+            "task": "mailler.tasks.inbound.cleanup_expired_attachments",
+            "schedule": crontab(hour=4, minute=0),  # Daily at 4 AM
+        },
     },
 )
+
+# Conditionally add inbound polling schedule
+if settings.inbound_enabled:
+    celery_app.conf.beat_schedule["poll-inbound-emails"] = {
+        "task": "mailler.tasks.inbound.poll_inbound_emails",
+        "schedule": settings.inbound_poll_interval,  # seconds
+    }
+    celery_app.conf.beat_schedule["retry-failed-inbound"] = {
+        "task": "mailler.tasks.inbound.retry_failed_inbound",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+    }
 
 # Auto-discover tasks in the mailler.tasks module
 celery_app.autodiscover_tasks(["mailler.tasks"])

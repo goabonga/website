@@ -87,6 +87,7 @@ Internal email sending service supporting multiple providers.
 - **Multi-provider support**: Brevo, SendGrid, AWS SES, Protonmail (SMTP)
 - **Immediate or scheduled sending**: Send now or schedule for later
 - **Async processing**: All emails sent via Celery workers
+- **Inbound email processing**: Receive emails via IMAP and forward as webhooks
 - **Statistics**: Track sent, delivered, bounced, and failed emails
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
@@ -132,3 +133,9 @@ app.include_router(contacts.router, prefix="/api/v1")
 app.include_router(contact_groups.router, prefix="/api/v1")
 app.include_router(campaigns.router, prefix="/api/v1")
 app.include_router(unsubscribe.router, prefix="/api/v1")
+
+# Conditionally register inbound routes
+if settings.inbound_enabled:
+    from mailler.routes.inbound import router as inbound_router
+
+    app.include_router(inbound_router, prefix="/api/v1")

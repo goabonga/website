@@ -12,6 +12,7 @@ from mailler.models.campaign import (
 )
 from mailler.models.contact import Contact, ContactGroup, ContactGroupMember, ContactStatus
 from mailler.models.email import Email, EmailStatus, ProviderStats
+from mailler.models.inbound import InboundAttachment, InboundEmail, InboundStatus
 from mailler.models.template import EmailTemplate, TemplateStatus
 
 __all__ = [
@@ -27,6 +28,9 @@ __all__ = [
     "EmailSendStatus",
     "EmailStatus",
     "EmailTemplate",
+    "InboundAttachment",
+    "InboundEmail",
+    "InboundStatus",
     "ProviderStats",
     "TemplateStatus",
 ]

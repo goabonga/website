@@ -3,6 +3,7 @@
 
 """Template rendering service."""
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -178,6 +179,32 @@ class TemplateService:
         finally:
             if staged is not None:
                 staged.unlink(missing_ok=True)
+
+    async def validate_nginx_syntax_in_worker(self, config: str) -> tuple[bool, str]:
+        """Have a worker validate nginx configuration syntax and wait for its answer.
+
+        The API process has no privileges, so the check runs in the Celery worker
+        (task ``validate_nginx_template``). The call waits at most
+        ``TEMPLATE_VALIDATION_TIMEOUT_SECONDS``; when no worker answers it reports
+        the validation as unavailable instead of failing the request.
+
+        Args:
+            config: Nginx configuration to validate
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        from custom_domain.tasks.validation import validate_nginx_template
+
+        try:
+            pending = validate_nginx_template.delay(config)
+            outcome = await asyncio.to_thread(
+                pending.get, timeout=settings.template_validation_timeout_seconds
+            )
+        except Exception as e:
+            logger.warning("Nginx validation by a worker failed: %s", e)
+            return False, f"Nginx validation unavailable: {e}"
+        return bool(outcome["valid"]), outcome["error"]
 
 
 template_service = TemplateService()

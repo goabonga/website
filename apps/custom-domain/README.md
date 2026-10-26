@@ -4,11 +4,26 @@ Centralized service for managing custom domains with DNS verification and SSL pr
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/` | public | Root endpoint |
 | GET | `/health` | public | Health check endpoint |
+| GET | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | List all nginx templates |
+| POST | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Create a new nginx template |
+| GET | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Get template details |
+| PUT | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Update a template |
+| DELETE | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Delete a template |
+| POST | `/api/v1/admin/templates/{template_id}/validate` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Validate a template with test variables |
+| POST | `/api/v1/admin/templates/{template_id}/set-default` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Set a template as the default |
+| POST | `/api/v1/admin/templates/{template_id}/reprovision` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Reprovision all domains using this template |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+### Scopes
+
+The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
+
+- `custom-domain:admin` - checked by 8 routes
+- `custom-domain:admin:templates` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 8 routes

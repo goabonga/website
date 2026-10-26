@@ -27,6 +27,24 @@ class TestMiddlewareInit:
 
         assert result is get_rate_limiter
 
+    def test_accessing_check_rate_limit_returns_function(self):
+        """Accessing check_rate_limit via backend.middleware returns the function."""
+        import backend.middleware
+
+        result = backend.middleware.check_rate_limit
+        from backend.middleware.dependencies import check_rate_limit
+
+        assert result is check_rate_limit
+
+    def test_accessing_check_rate_limit_with_context_returns_function(self):
+        """Accessing check_rate_limit_with_context via backend.middleware returns the function."""
+        import backend.middleware
+
+        result = backend.middleware.check_rate_limit_with_context
+        from backend.middleware.dependencies import check_rate_limit_with_context
+
+        assert result is check_rate_limit_with_context
+
     def test_accessing_unknown_attribute_raises_attribute_error(self):
         """Accessing an unknown attribute via backend.middleware raises AttributeError."""
         import backend.middleware

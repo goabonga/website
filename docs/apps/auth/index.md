@@ -28,6 +28,7 @@ The application is documented feature by feature, in the order in which each fea
 13. [REST API v1](13-rest-api.md): Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
 14. [Organisation API](14-organisation-api.md): JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 15. [Background maintenance and operations scripts](15-maintenance.md): Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
+16. [Administration console](16-admin-ui.md): Server-rendered admin pages.
 
 ## Testing
 

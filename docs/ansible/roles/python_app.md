@@ -258,7 +258,7 @@ Settings of the `mailler` application. Its defaults describe no deployment: noth
 | `website_mailler_ses_region` | `""` | AWS SES region (SES_REGION). Required when the SES_ACCESS_KEY secret is provided. |
 | `website_mailler_provider` | `"brevo"` | Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth and apt_server, MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client of the application may use. |
 | `website_mailler_clients` | `[]` | Applications allowed to send through mailler, registered after the migrations when missing and never modified afterwards. Each entry has client_id (required) and optionally name, from_email, from_name, reply_to, allowed_senders (email or email=Name), allowed_providers, default_provider, rate_limit_per_minute, daily_quota, callback_url and callback_secret (required with callback_url). |
-| `website_mailler_template_dirs` | `[]` | Directories of <slug>.mjml and <slug>.json files imported as the templates of a client on every run. Each entry has client_id and directory (a path on the host) and optionally status. |
+| `website_mailler_template_dirs` | `[]` | Directories of <slug>.mjml and <slug>.json files imported as the templates of a client on every run. Each entry has client_id and either `directory` (a path on the host) or `app` (a catalog application, deployed before mailler) and `module` (run with the Python of that application as `python -m <module>`, it prints the directory), and optionally status. |
 
 ### Billing
 
@@ -505,7 +505,11 @@ migrations the role fills the registry from the inventory:
   `mailler clients update` or the API. A `callback_secret` is handed to the
   command through a temporary file (`0600`) that is removed afterwards;
 - each entry of `website_mailler_template_dirs` is imported with
-  `mailler templates import`, on every run. The import creates or updates the
+  `mailler templates import`, on every run. The directory is a path, or the
+  one printed by `python -m <module>` run with the virtualenv of the
+  application named by `app` (`knowledge.email_templates` for knowledge), so
+  that it follows the release in use; the application must then be deployed
+  before mailler, and the task stops with a message when its Python is missing. The import creates or updates the
   templates of the directory and compiles them all before writing, so a
   template that fails to compile blocks the whole directory. The task is
   reported as changed only when it created a template.

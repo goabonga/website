@@ -83,3 +83,49 @@ class TestSettingsDefaults:
         from knowledge.config import get_settings
 
         assert get_settings() is get_settings()
+
+
+class TestGetSettingsCredentials:
+    """Secrets are read from systemd credentials or the environment."""
+
+    def _settings(self, env, clear=False):
+        from knowledge.config import get_settings
+
+        with patch.dict(os.environ, env, clear=clear):
+            return get_settings.__wrapped__()
+
+    def test_secret_comes_from_credentials_directory(self, tmp_path):
+        (tmp_path / "OAUTH2_CLIENT_SECRET").write_text("from-credential\n")
+
+        settings = self._settings({"CREDENTIALS_DIRECTORY": str(tmp_path)})
+
+        assert settings.oauth2_client_secret == "from-credential"
+
+    def test_secret_comes_from_environment(self):
+        settings = self._settings({"OAUTH2_CLIENT_SECRET": "from-env"})
+
+        assert settings.oauth2_client_secret == "from-env"
+
+    def test_missing_secret_leaves_the_default(self):
+        settings = self._settings({}, clear=True)
+
+        assert settings.oauth2_client_secret == ""
+
+    def test_env_file_value_is_not_overwritten_by_an_empty_credential(self, tmp_path, monkeypatch):
+        from knowledge.config import get_settings
+
+        (tmp_path / ".env").write_text("OAUTH2_CLIENT_SECRET=from-dotenv\n")
+        monkeypatch.chdir(tmp_path)
+        for name in ("OAUTH2_CLIENT_SECRET", "CREDENTIALS_DIRECTORY"):
+            monkeypatch.delenv(name, raising=False)
+
+        assert get_settings.__wrapped__().oauth2_client_secret == "from-dotenv"
+
+    def test_environment_takes_precedence_over_env_file(self, tmp_path, monkeypatch):
+        from knowledge.config import get_settings
+
+        (tmp_path / ".env").write_text("OAUTH2_CLIENT_SECRET=from-dotenv\n")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("OAUTH2_CLIENT_SECRET", "from-environment")
+
+        assert get_settings.__wrapped__().oauth2_client_secret == "from-environment"

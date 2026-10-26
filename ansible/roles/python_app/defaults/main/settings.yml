@@ -19,6 +19,12 @@ website_apps_limit: []
 # Use it to pin a version, change a setting or define extra components.
 website_apps_overrides: {}
 
+# Release of each application to deploy, keyed by application (the primary
+# component): {auth: auth-v1.2.0}. Takes precedence over
+# website_apps_overrides.<application>.version. Written by the deployment
+# workflow so that a deployment records the exact versions it ships.
+website_apps_pins: {}
+
 # ---------------------------------------------------------------------------
 # Source of the applications
 # ---------------------------------------------------------------------------

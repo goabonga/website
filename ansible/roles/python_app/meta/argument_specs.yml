@@ -229,6 +229,13 @@ argument_specs:
         - Deep-merged over the catalog, keyed by component (auth, auth_worker, ...). Use it
           to pin a version, change a setting or define extra components.
         default: {}
+      website_apps_pins:
+        type: dict
+        description:
+        - Release of each application to deploy, keyed by application (the primary component),
+          for example auth mapped to auth-v1.2.0. It takes precedence over a version set in
+          website_apps_overrides and is written by the deployment workflow.
+        default: {}
       website_repo_url:
         type: str
         description:

@@ -498,11 +498,15 @@ name = "e2e-support"
 version = "0.0.0"
 source = { editable = "libs/e2e-support" }
 dependencies = [
+    { name = "playwright" },
     { name = "uvicorn" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "uvicorn", specifier = ">=0.27.0" }]
+requires-dist = [
+    { name = "playwright", specifier = ">=1.49" },
+    { name = "uvicorn", specifier = ">=0.27.0" },
+]
 
 [[package]]
 name = "greenlet"

@@ -256,7 +256,7 @@ Settings of the `mailler` application. Its defaults describe no deployment: noth
 | `website_mailler_protonmail_port` | `{{ protonmail_bridge_smtp_port \| default(0) }}` | Protonmail Bridge SMTP port (PROTONMAIL_PORT); follows the protonmail_bridge role, 0 when it is not used. |
 | `website_mailler_protonmail_user` | `""` | Protonmail Bridge account (PROTONMAIL_USER). |
 | `website_mailler_ses_region` | `""` | AWS SES region (SES_REGION). Required when the SES_ACCESS_KEY secret is provided. |
-| `website_mailler_provider` | `"brevo"` | Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth, apt_server and knowledge, MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client of the application may use. |
+| `website_mailler_provider` | `"brevo"` | Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth and apt_server, MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client of the application may use. |
 | `website_mailler_clients` | `[]` | Applications allowed to send through mailler, registered after the migrations when missing and never modified afterwards. Each entry has client_id (required) and optionally name, from_email, from_name, reply_to, allowed_senders (email or email=Name), allowed_providers, default_provider, rate_limit_per_minute, daily_quota, callback_url and callback_secret (required with callback_url). |
 | `website_mailler_template_dirs` | `[]` | Directories of <slug>.mjml and <slug>.json files imported as the templates of a client on every run. Each entry has client_id and directory (a path on the host) and optionally status. |
 
@@ -286,6 +286,32 @@ Settings of the `internal` application. The scopes its OAuth client needs are li
 | --- | --- | --- |
 | `website_internal_billing_api_url` | `https://{{ website_hostnames.billing }}` | Base URL of the billing API (BILLING_API_URL of internal), required; the host name of billing by default. |
 | `website_internal_mailler_api_url` | `https://{{ website_hostnames.mailler }}` | Base URL of the mailler API (MAILLER_API_URL of internal), required; the host name of mailler by default. |
+
+### Knowledge
+
+Settings of the `knowledge` application. It is a client of `mailler`, `custom_domain` and `billing`: it sends no email, serves no customer domain and holds no plan itself, and its units need no `sudo`, nginx or certbot. It reaches the three services through their sockets (the account is added to their groups) with the OAuth client of the application, and the processes receive only what they use: the API the billing and custom_domain settings, the worker the mailler and custom_domain settings, beat the Celery settings. None of the values below is built into the application or the catalog; an empty one is neutral (left out of the pages, or the feature stays unavailable). The records the application needs in the three services are created from the lists described in [Onboarding a SaaS application](../07-saas-onboarding.md).
+
+Secrets (see [Secrets](../03-secrets.md)): `OPENAI_API_KEY`, `OAUTH2_CLIENT_SECRET`, `BILLING_WEBHOOK_SECRET` and `CUSTOM_DOMAIN_WEBHOOK_SECRET` are required (the webhooks answer 503 without them); `BILLING_CLIENT_SECRET`, `CUSTOM_DOMAIN_CLIENT_SECRET` and `GITHUB_WEBHOOK_SECRET` are deployed when provided for the API, `MAILLER_CLIENT_SECRET` and `CUSTOM_DOMAIN_CLIENT_SECRET` for the worker. A service secret left out falls back to `OAUTH2_CLIENT_SECRET`. The webhook secrets must equal the ones registered in the other services (`website_custom_domain_clients` and the SaaS application of billing). The deployment fails when `website_knowledge_billing_saas_id` is set without the slug and the two checkout URLs.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_knowledge_celery_queue` | `"knowledge"` | Celery queue of the three knowledge processes (CELERY_QUEUE); the worker consumes it (--queues), the API and beat publish to it. |
+| `website_knowledge_celery_timezone` | `"UTC"` | Time zone of the Celery schedule of the three processes (CELERY_TIMEZONE). It was `Europe/Paris` before the application became configurable; the schedule only uses intervals, so nothing moves unless a crontab is added. |
+| `website_knowledge_billing_saas_id` | `""` | Identifier of the SaaS application of knowledge in billing (BILLING_SAAS_ID), the value billing returns when it creates the application (`billing-admin saas list`). Billing is not used while it is empty, so it is known only after the first onboarding run. |
+| `website_knowledge_billing_app_slug` | `""` | Slug of the SaaS application in billing (BILLING_APP_SLUG), the one of the entry of `website_billing_saas_apps`. The plans are looked up with it. |
+| `website_knowledge_billing_checkout_success_url` | `""` | Where Stripe sends the customer back after a checkout (BILLING_CHECKOUT_SUCCESS_URL). It must be covered by the `checkout_urls` of the SaaS application, otherwise billing refuses it. Required with `website_knowledge_billing_saas_id`. |
+| `website_knowledge_billing_checkout_cancel_url` | `""` | Where Stripe sends the customer back when a checkout is cancelled (BILLING_CHECKOUT_CANCEL_URL). Same rules as the success URL. |
+| `website_knowledge_quota_fallback_limits` | `{}` | Limits applied while billing cannot answer (QUOTA_FALLBACK_LIMITS), by plan slug. The key `*` applies to every other plan, a limit that is not listed is 0 and -1 is unlimited, for example `{"free": {"max_collections": 3}, "*": {"max_collections": 1}}`. Empty: nothing is allowed during an outage. |
+| `website_knowledge_custom_domain_cname_target` | `{{ website_custom_domain_cname_target }}` | CNAME target shown to the customers before they register a domain (CUSTOM_DOMAIN_CNAME_TARGET). It is a hint: the one that counts is the `cname` of the entry of `website_custom_domain_clients`. |
+| `website_knowledge_mailler_client_id` | `""` | OAuth2 client of the calls to mailler (MAILLER_CLIENT_ID). Empty: the client of the application (`website_oauth2_clients.knowledge.client_id`) is used, with the OAUTH2_CLIENT_SECRET secret. |
+| `website_knowledge_custom_domain_client_id` | `""` | OAuth2 client of the calls to custom_domain (CUSTOM_DOMAIN_CLIENT_ID). Empty: the client of the application. |
+| `website_knowledge_billing_client_id` | `""` | OAuth2 client of the calls to billing (BILLING_CLIENT_ID). Empty: the client of the application. |
+| `website_knowledge_operator_name` | `""` | Who publishes the service, shown on the legal notice and the pricing page (OPERATOR_NAME). An empty value is left out of the pages. |
+| `website_knowledge_contact_email` | `""` | General contact address (CONTACT_EMAIL). |
+| `website_knowledge_sales_email` | `""` | Address behind the contact sales button of the plans with a custom price (SALES_EMAIL). |
+| `website_knowledge_legal_email` | `""` | Address of the legal notice and the terms of service (LEGAL_EMAIL). |
+| `website_knowledge_privacy_email` | `""` | Address of the privacy policy and of the data subject requests (PRIVACY_EMAIL). |
+| `website_knowledge_support_url` | `""` | Where the customers of a deleted workspace can get help (SUPPORT_URL). |
 
 ### Host names
 

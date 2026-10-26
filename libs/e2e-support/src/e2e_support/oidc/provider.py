@@ -12,12 +12,14 @@ provider. Endpoints follow the auth application: ``/.well-known/openid-configura
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from e2e_support.oidc import authorize
 from e2e_support.oidc.keys import SigningKey
 from e2e_support.oidc.models import (
     AUTHORIZATION_CODE,
@@ -30,6 +32,7 @@ from e2e_support.oidc.models import (
     User,
 )
 from e2e_support.oidc.recording import RecordingMiddleware
+from e2e_support.oidc.store import Store
 
 #: Default lifetime of an access token, in seconds.
 ACCESS_TOKEN_TTL = 3600
@@ -84,6 +87,8 @@ class FakeOIDCProvider:
         self.code_ttl = code_ttl
         self.id_token_ttl = id_token_ttl
         self.key = signing_key or SigningKey()
+        self.store = Store()
+        self.clock = time.time
         self.requests: list[RecordedRequest] = []
         self.app = self._build_app()
         self._asgi = RecordingMiddleware(self.app, self.requests)
@@ -111,6 +116,10 @@ class FakeOIDCProvider:
         self.clients[client.client_id] = client
         return client
 
+    def now(self) -> float:
+        """The current time, in seconds since the epoch (``clock`` can be replaced in tests)."""
+        return self.clock()
+
     def user_by_email(self, email: str) -> User | None:
         return next((u for u in self.users.values() if u.email.lower() == email.lower()), None)
 
@@ -134,6 +143,10 @@ class FakeOIDCProvider:
     def clear_requests(self) -> None:
         self.requests.clear()
 
+    def end_sessions(self) -> None:
+        """Forget every logged-in session: the next authorization asks for a login again."""
+        self.store.sessions.clear()
+
     # -- ASGI ------------------------------------------------------------------------
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
@@ -154,6 +167,7 @@ class FakeOIDCProvider:
         async def jwks() -> JSONResponse:
             return JSONResponse({"keys": [self.key.public_jwk()]})
 
+        authorize.install(self, app)
         return app
 
     def discovery_document(self, issuer: str) -> dict[str, Any]:

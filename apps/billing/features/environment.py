@@ -23,6 +23,7 @@ from uuid import uuid4
 
 import httpx
 from billing.auth.models import User
+from billing.config import settings
 from billing.database import get_db
 from billing.main import app
 from billing.models import Base
@@ -250,6 +251,15 @@ def before_all(context):
         _create_async_client(headers={"Authorization": f"Bearer {DEFAULT_TOKEN}"})
     )
 
+    # Signing secret used by the webhook route (verification itself is patched).
+    patch.object(settings, "stripe_webhook_secret", "whsec_bdd_test").start()
+
+    # Machine client of the webhooks service (billing:webhooks scope only).
+    register_token(context, "webhook.service.token", ["billing:webhooks"])
+    context.webhook_client = context.loop.run_until_complete(
+        _create_async_client(headers={"Authorization": "Bearer webhook.service.token"})
+    )
+
 
 def before_scenario(context, scenario):
     """Reset per-scenario state."""
@@ -266,6 +276,7 @@ def after_all(context):
     """Tear down clients, patches and event loop."""
     context.loop.run_until_complete(context.anon_client.aclose())
     context.loop.run_until_complete(context.client.aclose())
+    context.loop.run_until_complete(context.webhook_client.aclose())
     patch.stopall()
     app.dependency_overrides.clear()
     context.loop.run_until_complete(context.engine.dispose())

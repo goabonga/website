@@ -31,6 +31,16 @@ HTTP routes served by the application and what each one requires. `public` route
 | PUT | `/api/v1/contacts/{contact_id}` | scope `mailler:write` | Update a contact |
 | DELETE | `/api/v1/contacts/{contact_id}` | scope `mailler:write` | Delete a contact |
 | POST | `/api/v1/contacts/{contact_id}/unsubscribe` | scope `mailler:write` | Unsubscribe a contact from all emails |
+| GET | `/api/v1/contact-groups` | scope `mailler:read` | List the contact groups of the calling client with pagination |
+| POST | `/api/v1/contact-groups` | scope `mailler:write` | Create a new contact group |
+| GET | `/api/v1/contact-groups/{group_id}` | scope `mailler:read` | Get contact group by ID |
+| GET | `/api/v1/contact-groups/by-slug/{slug}` | scope `mailler:read` | Get a contact group of the calling client by slug |
+| PUT | `/api/v1/contact-groups/{group_id}` | scope `mailler:write` | Update a contact group |
+| DELETE | `/api/v1/contact-groups/{group_id}` | scope `mailler:write` | Delete a contact group |
+| GET | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:read` | List contacts in a group with pagination |
+| GET | `/api/v1/contact-groups/{group_id}/available-contacts` | scope `mailler:read` | List contacts NOT in a group (available for adding) |
+| POST | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Add contacts to a group |
+| DELETE | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Remove contacts from a group |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -41,6 +51,6 @@ Emails, templates, contacts, groups and campaigns belong to the client of the ac
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `mailler:send` - checked by 2 routes
-- `mailler:read` - checked by 11 routes
+- `mailler:read` - checked by 16 routes
 - `mailler:stats` - checked by 1 route
-- `mailler:write` - checked by 8 routes
+- `mailler:write` - checked by 13 routes

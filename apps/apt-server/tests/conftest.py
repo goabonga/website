@@ -124,3 +124,32 @@ async def http(session_maker) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def repo_root(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    """Point the APT repository at an empty temporary directory."""
+    from apt_server.config import settings
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.setattr(settings, "apt_repo_root", str(root))
+    monkeypatch.setattr(settings, "apt_components", "main,private")
+    monkeypatch.setattr(settings, "apt_public_components", "main")
+    monkeypatch.setattr(settings, "apt_architectures", "amd64")
+    monkeypatch.setattr(settings, "apt_suites", "stable")
+    return root
+
+
+@pytest.fixture
+def login():
+    """Act as a given user on the bearer protected API."""
+    from apt_server.auth.dependencies import AuthContext, get_auth_context
+    from apt_server.auth.models import User
+
+    def as_user(sub: str, scopes: list[str], email: str | None = None) -> None:
+        user = User(id=sub, scopes=scopes, email=email)
+        app.dependency_overrides[get_auth_context] = lambda: AuthContext(user)
+
+    yield as_user
+    app.dependency_overrides.pop(get_auth_context, None)

@@ -5,11 +5,13 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from analytics.routes.stats import (
     BrowserStats,
+    CampaignCreate,
+    CampaignResponse,
     CampaignStats,
     CountryStats,
     DailyStats,
@@ -21,6 +23,10 @@ from analytics.routes.stats import (
     IPStats,
     OverviewStats,
     PageStats,
+    PixelBatchCreate,
+    PixelBatchResponse,
+    PixelCreate,
+    PixelResponse,
     PixelStats,
     ReferrerStats,
     StatsResponse,
@@ -142,6 +148,26 @@ class TestResponseModels:
         assert stats.success is True
 
 
+class TestRequestModels:
+    """Tests for request model validation."""
+
+    def test_campaign_create(self):
+        req = CampaignCreate(name="Test Campaign")
+        assert req.name == "Test Campaign"
+        assert req.description is None
+        assert req.destination_url is None
+
+    def test_pixel_create(self):
+        req = PixelCreate(recipient_email="test@example.com")
+        assert req.recipient_email == "test@example.com"
+
+    def test_pixel_batch_create(self):
+        req = PixelBatchCreate(
+            pixels=[PixelCreate(recipient_email="a@b.com"), PixelCreate(recipient_id="user1")]
+        )
+        assert len(req.pixels) == 2
+
+
 class TestCampaignResponseModels:
     """Tests for campaign response models."""
 
@@ -171,6 +197,37 @@ class TestCampaignResponseModels:
             created_at=datetime.now(UTC),
         )
         assert stats.pixel_key == "pxl123"
+
+    def test_campaign_response(self):
+        resp = CampaignResponse(
+            id=uuid.uuid4(),
+            name="Campaign",
+            description=None,
+            tracking_key="key",
+            destination_url=None,
+            is_active=True,
+            created_at=datetime.now(UTC),
+        )
+        assert resp.name == "Campaign"
+
+    def test_pixel_response(self):
+        resp = PixelResponse(
+            id=uuid.uuid4(),
+            pixel_key="pxl",
+            campaign_id=uuid.uuid4(),
+            recipient_email="a@b.com",
+            recipient_id=None,
+            created_at=datetime.now(UTC),
+        )
+        assert resp.pixel_key == "pxl"
+
+    def test_pixel_batch_response(self):
+        resp = PixelBatchResponse(
+            campaign_id=uuid.uuid4(),
+            created_count=0,
+            pixels=[],
+        )
+        assert resp.created_count == 0
 
 
 def _mock_user():
@@ -887,5 +944,196 @@ class TestGetCampaignPixels:
         transport = ASGITransport(app=patched_app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(f"/api/v1/stats/campaigns/{campaign_id}/pixels")
+
+        assert resp.status_code == 404
+
+
+class TestCreateCampaign:
+    """Tests for POST /api/v1/stats/campaigns endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_create_campaign(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+        mock_campaign = MagicMock()
+        mock_campaign.id = campaign_id
+        mock_campaign.name = "New Campaign"
+        mock_campaign.description = "A description"
+        mock_campaign.tracking_key = "tk-new"
+        mock_campaign.destination_url = "https://example.com"
+        mock_campaign.is_active = True
+        mock_campaign.created_at = now
+
+        with patch("analytics.services.collector.collector_service") as mock_collector:
+            mock_collector.create_campaign = AsyncMock(return_value=mock_campaign)
+
+            transport = ASGITransport(app=patched_app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    "/api/v1/stats/campaigns",
+                    json={
+                        "name": "New Campaign",
+                        "description": "A description",
+                        "destination_url": "https://example.com",
+                    },
+                )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "New Campaign"
+        assert data["tracking_key"] == "tk-new"
+
+
+class TestCreatePixel:
+    """Tests for POST /api/v1/stats/campaigns/{campaign_id}/pixels endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_create_pixel(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+        pixel_id = uuid.uuid4()
+        mock_pixel = MagicMock()
+        mock_pixel.id = pixel_id
+        mock_pixel.pixel_key = "pxl-new"
+        mock_pixel.campaign_id = campaign_id
+        mock_pixel.recipient_email = "user@test.com"
+        mock_pixel.recipient_id = None
+        mock_pixel.created_at = now
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(campaign_id),  # campaign exists
+            ]
+        )
+
+        with patch("analytics.services.collector.collector_service") as mock_collector:
+            mock_collector.create_pixel = AsyncMock(return_value=mock_pixel)
+
+            transport = ASGITransport(app=patched_app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    f"/api/v1/stats/campaigns/{campaign_id}/pixels",
+                    json={"recipient_email": "user@test.com"},
+                )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["pixel_key"] == "pxl-new"
+
+    @pytest.mark.asyncio
+    async def test_create_pixel_campaign_not_found(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(None),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/v1/stats/campaigns/{campaign_id}/pixels",
+                json={"recipient_email": "user@test.com"},
+            )
+
+        assert resp.status_code == 404
+
+
+class TestDeleteCampaign:
+    """Tests for DELETE /api/v1/stats/campaigns/{campaign_id} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_delete_campaign(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_campaign = MagicMock()
+        mock_campaign.id = campaign_id
+        mock_db.get = AsyncMock(return_value=mock_campaign)
+        mock_db.delete = AsyncMock()
+        mock_db.commit = AsyncMock()
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete(f"/api/v1/stats/campaigns/{campaign_id}")
+
+        assert resp.status_code == 204
+        mock_db.delete.assert_awaited_once_with(mock_campaign)
+        mock_db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_campaign_not_found(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_db.get = AsyncMock(return_value=None)
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete(f"/api/v1/stats/campaigns/{campaign_id}")
+
+        assert resp.status_code == 404
+
+
+class TestCreatePixelsBatch:
+    """Tests for POST /api/v1/stats/campaigns/{campaign_id}/pixels/batch endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_create_pixels_batch(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        campaign_id = uuid.uuid4()
+
+        def make_pixel(email, key):
+            p = MagicMock()
+            p.id = uuid.uuid4()
+            p.pixel_key = key
+            p.campaign_id = campaign_id
+            p.recipient_email = email
+            p.recipient_id = None
+            p.created_at = now
+            return p
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(campaign_id),
+            ]
+        )
+
+        with patch("analytics.services.collector.collector_service") as mock_collector:
+            mock_collector.create_pixel = AsyncMock(
+                side_effect=[
+                    make_pixel("a@b.com", "pxl-1"),
+                    make_pixel("c@d.com", "pxl-2"),
+                ]
+            )
+
+            transport = ASGITransport(app=patched_app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    f"/api/v1/stats/campaigns/{campaign_id}/pixels/batch",
+                    json={
+                        "pixels": [
+                            {"recipient_email": "a@b.com"},
+                            {"recipient_email": "c@d.com"},
+                        ]
+                    },
+                )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["created_count"] == 2
+        assert len(data["pixels"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_create_pixels_batch_campaign_not_found(self, patched_app, mock_db):
+        campaign_id = uuid.uuid4()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_one_or_none_result(None),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/v1/stats/campaigns/{campaign_id}/pixels/batch",
+                json={"pixels": [{"recipient_email": "a@b.com"}]},
+            )
 
         assert resp.status_code == 404

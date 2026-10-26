@@ -76,6 +76,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
+| GET | `/namespaces` | session; scope `namespaces:read` | List all namespaces with pagination and search |
+| GET | `/namespaces/new` | session; scope `namespaces:write` | Show form to create a new namespace |
+| POST | `/namespaces/new` | session; scope `namespaces:write` | Create a new namespace |
+| GET | `/namespaces/{namespace_id}` | session; scope `namespaces:read` | View namespace detail |
+| GET | `/namespaces/{namespace_id}/edit` | session; scope `namespaces:write` | Show form to edit a namespace |
+| POST | `/namespaces/{namespace_id}/edit` | session; scope `namespaces:write` | Update a namespace |
+| POST | `/namespaces/bulk-delete` | session; scope `namespaces:delete` | Delete multiple namespaces |
+| POST | `/namespaces/{namespace_id}/delete` | session; scope `namespaces:delete` | Delete a namespace |
 | GET | `/team` | session; scope `team:read` | Team dashboard - overview of all teams |
 | GET | `/team/new` | session; scope `team:write` | New team form |
 | POST | `/team/new` | session; scope `team:write` | Create a new team |
@@ -162,6 +170,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `email_templates:write` - checked by 5 routes
 - `email_templates:delete` - checked by 2 routes
 - `mailler:read` - checked by 3 routes
+- `namespaces:read` - checked by 2 routes
+- `namespaces:write` - checked by 4 routes
+- `namespaces:delete` - checked by 2 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes
 - `vpn:admin` - checked by 2 routes

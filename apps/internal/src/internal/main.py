@@ -27,6 +27,7 @@ from internal.routes import (
     email_campaigns_router,
     email_templates_router,
     mailler_router,
+    namespaces_router,
     team_router,
     vpn_router,
 )
@@ -129,6 +130,7 @@ Access is controlled per resource via scoped permissions.
 - `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
 - `team:write` - Manage AI agent teams
+- `namespaces:write`, `namespaces:delete` - Manage namespaces
 - `conversations:delete` - Delete conversations
     """,
     version=__version__,
@@ -171,6 +173,7 @@ app.include_router(contact_groups_router)
 app.include_router(email_campaigns_router)
 app.include_router(email_templates_router)
 app.include_router(mailler_router)
+app.include_router(namespaces_router)
 app.include_router(team_router)
 app.include_router(vpn_router)
 app.include_router(billing_router)

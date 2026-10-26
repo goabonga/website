@@ -1,0 +1,254 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Namespaces{% endblock %}
+
+{% block head %}
+<style>
+    .search-form {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .search-form input {
+        flex: 1;
+        max-width: 400px;
+    }
+    .namespace-description {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    .pagination a,
+    .pagination span {
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #a0a0a0;
+        background-color: #16213e;
+        border: 1px solid #0f3460;
+    }
+    .pagination a:hover {
+        background-color: #0f3460;
+        color: #e0e0e0;
+    }
+    .pagination .active {
+        background-color: #e94560;
+        color: white;
+        border-color: #e94560;
+    }
+    .pagination .disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .scopes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .scope-badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
+        background-color: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+        border-radius: 3px;
+    }
+    .bulk-actions {
+        display: none;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .bulk-actions.visible {
+        display: flex;
+    }
+    .entry-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Namespaces</h1>
+    {% if user.can_write('namespaces') %}
+    <a href="/namespaces/new" class="btn btn-primary">+ New Namespace</a>
+    {% endif %}
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form class="search-form" method="get" action="/namespaces">
+        <input type="text" name="search" class="form-control" placeholder="Search namespaces..." value="{{ search or '' }}">
+        <button type="submit" class="btn btn-secondary">Search</button>
+        {% if search %}
+        <a href="/namespaces" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if user.can_delete('namespaces') %}
+    <div class="bulk-actions" id="bulkActions">
+        <span><span id="selectedCount">0</span> selected</span>
+        <form method="post" action="/namespaces/bulk-delete" id="bulkDeleteForm" style="display: inline;">
+            <input type="hidden" name="namespace_ids" id="namespaceIds">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected namespaces? The default namespace will be skipped.')">
+                Delete Selected
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if namespaces %}
+    <table class="table">
+        <thead>
+            <tr>
+                {% if user.can_delete('namespaces') %}<th width="40"><input type="checkbox" id="selectAll" class="entry-checkbox" title="Select all"></th>{% endif %}
+                <th>Slug</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Public</th>
+                <th>Required Scopes</th>
+                <th>Entries</th>
+                {% if user.can_write('namespaces') %}<th width="100">Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for namespace in namespaces %}
+            <tr>
+                {% if user.can_delete('namespaces') %}
+                <td>
+                    <input type="checkbox" class="entry-checkbox row-checkbox" data-id="{{ namespace.id }}">
+                </td>
+                {% endif %}
+                <td>
+                    <a href="/namespaces/{{ namespace.id }}">
+                        <span class="mono">{{ namespace.slug }}</span>
+                    </a>
+                </td>
+                <td>{{ namespace.name }}</td>
+                <td>
+                    <span class="namespace-description text-muted">{{ namespace.description or '-' }}</span>
+                </td>
+                <td>
+                    {% if namespace.is_public %}
+                    <span class="badge badge-success">Yes</span>
+                    {% else %}
+                    <span class="badge badge-warning">No</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if namespace.required_scopes %}
+                    <div class="scopes-list">
+                        {% for scope in namespace.required_scopes %}
+                        <span class="scope-badge">{{ scope }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-secondary">{{ namespace.entries | length }}</span>
+                </td>
+                {% if user.can_write('namespaces') %}
+                <td>
+                    <a href="/namespaces/{{ namespace.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/namespaces?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}">&laquo; Prev</a>
+        {% else %}
+        <span class="disabled">&laquo; Prev</span>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+            <a href="/namespaces?page={{ p }}{% if search %}&search={{ search | urlencode }}{% endif %}">{{ p }}</a>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/namespaces?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}">Next &raquo;</a>
+        {% else %}
+        <span class="disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <p class="text-muted" style="margin-top: 1rem; text-align: center;">
+        Showing {{ namespaces|length }} of {{ total }} namespaces
+    </p>
+    {% else %}
+    <div class="empty-state">
+        <p>No namespaces found.</p>
+        {% if search %}
+        <p><a href="/namespaces">Clear search</a></p>
+        {% elif user.can_write('namespaces') %}
+        <p><a href="/namespaces/new">Create your first namespace</a></p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% if user.can_delete('namespaces') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const namespaceIds = document.getElementById('namespaceIds');
+
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const count = checked.length;
+        selectedCount.textContent = count;
+        bulkActions.classList.toggle('visible', count > 0);
+        namespaceIds.value = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    }
+
+    selectAll.addEventListener('change', function() {
+        rowCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkActions();
+    });
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const allChecked = document.querySelectorAll('.row-checkbox:checked').length === rowCheckboxes.length;
+            selectAll.checked = allChecked;
+            updateBulkActions();
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

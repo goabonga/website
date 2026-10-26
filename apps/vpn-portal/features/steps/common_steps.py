@@ -21,6 +21,11 @@ def step_send_get(context, url):
     context.response = context.run(_request(context.app, "GET", url, context.headers))
 
 
+@when('I send a DELETE request to "{url}"')
+def step_send_delete(context, url):
+    context.response = context.run(_request(context.app, "DELETE", url, context.headers))
+
+
 @when('I send a POST request to "{url}"')
 def step_send_post(context, url):
     context.response = context.run(_request(context.app, "POST", url, context.headers))
@@ -82,3 +87,10 @@ def step_check_list_count(context, key, count):
     body = context.response.json()
     assert key in body, f"Response missing key '{key}'. Body: {body}"
     assert len(body[key]) == count, f"Expected {count} items in {key}, got {len(body[key])}"
+
+
+@then('the response should contain "{key}" with integer value {value:d}')
+def step_check_response_int_value(context, key, value):
+    body = context.response.json()
+    assert key in body, f"Response missing key '{key}'. Body: {body}"
+    assert body[key] == value, f"Expected {key}={value}, got {body[key]}"

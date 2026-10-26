@@ -602,20 +602,24 @@ source = { editable = "apps/auth" }
 dependencies = [
     { name = "asyncpg" },
     { name = "fastapi" },
+    { name = "gunicorn" },
     { name = "jinja2" },
     { name = "psycopg2-binary" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
+    { name = "gunicorn", specifier = ">=21.0.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.0,<2.1" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.27.0" },
 ]
 
 [[package]]

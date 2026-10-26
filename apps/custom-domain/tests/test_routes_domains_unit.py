@@ -320,7 +320,7 @@ class TestCreateDomain:
 
         mock_client = MagicMock()
         mock_client.max_domains = 10  # Limit is 10
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
 
         with patch("custom_domain.routes.domains.domain_service") as mock_service:
@@ -410,7 +410,7 @@ class TestCreateDomain:
 
         mock_client = MagicMock()
         mock_client.max_domains = 10
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
 
         with patch("custom_domain.routes.domains.domain_service") as mock_service:
@@ -443,7 +443,7 @@ class TestGetDomain:
         mock_domain.owner_id = "org_123"
         mock_domain.owner_type = "organization"
         mock_domain.cname_target = "apps.example.com"
-        mock_domain.upstream_target = "http://localhost:8000"
+        mock_domain.upstream_target = "localhost:8000"
         mock_domain.nginx_template_id = None
         mock_domain.metadata_ = {}
         mock_domain.error_message = None
@@ -541,7 +541,7 @@ class TestUpdateDomain:
         mock_domain.id = uuid4()
         mock_domain.domain = "test.example.com"
         mock_domain.client_id = "test-client"
-        mock_domain.upstream_target = "http://original:8080"
+        mock_domain.upstream_target = "original:8080"
 
         mock_db = AsyncMock()
         mock_result = MagicMock()
@@ -561,7 +561,7 @@ class TestUpdateDomain:
             mock_response.model_validate.return_value = MagicMock()
             await update_domain(mock_domain.id, data, mock_db, _auth(user))
 
-        assert mock_domain.upstream_target == "http://original:8080"
+        assert mock_domain.upstream_target == "original:8080"
         assert mock_domain.metadata_ == {"key": "value"}
 
     @pytest.mark.asyncio
@@ -588,7 +588,7 @@ class TestUpdateDomain:
         )
 
         data = DomainUpdate(
-            upstream_target="http://new-backend:8080",
+            upstream_target="new-backend:8080",
             nginx_template_id=5,
             metadata={"key": "value"},
         )
@@ -598,7 +598,7 @@ class TestUpdateDomain:
 
             await update_domain(mock_domain.id, data, mock_db, _auth(user))
 
-            assert mock_domain.upstream_target == "http://new-backend:8080"
+            assert mock_domain.upstream_target == "new-backend:8080"
             assert mock_domain.nginx_template_id == 5
             assert mock_domain.metadata_ == {"key": "value"}
 

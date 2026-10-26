@@ -472,7 +472,7 @@ class TestCreateClientCommand:
                     "--description",
                     "A test client",
                     "--upstream",
-                    "http://localhost:8000",
+                    "localhost:8000",
                     "--cname",
                     "apps.example.com",
                     "--max-domains",

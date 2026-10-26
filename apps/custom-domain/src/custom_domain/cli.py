@@ -31,6 +31,19 @@ async def get_session() -> AsyncSession:
     return async_session()
 
 
+def _check_upstream(value: str | None) -> str | None:
+    """Click callback: reject an upstream that is neither a socket path nor host:port."""
+    from custom_domain.services.upstream import InvalidUpstreamError, parse_upstream
+
+    if value is None:
+        return value
+    try:
+        parse_upstream(value)
+    except InvalidUpstreamError as error:
+        raise click.BadParameter(str(error)) from error
+    return value.strip()
+
+
 @click.group()
 def cli():
     """Custom Domain Service CLI."""
@@ -146,7 +159,12 @@ async def _seed():
 @click.option("--client-id", required=True, help="OAuth2 client ID")
 @click.option("--name", required=True, help="Client display name")
 @click.option("--description", default=None, help="Client description")
-@click.option("--upstream", default=None, help="Default upstream target URL")
+@click.option(
+    "--upstream",
+    default=None,
+    callback=lambda _ctx, _param, value: _check_upstream(value),
+    help="Default upstream: absolute socket path or host:port",
+)
 @click.option("--cname", default=None, help="Default CNAME target")
 @click.option("--max-domains", default=None, type=int, help="Maximum domains allowed")
 def create_client(

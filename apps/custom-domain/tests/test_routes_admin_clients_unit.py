@@ -50,7 +50,7 @@ class TestListClients:
         mock_client.id = 1
         mock_client.client_id = "test-client"
         mock_client.name = "Test Client"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
@@ -94,7 +94,7 @@ class TestCreateClient:
             client.client_id = "new-client"
             client.name = "New Client"
             client.description = "Test description"
-            client.default_upstream_target = "http://localhost:8000"
+            client.default_upstream_target = "localhost:8000"
             client.default_cname_target = "apps.example.com"
             client.default_nginx_template_id = None
             client.max_domains = 10
@@ -111,7 +111,7 @@ class TestCreateClient:
             client_id="new-client",
             name="New Client",
             description="Test description",
-            default_upstream_target="http://localhost:8000",
+            default_upstream_target="localhost:8000",
             default_cname_target="apps.example.com",
             max_domains=10,
         )
@@ -139,7 +139,7 @@ class TestCreateClient:
         data = ClientCreate(
             client_id="existing-client",
             name="Duplicate Client",
-            default_upstream_target="http://localhost:8000",
+            default_upstream_target="localhost:8000",
             default_cname_target="apps.example.com",
         )
 
@@ -165,7 +165,7 @@ class TestGetClient:
         mock_client.client_id = "test-client"
         mock_client.name = "Test Client"
         mock_client.description = "Test"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
@@ -216,7 +216,7 @@ class TestUpdateClient:
         mock_client.client_id = "test-client"
         mock_client.name = "Original Name"
         mock_client.description = "Original"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
@@ -250,7 +250,7 @@ class TestUpdateClient:
         mock_client.client_id = "test-client"
         mock_client.name = "Test Client"
         mock_client.description = "Test"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
@@ -376,7 +376,7 @@ class TestDeactivateClient:
         mock_client.client_id = "test-client"
         mock_client.name = "Test Client"
         mock_client.description = "Test"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
@@ -430,7 +430,7 @@ class TestActivateClient:
         mock_client.client_id = "test-client"
         mock_client.name = "Test Client"
         mock_client.description = "Test"
-        mock_client.default_upstream_target = "http://localhost:8000"
+        mock_client.default_upstream_target = "localhost:8000"
         mock_client.default_cname_target = "apps.example.com"
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10

@@ -5,7 +5,9 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from custom_domain.schemas.validators import validate_upstream
 
 
 class ClientCreate(BaseModel):
@@ -16,7 +18,7 @@ class ClientCreate(BaseModel):
     description: str | None = Field(None, description="Description")
     default_upstream_target: str = Field(
         ...,
-        description="Default upstream socket or URL",
+        description="Default upstream: absolute socket path or host:port",
     )
     default_cname_target: str = Field(
         ...,
@@ -32,6 +34,8 @@ class ClientCreate(BaseModel):
     )
     metadata: dict | None = Field(None, description="Custom metadata")
 
+    _check_upstream = field_validator("default_upstream_target")(validate_upstream)
+
 
 class ClientUpdate(BaseModel):
     """Request schema for updating a client."""
@@ -43,6 +47,8 @@ class ClientUpdate(BaseModel):
     default_nginx_template_id: int | None = None
     max_domains: int | None = None
     metadata: dict | None = None
+
+    _check_upstream = field_validator("default_upstream_target")(validate_upstream)
 
 
 class ClientResponse(BaseModel):

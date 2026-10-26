@@ -9,6 +9,7 @@ from custom_domain.models.domain import CustomDomain
 from custom_domain.models.template import NginxTemplate
 from custom_domain.services.privileged import run_privileged, stage_file
 from custom_domain.services.template import template_service
+from custom_domain.services.upstream import parse_upstream
 
 logger = get_logger(__name__)
 
@@ -36,12 +37,17 @@ class NginxManager:
 
         Raises:
             ConfigurationError: If the webroot or the certificate directory is not set
+            InvalidUpstreamError: If the domain's upstream is neither a socket nor host:port
         """
         certificate_dir = f"{require_setting('letsencrypt_dir', settings)}/live/{domain.domain}"
+        certbot_webroot = require_setting("certbot_webroot", settings)
+        upstream = parse_upstream(domain.upstream_target)
         return {
             "domain": domain.domain,
             "upstream_target": domain.upstream_target,
-            "certbot_webroot": require_setting("certbot_webroot", settings),
+            "upstream_server": upstream.nginx_server,
+            "upstream_type": upstream.kind,
+            "certbot_webroot": certbot_webroot,
             "ssl_certificate": f"{certificate_dir}/fullchain.pem",
             "ssl_certificate_key": f"{certificate_dir}/privkey.pem",
             "nginx_ipv4": settings.nginx_ipv4,

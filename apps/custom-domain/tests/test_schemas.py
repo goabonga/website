@@ -107,8 +107,8 @@ class TestDomainSchemas:
 
     def test_domain_update(self):
         """Test DomainUpdate schema."""
-        data = DomainUpdate(upstream_target="new-upstream")
-        assert data.upstream_target == "new-upstream"
+        data = DomainUpdate(upstream_target="new-upstream:8000")
+        assert data.upstream_target == "new-upstream:8000"
 
     def test_domain_response(self):
         """Test DomainResponse schema."""

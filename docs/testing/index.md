@@ -15,3 +15,4 @@ one feature as it exists in the code.
 
 1. [Live server](01-live-server.md) - serve an ASGI application on a real
    port for the duration of a test.
+2. [Settings](02-settings.md) - the `E2E_*` environment variables.

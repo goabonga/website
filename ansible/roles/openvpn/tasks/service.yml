@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Manage the OpenVPN server service
+  ansible.builtin.systemd:
+    name: "{{ __openvpn_unit }}"
+    state: "{{ openvpn_service_state }}"
+    enabled: "{{ openvpn_service_enabled }}"
+
+- name: Apply pending restarts
+  ansible.builtin.meta: flush_handlers

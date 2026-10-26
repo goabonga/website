@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_file: "{{ openvpn_sysctl_file }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  when: openvpn_ip_forward | bool
+
+- name: Masquerade the VPN traffic
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ openvpn_server_network }}/{{ __openvpn_prefix }}"
+    out_interface: "{{ __openvpn_nat_interface }}"
+    jump: MASQUERADE
+    comment: OpenVPN NAT for VPN clients
+  notify: openvpn | save iptables
+  when: openvpn_nat_enabled | bool

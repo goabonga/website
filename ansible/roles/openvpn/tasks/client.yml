@@ -1,0 +1,84 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Creates the certificate, the static address and the profile of one client.
+# The item is openvpn_c.
+
+- name: Set the static address
+  ansible.builtin.copy:
+    content: "ifconfig-push {{ openvpn_c.ip }} {{ openvpn_server_netmask }}\n"
+    dest: "{{ openvpn_ccd_dir }}/{{ openvpn_c.name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: openvpn_c.ip is defined
+
+- name: Remove the static address
+  ansible.builtin.file:
+    path: "{{ openvpn_ccd_dir }}/{{ openvpn_c.name }}"
+    state: absent
+  when: openvpn_c.ip is not defined
+
+- name: Issue the client certificate with Easy-RSA
+  ansible.builtin.command:
+    cmd: "./easyrsa --batch build-client-full {{ openvpn_c.name | quote }} nopass"
+    chdir: "{{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}/pki/issued/{{ openvpn_c.name }}.crt"
+  when: openvpn_effective_pki_backend == 'easyrsa'
+
+- name: Issue the client certificate with step-ca
+  ansible.builtin.command:
+    argv:
+      - step
+      - ca
+      - certificate
+      - "{{ openvpn_c.name }}"
+      - "{{ openvpn_clients_dir }}/certs/{{ openvpn_c.name }}.crt"
+      - "{{ openvpn_clients_dir }}/certs/{{ openvpn_c.name }}.key"
+      - "--ca-url={{ openvpn_stepca_url }}"
+      - "--root={{ openvpn_stepca_root_ca }}"
+      - "--provisioner={{ openvpn_stepca_provisioner }}"
+      - "--provisioner-password-file={{ openvpn_stepca_password_file }}"
+      - "--not-after={{ openvpn_stepca_cert_duration }}"
+      - --force
+    creates: "{{ openvpn_clients_dir }}/certs/{{ openvpn_c.name }}.crt"
+  when: openvpn_effective_pki_backend == 'step-ca'
+
+- name: Read the client certificate and key
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop: >-
+    {{ [openvpn_easyrsa_dir ~ '/pki/issued/' ~ openvpn_c.name ~ '.crt',
+        openvpn_easyrsa_dir ~ '/pki/private/' ~ openvpn_c.name ~ '.key']
+       if openvpn_effective_pki_backend == 'easyrsa' else
+       [openvpn_clients_dir ~ '/certs/' ~ openvpn_c.name ~ '.crt',
+        openvpn_clients_dir ~ '/certs/' ~ openvpn_c.name ~ '.key'] }}
+  register: openvpn_c_files
+  no_log: true
+
+- name: Render the client profile
+  ansible.builtin.template:
+    src: client.ovpn.j2
+    dest: "{{ openvpn_clients_dir }}/{{ openvpn_c.name }}.ovpn"
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    openvpn_c_cert: "{{ openvpn_c_files.results[0].content | b64decode }}"
+    openvpn_c_key: "{{ openvpn_c_files.results[1].content | b64decode }}"
+  diff: false
+
+- name: Fetch the client profile
+  ansible.builtin.fetch:
+    src: "{{ openvpn_clients_dir }}/{{ openvpn_c.name }}.ovpn"
+    dest: "{{ openvpn_clients_export_dir }}/{{ openvpn_c.name }}.ovpn"
+    flat: true
+  when: openvpn_clients_export_enabled | bool
+
+- name: Restrict the exported profile
+  ansible.builtin.file:
+    path: "{{ openvpn_clients_export_dir }}/{{ openvpn_c.name }}.ovpn"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  when: openvpn_clients_export_enabled | bool

@@ -1,0 +1,29 @@
+{{ ansible_managed | comment }}
+# Dedicated dnsmasq instance for the VPN clients.
+
+# Do not read /etc/resolv.conf.
+no-resolv
+
+# Listen on the VPN address only.
+listen-address={{ openvpn_dns_listen_address }}
+port={{ openvpn_dns_port }}
+bind-interfaces
+
+# Never forward plain names or private reverse lookups.
+domain-needed
+bogus-priv
+
+# Upstream resolvers.
+{% for server in openvpn_dns_upstream_servers %}
+server={{ server }}
+{% endfor %}
+
+# Local domain of the VPN.
+local=/{{ openvpn_dns_local_domain }}/
+domain={{ openvpn_dns_local_domain }}
+expand-hosts
+
+cache-size={{ openvpn_dns_cache_size }}
+
+# Additional configuration files.
+conf-dir={{ openvpn_dns_config_dir }}/,*.conf

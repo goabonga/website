@@ -1,0 +1,46 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Restart the OpenVPN server
+  ansible.builtin.systemd:
+    name: "{{ __openvpn_unit }}"
+    state: restarted
+  when: openvpn_service_state == 'started'
+  listen: openvpn | restart
+
+- name: Reload systemd for OpenVPN
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: openvpn | reload systemd
+
+- name: Restart the VPN resolver
+  ansible.builtin.systemd:
+    name: "{{ openvpn_dns_service_name }}"
+    state: restarted
+  listen: openvpn | restart dnsmasq vpn
+
+- name: Restart the main dnsmasq instance
+  ansible.builtin.systemd:
+    name: "{{ openvpn_dns_main_service_name }}"
+    state: restarted
+  listen: openvpn | restart dnsmasq
+
+- name: Restart step-ca
+  ansible.builtin.systemd:
+    name: "{{ openvpn_stepca_service_name }}"
+    state: restarted
+  listen: openvpn | restart step-ca
+
+- name: Reload nginx for the step-ca site
+  ansible.builtin.systemd:
+    name: "{{ openvpn_stepca_nginx_service_name }}"
+    state: reloaded
+  listen: openvpn | reload nginx
+
+- name: Save the iptables rules
+  ansible.builtin.shell:
+    cmd: "iptables-save > {{ openvpn_firewall_rules_file | quote }}"
+  changed_when: true
+  when: openvpn_firewall_persist | bool
+  listen: openvpn | save iptables

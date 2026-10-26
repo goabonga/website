@@ -1,0 +1,419 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Run an OpenVPN server with Easy-RSA or step-ca PKI, client profiles and a VPN DNS
+      resolver
+    description:
+    - Installs an OpenVPN server, builds its PKI with Easy-RSA or from a step-ca authority, generates
+      client certificates and exports ready-to-use profiles, enables forwarding and NAT, and optionally
+      runs a dedicated dnsmasq resolver for VPN clients and publishes step-ca on the VPN address.
+    options:
+      openvpn_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      openvpn_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      openvpn_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      openvpn_packages:
+        type: list
+        description: Packages to install.
+        elements: str
+      openvpn_firewall_packages:
+        type: list
+        description: Packages providing iptables rule persistence. Empty installs nothing.
+        elements: str
+      openvpn_server_name:
+        type: str
+        description: 'Name of the server instance: the configuration is /etc/openvpn/server/<name>.conf
+          and the unit openvpn-server@<name>.'
+        default: server
+      openvpn_config_dir:
+        type: path
+        description: 'Directory holding the server configuration, certificates and keys. The openvpn-server@
+          unit reads /etc/openvpn/server: change it only if you provide your own unit.'
+        default: /etc/openvpn/server
+      openvpn_ccd_dir:
+        type: path
+        description: Client configuration directory holding the static address of each client.
+      openvpn_port:
+        type: int
+        description: Listening port.
+        default: 1194
+      openvpn_proto:
+        type: str
+        description: Transport protocol.
+        choices:
+        - udp
+        - tcp
+        - udp6
+        - tcp6
+        default: udp
+      openvpn_dev:
+        type: str
+        description: Virtual device type or name.
+        default: tun
+      openvpn_topology:
+        type: str
+        description: Addressing topology. `subnet` is required for the static addresses written for the
+          clients.
+        choices:
+        - subnet
+        - net30
+        - p2p
+        default: subnet
+      openvpn_server_network:
+        type: str
+        description: VPN network address.
+        default: 10.8.0.0
+      openvpn_server_netmask:
+        type: str
+        description: VPN network mask.
+        default: 255.255.255.0
+      openvpn_cipher:
+        type: str
+        description: Data channel cipher.
+        default: AES-256-GCM
+      openvpn_auth:
+        type: str
+        description: HMAC digest.
+        default: SHA256
+      openvpn_tls_version_min:
+        type: str
+        description: Minimum TLS version. Empty leaves the OpenVPN default.
+        default: '1.2'
+      openvpn_user:
+        type: str
+        description: User the server drops privileges to.
+        default: nobody
+      openvpn_group:
+        type: str
+        description: Group the server drops privileges to.
+        default: nogroup
+      openvpn_keepalive:
+        type: str
+        description: keepalive directive (ping interval and timeout).
+        default: 10 120
+      openvpn_client_to_client:
+        type: bool
+        description: Let clients reach each other.
+        default: true
+      openvpn_redirect_gateway:
+        type: bool
+        description: Push a default route so client traffic goes through the VPN.
+        default: true
+      openvpn_push_routes:
+        type: list
+        description: Extra routes pushed to clients, each as `network netmask`.
+        elements: str
+      openvpn_dns_servers:
+        type: list
+        description: DNS servers pushed to clients.
+        elements: str
+      openvpn_push_domain:
+        type: str
+        description: DNS search domain pushed to clients. Empty pushes none.
+        default: internal
+      openvpn_verbosity:
+        type: int
+        description: Log verbosity (verb).
+        default: 3
+      openvpn_log_dir:
+        type: path
+        description: Directory holding the log, status and address pool files.
+        default: /var/log/openvpn
+      openvpn_extra_config:
+        type: list
+        description: Raw directives appended to the server configuration, one per entry.
+        elements: str
+      openvpn_service_state:
+        type: str
+        description: State of the server service.
+        choices:
+        - started
+        - stopped
+        default: started
+      openvpn_service_enabled:
+        type: bool
+        description: Enable the server service at boot.
+        default: true
+      openvpn_ip_forward:
+        type: bool
+        description: Enable IPv4 forwarding.
+        default: true
+      openvpn_sysctl_file:
+        type: path
+        description: File persisting the forwarding setting.
+        default: /etc/sysctl.d/99-openvpn.conf
+      openvpn_nat_enabled:
+        type: bool
+        description: Masquerade the traffic of the VPN network.
+        default: true
+      openvpn_nat_interface:
+        type: str
+        description: Outgoing interface of the NAT rule. Empty uses the default IPv4 interface reported
+          by Ansible.
+        default: ''
+      openvpn_firewall_persist:
+        type: bool
+        description: Save the rule set after a change.
+        default: true
+      openvpn_firewall_rules_file:
+        type: path
+        description: File receiving the saved rule set (iptables-persistent format).
+        default: /etc/iptables/rules.v4
+      openvpn_pki_backend:
+        type: str
+        description: Certificate authority issuing the server and client certificates.
+        choices:
+        - easyrsa
+        - step-ca
+        default: easyrsa
+      openvpn_pki_fallback:
+        type: bool
+        description: Fall back to Easy-RSA when step-ca is requested but its root certificate or the provisioner
+          password is missing. When false the role fails instead.
+        default: true
+      openvpn_easyrsa_package:
+        type: str
+        description: Package providing Easy-RSA.
+        default: easy-rsa
+      openvpn_easyrsa_dir:
+        type: path
+        description: Easy-RSA working directory and PKI location.
+        default: /etc/openvpn/easy-rsa
+      openvpn_easyrsa_dn_mode:
+        type: str
+        description: 'EASYRSA_DN: distinguished name mode.'
+        choices:
+        - cn_only
+        - org
+        default: cn_only
+      openvpn_easyrsa_key_size:
+        type: int
+        description: RSA key size.
+        default: 2048
+      openvpn_easyrsa_ca_expire:
+        type: int
+        description: Validity of the CA certificate in days.
+        default: 3650
+      openvpn_easyrsa_cert_expire:
+        type: int
+        description: Validity of the issued certificates in days.
+        default: 3650
+      openvpn_easyrsa_ca_cn:
+        type: str
+        description: Common name of the CA.
+        default: OpenVPN-CA
+      openvpn_stepca_package:
+        type: str
+        description: Package providing the step command.
+        default: step-cli
+      openvpn_stepca_url:
+        type: str
+        description: URL of the step-ca authority. Follows the step_ca role when it ran in the same play.
+      openvpn_stepca_root_ca:
+        type: path
+        description: Root certificate of the authority on this host.
+        default: /etc/step-ca/certs/root_ca.crt
+      openvpn_stepca_provisioner:
+        type: str
+        description: Name of the JWK provisioner used to issue certificates.
+        default: openvpn
+      openvpn_stepca_password:
+        type: str
+        description: Password of the provisioner key. Required for the step-ca backend. Provide it from
+          a vault.
+        default: ''
+        no_log: true
+      openvpn_stepca_password_file:
+        type: path
+        description: File holding the provisioner password, written by the role.
+        default: /etc/step-ca/secrets/openvpn-password
+      openvpn_stepca_manage_provisioner:
+        type: bool
+        description: Create or update the provisioner in the authority from this role. Disable it when
+          the step_ca role manages the provisioner.
+        default: true
+      openvpn_stepca_home:
+        type: path
+        description: STEPPATH of the authority on this host.
+        default: /etc/step-ca
+      openvpn_stepca_config_file:
+        type: path
+        description: ca.json of the authority on this host.
+        default: /etc/step-ca/config/ca.json
+      openvpn_stepca_user:
+        type: str
+        description: User owning the authority files and running the step commands that edit ca.json.
+        default: step
+      openvpn_stepca_group:
+        type: str
+        description: Group owning the password file.
+        default: step
+      openvpn_stepca_service_name:
+        type: str
+        description: systemd unit restarted after the provisioner changes.
+        default: step-ca
+      openvpn_stepca_cert_duration:
+        type: str
+        description: Validity of the issued certificates; also the maximum and default duration of the
+          provisioner.
+        default: 8760h
+      openvpn_stepca_server_name:
+        type: str
+        description: Common name of the server certificate.
+        default: openvpn-server
+      openvpn_clients:
+        type: list
+        description: Clients to create. Each gets a certificate, an optional static address and a profile.
+        elements: dict
+        options:
+          name:
+            type: str
+            description: 'Client name: the certificate common name and the profile file name. Letters,
+              digits, dot, underscore and dash only.'
+            required: true
+          ip:
+            type: str
+            description: Static VPN address. Without it the client gets a dynamic address.
+          aliases:
+            type: list
+            description: Extra DNS names resolving to the static address in the VPN resolver.
+            elements: str
+      openvpn_clients_dir:
+        type: path
+        description: Directory on the server holding the client profiles.
+        default: /etc/openvpn/clients
+      openvpn_server_public_address:
+        type: str
+        description: Address or name clients connect to, written in the profiles.
+      openvpn_clients_extra_config:
+        type: list
+        description: Raw directives appended to every client profile, one per entry.
+        elements: str
+      openvpn_clients_export_enabled:
+        type: bool
+        description: Fetch the profiles to the controller.
+        default: true
+      openvpn_clients_export_dir:
+        type: path
+        description: 'Controller directory receiving the profiles. They embed the client keys: protect
+          or encrypt this directory.'
+      openvpn_dns_enabled:
+        type: bool
+        description: Run a dedicated dnsmasq instance bound to the VPN address.
+        default: true
+      openvpn_dns_package:
+        type: str
+        description: Package providing dnsmasq.
+        default: dnsmasq
+      openvpn_dns_binary:
+        type: path
+        description: Path of the dnsmasq executable.
+        default: /usr/sbin/dnsmasq
+      openvpn_dns_service_name:
+        type: str
+        description: Name of the systemd unit of the VPN resolver.
+        default: dnsmasq-vpn
+      openvpn_dns_config_file:
+        type: path
+        description: Configuration file of the VPN resolver.
+        default: /etc/dnsmasq-vpn.conf
+      openvpn_dns_config_dir:
+        type: path
+        description: Directory of additional configuration files of the VPN resolver.
+        default: /etc/dnsmasq-vpn.d
+      openvpn_dns_listen_address:
+        type: str
+        description: VPN address the resolver listens on.
+        default: 10.8.0.1
+      openvpn_dns_port:
+        type: int
+        description: Port the resolver listens on.
+        default: 53
+      openvpn_dns_upstream_servers:
+        type: list
+        description: Upstream resolvers.
+        elements: str
+      openvpn_dns_local_domain:
+        type: str
+        description: Local domain of the VPN. Each client is served as <name>.<domain>.
+        default: vpn.internal
+      openvpn_dns_hosts:
+        type: list
+        description: Additional names served by the VPN resolver.
+        elements: dict
+        options:
+          hostname:
+            type: str
+            description: Fully qualified name served by the VPN resolver.
+            required: true
+          ip:
+            type: str
+            description: Address the name resolves to.
+            required: true
+      openvpn_dns_cache_size:
+        type: int
+        description: Resolver cache size.
+        default: 500
+      openvpn_dns_publish_to_main:
+        type: bool
+        description: Also write the client records into the configuration directory of the main dnsmasq
+          instance and restart it.
+        default: false
+      openvpn_dns_main_config_dir:
+        type: path
+        description: Configuration directory of the main dnsmasq instance.
+        default: /etc/dnsmasq.d
+      openvpn_dns_main_service_name:
+        type: str
+        description: systemd unit of the main dnsmasq instance.
+        default: dnsmasq
+      openvpn_stepca_nginx_enabled:
+        type: bool
+        description: Publish step-ca on the VPN address through nginx and name it in the VPN resolver.
+          nginx must be installed and the proxy certificate must exist (see the step_ca role).
+        default: false
+      openvpn_stepca_domain:
+        type: str
+        description: Name under which step-ca is published. Follows the step_ca role when it ran in the
+          same play.
+      openvpn_stepca_upstream:
+        type: str
+        description: host:port of the authority behind the proxy.
+        default: 127.0.0.1:8443
+      openvpn_stepca_nginx_binary:
+        type: path
+        description: Path of nginx, used to detect an installation.
+        default: /usr/sbin/nginx
+      openvpn_stepca_nginx_service_name:
+        type: str
+        description: systemd unit reloaded after a change.
+        default: nginx
+      openvpn_stepca_nginx_sites_available:
+        type: path
+        description: nginx sites-available directory.
+        default: /etc/nginx/sites-available
+      openvpn_stepca_nginx_sites_enabled:
+        type: path
+        description: nginx sites-enabled directory.
+        default: /etc/nginx/sites-enabled
+      openvpn_stepca_nginx_cert_dir:
+        type: path
+        description: Directory holding fullchain.pem and privkey.pem of the proxy certificate.
+      openvpn_stepca_nginx_ssl_protocols:
+        type: str
+        description: ssl_protocols of the proxy.
+        default: TLSv1.2 TLSv1.3
+      openvpn_stepca_nginx_ssl_ciphers:
+        type: str
+        description: ssl_ciphers of the proxy.
+        default: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384

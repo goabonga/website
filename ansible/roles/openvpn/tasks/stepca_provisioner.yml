@@ -1,0 +1,62 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Creates the OpenVPN JWK provisioner in the authority, or updates its durations.
+
+- name: Read ca.json
+  ansible.builtin.slurp:
+    src: "{{ openvpn_stepca_config_file }}"
+  register: openvpn_stepca_raw
+
+- name: Find the provisioner in ca.json
+  ansible.builtin.set_fact:
+    openvpn_stepca_current: >-
+      {{ ((openvpn_stepca_raw.content | b64decode | from_json).authority | default({})).provisioners | default([])
+         | selectattr('name', 'equalto', openvpn_stepca_provisioner) | list | first | default({}) }}
+
+- name: Add the provisioner
+  ansible.builtin.command:
+    argv:
+      - step
+      - ca
+      - provisioner
+      - add
+      - "{{ openvpn_stepca_provisioner }}"
+      - --type=JWK
+      - --create
+      - "--password-file={{ openvpn_stepca_password_file }}"
+      - "--ca-config={{ openvpn_stepca_config_file }}"
+      - "--x509-max-dur={{ openvpn_stepca_cert_duration }}"
+      - "--x509-default-dur={{ openvpn_stepca_cert_duration }}"
+  environment:
+    STEPPATH: "{{ openvpn_stepca_home }}"
+  become: true
+  become_user: "{{ openvpn_stepca_user }}"
+  changed_when: true
+  notify: openvpn | restart step-ca
+  when: openvpn_stepca_current | length == 0
+
+- name: Update the provisioner durations
+  ansible.builtin.command:
+    argv:
+      - step
+      - ca
+      - provisioner
+      - update
+      - "{{ openvpn_stepca_provisioner }}"
+      - "--ca-config={{ openvpn_stepca_config_file }}"
+      - "--x509-max-dur={{ openvpn_stepca_cert_duration }}"
+      - "--x509-default-dur={{ openvpn_stepca_cert_duration }}"
+  environment:
+    STEPPATH: "{{ openvpn_stepca_home }}"
+  become: true
+  become_user: "{{ openvpn_stepca_user }}"
+  changed_when: true
+  notify: openvpn | restart step-ca
+  when:
+    - openvpn_stepca_current | length > 0
+    - (openvpn_stepca_current.claims | default({})).maxTLSCertDuration | default('') != openvpn_stepca_cert_duration
+      or (openvpn_stepca_current.claims | default({})).defaultTLSCertDuration | default('') != openvpn_stepca_cert_duration
+
+- name: Restart step-ca now if the provisioner changed
+  ansible.builtin.meta: flush_handlers

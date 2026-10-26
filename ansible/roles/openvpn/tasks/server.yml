@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Render the server configuration
+  ansible.builtin.template:
+    src: server.conf.j2
+    dest: "{{ openvpn_config_dir }}/{{ openvpn_server_name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart

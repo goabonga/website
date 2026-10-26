@@ -1,0 +1,44 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for the step-ca root certificate
+  ansible.builtin.stat:
+    path: "{{ openvpn_stepca_root_ca }}"
+  register: openvpn_stepca_root_stat
+  when: openvpn_pki_backend == 'step-ca'
+
+- name: Choose the PKI backend
+  ansible.builtin.set_fact:
+    openvpn_effective_pki_backend: >-
+      {{ 'step-ca'
+         if (openvpn_pki_backend == 'step-ca'
+             and openvpn_stepca_root_stat.stat.exists
+             and openvpn_stepca_password | length > 0)
+         else 'easyrsa' }}
+
+- name: Assert the requested PKI backend is usable
+  ansible.builtin.assert:
+    that: openvpn_effective_pki_backend == openvpn_pki_backend or openvpn_pki_fallback | bool
+    fail_msg: >-
+      openvpn_pki_backend is step-ca but {{ openvpn_stepca_root_ca }} or openvpn_stepca_password is
+      missing, and openvpn_pki_fallback is false.
+    quiet: true
+
+- name: Report the PKI backend
+  ansible.builtin.debug:
+    msg: "PKI backend: {{ openvpn_effective_pki_backend }} (requested: {{ openvpn_pki_backend }})"
+
+- name: Build the Easy-RSA PKI
+  ansible.builtin.include_tasks: pki_easyrsa.yml
+  when: openvpn_effective_pki_backend == 'easyrsa'
+
+- name: Obtain the certificates from step-ca
+  ansible.builtin.include_tasks: pki_stepca.yml
+  when: openvpn_effective_pki_backend == 'step-ca'
+
+- name: Generate the TLS authentication key
+  ansible.builtin.command:
+    cmd: "openvpn --genkey secret {{ openvpn_config_dir }}/ta.key"
+    creates: "{{ openvpn_config_dir }}/ta.key"
+  notify: openvpn | restart

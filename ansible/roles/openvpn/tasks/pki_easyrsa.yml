@@ -1,0 +1,62 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install Easy-RSA
+  ansible.builtin.apt:
+    name: "{{ openvpn_easyrsa_package }}"
+    state: present
+
+- name: Create the Easy-RSA directory
+  ansible.builtin.command:
+    cmd: "make-cadir {{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}"
+
+- name: Configure Easy-RSA
+  ansible.builtin.template:
+    src: easyrsa-vars.j2
+    dest: "{{ openvpn_easyrsa_dir }}/vars"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Initialise the PKI
+  ansible.builtin.command:
+    cmd: ./easyrsa init-pki
+    chdir: "{{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}/pki"
+
+- name: Build the CA
+  ansible.builtin.command:
+    cmd: ./easyrsa --batch build-ca nopass
+    chdir: "{{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}/pki/ca.crt"
+
+- name: Issue the server certificate
+  ansible.builtin.command:
+    cmd: ./easyrsa --batch build-server-full server nopass
+    chdir: "{{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}/pki/issued/server.crt"
+
+- name: Generate the Diffie-Hellman parameters
+  ansible.builtin.command:
+    cmd: ./easyrsa gen-dh
+    chdir: "{{ openvpn_easyrsa_dir }}"
+    creates: "{{ openvpn_easyrsa_dir }}/pki/dh.pem"
+
+- name: Install the server credentials
+  ansible.builtin.copy:
+    src: "{{ openvpn_easyrsa_dir }}/{{ item.src }}"
+    dest: "{{ openvpn_config_dir }}/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: pki/ca.crt, dest: ca.crt, mode: "0644" }
+    - { src: pki/issued/server.crt, dest: server.crt, mode: "0644" }
+    - { src: pki/private/server.key, dest: server.key, mode: "0600" }
+    - { src: pki/dh.pem, dest: dh.pem, mode: "0644" }
+  loop_control:
+    label: "{{ item.dest }}"
+  notify: openvpn | restart

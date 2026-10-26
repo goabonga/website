@@ -1,0 +1,19 @@
+{{ ansible_managed | comment }}
+
+# VPN server
+address=/server.{{ openvpn_dns_local_domain }}/{{ openvpn_dns_listen_address }}
+{% for client in openvpn_clients if client.ip is defined %}
+
+# Client {{ client.name }}
+address=/{{ client.name }}.{{ openvpn_dns_local_domain }}/{{ client.ip }}
+{% for alias in client.aliases | default([]) %}
+address=/{{ alias }}/{{ client.ip }}
+{% endfor %}
+{% endfor %}
+{% if openvpn_dns_hosts | length > 0 %}
+
+# Additional hosts
+{% for host in openvpn_dns_hosts %}
+address=/{{ host.hostname }}/{{ host.ip }}
+{% endfor %}
+{% endif %}

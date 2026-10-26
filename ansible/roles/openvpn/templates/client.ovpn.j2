@@ -1,0 +1,37 @@
+{{ ansible_managed | comment }}
+# OpenVPN client profile for {{ openvpn_c.name }}
+client
+dev {{ openvpn_dev }}
+proto {{ openvpn_proto }}
+remote {{ openvpn_server_public_address }} {{ openvpn_port }}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+cipher {{ openvpn_cipher }}
+auth {{ openvpn_auth }}
+key-direction 1
+verb {{ openvpn_verbosity }}
+{% if openvpn_tls_version_min %}
+tls-version-min {{ openvpn_tls_version_min }}
+{% endif %}
+{% for line in openvpn_clients_extra_config %}
+{{ line }}
+{% endfor %}
+
+<ca>
+{{ openvpn_ca_cert.content | b64decode | trim }}
+</ca>
+
+<cert>
+{{ openvpn_c_cert | trim }}
+</cert>
+
+<key>
+{{ openvpn_c_key | trim }}
+</key>
+
+<tls-auth>
+{{ openvpn_ta_key.content | b64decode | trim }}
+</tls-auth>

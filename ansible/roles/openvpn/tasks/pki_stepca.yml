@@ -1,0 +1,56 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install the step command
+  ansible.builtin.apt:
+    name: "{{ openvpn_stepca_package }}"
+    state: present
+
+- name: Write the provisioner password file
+  ansible.builtin.copy:
+    content: "{{ openvpn_stepca_password }}"
+    dest: "{{ openvpn_stepca_password_file }}"
+    owner: "{{ openvpn_stepca_user }}"
+    group: "{{ openvpn_stepca_group }}"
+    mode: "0600"
+  no_log: true
+
+- name: Manage the provisioner in the authority
+  ansible.builtin.include_tasks: stepca_provisioner.yml
+  when: openvpn_stepca_manage_provisioner | bool
+
+- name: Issue the server certificate
+  ansible.builtin.command:
+    argv:
+      - step
+      - ca
+      - certificate
+      - "{{ openvpn_stepca_server_name }}"
+      - "{{ openvpn_config_dir }}/server.crt"
+      - "{{ openvpn_config_dir }}/server.key"
+      - "--ca-url={{ openvpn_stepca_url }}"
+      - "--root={{ openvpn_stepca_root_ca }}"
+      - "--provisioner={{ openvpn_stepca_provisioner }}"
+      - "--provisioner-password-file={{ openvpn_stepca_password_file }}"
+      - "--not-after={{ openvpn_stepca_cert_duration }}"
+      - --force
+    creates: "{{ openvpn_config_dir }}/server.crt"
+  notify: openvpn | restart
+
+- name: Restrict the server key
+  ansible.builtin.file:
+    path: "{{ openvpn_config_dir }}/server.key"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Install the root certificate as the server CA
+  ansible.builtin.copy:
+    src: "{{ openvpn_stepca_root_ca }}"
+    dest: "{{ openvpn_config_dir }}/ca.crt"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart

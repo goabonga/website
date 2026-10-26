@@ -199,3 +199,21 @@ def step_no_email_for(context, to_email):
 @given('a "{status}" email to "{to_email}" via "{provider}" stored as "{alias}"')
 def step_seed_email_with_status(context, status, to_email, provider, alias):
     context.created_ids[alias] = seed_email(context, to_email, provider=provider, status=status)
+
+
+@then('the email to "{to_email}" should have HTML containing "{text}"')
+def step_email_html_contains(context, to_email, text):
+    email = load_email(to_email=to_email)
+    assert text in email.html_content, email.html_content
+
+
+@then('the email to "{to_email}" should have HTML not containing "{text}"')
+def step_email_html_excludes(context, to_email, text):
+    email = load_email(to_email=to_email)
+    assert text not in email.html_content, email.html_content
+
+
+@then('the email to "{to_email}" should have plain text "{text}"')
+def step_email_plain_text(context, to_email, text):
+    email = load_email(to_email=to_email)
+    assert (email.text_content or "").strip() == text, email.text_content

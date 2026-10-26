@@ -22,6 +22,7 @@ MJML = (
 )
 
 
+@given("I run the command line: {command}")
 @when("I run the command line: {command}")
 def step_run_command_line(context, command):
     out, err = io.StringIO(), io.StringIO()
@@ -43,7 +44,9 @@ def step_templates_directory(context):
     directory = Path(tempfile.mkdtemp(prefix="mailler-templates-"))
     for row in context.table:
         slug = row["slug"]
-        (directory / f"{slug}.mjml").write_text(row["mjml"] if "mjml" in row.headings else MJML)
+        (directory / f"{slug}.mjml").write_text(
+            row["mjml"] if "mjml" in row.headings and row["mjml"] else MJML
+        )
         description = {"subject_template": row["subject"]}
         if "extra" in row.headings and row["extra"]:
             description.update(json.loads(row["extra"]))

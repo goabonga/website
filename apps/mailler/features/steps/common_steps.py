@@ -222,3 +222,9 @@ def step_send_raw_post(context, path, body, header_name, header_value):
             headers={header_name: header_value},
         ),
     )
+
+
+@then('the response JSON "{key}" should list "{value}"')
+def step_check_json_list_contains(context, key, value):
+    values = context.response.json()[key]
+    assert value in values, values

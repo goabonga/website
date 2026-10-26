@@ -129,6 +129,17 @@ server {
         access_log off;
     }
 {% endif %}
+{% for path in nginx.webhook_paths %}
+
+    # Webhook receiver, POST only, open to the services that call it.
+    location = {{ path }} {
+        allow all;
+        limit_except POST {
+            deny all;
+        }
+{{ proxy() | trim('\n') }}
+    }
+{% endfor %}
 {% if nginx.websocket.enabled | bool %}
 
     location {{ nginx.websocket.path }} {

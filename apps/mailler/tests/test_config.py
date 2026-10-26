@@ -137,3 +137,34 @@ class TestGetCredential:
             result = get_credential("MY_SECRET", "default")
 
         assert result == "env-value"
+
+
+class TestProviderSettings:
+    """Sender and provider settings introduced with the providers."""
+
+    def test_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.default_from == ""
+        assert s.default_from_name == ""
+        assert s.brevo_api_key == ""
+        assert s.sendgrid_api_key == ""
+        assert s.ses_region == ""
+        assert s.protonmail_host == ""
+        assert s.protonmail_port == 0
+        assert s.webhook_hmac_secret == ""
+        assert s.unsubscribe_base_url == ""
+
+    def test_provider_secrets_read_from_credentials_directory(self, tmp_path):
+        (tmp_path / "BREVO_API_KEY").write_text("brevo-secret\n")
+        (tmp_path / "WEBHOOK_HMAC_SECRET").write_text("hmac-secret\n")
+        with patch.dict(os.environ, {"CREDENTIALS_DIRECTORY": str(tmp_path)}):
+            import importlib
+
+            import mailler.config as config_module
+
+            reloaded = importlib.reload(config_module)
+            try:
+                assert reloaded.settings.brevo_api_key == "brevo-secret"
+                assert reloaded.settings.webhook_hmac_secret == "hmac-secret"
+            finally:
+                importlib.reload(config_module)

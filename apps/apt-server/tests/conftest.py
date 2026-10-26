@@ -3,11 +3,23 @@
 
 """Shared pytest fixtures."""
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
+import pytest_asyncio
+from apt_server.db.models import Base
 from apt_server.main import app
 from fastapi.testclient import TestClient
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.pool import NullPool
+
+
+@compiles(JSONB, "sqlite")
+def _jsonb_as_json_on_sqlite(type_, compiler, **kw) -> str:
+    """Let the PostgreSQL models run on the in-process SQLite test database."""
+    return "JSON"
 
 
 @pytest.fixture
@@ -67,3 +79,19 @@ def fake_redis() -> FakeRedis:
 @pytest.fixture
 def failing_redis() -> FakeRedis:
     return FakeRedis(fail=True)
+
+
+@pytest_asyncio.fixture
+async def session_maker(tmp_path) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    """Session factory bound to a throw-away SQLite database with the schema created."""
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'test.db'}", poolclass=NullPool)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db(session_maker) -> AsyncIterator[AsyncSession]:
+    async with session_maker() as session:
+        yield session

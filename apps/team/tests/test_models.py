@@ -4,6 +4,7 @@
 """Tests for team/models/."""
 
 from team.models import (
+    Agent,
     Base,
     Team,
 )
@@ -18,11 +19,15 @@ class TestModelsImport:
     def test_team_tablename(self):
         assert Team.__tablename__ == "teams"
 
+    def test_agent_tablename(self):
+        assert Agent.__tablename__ == "agents"
+
 
 def test_all_models_registered_in_metadata():
     """All model tables should be registered in Base.metadata."""
     table_names = set(Base.metadata.tables.keys())
     expected = {
+        "agents",
         "teams",
     }
     assert expected.issubset(table_names)

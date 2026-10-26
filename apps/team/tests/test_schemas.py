@@ -4,9 +4,24 @@
 """Tests for team/schemas/."""
 
 from team.schemas import (
+    AgentCreate,
+    AgentUpdate,
     TeamCreate,
     TeamUpdate,
 )
+
+
+class TestAgentSchemas:
+    def test_agent_create_valid(self):
+        data = AgentCreate(name="DevAgent", role="developer")
+        assert data.name == "DevAgent"
+        assert data.role == "developer"
+        assert data.model == "gpt-4o"
+
+    def test_agent_update_partial(self):
+        data = AgentUpdate(name="NewName")
+        dumped = data.model_dump(exclude_unset=True)
+        assert dumped == {"name": "NewName"}
 
 
 class TestTeamSchemas:

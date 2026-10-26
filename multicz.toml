@@ -259,3 +259,18 @@ bump_files = [
 ]
 changelog = "apps/team/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.knowledge]
+tag_format = "knowledge-v{version}"
+paths = [
+    "apps/knowledge/src/**",
+    "apps/knowledge/features/**",
+    "apps/knowledge/tests/**",
+    "apps/knowledge/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/knowledge/pyproject.toml", key = "project.version" },
+    { file = "apps/knowledge/src/knowledge/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/knowledge/CHANGELOG.md"
+post_bump = ["uv lock"]

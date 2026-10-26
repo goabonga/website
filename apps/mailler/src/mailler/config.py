@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     send_retry_delay: int = 60  # seconds before the first retry
     send_retry_backoff_max: int = 300  # upper bound of the exponential backoff, in seconds
 
+    # Scheduler
+    stuck_email_minutes: int = 5  # a pending email older than this is queued again
+    stuck_email_batch: int = 50  # stuck emails queued again per run
+    scheduled_email_batch: int = 100  # due scheduled emails queued per run
+    email_retention_days: int = 90  # emails older than this are deleted
+
     # Default sender
     default_from: str = ""  # optional platform sender, used when the caller has none
     default_from_name: str = ""

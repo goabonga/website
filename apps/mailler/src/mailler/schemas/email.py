@@ -40,6 +40,24 @@ class SendEmailRequest(BaseModel):
     )
 
 
+class ScheduleEmailRequest(SendEmailRequest):
+    """Request schema for scheduling an email."""
+
+    scheduled_at: datetime = Field(..., description="When to send the email (ISO 8601)")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "to_email": "user@example.com",
+                "subject": "Scheduled Email",
+                "html_content": "<h1>Hello!</h1>",
+                "provider": "brevo",
+                "scheduled_at": "2026-01-29T10:00:00Z",
+            }
+        }
+    )
+
+
 class SendEmailResponse(BaseModel):
     """Response schema for send/schedule operations."""
 

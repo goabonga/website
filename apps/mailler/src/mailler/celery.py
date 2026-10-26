@@ -4,6 +4,7 @@
 """Celery configuration for Mailler."""
 
 from celery import Celery
+from celery.schedules import crontab
 
 from mailler.config import settings
 
@@ -37,6 +38,25 @@ celery_app.conf.update(
         settings.celery_queue: {
             "exchange": settings.celery_queue,
             "routing_key": settings.celery_queue,
+        },
+    },
+    # Beat schedule for periodic tasks
+    beat_schedule={
+        "requeue-stuck-emails": {
+            "task": "mailler.tasks.scheduler.requeue_stuck_emails",
+            "schedule": crontab(minute="*/2"),  # Every 2 minutes
+        },
+        "process-scheduled-emails": {
+            "task": "mailler.tasks.scheduler.process_scheduled_emails",
+            "schedule": crontab(minute="*"),  # Every minute
+        },
+        "cleanup-old-emails": {
+            "task": "mailler.tasks.scheduler.cleanup_old_emails",
+            "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM
+        },
+        "aggregate-daily-stats": {
+            "task": "mailler.tasks.scheduler.aggregate_daily_stats",
+            "schedule": crontab(hour=0, minute=5),  # Daily at 00:05
         },
     },
 )

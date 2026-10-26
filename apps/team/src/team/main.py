@@ -22,6 +22,7 @@ from team.routes.team import (
     tasks,
     team_conversations,
     teams,
+    tools,
     workflows,
 )
 
@@ -76,7 +77,7 @@ Multi-agent orchestration platform for managing autonomous AI workers.
 - **Agent orchestration**: Configure autonomous AI workers
 - **Conversation management**: Track agent conversations and messages
 - **Workflow engine**: Define and execute multi-step workflows
-- **Skill management**: Register and manage agent capabilities
+- **Skill and tool management**: Register and manage agent capabilities
 - **Memory management**: Persistent agent memory storage
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
@@ -122,6 +123,7 @@ app.include_router(workflows.router)
 app.include_router(tasks.router)
 app.include_router(memory.router)
 app.include_router(skills.router)
+app.include_router(tools.router)
 app.include_router(team_conversations.router)
 
 # Usage routes

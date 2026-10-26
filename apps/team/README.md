@@ -42,6 +42,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/{team_id}/agents/{agent_id}/skills/{skill_id}` | scope `team:platform:read` | Get a skill by ID (includes full content) |
 | PATCH | `/platform/{team_id}/agents/{agent_id}/skills/{skill_id}` | scope `team:platform:write` | Update a skill |
 | DELETE | `/platform/{team_id}/agents/{agent_id}/skills/{skill_id}` | scope `team:platform:write` | Delete a skill |
+| GET | `/platform/tools` | scope `team:platform:read` | List all registered tools with their definitions |
 | GET | `/platform/{team_id}/conversations` | scope `team:platform:read` | List conversations for a team |
 | GET | `/platform/{team_id}/conversations/count` | scope `team:platform:read` | Get conversation count for a team |
 | POST | `/usage/{team_id}/report` | scope `team:write` | Report a task execution event |
@@ -54,7 +55,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `team:platform:write` - checked by 20 routes
-- `team:platform:read` - checked by 12 routes
+- `team:platform:read` - checked by 13 routes
 - `team:write` - checked by 3 routes
 - `team:read` - checked by 1 route
 

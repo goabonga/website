@@ -11,6 +11,7 @@ from team.routes.team import (
     skills,
     tasks,
     teams,
+    tools,
     workflows,
 )
 
@@ -22,5 +23,6 @@ __all__ = [
     "skills",
     "tasks",
     "teams",
+    "tools",
     "workflows",
 ]

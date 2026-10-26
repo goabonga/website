@@ -22,6 +22,7 @@ feature: what it does, how it is configured, how it is tested.
 9. [Scoped system prompts](09-system-prompts.md): versioned prompts selected by OAuth2 scopes and cached in Redis.
 10. [LLM client and tools](10-llm-and-tools.md): OpenAI client and the scope-aware tool registry.
 11. [Chat orchestration and streaming](11-chat-orchestration.md): tool routing, streamed answers and SSE events.
+12. [Chat endpoint](12-chat-endpoint.md): `POST /api/v1/chat`, history mode, cookies and rate limiting.
 
 ## Running the tests
 

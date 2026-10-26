@@ -71,8 +71,9 @@ The dashboard and the product lists include the inactive SaaS apps and products,
 can be reactivated from their edit form. A checkbox that is not ticked is not sent by the
 browser: an unticked "Active" box on an edit form deactivates the record. The forms of new
 prices leave the currency and the interval empty by default and the billing service applies its
-own (`DEFAULT_CURRENCY`, `DEFAULT_RECURRING_INTERVAL`). The limits of a product are free-form
-named whole numbers: the names are those the SaaS app reads from its plan.
+own (`DEFAULT_CURRENCY`, `DEFAULT_RECURRING_INTERVAL`). The slug and the limits of a product are
+described in [Plan slug and free-form limits](06c-billing-plans.md): the limits are free-form
+named whole numbers, the names are those the SaaS app reads from its plan.
 
 Every action redirects back with a `success` or `error` query parameter that the
 templates show as a banner.

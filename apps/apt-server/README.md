@@ -10,6 +10,7 @@ access control.
 - OIDC bearer and personal access token authentication (`/me`)
 - Component visibility and `apt:*` scope hierarchy
 - Package catalog and per-package ACL stored in PostgreSQL (Alembic)
+- Per-caller `Packages` and `Release` index rendering with a database cache
 
 ## Routes and scopes
 

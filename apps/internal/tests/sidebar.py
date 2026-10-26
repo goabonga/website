@@ -28,6 +28,7 @@ from internal.auth.models import User
 from internal.database import Base, get_db
 from internal.models.conversation import Conversation, Message
 from internal.models.knowledge import KnowledgeNamespace
+from internal.models.prompt import SystemPrompt, SystemPromptVersion
 from internal.services.token_exchange import TokenExchangeClient, TokenExchangeError
 from internal.services.vpn_portal_client import VPNSession, VPNSessionsResponse
 from sqlalchemy import JSON, Uuid
@@ -72,6 +73,7 @@ SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
     "namespaces": Section("/namespaces", "namespaces:*"),
+    "prompts": Section("/prompts", "prompts:*"),
     "analytics": Section("/analytics", "analytics:*"),
     "email_templates": Section("/email-templates", "email_templates:*"),
     "email_campaigns": Section("/email-campaigns", "email_campaigns:*"),
@@ -270,6 +272,24 @@ async def seed_namespace(env: "Env") -> dict:
     namespace = KnowledgeNamespace(slug="docs", name="Docs", is_public=True)
     await env.add(namespace)
     return {"namespace": namespace.id}
+
+
+async def enable_openai(env: "Env") -> dict:
+    """Pretend an OpenAI API key is configured."""
+    env.patch("internal.config.settings.openai_api_key", "sk-test")
+    return {}
+
+
+async def seed_prompt(env: "Env") -> dict:
+    """Create a prompt with a current version."""
+    prompt = SystemPrompt(slug="support", name="Support", description="Support prompt")
+    await env.add(prompt)
+    await env.add(
+        SystemPromptVersion(
+            prompt_id=prompt.id, version=1, content="Be helpful.", metadata_={}, is_current=True
+        )
+    )
+    return {"prompt": prompt.id}
 
 
 CAMPAIGN_ID = "11111111-1111-1111-1111-111111111111"
@@ -816,6 +836,13 @@ PAGES: dict[str, list[Page]] = {
         Page("/namespaces/new", "namespaces"),
         Page("/namespaces/{namespace}", "namespaces", seed_namespace),
         Page("/namespaces/{namespace}/edit", "namespaces", seed_namespace),
+    ],
+    "prompts": [
+        Page("/prompts", "prompts"),
+        Page("/prompts/new", "prompts"),
+        Page("/prompts/generate", "prompts", enable_openai),
+        Page("/prompts/{prompt}", "prompts", seed_prompt),
+        Page("/prompts/{prompt}/edit", "prompts", seed_prompt),
     ],
 }
 

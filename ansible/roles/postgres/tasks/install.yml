@@ -1,0 +1,22 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The postgres role only supports Debian-family distributions.
+    quiet: true
+
+- name: Install PostgreSQL packages
+  ansible.builtin.apt:
+    name: "{{ postgres_packages + postgres_extra_packages }}"
+    state: present
+    update_cache: "{{ postgres_apt_update_cache }}"
+    cache_valid_time: "{{ postgres_apt_cache_valid_time }}"
+
+- name: Install the pgvector extension package
+  ansible.builtin.apt:
+    name: "{{ postgres_pgvector_package }}"
+    state: present
+  when: postgres_pgvector_enabled | bool

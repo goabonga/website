@@ -1,0 +1,17 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Restart postgresql
+  ansible.builtin.systemd:
+    name: "{{ postgres_service_name }}"
+    state: restarted
+  when: postgres_service_state == 'started'
+  listen: postgres | restart
+
+- name: Reload postgresql
+  ansible.builtin.systemd:
+    name: "{{ postgres_service_name }}"
+    state: reloaded
+  when: postgres_service_state == 'started'
+  listen: postgres | reload

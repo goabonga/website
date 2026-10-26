@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create or remove PostgreSQL roles
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | default(omit, true) }}"
+    role_attr_flags: "{{ item.role_attr_flags | default(omit, true) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ postgres_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  when: postgres_service_state == 'started'
+
+- name: Create or remove PostgreSQL databases
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner | default(omit, true) }}"
+    encoding: "{{ item.encoding | default('UTF8') }}"
+    template: template0
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ postgres_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: postgres_service_state == 'started'
+
+- name: Enable extensions declared on databases
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_ext:
+    name: "{{ item.1 }}"
+    login_db: "{{ item.0.name }}"
+    state: present
+  loop: "{{ postgres_databases | rejectattr('state', 'equalto', 'absent') | selectattr('extensions', 'defined') | list | subelements('extensions') }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+  when: postgres_service_state == 'started'
+
+- name: Enable pgvector in the listed databases
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_ext:
+    name: vector
+    login_db: "{{ item }}"
+    state: present
+  loop: "{{ postgres_pgvector_databases }}"
+  when:
+    - postgres_pgvector_enabled | bool
+    - postgres_service_state == 'started'

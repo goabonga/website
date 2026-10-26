@@ -1,0 +1,88 @@
+{{ ansible_managed | comment }}
+
+#------------------------------------------------------------------------------
+# FILE LOCATIONS
+#------------------------------------------------------------------------------
+
+data_directory = '{{ postgres_data_dir }}'
+hba_file = '{{ postgres_config_dir }}/pg_hba.conf'
+ident_file = '{{ postgres_config_dir }}/pg_ident.conf'
+external_pid_file = '/var/run/postgresql/{{ postgres_version }}-main.pid'
+
+#------------------------------------------------------------------------------
+# CONNECTIONS AND AUTHENTICATION
+#------------------------------------------------------------------------------
+
+{% if postgres_port | int == 0 %}
+# TCP disabled: Unix socket only
+listen_addresses = ''
+port = 5432
+{% else %}
+listen_addresses = '{{ postgres_listen_addresses }}'
+port = {{ postgres_port }}
+{% endif %}
+unix_socket_directories = '{{ postgres_socket_dir }}'
+unix_socket_permissions = {{ postgres_socket_permissions }}
+{% if postgres_socket_group %}
+unix_socket_group = '{{ postgres_socket_group }}'
+{% endif %}
+max_connections = {{ postgres_max_connections }}
+
+#------------------------------------------------------------------------------
+# RESOURCE USAGE
+#------------------------------------------------------------------------------
+
+shared_buffers = {{ postgres_shared_buffers }}
+work_mem = {{ postgres_work_mem }}
+maintenance_work_mem = {{ postgres_maintenance_work_mem }}
+effective_cache_size = {{ postgres_effective_cache_size }}
+dynamic_shared_memory_type = posix
+
+#------------------------------------------------------------------------------
+# WRITE-AHEAD LOG
+#------------------------------------------------------------------------------
+
+wal_level = {{ postgres_wal_level }}
+max_wal_size = {{ postgres_max_wal_size }}
+min_wal_size = {{ postgres_min_wal_size }}
+
+#------------------------------------------------------------------------------
+# REPORTING AND LOGGING
+#------------------------------------------------------------------------------
+
+log_destination = 'stderr'
+logging_collector = on
+log_directory = 'log'
+log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+log_rotation_age = {{ postgres_log_rotation_age }}
+log_rotation_size = {{ postgres_log_rotation_size }}
+log_line_prefix = '{{ postgres_log_line_prefix }}'
+log_timezone = '{{ postgres_timezone }}'
+
+#------------------------------------------------------------------------------
+# CLIENT CONNECTION DEFAULTS
+#------------------------------------------------------------------------------
+
+datestyle = 'iso, mdy'
+timezone = '{{ postgres_timezone }}'
+lc_messages = '{{ postgres_locale }}'
+lc_monetary = '{{ postgres_locale }}'
+lc_numeric = '{{ postgres_locale }}'
+lc_time = '{{ postgres_locale }}'
+default_text_search_config = '{{ postgres_text_search_config }}'
+{% if postgres_extra_settings | length > 0 %}
+
+#------------------------------------------------------------------------------
+# EXTRA SETTINGS
+#------------------------------------------------------------------------------
+
+{% for name, value in postgres_extra_settings.items() %}
+{% if value is boolean %}
+{{ name }} = {{ 'on' if value else 'off' }}
+{% elif value is number %}
+{{ name }} = {{ value }}
+{% else %}
+{{ name }} = '{{ value }}'
+{% endif %}
+{% endfor %}
+{% endif %}

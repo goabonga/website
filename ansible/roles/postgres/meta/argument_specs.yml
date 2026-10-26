@@ -1,0 +1,253 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install and configure a PostgreSQL server
+    description:
+    - Installs PostgreSQL from the distribution packages, renders postgresql.conf, pg_hba.conf and pg_ident.conf,
+      optionally enables pgvector and manages roles and databases.
+    options:
+      postgres_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      postgres_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      postgres_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      postgres_version:
+        type: str
+        description: Major PostgreSQL version to install (must exist in the distribution repositories).
+        default: '17'
+      postgres_packages:
+        type: list
+        description: Packages installed for the server. python3-psycopg2 is required by the community.postgresql
+          modules.
+        elements: str
+      postgres_extra_packages:
+        type: list
+        description: Additional packages to install (for example contrib extensions).
+        elements: str
+      postgres_pgvector_enabled:
+        type: bool
+        description: Install the pgvector extension package.
+        default: false
+      postgres_pgvector_package:
+        type: str
+        description: Package providing pgvector.
+      postgres_pgvector_databases:
+        type: list
+        description: Databases in which `CREATE EXTENSION vector` is executed when pgvector is enabled.
+        elements: str
+      postgres_service_name:
+        type: str
+        description: systemd unit managing the cluster.
+        default: postgresql
+      postgres_config_dir:
+        type: path
+        description: Directory holding postgresql.conf, pg_hba.conf and pg_ident.conf.
+      postgres_data_dir:
+        type: path
+        description: Cluster data directory.
+      postgres_service_state:
+        type: str
+        description: State of the service after configuration.
+        choices:
+        - started
+        - stopped
+        default: started
+      postgres_service_enabled:
+        type: bool
+        description: Enable the service at boot.
+        default: true
+      postgres_port:
+        type: int
+        description: TCP port. Set to 0 to disable TCP and listen on the Unix socket only.
+        default: 5432
+      postgres_listen_addresses:
+        type: str
+        description: Value of listen_addresses when TCP is enabled.
+        default: localhost
+      postgres_socket_dir:
+        type: path
+        description: Unix socket directory.
+        default: /var/run/postgresql
+      postgres_socket_permissions:
+        type: str
+        description: Octal permissions of the Unix socket.
+        default: '0770'
+      postgres_socket_group:
+        type: str
+        description: Group owning the Unix socket. Empty keeps the server default.
+        default: ''
+      postgres_max_connections:
+        type: int
+        description: Maximum number of concurrent connections.
+        default: 100
+      postgres_local_auth:
+        type: str
+        description: Method for local (Unix socket) connections of non-postgres users (peer, md5, scram-sha-256,
+          trust).
+        default: peer
+      postgres_host_auth:
+        type: str
+        description: Method for the loopback TCP entries (only rendered when the port is not 0).
+        default: scram-sha-256
+      postgres_hba_extra_rules:
+        type: list
+        description: Additional pg_hba.conf lines rendered before the defaults (the first line that matches applies).
+        elements: dict
+        options:
+          type:
+            type: str
+            description: Connection type (local, host, hostssl, ...).
+            default: host
+          database:
+            type: str
+            description: Database name or `all`.
+            default: all
+          user:
+            type: str
+            description: Role name or `all`.
+            default: all
+          address:
+            type: str
+            description: CIDR address or host name (empty for `local`).
+            default: ''
+          method:
+            type: str
+            description: Authentication method.
+            default: scram-sha-256
+          options:
+            type: str
+            description: Extra auth options such as `map=name`.
+            default: ''
+      postgres_ident_maps:
+        type: list
+        description: Entries of pg_ident.conf for peer or ident maps.
+        elements: dict
+        options:
+          map:
+            type: str
+            description: Map name.
+            default: ''
+          system_user:
+            type: str
+            description: Operating system user.
+            default: ''
+          pg_user:
+            type: str
+            description: PostgreSQL role.
+            default: ''
+      postgres_shared_buffers:
+        type: str
+        description: shared_buffers.
+        default: 128MB
+      postgres_work_mem:
+        type: str
+        description: work_mem.
+        default: 4MB
+      postgres_maintenance_work_mem:
+        type: str
+        description: maintenance_work_mem.
+        default: 64MB
+      postgres_effective_cache_size:
+        type: str
+        description: effective_cache_size.
+        default: 4GB
+      postgres_wal_level:
+        type: str
+        description: wal_level.
+        choices:
+        - minimal
+        - replica
+        - logical
+        default: replica
+      postgres_max_wal_size:
+        type: str
+        description: max_wal_size.
+        default: 1GB
+      postgres_min_wal_size:
+        type: str
+        description: min_wal_size.
+        default: 80MB
+      postgres_extra_settings:
+        type: dict
+        description: Additional postgresql.conf settings as a name/value mapping, appended verbatim (strings
+          are quoted).
+      postgres_log_rotation_age:
+        type: str
+        description: log_rotation_age.
+        default: 1d
+      postgres_log_rotation_size:
+        type: str
+        description: log_rotation_size.
+        default: 10MB
+      postgres_log_line_prefix:
+        type: str
+        description: log_line_prefix.
+        default: '%m [%p] %q%u@%d '
+      postgres_timezone:
+        type: str
+        description: timezone and log_timezone.
+        default: UTC
+      postgres_locale:
+        type: str
+        description: Value for lc_messages, lc_monetary, lc_numeric and lc_time.
+        default: en_US.UTF-8
+      postgres_text_search_config:
+        type: str
+        description: default_text_search_config.
+        default: pg_catalog.english
+      postgres_users:
+        type: list
+        description: PostgreSQL roles to create.
+        elements: dict
+        options:
+          name:
+            type: str
+            description: Role name.
+            required: true
+          password:
+            type: str
+            description: Role password; omit for peer-only roles.
+            default: ''
+            no_log: true
+          role_attr_flags:
+            type: str
+            description: Role attributes such as `CREATEDB`.
+            default: ''
+          state:
+            type: str
+            description: present or absent.
+            default: present
+      postgres_databases:
+        type: list
+        description: Databases to create.
+        elements: dict
+        options:
+          name:
+            type: str
+            description: Database name.
+            required: true
+          owner:
+            type: str
+            description: Owner role.
+            default: ''
+          encoding:
+            type: str
+            description: Encoding.
+            default: UTF8
+          extensions:
+            type: list
+            description: Extensions to enable in the database.
+            elements: str
+          state:
+            type: str
+            description: present or absent.
+            default: present

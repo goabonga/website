@@ -1,0 +1,21 @@
+{{ ansible_managed | comment }}
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+{% if postgres_hba_extra_rules | length > 0 %}
+
+# Additional rules, before the defaults: the first line that matches applies
+{% for rule in postgres_hba_extra_rules %}
+{{ '%-7s' | format(rule.type | default('host')) }} {{ '%-15s' | format(rule.database | default('all')) }} {{ '%-15s' | format(rule.user | default('all')) }} {{ '%-23s' | format(rule.address | default('')) }} {{ rule.method | default('scram-sha-256') }}{% if rule.options | default('') %} {{ rule.options }}{% endif %}
+
+{% endfor %}
+{% endif %}
+
+# Unix socket connections
+local   all             postgres                                peer
+local   all             all                                     {{ postgres_local_auth }}
+{% if postgres_port | int != 0 %}
+
+# Loopback TCP connections
+host    all             all             127.0.0.1/32            {{ postgres_host_auth }}
+host    all             all             ::1/128                 {{ postgres_host_auth }}
+{% endif %}

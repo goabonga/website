@@ -19,7 +19,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from e2e_support.oidc import authorize
+from e2e_support.oidc import authorize, token_endpoint
 from e2e_support.oidc.keys import SigningKey
 from e2e_support.oidc.models import (
     AUTHORIZATION_CODE,
@@ -168,6 +168,7 @@ class FakeOIDCProvider:
             return JSONResponse({"keys": [self.key.public_jwk()]})
 
         authorize.install(self, app)
+        token_endpoint.install(self, app)
         return app
 
     def discovery_document(self, issuer: str) -> dict[str, Any]:

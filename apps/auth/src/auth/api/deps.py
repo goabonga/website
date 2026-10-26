@@ -6,9 +6,12 @@
 import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
+from fastapi import Depends, Request
 from fastapi.security import HTTPBearer
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,10 +21,13 @@ from auth.core.database import async_session_factory
 from auth.core.security import AESEncryption
 from auth.db.models.rbac import Role
 from auth.db.models.user import User
+from auth.middlewares.tenant import get_session_cookie_name
+from auth.services.auth import AuthService
 from auth.services.email import EmailService
 from auth.services.jwks import JWKSService
 from auth.services.password import PasswordService
 from auth.services.profile import ProfileService
+from auth.services.session import SessionService
 from auth.services.trust import TrustPolicyService
 from auth.services.user import UserService
 
@@ -99,6 +105,16 @@ def get_password_service() -> PasswordService:
     return PasswordService()
 
 
+def get_auth_service() -> AuthService:
+    """Get auth service instance."""
+    return AuthService()
+
+
+def get_session_service() -> SessionService:
+    """Get session service instance."""
+    return SessionService()
+
+
 def get_profile_service() -> ProfileService:
     """Get profile service instance."""
     return ProfileService()
@@ -123,6 +139,40 @@ def get_templates() -> Jinja2Templates:
     """Get Jinja2 templates instance (cached)."""
     templates_dir = Path(__file__).parent.parent / "templates"
     return Jinja2Templates(directory=str(templates_dir))
+
+
+async def get_current_user(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User | None:
+    """Get the current authenticated user from session cookie.
+
+    Args:
+        request: The HTTP request.
+        db: Database session.
+
+    Returns:
+        The authenticated user or None if not authenticated.
+    """
+    session_token = request.cookies.get(get_session_cookie_name())
+
+    if not session_token:
+        return None
+
+    # Delegate to SessionService (via SessionRepository) so DI stays out of
+    # raw SQL. Expiration check is kept here — the service returns the
+    # non-revoked row with ``user`` eager-loaded regardless of expiry.
+    session_service = get_session_service()
+    session = await session_service.get_session_with_user_by_token(db, session_token)
+
+    if not session:
+        return None
+
+    # Check expiration
+    if session.expires_at < datetime.now(UTC):
+        return None
+
+    return session.user
 
 
 def token_has_scope(scopes: list[str], required_scope: str) -> bool:

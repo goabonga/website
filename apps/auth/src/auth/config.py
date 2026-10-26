@@ -87,7 +87,10 @@ class Settings(BaseSettings):
     # Password Reset
     password_reset_expiry_hours: int = 1  # Password reset token validity
 
+    # Session
+    session_expiry_days: int = 7  # Session validity in days
     session_cookie_name: str = "session"  # Session cookie name
+    session_cookie_secure: bool = True  # Secure cookie (HTTPS only)
 
     # Multi-tenancy
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")

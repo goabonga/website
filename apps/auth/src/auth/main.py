@@ -15,7 +15,7 @@ from starlette.responses import Response
 from auth.api.routes import router
 from auth.config import settings
 from auth.core.logging import setup_logging
-from auth.middlewares import TenantMiddleware
+from auth.middlewares import SlidingSessionMiddleware, TenantMiddleware
 
 # Configure logging before anything else
 setup_logging(settings.log_level)
@@ -103,6 +103,8 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> Respon
         headers=exc.headers,
     )
 
+
+app.add_middleware(SlidingSessionMiddleware)
 
 # Add tenant middleware only if base domain is configured
 if settings.tenant_base_domain:

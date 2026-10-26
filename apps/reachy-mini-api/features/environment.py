@@ -24,7 +24,7 @@ def send_request(context, method, path, headers=None):
         async with AsyncClient(
             transport=ASGITransport(app=context.app), base_url="http://test"
         ) as client:
-            return await client.request(method, path, headers=headers)
+            return await client.request(method, path, headers=headers or context.auth_headers)
 
     context.response = context.loop.run_until_complete(make_request())
 
@@ -48,6 +48,7 @@ def before_scenario(context, scenario):
     """Reset per-scenario state."""
     context.app = context.main_app
     context.response = None
+    context.auth_headers = {}
     context.setting_backup = {}
     context.patchers = []
 

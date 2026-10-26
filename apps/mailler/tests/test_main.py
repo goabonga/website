@@ -206,3 +206,12 @@ class TestScheduleRoute:
         from mailler.main import app
 
         assert app.url_path_for("schedule_email") == "/api/v1/schedule"
+
+
+class TestTemplatesRoutes:
+    """Templates router registration."""
+
+    def test_templates_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("list_templates") == "/api/v1/templates"

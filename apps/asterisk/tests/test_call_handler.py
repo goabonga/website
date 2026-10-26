@@ -54,6 +54,7 @@ def mock_session():
 def mock_config():
     """Patch config with the OpenAI settings."""
     with patch("asterisk.call_handler.config") as mock_config:
+        mock_config.RAG_ENABLED = False
         mock_config.OPENAI_API_KEY = "sk-test"
         mock_config.OPENAI_MODEL = "test-model"
         mock_config.OPENAI_VOICE = "alloy"

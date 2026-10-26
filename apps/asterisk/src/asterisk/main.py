@@ -54,6 +54,13 @@ async def shutdown(server: AudioSocketServer, sig: signal.Signals):
 
     await server.stop()
 
+    # Close knowledge base if RAG is enabled
+    if config.RAG_ENABLED:
+        from asterisk.knowledge_base import close_knowledge_base
+
+        await close_knowledge_base()
+        logger.info("Knowledge base connection closed")
+
     logger.info("Shutdown complete")
 
 

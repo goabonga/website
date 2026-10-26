@@ -33,6 +33,46 @@ LOCAL_VAD_RMS_THRESHOLD = 1000  # RMS threshold for speech detection
 LOCAL_VAD_DEBOUNCE_MS = 300  # Minimum time between interrupts
 
 
+def _build_rag_tools() -> list[dict]:
+    """Build RAG-related tools if enabled."""
+    if not config.RAG_ENABLED:
+        return []
+
+    return [
+        {
+            "type": "function",
+            "name": "search_knowledge",
+            "description": "Search for an answer in the knowledge base. ALWAYS use this function BEFORE answering a user's question to check if the answer exists in the knowledge base.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The user's question to search for"}
+                },
+                "required": ["query"],
+            },
+        }
+    ]
+
+
+def _build_rag_system_prompt() -> str:
+    """Build system prompt with RAG instructions if enabled."""
+    base_prompt = config.OPENAI_SYSTEM_PROMPT
+
+    if not config.RAG_ENABLED:
+        return base_prompt
+
+    rag_instructions = """
+
+IMPORTANT KNOWLEDGE BASE INSTRUCTIONS:
+1. BEFORE answering any question, you MUST use the search_knowledge() function to search for the answer.
+2. If search_knowledge() returns results, use them to formulate your response.
+3. If search_knowledge() finds nothing (no results), you MUST say that you cannot answer this question and give examples of questions you can answer (provided by the function).
+4. Never make up an answer. Use ONLY information from the knowledge base.
+5. If the user asks an off-topic question (greetings, goodbye, etc.), you can respond normally without using search_knowledge().
+"""
+    return base_prompt + rag_instructions
+
+
 async def handle_call(session: AudioSocketSession):
     """Handle an incoming call with OpenAI Realtime integration.
 
@@ -45,12 +85,26 @@ async def handle_call(session: AudioSocketSession):
     """
     logger.info("Starting call handler")
 
+    # Import knowledge base only if RAG is enabled
+    # Note: knowledge base is a global singleton shared across all calls
+    knowledge_base = None
+    if config.RAG_ENABLED:
+        from asterisk.knowledge_base import get_knowledge_base
+
+        knowledge_base = await get_knowledge_base()
+        logger.info("RAG enabled - knowledge base connected")
+
+    # Build tools and system prompt
+    rag_tools = _build_rag_tools()
+    system_prompt = _build_rag_system_prompt()
+
     # Create OpenAI Realtime client
     openai_client = OpenAIRealtimeClient(
         api_key=config.OPENAI_API_KEY,
         model=config.OPENAI_MODEL,
         voice=config.OPENAI_VOICE,
-        system_prompt=config.OPENAI_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
+        tools=rag_tools,
     )
 
     # Buffer for input audio (from Asterisk to OpenAI)
@@ -134,6 +188,34 @@ async def handle_call(session: AudioSocketSession):
         """Callback when user speech is transcribed."""
         logger.info(f"Caller said: {text}")
 
+    async def handle_search_knowledge(query: str) -> dict:
+        """Handle search_knowledge tool call."""
+        if not knowledge_base:
+            return {"error": "Knowledge base not available"}
+
+        results = await knowledge_base.search(query)
+
+        if results:
+            # Found matching entries
+            answers = []
+            for entry in results:
+                answers.append(
+                    {
+                        "question": entry.question,
+                        "answer": entry.answer,
+                        "confidence": round(entry.similarity, 2),
+                    }
+                )
+            return {"found": True, "results": answers}
+        else:
+            # No matches - get sample questions
+            samples = await knowledge_base.get_sample_questions(limit=3)
+            return {
+                "found": False,
+                "message": "No answer found in the knowledge base.",
+                "sample_questions": samples,
+            }
+
     def on_tool_call(tool_name: str, arguments: dict):
         """Callback when AI calls a tool."""
         nonlocal hangup_requested
@@ -143,6 +225,12 @@ async def handle_call(session: AudioSocketSession):
             logger.info("Hangup tool called - will terminate after AI says goodbye")
             hangup_requested = True
             return None  # No result needed for hangup
+
+        if tool_name == "search_knowledge":
+            query = arguments.get("query", "")
+            # Run async search in event loop
+            future = asyncio.ensure_future(handle_search_knowledge(query))
+            return future
 
         return None
 

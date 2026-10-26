@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Every change needs a review from the owner. CI and release definitions
+# are listed explicitly because they control releases.
+
+* @goabonga
+/.github/workflows/** @goabonga

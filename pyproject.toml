@@ -34,6 +34,7 @@ dev = [
     "behave>=1.2.6",
     "aiosqlite>=0.22.1",
     "ansible-core>=2.16",
+    "pre-commit>=4",
 ]
 doc = [
     "zensical",

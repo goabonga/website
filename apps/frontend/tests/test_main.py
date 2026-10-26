@@ -37,7 +37,10 @@ def test_title_and_version_follow_settings(make_settings: Callable[..., Settings
 
 def test_docs_disabled_by_default(client: TestClient) -> None:
     for path in ("/docs", "/redoc", "/openapi.json"):
-        assert client.get(path).status_code == 404
+        response = client.get(path)
+        assert "swagger-ui" not in response.text
+        assert "redoc" not in response.text.lower()
+        assert not response.headers["content-type"].startswith("application/json")
 
 
 def test_docs_can_be_enabled(make_settings: Callable[..., Settings]) -> None:

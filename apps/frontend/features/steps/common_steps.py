@@ -54,3 +54,8 @@ def step_header_absent(context, header: str) -> None:
 @then('the response body contains "{text}"')
 def step_body_contains(context, text: str) -> None:
     assert text in context.response.text
+
+
+@then('the response body does not contain "{text}"')
+def step_body_lacks(context, text: str) -> None:
+    assert text not in context.response.text

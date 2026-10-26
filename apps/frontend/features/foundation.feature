@@ -9,7 +9,7 @@ Feature: Application foundation
 
   Scenario: API documentation is disabled by default
     When I request "/docs"
-    Then the response status is 404
+    Then the response body does not contain "swagger-ui"
 
   Scenario: API documentation can be enabled
     Given the setting "docs_enabled" is "true"

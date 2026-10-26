@@ -33,3 +33,30 @@ website_mailler_protonmail_user: ""
 # AWS SES region (SES_REGION), required as soon as the SES_ACCESS_KEY secret is
 # provided for mailler.
 website_mailler_ses_region: ""
+
+# Applications allowed to send through mailler (the client registry). Each
+# OAuth2 client an application sends with must be registered, otherwise every
+# call answers 403. A missing client is registered after the migrations; an
+# existing one is never modified (use `mailler clients update`). Each entry:
+#   client_id            OAuth2 client of the application (required)
+#   name                 display name
+#   from_email           default sender address
+#   from_name            default sender name
+#   reply_to             fixed reply-to address
+#   allowed_senders      other sender identities, each "email" or "email=Name"
+#   allowed_providers    providers the client may use
+#   default_provider     provider used when a request names none
+#   rate_limit_per_minute, daily_quota   sending limits
+#   callback_url         URL notified of the status of the emails
+#   callback_secret      secret signing the notifications, required with
+#                        callback_url (keep it in the vault)
+website_mailler_clients: []
+
+# Directories of <slug>.mjml and <slug>.json files imported as the templates of
+# a client after the clients are registered, on every run (an existing template
+# is updated). The directory is a path on the host, for example in the release
+# of the application that owns the templates. Each entry:
+#   client_id   client that owns the templates (required)
+#   directory   path of the directory on the host (required)
+#   status      status of the templates that do not state one (active by default)
+website_mailler_template_dirs: []

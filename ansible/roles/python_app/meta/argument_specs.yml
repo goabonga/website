@@ -673,3 +673,21 @@ argument_specs:
         description:
         - AWS SES region (SES_REGION). Required when the SES_ACCESS_KEY secret is provided.
         default: ''
+      website_mailler_clients:
+        type: list
+        description:
+        - Applications allowed to send through mailler, registered after the migrations when
+          missing and never modified afterwards. Each entry has client_id (required) and
+          optionally name, from_email, from_name, reply_to, allowed_senders (email or email=Name),
+          allowed_providers, default_provider, rate_limit_per_minute, daily_quota, callback_url
+          and callback_secret (required with callback_url).
+        default: []
+        elements: dict
+      website_mailler_template_dirs:
+        type: list
+        description:
+        - Directories of <slug>.mjml and <slug>.json files imported as the templates of a client
+          on every run. Each entry has client_id and directory (a path on the host) and optionally
+          status.
+        default: []
+        elements: dict

@@ -1,0 +1,126 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Data of mailler that lives in its database: the registry of the applications
+# allowed to send and their templates. Registration is idempotent (a client
+# that exists is left untouched) and so is the import (templates are created
+# or updated).
+
+- name: Check the clients and template directories of {{ python_app__app }}
+  ansible.builtin.assert:
+    that:
+      - item.client_id is defined and item.client_id | string | length > 0
+      - (item.callback_url | default('') | length > 0) == (item.callback_secret | default('') | length > 0)
+    fail_msg: >-
+      Each entry of website_mailler_clients needs a client_id, and callback_url and callback_secret
+      go together (entry: {{ item.client_id | default('?') }}).
+    quiet: true
+  loop: "{{ website_mailler_clients }}"
+  loop_control:
+    label: "{{ item.client_id | default('?') }}"
+  no_log: "{{ item.callback_secret is defined }}"
+
+- name: Check the template directories of {{ python_app__app }}
+  ansible.builtin.assert:
+    that:
+      - item.client_id is defined and item.client_id | string | length > 0
+      - item.directory is defined and item.directory | string | length > 0
+    fail_msg: "Each entry of website_mailler_template_dirs needs a client_id and a directory."
+    quiet: true
+  loop: "{{ website_mailler_template_dirs }}"
+  loop_control:
+    label: "{{ item.client_id | default('?') }}"
+
+- name: Register the clients of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      cli="$VENV/bin/mailler"
+      if "$cli" clients list | cut -f1 | grep -qxF "$CLIENT_ID"; then
+        echo "exists"
+        exit 0
+      fi
+      args=()
+      [ -z "$CLIENT_NAME" ] || args+=(--name "$CLIENT_NAME")
+      [ -z "$FROM_EMAIL" ] || args+=(--from-email "$FROM_EMAIL")
+      [ -z "$FROM_NAME" ] || args+=(--from-name "$FROM_NAME")
+      [ -z "$REPLY_TO" ] || args+=(--reply-to "$REPLY_TO")
+      [ -z "$DEFAULT_PROVIDER" ] || args+=(--default-provider "$DEFAULT_PROVIDER")
+      [ -z "$RATE_LIMIT" ] || args+=(--rate-limit-per-minute "$RATE_LIMIT")
+      [ -z "$DAILY_QUOTA" ] || args+=(--daily-quota "$DAILY_QUOTA")
+      [ -z "$CALLBACK_URL" ] || args+=(--callback-url "$CALLBACK_URL")
+      while IFS= read -r value; do
+        [ -z "$value" ] || args+=(--allowed-sender "$value")
+      done <<< "$ALLOWED_SENDERS"
+      while IFS= read -r value; do
+        [ -z "$value" ] || args+=(--allowed-provider "$value")
+      done <<< "$ALLOWED_PROVIDERS"
+      if [ -n "$CALLBACK_SECRET" ]; then
+        secret_file=$(mktemp)
+        trap 'rm -f "$secret_file"' EXIT
+        printf %s "$CALLBACK_SECRET" > "$secret_file"
+        args+=(--callback-secret-file "$secret_file")
+      fi
+      "$cli" clients register "$CLIENT_ID" "${args[@]}"
+      echo "created"
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    CLIENT_ID: "{{ item.client_id }}"
+    CLIENT_NAME: "{{ item.name | default('') }}"
+    FROM_EMAIL: "{{ item.from_email | default('') }}"
+    FROM_NAME: "{{ item.from_name | default('') }}"
+    REPLY_TO: "{{ item.reply_to | default('') }}"
+    DEFAULT_PROVIDER: "{{ item.default_provider | default('') }}"
+    RATE_LIMIT: "{{ item.rate_limit_per_minute | default('') }}"
+    DAILY_QUOTA: "{{ item.daily_quota | default('') }}"
+    CALLBACK_URL: "{{ item.callback_url | default('') }}"
+    CALLBACK_SECRET: "{{ item.callback_secret | default('') }}"
+    ALLOWED_SENDERS: "{{ item.allowed_senders | default([]) | join('\n') }}"
+    ALLOWED_PROVIDERS: "{{ item.allowed_providers | default([]) | join('\n') }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ website_mailler_clients }}"
+  loop_control:
+    label: "{{ item.client_id }}"
+  register: python_app__clients
+  changed_when: (python_app__clients.stdout | default('') | trim).endswith('created')
+  no_log: "{{ item.callback_secret is defined }}"
+  when: not ansible_check_mode
+
+# The import creates or updates every template of the directory, so a run is
+# reported as changed only when it created a template.
+- name: Import the templates of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      args=()
+      [ -z "$STATUS" ] || args+=(--status "$STATUS")
+      exec "$VENV/bin/mailler" templates import --client-id "$CLIENT_ID" "${args[@]}" "$DIRECTORY"
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    CLIENT_ID: "{{ item.client_id }}"
+    DIRECTORY: "{{ item.directory }}"
+    STATUS: "{{ item.status | default('') }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  loop: "{{ website_mailler_template_dirs }}"
+  loop_control:
+    label: "{{ item.client_id }}: {{ item.directory }}"
+  register: python_app__templates
+  changed_when: python_app__templates.stdout | default('') is search(' [1-9][0-9]* new')
+  when: not ansible_check_mode

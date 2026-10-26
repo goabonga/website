@@ -4,6 +4,7 @@
 """SQLAlchemy models for the application."""
 
 from backend.models.conversation import Conversation, Message
+from backend.models.session import AnonymousSession
 from backend.models.usage import UsageLog
 
-__all__ = ["Conversation", "Message", "UsageLog"]
+__all__ = ["AnonymousSession", "Conversation", "Message", "UsageLog"]

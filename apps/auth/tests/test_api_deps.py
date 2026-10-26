@@ -171,6 +171,13 @@ class TestServiceFactories:
 
         assert isinstance(get_session_service(), SessionService)
 
+    @patch("auth.api.deps.get_encryption", return_value=MagicMock())
+    def test_get_mfa_service(self, mock_enc):
+        from auth.api.deps import get_mfa_service
+        from auth.services.mfa import MFAService
+
+        assert isinstance(get_mfa_service(), MFAService)
+
     def test_get_profile_service(self):
         from auth.api.deps import get_profile_service
         from auth.services.profile import ProfileService

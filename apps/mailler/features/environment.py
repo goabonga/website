@@ -140,6 +140,8 @@ def before_all(context):
     settings.cors_origins.append("https://frontend.example")
     # The platform sender is empty by default, scenarios send through this one.
     settings.default_from = "sender@bdd.example"
+    # Scenarios change the registry between two calls: nothing is remembered.
+    settings.client_cache_ttl = 0
 
     context.token_claims = {}
     context.revoked_tokens = set()

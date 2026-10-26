@@ -10,12 +10,14 @@ from mailler.models.campaign import (
     EmailSend,
     EmailSendStatus,
 )
+from mailler.models.client import AuthorizedClient
 from mailler.models.contact import Contact, ContactGroup, ContactGroupMember, ContactStatus
 from mailler.models.email import Email, EmailStatus, ProviderStats
 from mailler.models.inbound import InboundAttachment, InboundEmail, InboundStatus
 from mailler.models.template import EmailTemplate, TemplateStatus
 
 __all__ = [
+    "AuthorizedClient",
     "Base",
     "CampaignStatus",
     "Contact",

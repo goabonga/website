@@ -23,7 +23,7 @@ Feature: Schedule emails
     And the task "send_email_task" should have been queued 0 times
 
   Scenario: A scheduled email without any sender is refused
-    Given I am authenticated
+    Given I am authenticated as unregistered client "ops" with scopes "mailler:send mailler:admin"
     And the setting "default_from" is empty
     When I send a POST to "/api/v1/schedule" with
       """

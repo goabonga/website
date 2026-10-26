@@ -6,10 +6,19 @@
 from uuid import uuid4
 
 from behave import given
+from steps.client_steps import register_client
 
 
-def _register(context, token, scopes, **extra):
-    """Register a token that validates to claims with the given scopes."""
+def _register(context, token, scopes, registered=True, **extra):
+    """Register a token that validates to claims with the given scopes.
+
+    The client of the token is registered in the registry too (with a default
+    record, unless a scenario already registered it) so that scenarios about
+    other features do not have to; ``registered=False`` leaves it out.
+    """
+    client_id = extra.get("client_id", "bdd-client")
+    if registered and client_id:
+        register_client(client_id)
     context.token_claims[token] = {
         "sub": str(uuid4()),
         "email": "bdd@example.com",
@@ -27,6 +36,12 @@ def step_authenticated_as_client(context, client, scopes):
     _register(context, f"{client}.jwt.token", scopes.split(), client_id=client)
 
 
+@given('I am authenticated as unregistered client "{client}" with scopes "{scopes}"')
+def step_authenticated_as_unregistered_client(context, client, scopes):
+    """Authenticate as a client that has no record in the registry."""
+    _register(context, f"{client}.unregistered.jwt.token", scopes.split(), False, client_id=client)
+
+
 @given('I am authenticated without client identity with scopes "{scopes}"')
 def step_authenticated_without_client(context, scopes):
     _register(context, "anonymous-client.jwt.token", scopes.split(), client_id=None)
@@ -34,6 +49,7 @@ def step_authenticated_without_client(context, scopes):
 
 @given('I am authenticated with only the authorized party "{azp}" and scopes "{scopes}"')
 def step_authenticated_with_azp(context, azp, scopes):
+    register_client(azp)
     _register(context, f"{azp}.azp.jwt.token", scopes.split(), client_id=None, azp=azp)
 
 

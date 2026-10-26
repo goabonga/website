@@ -15,6 +15,7 @@ from mailler.auth.models import User
 from mailler.config import settings
 from mailler.database import get_db
 from mailler.main import app
+from mailler.models.client import AuthorizedClient
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -32,6 +33,34 @@ def default_sender(monkeypatch):
     """Configure the optional platform sender, which is empty by default."""
     monkeypatch.setattr(settings, "default_from", "sender@example.test")
     monkeypatch.setattr(settings, "default_from_name", "Test Sender")
+
+
+@pytest.fixture
+def client_record() -> AuthorizedClient:
+    """The registry record of the standard test client."""
+    return AuthorizedClient(
+        client_id="test-client-id",
+        name="Test client",
+        is_active=True,
+        from_email="app@client.example",
+        from_name="Client App",
+        reply_to=None,
+        allowed_senders=[{"email": "alerts@client.example", "name": "Client Alerts"}],
+        allowed_providers=["brevo", "ses"],
+        default_provider="brevo",
+    )
+
+
+@pytest.fixture(autouse=True)
+def registry(monkeypatch, client_record):
+    """Register the standard test client: every client passes the gate and gets that record.
+
+    The registry has its own tests; the other features only need an authorized client.
+    """
+    monkeypatch.setattr("mailler.auth.dependencies.ensure_authorized", AsyncMock())
+    get_client = AsyncMock(return_value=client_record)
+    monkeypatch.setattr("mailler.services.clients.get_client", get_client)
+    return get_client
 
 
 @pytest.fixture

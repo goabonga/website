@@ -3,15 +3,15 @@
 
 """Email sending route."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mailler.auth import AuthContext, require_scopes
-from mailler.config import settings
 from mailler.database import get_db
 from mailler.logging import get_logger
 from mailler.models.email import Email, EmailStatus
 from mailler.schemas.email import SendEmailRequest, SendEmailResponse
+from mailler.services import clients
 from mailler.tasks.send import send_email_task
 
 logger = get_logger(__name__)
@@ -36,12 +36,15 @@ async def send_email(
     Returns:
         SendEmailResponse with email ID and task ID
     """
-    from_email = request.from_email or settings.default_from
-    if not from_email:
-        raise HTTPException(
-            status_code=422,
-            detail="No sender address: provide from_email or configure DEFAULT_FROM",
-        )
+    # The sender and the provider come from the record of the client
+    identity = clients.resolve_identity(
+        await clients.get_client(db, auth.client_id),
+        is_admin=auth.is_admin,
+        from_email=request.from_email,
+        from_name=request.from_name,
+        reply_to=request.reply_to,
+        provider=request.provider,
+    )
 
     # Create email record
     # For machine clients (client_credentials), user_id should be None
@@ -49,13 +52,13 @@ async def send_email(
     email = Email(
         to_email=request.to_email,
         to_name=request.to_name,
-        from_email=from_email,
-        from_name=request.from_name or settings.default_from_name,
-        reply_to=request.reply_to,
+        from_email=identity.from_email,
+        from_name=identity.from_name,
+        reply_to=identity.reply_to,
         subject=request.subject,
         html_content=request.html_content,
         text_content=request.text_content,
-        provider=request.provider,
+        provider=identity.provider,
         metadata_=request.metadata or {},
         client_id=auth.user.client_id,
         user_id=None if auth.user.is_machine_client else auth.user.id,
@@ -74,7 +77,7 @@ async def send_email(
         extra={
             "email_id": str(email.id),
             "task_id": task.id,
-            "provider": request.provider,
+            "provider": identity.provider,
             "to": request.to_email,
             "user_id": str(auth.user.id) if auth.user.id else None,
         },

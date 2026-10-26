@@ -34,6 +34,7 @@ from mailler.schemas.campaign import (
     ScheduleCampaignResponse,
     SendCampaignResponse,
 )
+from mailler.services import clients
 from mailler.tasks.send import send_campaign_task
 
 logger = get_logger(__name__)
@@ -254,6 +255,16 @@ async def create_campaign(
     """
     owner = auth.target_client_id(client_id)
 
+    # The sender and the provider a campaign asks for must be allowed to its client
+    clients.check_overrides(
+        await clients.get_client(db, owner),
+        is_admin=auth.is_admin,
+        from_email=request.from_email,
+        from_name=request.from_name,
+        reply_to=request.reply_to,
+        provider=request.provider,
+    )
+
     # Validate template exists (for the same client) if provided
     if request.template_id:
         template = await db.get(EmailTemplate, request.template_id)
@@ -367,6 +378,16 @@ async def update_campaign(
     campaign = await db.get(EmailCampaign, campaign_id)
     if not campaign or not auth.owns(campaign.client_id):
         raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # The sender and the provider a campaign asks for must be allowed to its client
+    clients.check_overrides(
+        await clients.get_client(db, campaign.client_id),
+        is_admin=auth.is_admin,
+        from_email=request.from_email,
+        from_name=request.from_name,
+        reply_to=request.reply_to,
+        provider=request.provider,
+    )
 
     # Only allow editing draft or scheduled campaigns
     if campaign.status not in [

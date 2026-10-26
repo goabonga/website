@@ -118,6 +118,10 @@ class Settings(BaseSettings):
     oauth2_client_secret: str = ""
     oauth2_swagger_client_id: str = ""
     admin_scope: str = "mailler:admin"  # scope allowing a caller to cross the client boundary
+    client_cache_ttl: int = (
+        30  # seconds an active client stays accepted without a check; 0 = always
+    )
+    legacy_client_id: str = ""  # owner of the data created before clients existed (migration 006)
     oauth2_trusted_issuers: str = ""  # Comma-separated additional trusted issuers
     oauth2_client_cache_ttl: int = 300
     token_introspection_cache_ttl: int = 60

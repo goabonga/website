@@ -8,8 +8,21 @@ from mailler.services.providers.base import EmailProvider
 
 logger = get_logger(__name__)
 
+# Provider adapters shipped with the service (name -> class path)
+PROVIDER_CLASSES = {
+    "brevo": "mailler.services.providers.brevo.BrevoProvider",
+    "sendgrid": "mailler.services.providers.sendgrid.SendGridProvider",
+    "ses": "mailler.services.providers.ses.SESProvider",
+    "protonmail": "mailler.services.providers.protonmail.ProtonmailProvider",
+}
+
 # Provider cache
 _providers: dict[str, EmailProvider] = {}
+
+
+def known_providers() -> list[str]:
+    """Get the names of the provider adapters, configured or not."""
+    return list(PROVIDER_CLASSES)
 
 
 def get_provider(provider_name: str) -> EmailProvider:
@@ -71,14 +84,7 @@ def get_available_providers() -> list[str]:
     """
     available = []
 
-    provider_classes = {
-        "brevo": "mailler.services.providers.brevo.BrevoProvider",
-        "sendgrid": "mailler.services.providers.sendgrid.SendGridProvider",
-        "ses": "mailler.services.providers.ses.SESProvider",
-        "protonmail": "mailler.services.providers.protonmail.ProtonmailProvider",
-    }
-
-    for name in provider_classes:
+    for name in PROVIDER_CLASSES:
         try:
             provider = get_provider(name)
             if provider.is_configured:

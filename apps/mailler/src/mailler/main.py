@@ -13,6 +13,7 @@ from mailler.config import settings
 from mailler.logging import get_logger, setup_logging
 from mailler.routes import (
     campaigns,
+    clients,
     contact_groups,
     contacts,
     emails,
@@ -102,6 +103,10 @@ the user has the required `mailler:*` scopes via token exchange.
 - `mailler:send` - Send and schedule emails
 - `mailler:read` - Read email details and list emails
 - `mailler:stats` - View sending statistics
+- the administration scope (`ADMIN_SCOPE`) - Register clients and cross the client boundary
+
+Callers are the registered clients (applications): an unregistered or
+deactivated client is refused, and a client only sees its own data.
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -122,6 +127,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(clients.router, prefix="/api/v1")
 app.include_router(send.router, prefix="/api/v1")
 app.include_router(schedule.router, prefix="/api/v1")
 app.include_router(emails.router, prefix="/api/v1")

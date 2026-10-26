@@ -141,6 +141,19 @@ class TestSettings:
 
         assert s.redis_url.startswith("redis://")
 
+    def test_default_celery_urls(self):
+        """Settings should have default Celery broker and result backend URLs."""
+        with patch.dict(os.environ, {}, clear=False):
+            s = Settings(
+                _env_file=None,
+                openai_api_key="",
+                anthropic_api_key="",
+                oauth2_client_secret="",
+            )
+
+        assert s.celery_broker_url.startswith("redis://")
+        assert s.celery_result_backend.startswith("redis://")
+
     def test_empty_api_keys_by_default(self):
         """API keys should be empty strings by default."""
         with patch.dict(os.environ, {}, clear=False):

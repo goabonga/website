@@ -47,6 +47,7 @@ class TestCeleryConfig:
         assert "process-scheduled-emails" in schedule
         assert "cleanup-old-emails" in schedule
         assert "aggregate-daily-stats" in schedule
+        assert "check-scheduled-campaigns" in schedule
 
     def test_beat_schedule_task_names(self):
         schedule = celery_app.conf.beat_schedule
@@ -64,4 +65,8 @@ class TestCeleryConfig:
         assert (
             schedule["aggregate-daily-stats"]["task"]
             == "mailler.tasks.scheduler.aggregate_daily_stats"
+        )
+        assert (
+            schedule["check-scheduled-campaigns"]["task"]
+            == "mailler.tasks.scheduler.check_scheduled_campaigns"
         )

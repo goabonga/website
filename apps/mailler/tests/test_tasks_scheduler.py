@@ -7,9 +7,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+from mailler.models.campaign import CampaignStatus
 from mailler.models.email import EmailStatus
 from mailler.tasks.scheduler import (
     aggregate_daily_stats,
+    check_scheduled_campaigns,
     cleanup_old_emails,
     process_scheduled_emails,
     requeue_stuck_emails,
@@ -35,6 +37,11 @@ def _make_email(email_id=None, status=EmailStatus.PENDING.value):
     email.created_at = datetime.now(UTC) - timedelta(minutes=10)
     email.scheduled_at = None
     return email
+
+
+# ---------------------------------------------------------------------------
+# requeue_stuck_emails
+# ---------------------------------------------------------------------------
 
 
 class TestRequeueStuckEmails:
@@ -79,6 +86,11 @@ class TestRequeueStuckEmails:
             result = requeue_stuck_emails()
 
         assert result == {"requeued": 0}
+
+
+# ---------------------------------------------------------------------------
+# process_scheduled_emails
+# ---------------------------------------------------------------------------
 
 
 class TestProcessScheduledEmails:
@@ -177,6 +189,11 @@ class TestSchedulerSettings:
         )
 
 
+# ---------------------------------------------------------------------------
+# cleanup_old_emails
+# ---------------------------------------------------------------------------
+
+
 class TestCleanupOldEmails:
     def test_deletes_old(self):
         session = MagicMock()
@@ -202,6 +219,11 @@ class TestCleanupOldEmails:
             result = cleanup_old_emails()
 
         assert result == {"deleted": 0}
+
+
+# ---------------------------------------------------------------------------
+# aggregate_daily_stats
+# ---------------------------------------------------------------------------
 
 
 class TestAggregateDailyStats:
@@ -264,6 +286,85 @@ class TestAggregateDailyStats:
 
         assert existing_stats.sent_count == 5
         session.add.assert_not_called()  # Did not add new record
+
+
+# ---------------------------------------------------------------------------
+# check_scheduled_campaigns
+# ---------------------------------------------------------------------------
+
+
+class TestCheckScheduledCampaigns:
+    def test_no_due_campaigns(self):
+        session = MagicMock()
+        session.execute.return_value.scalars.return_value.all.return_value = []
+        ctx = _make_sync_db_ctx(session)
+
+        with patch("mailler.tasks.scheduler.get_sync_db", return_value=ctx):
+            result = check_scheduled_campaigns()
+
+        assert result == {"started": 0}
+
+    def test_starts_campaign(self):
+        campaign = MagicMock()
+        campaign.id = 1
+        campaign.group_id = 10
+        campaign.scheduled_at = datetime.now(UTC) - timedelta(minutes=1)
+
+        session = MagicMock()
+
+        # First execute: campaigns query
+        campaigns_result = MagicMock()
+        campaigns_result.scalars.return_value.all.return_value = [campaign]
+
+        # Second execute: count active contacts
+        count_result = MagicMock()
+        count_result.scalar.return_value = 50
+
+        session.execute.side_effect = [campaigns_result, count_result]
+        ctx = _make_sync_db_ctx(session)
+
+        with (
+            patch("mailler.tasks.scheduler.get_sync_db", return_value=ctx),
+            patch("mailler.tasks.scheduler.send_campaign_task") as mock_task,
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-abc")
+            result = check_scheduled_campaigns()
+
+        assert result == {"started": 1}
+        assert campaign.status == CampaignStatus.SENDING.value
+        assert campaign.total_recipients == 50
+        assert campaign.task_id == "task-abc"
+        mock_task.delay.assert_called_once_with(1)
+
+    def test_skips_campaign_no_active_contacts(self):
+        campaign = MagicMock()
+        campaign.id = 2
+        campaign.group_id = 20
+
+        session = MagicMock()
+
+        campaigns_result = MagicMock()
+        campaigns_result.scalars.return_value.all.return_value = [campaign]
+
+        count_result = MagicMock()
+        count_result.scalar.return_value = 0
+
+        session.execute.side_effect = [campaigns_result, count_result]
+        ctx = _make_sync_db_ctx(session)
+
+        with (
+            patch("mailler.tasks.scheduler.get_sync_db", return_value=ctx),
+            patch("mailler.tasks.scheduler.send_campaign_task") as mock_task,
+        ):
+            result = check_scheduled_campaigns()
+
+        assert result == {"started": 0}
+        mock_task.delay.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Branch coverage: aggregate_daily_stats with unknown email status
+# ---------------------------------------------------------------------------
 
 
 class TestAggregateDailyStatsUnknownStatus:

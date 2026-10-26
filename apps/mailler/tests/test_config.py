@@ -206,3 +206,16 @@ class TestSchedulerSettings:
     def test_from_environment(self, monkeypatch):
         monkeypatch.setenv("EMAIL_RETENTION_DAYS", "30")
         assert Settings(_env_file=None).email_retention_days == 30
+
+
+class TestCampaignSettings:
+    """Campaign settings introduced with campaigns."""
+
+    def test_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.campaign_batch_size == 50
+        assert s.default_provider == ""
+
+    def test_from_environment(self, monkeypatch):
+        monkeypatch.setenv("DEFAULT_PROVIDER", "some-provider")
+        assert Settings(_env_file=None).default_provider == "some-provider"

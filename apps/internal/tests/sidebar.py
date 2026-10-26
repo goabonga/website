@@ -16,7 +16,7 @@ scopes the user holds (wildcards included).
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html.parser import HTMLParser
@@ -24,7 +24,12 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 import httpx
 from internal.auth.models import User
+from internal.database import Base, get_db
+from internal.models.conversation import Conversation, Message
 from internal.services.token_exchange import TokenExchangeClient, TokenExchangeError
+from sqlalchemy import JSON, Uuid
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
 def _import_app():
@@ -61,11 +66,17 @@ class Section:
 
 # Sidebar sections, keyed by the ``active_section`` the pages pass to the template.
 SECTIONS: dict[str, Section] = {
+    "dashboard": Section("/", "conversations:*"),
+    "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
 }
 
 # Targets of the outbound service clients replaced by mocks.
-CLIENTS: tuple[str, ...] = ("internal.routes.analytics.analytics_client",)
+CLIENTS: tuple[str, ...] = (
+    "internal.routes.analytics.analytics_client",
+    "internal.routes.admin.analytics_client",
+    "internal.routes.admin.auth_client",
+)
 
 
 @dataclass(frozen=True)
@@ -147,6 +158,24 @@ def assert_sidebar(html: str, scopes: list[str], section: str, *, strict: bool =
     assert sidebar.user_email == USER_EMAIL, f"Unexpected sidebar user {sidebar.user_email!r}"
 
 
+@contextmanager
+def _sqlite_column_types():
+    """Map the PostgreSQL-only column types to portable ones, then restore them."""
+    saved = []
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            saved.append((column, column.type))
+            if isinstance(column.type, ARRAY | JSONB) or type(column.type).__name__ == "Vector":
+                column.type = JSON()
+            elif isinstance(column.type, Uuid) and type(column.type) is not Uuid:
+                column.type = Uuid(as_uuid=True)
+    try:
+        yield
+    finally:
+        for column, column_type in saved:
+            column.type = column_type
+
+
 class Env:
     """The running application: SQLite database, mocked clients and fake token exchange."""
 
@@ -188,6 +217,22 @@ class Env:
             follow_redirects=False,
         ) as http:
             return await http.get(path)
+
+
+async def seed_conversation(env: "Env") -> dict:
+    """Create a conversation with two messages and a known owner."""
+    conversation = Conversation(id=uuid.uuid4(), user_id=USER_ID, title="Hello")
+    await env.add(conversation)
+    await env.add(
+        Message(id=uuid.uuid4(), conversation_id=conversation.id, role="user", content="Hi"),
+        Message(id=uuid.uuid4(), conversation_id=conversation.id, role="assistant", content="Yo"),
+    )
+    env.client("admin.auth_client").get_user.return_value = {
+        "id": str(USER_ID),
+        "email": "owner@test.local",
+        "name": "Owner",
+    }
+    return {"conversation": conversation.id}
 
 
 CAMPAIGN_ID = "11111111-1111-1111-1111-111111111111"
@@ -272,6 +317,11 @@ PAGES: dict[str, list[Page]] = {
         Page("/analytics/ips", "analytics", configure_analytics),
         Page(f"/analytics/ips/{IP_ADDRESS}", "analytics", configure_analytics),
     ],
+    "dashboard": [
+        Page("/", "dashboard"),
+        Page("/conversations", "conversations"),
+        Page("/conversations/{conversation}", "conversations", seed_conversation),
+    ],
 }
 
 
@@ -303,11 +353,29 @@ def sidebar_hrefs(html: str) -> list[str]:
     return [href for href, _ in parse_sidebar(html).links]
 
 
+async def _start_database(stack: AsyncExitStack, tmp_path) -> async_sessionmaker:
+    """Replace the application's database by a SQLite file until the stack closes."""
+    stack.enter_context(_sqlite_column_types())
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/internal.db")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def override_get_db():
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    stack.callback(app.dependency_overrides.pop, get_db, None)
+    stack.push_async_callback(engine.dispose)
+    return session_maker
+
+
 @asynccontextmanager
 async def running_app(tmp_path) -> AsyncIterator[Env]:
     """Run the application against SQLite with mocked clients and token exchange."""
     async with AsyncExitStack() as stack:
-        session_maker = None
+        session_maker = await _start_database(stack, tmp_path)
 
         clients = {}
         for target in CLIENTS:

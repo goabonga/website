@@ -1,0 +1,326 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the step_ca role. Every knob is prefixed with `step_ca_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+step_ca_enabled: true
+
+# Refresh the apt cache before installing packages.
+step_ca_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+step_ca_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation
+# ======================================================================
+# Configure the Smallstep apt repository. Disable it when the packages come from elsewhere.
+step_ca_manage_repository: true
+
+# Name of the deb822 repository file.
+step_ca_repository_name: smallstep
+
+# Repository URI.
+step_ca_repository_uri: https://packages.smallstep.com/stable/debian
+
+# Repository suite.
+step_ca_repository_suite: debs
+
+# Repository component.
+step_ca_repository_component: main
+
+# URL of the repository signing key.
+step_ca_repository_key_url: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+
+# Where the signing key is stored.
+step_ca_repository_key_path: /etc/apt/keyrings/smallstep.asc
+
+# Packages needed before the repository can be used.
+step_ca_prerequisite_packages:
+- ca-certificates
+
+# Packages to install.
+step_ca_packages:
+- step-cli
+- step-ca
+
+
+# ======================================================================
+# Certificate authority
+# ======================================================================
+# Name of the certificate authority.
+step_ca_name: Internal CA
+
+# Password protecting the CA keys and the initial provisioner. Provide it from a vault. When
+# empty the role installs and prepares everything but neither initialises nor starts the CA.
+step_ca_password: ''
+
+# Name of the initial JWK provisioner created with the CA.
+step_ca_provisioner: admin
+
+# DNS names and IP addresses the CA certificate is valid for. They are written to ca.json
+# and the list is authoritative.
+step_ca_dns_names:
+- '{{ ansible_facts[''fqdn''] }}'
+- localhost
+- 127.0.0.1
+- '{{ step_ca_domain }}'
+
+# Address the CA listens on.
+step_ca_listen_address: 127.0.0.1
+
+# Port the CA listens on.
+step_ca_port: 8443
+
+# Listen address as written to ca.json.
+step_ca_address: '{{ step_ca_listen_address }}:{{ step_ca_port }}'
+
+# URL local clients use to reach the CA.
+step_ca_url: https://{{ '127.0.0.1' if step_ca_listen_address in ['0.0.0.0', '::'] else step_ca_listen_address
+  }}:{{ step_ca_port }}
+
+# Internal name of the CA, used by the nginx proxy and the DNS entry.
+step_ca_domain: step-ca.internal
+
+
+# ======================================================================
+# Account and paths
+# ======================================================================
+# System user running the CA.
+step_ca_user: step
+
+# Group of the CA user.
+step_ca_group: step
+
+# STEPPATH of the CA.
+step_ca_home: /etc/step-ca
+
+# Directory holding ca.json.
+step_ca_config_dir: '{{ step_ca_home }}/config'
+
+# Directory holding the root and intermediate certificates.
+step_ca_certs_dir: '{{ step_ca_home }}/certs'
+
+# Directory holding the keys and password files.
+step_ca_secrets_dir: '{{ step_ca_home }}/secrets'
+
+# Mode of the secrets directory. The group may traverse it so that application users added
+# to the group can read the files they own.
+step_ca_secrets_dir_mode: '0750'
+
+# Mode of root_ca.crt and intermediate_ca.crt.
+step_ca_public_certs_mode: '0644'
+
+# Path of the step-ca executable.
+step_ca_binary: /usr/bin/step-ca
+
+
+# ======================================================================
+# Service
+# ======================================================================
+# systemd unit name.
+step_ca_service_name: step-ca
+
+# State of the service after configuration.
+step_ca_service_state: started
+
+# Enable the service at boot.
+step_ca_service_enabled: true
+
+# Add sandboxing options (NoNewPrivileges, ProtectSystem, ProtectHome, PrivateTmp) to the
+# unit.
+step_ca_service_hardening: true
+
+# RestartSec= of the unit.
+step_ca_restart_sec: 5
+
+# Wait until the CA accepts connections before finishing.
+step_ca_wait_for_ready: true
+
+# Seconds to wait for readiness.
+step_ca_wait_timeout: 30
+
+
+# ======================================================================
+# ACME provisioner
+# ======================================================================
+# Create the ACME provisioner, for example for certbot.
+step_ca_acme_enabled: true
+
+# Name of the ACME provisioner.
+step_ca_acme_provisioner: acme
+
+# Maximum certificate duration of the ACME provisioner.
+step_ca_acme_max_duration: 8760h
+
+# Default certificate duration of the ACME provisioner.
+step_ca_acme_default_duration: 720h
+
+
+# ======================================================================
+# Additional provisioners
+# ======================================================================
+# Extra provisioners to create. JWK provisioners are created with a generated key protected
+# by the given password.
+step_ca_provisioners: []
+
+# Create the JWK provisioner of the VPN portal, issuing short-lived certificates, and export
+# its public key.
+step_ca_vpn_portal_enabled: false
+
+# Name of the VPN portal provisioner.
+step_ca_vpn_portal_provisioner: vpn-portal
+
+# Password of the VPN portal provisioner key. Required when it is enabled. Provide it from a
+# vault.
+step_ca_vpn_portal_password: ''
+
+# Maximum certificate duration of the VPN portal provisioner.
+step_ca_vpn_portal_max_duration: 15m
+
+# Default certificate duration of the VPN portal provisioner.
+step_ca_vpn_portal_default_duration: 10m
+
+# Forbid renewal of the short-lived certificates.
+step_ca_vpn_portal_disable_renewal: true
+
+
+# ======================================================================
+# PostgreSQL storage
+# ======================================================================
+# Store certificates and revocations in PostgreSQL instead of the embedded BadgerDB.
+# PostgreSQL must be installed and reachable first.
+step_ca_postgres_enabled: false
+
+# Create the database role and the database.
+step_ca_postgres_manage_objects: true
+
+# Path of psql, used to check that PostgreSQL is installed.
+step_ca_postgres_binary: /usr/bin/psql
+
+# System user the PostgreSQL modules run as.
+step_ca_postgres_admin_user: postgres
+
+# Group the CA user joins to reach the Unix socket. Empty skips the membership.
+step_ca_postgres_group: postgres
+
+# Database name.
+step_ca_postgres_database: step_ca
+
+# Database role used by the CA.
+step_ca_postgres_user: step_ca
+
+# Password of the database role. Empty relies on peer authentication over the Unix socket.
+step_ca_postgres_password: ''
+
+# Directory of the PostgreSQL Unix socket.
+step_ca_postgres_socket_dir: /var/run/postgresql
+
+
+# ======================================================================
+# Certificate revocation list
+# ======================================================================
+# Serve a CRL over the insecure HTTP address of the CA. When false the CRL settings are
+# removed from ca.json.
+step_ca_crl_enabled: false
+
+# Address of the insecure HTTP listener.
+step_ca_crl_listen_address: 127.0.0.1
+
+# Port of the insecure HTTP listener.
+step_ca_crl_port: 9001
+
+# Insecure address as written to ca.json.
+step_ca_crl_address: '{{ step_ca_crl_listen_address }}:{{ step_ca_crl_port }}'
+
+# CRL distribution point.
+step_ca_crl_url: http://{{ step_ca_crl_address }}/1.0/crl
+
+
+# ======================================================================
+# Trust and export
+# ======================================================================
+# Add the root certificate to the system trust store.
+step_ca_trust_system: true
+
+# Where the root certificate is copied for update-ca-certificates.
+step_ca_trust_ca_path: /usr/local/share/ca-certificates/step-ca-root.crt
+
+# Fetch the root certificate (and the VPN portal public key) to the controller.
+step_ca_export_enabled: true
+
+# Controller directory receiving the exported files.
+step_ca_export_dir: '{{ playbook_dir }}/files/step-ca'
+
+
+# ======================================================================
+# DNS entry
+# ======================================================================
+# Point the CA domain to the loopback address in dnsmasq when it is installed and the nginx
+# proxy is enabled.
+step_ca_dnsmasq_enabled: true
+
+# Path of dnsmasq, used to detect an installation.
+step_ca_dnsmasq_binary: /usr/sbin/dnsmasq
+
+# dnsmasq file receiving the address entry.
+step_ca_dnsmasq_hosts_file: /etc/dnsmasq.d/internal-domains.conf
+
+# systemd unit restarted after a change.
+step_ca_dnsmasq_service_name: dnsmasq
+
+
+# ======================================================================
+# Nginx proxy
+# ======================================================================
+# Publish the CA behind nginx under its internal domain, with a certificate obtained from
+# the CA itself through certbot. nginx and certbot must be installed.
+step_ca_nginx_enabled: false
+
+# Path of nginx, used to detect an installation.
+step_ca_nginx_binary: /usr/sbin/nginx
+
+# systemd unit reloaded after a change.
+step_ca_nginx_service_name: nginx
+
+# Address the proxy listens on.
+step_ca_nginx_listen_address: 127.0.0.1
+
+# HTTP port of the proxy.
+step_ca_nginx_http_port: 80
+
+# HTTPS port of the proxy.
+step_ca_nginx_https_port: 443
+
+# nginx sites-available directory.
+step_ca_nginx_sites_available: /etc/nginx/sites-available
+
+# nginx sites-enabled directory.
+step_ca_nginx_sites_enabled: /etc/nginx/sites-enabled
+
+# Webroot used for the ACME HTTP challenge.
+step_ca_nginx_webroot: /var/www/html
+
+# ssl_protocols of the proxy.
+step_ca_nginx_ssl_protocols: TLSv1.2 TLSv1.3
+
+# ssl_ciphers of the proxy.
+step_ca_nginx_ssl_ciphers: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+
+# Path of certbot, used to detect an installation.
+step_ca_certbot_binary: /usr/bin/certbot
+
+# Contact e-mail for the certificate. Empty registers without an e-mail address.
+step_ca_certbot_email: ''
+
+# Verify the TLS certificate of the CA when certbot connects to it, using the root
+# certificate. Disabling it adds --no-verify-ssl.
+step_ca_certbot_verify_tls: true
+
+# Directory holding the certbot certificates.
+step_ca_letsencrypt_live_dir: /etc/letsencrypt/live

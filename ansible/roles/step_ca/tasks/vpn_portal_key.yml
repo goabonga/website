@@ -1,0 +1,26 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Read ca.json
+  ansible.builtin.slurp:
+    src: "{{ step_ca_config_dir }}/ca.json"
+  register: step_ca_vpn_portal_raw
+
+- name: Save the VPN portal provisioner public key
+  ansible.builtin.copy:
+    content: >-
+      {{ ((step_ca_vpn_portal_raw.content | b64decode | from_json).authority | default({})).provisioners | default([])
+         | selectattr('name', 'equalto', step_ca_vpn_portal_provisioner) | map(attribute='key') | first
+         | to_nice_json(indent=2) }}{{ '\n' }}
+    dest: "{{ step_ca_secrets_dir }}/{{ step_ca_vpn_portal_provisioner }}-provisioner.pub"
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_group }}"
+    mode: "0644"
+
+- name: Fetch the VPN portal provisioner public key
+  ansible.builtin.fetch:
+    src: "{{ step_ca_secrets_dir }}/{{ step_ca_vpn_portal_provisioner }}-provisioner.pub"
+    dest: "{{ step_ca_export_dir }}/{{ step_ca_vpn_portal_provisioner }}-provisioner.pub"
+    flat: true
+  when: step_ca_export_enabled | bool

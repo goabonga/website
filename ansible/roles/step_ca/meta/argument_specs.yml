@@ -1,0 +1,393 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install and configure a step-ca private certificate authority
+    description:
+    - Installs step-ca and step-cli from the Smallstep repository, initialises a certificate authority,
+      manages its ACME and JWK provisioners, optional PostgreSQL storage, CRL endpoint and local nginx
+      proxy, trusts the root certificate and exports it to the controller.
+    options:
+      step_ca_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      step_ca_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      step_ca_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      step_ca_manage_repository:
+        type: bool
+        description: Configure the Smallstep apt repository. Disable it when the packages come from elsewhere.
+        default: true
+      step_ca_repository_name:
+        type: str
+        description: Name of the deb822 repository file.
+        default: smallstep
+      step_ca_repository_uri:
+        type: str
+        description: Repository URI.
+        default: https://packages.smallstep.com/stable/debian
+      step_ca_repository_suite:
+        type: str
+        description: Repository suite.
+        default: debs
+      step_ca_repository_component:
+        type: str
+        description: Repository component.
+        default: main
+      step_ca_repository_key_url:
+        type: str
+        description: URL of the repository signing key.
+        default: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+      step_ca_repository_key_path:
+        type: path
+        description: Where the signing key is stored.
+        default: /etc/apt/keyrings/smallstep.asc
+      step_ca_prerequisite_packages:
+        type: list
+        description: Packages needed before the repository can be used.
+        elements: str
+      step_ca_packages:
+        type: list
+        description: Packages to install.
+        elements: str
+      step_ca_name:
+        type: str
+        description: Name of the certificate authority.
+        default: Internal CA
+      step_ca_password:
+        type: str
+        description: Password protecting the CA keys and the initial provisioner. Provide it from a vault.
+          When empty the role installs and prepares everything but neither initialises nor starts the
+          CA.
+        default: ''
+        no_log: true
+      step_ca_provisioner:
+        type: str
+        description: Name of the initial JWK provisioner created with the CA.
+        default: admin
+      step_ca_dns_names:
+        type: list
+        description: DNS names and IP addresses the CA certificate is valid for. They are written to ca.json
+          and the list is authoritative.
+        elements: str
+      step_ca_listen_address:
+        type: str
+        description: Address the CA listens on.
+        default: 127.0.0.1
+      step_ca_port:
+        type: int
+        description: Port the CA listens on.
+        default: 8443
+      step_ca_address:
+        type: str
+        description: Listen address as written to ca.json.
+      step_ca_url:
+        type: str
+        description: URL local clients use to reach the CA.
+      step_ca_domain:
+        type: str
+        description: Internal name of the CA, used by the nginx proxy and the DNS entry.
+        default: step-ca.internal
+      step_ca_user:
+        type: str
+        description: System user running the CA.
+        default: step
+      step_ca_group:
+        type: str
+        description: Group of the CA user.
+        default: step
+      step_ca_home:
+        type: path
+        description: STEPPATH of the CA.
+        default: /etc/step-ca
+      step_ca_config_dir:
+        type: path
+        description: Directory holding ca.json.
+      step_ca_certs_dir:
+        type: path
+        description: Directory holding the root and intermediate certificates.
+      step_ca_secrets_dir:
+        type: path
+        description: Directory holding the keys and password files.
+      step_ca_secrets_dir_mode:
+        type: str
+        description: Mode of the secrets directory. The group may traverse it so that application users
+          added to the group can read the files they own.
+        default: '0750'
+      step_ca_public_certs_mode:
+        type: str
+        description: Mode of root_ca.crt and intermediate_ca.crt.
+        default: '0644'
+      step_ca_binary:
+        type: path
+        description: Path of the step-ca executable.
+        default: /usr/bin/step-ca
+      step_ca_service_name:
+        type: str
+        description: systemd unit name.
+        default: step-ca
+      step_ca_service_state:
+        type: str
+        description: State of the service after configuration.
+        choices:
+        - started
+        - stopped
+        default: started
+      step_ca_service_enabled:
+        type: bool
+        description: Enable the service at boot.
+        default: true
+      step_ca_service_hardening:
+        type: bool
+        description: Add sandboxing options (NoNewPrivileges, ProtectSystem, ProtectHome, PrivateTmp)
+          to the unit.
+        default: true
+      step_ca_restart_sec:
+        type: int
+        description: RestartSec= of the unit.
+        default: 5
+      step_ca_wait_for_ready:
+        type: bool
+        description: Wait until the CA accepts connections before finishing.
+        default: true
+      step_ca_wait_timeout:
+        type: int
+        description: Seconds to wait for readiness.
+        default: 30
+      step_ca_acme_enabled:
+        type: bool
+        description: Create the ACME provisioner, for example for certbot.
+        default: true
+      step_ca_acme_provisioner:
+        type: str
+        description: Name of the ACME provisioner.
+        default: acme
+      step_ca_acme_max_duration:
+        type: str
+        description: Maximum certificate duration of the ACME provisioner.
+        default: 8760h
+      step_ca_acme_default_duration:
+        type: str
+        description: Default certificate duration of the ACME provisioner.
+        default: 720h
+      step_ca_provisioners:
+        type: list
+        description: Extra provisioners to create. JWK provisioners are created with a generated key protected
+          by the given password.
+        elements: dict
+        options:
+          name:
+            type: str
+            description: Provisioner name.
+            required: true
+          type:
+            type: str
+            description: Provisioner type.
+            choices:
+            - JWK
+            - ACME
+            default: JWK
+          password:
+            type: str
+            description: Password protecting the generated JWK key. Required for JWK provisioners.
+            no_log: true
+          password_mode:
+            type: str
+            description: File mode of the password file written in the secrets directory.
+            default: '0600'
+          max_duration:
+            type: str
+            description: Maximum X.509 certificate duration, for example 24h. Empty keeps the CA default.
+          default_duration:
+            type: str
+            description: Default X.509 certificate duration. Empty keeps the CA default.
+          disable_renewal:
+            type: bool
+            description: Forbid certificate renewal.
+            default: false
+      step_ca_vpn_portal_enabled:
+        type: bool
+        description: Create the JWK provisioner of the VPN portal, issuing short-lived certificates, and
+          export its public key.
+        default: false
+      step_ca_vpn_portal_provisioner:
+        type: str
+        description: Name of the VPN portal provisioner.
+        default: vpn-portal
+      step_ca_vpn_portal_password:
+        type: str
+        description: Password of the VPN portal provisioner key. Required when it is enabled. Provide
+          it from a vault.
+        default: ''
+        no_log: true
+      step_ca_vpn_portal_max_duration:
+        type: str
+        description: Maximum certificate duration of the VPN portal provisioner.
+        default: 15m
+      step_ca_vpn_portal_default_duration:
+        type: str
+        description: Default certificate duration of the VPN portal provisioner.
+        default: 10m
+      step_ca_vpn_portal_disable_renewal:
+        type: bool
+        description: Forbid renewal of the short-lived certificates.
+        default: true
+      step_ca_postgres_enabled:
+        type: bool
+        description: Store certificates and revocations in PostgreSQL instead of the embedded BadgerDB.
+          PostgreSQL must be installed and reachable first.
+        default: false
+      step_ca_postgres_manage_objects:
+        type: bool
+        description: Create the database role and the database.
+        default: true
+      step_ca_postgres_binary:
+        type: path
+        description: Path of psql, used to check that PostgreSQL is installed.
+        default: /usr/bin/psql
+      step_ca_postgres_admin_user:
+        type: str
+        description: System user the PostgreSQL modules run as.
+        default: postgres
+      step_ca_postgres_group:
+        type: str
+        description: Group the CA user joins to reach the Unix socket. Empty skips the membership.
+        default: postgres
+      step_ca_postgres_database:
+        type: str
+        description: Database name.
+        default: step_ca
+      step_ca_postgres_user:
+        type: str
+        description: Database role used by the CA.
+        default: step_ca
+      step_ca_postgres_password:
+        type: str
+        description: Password of the database role. Empty relies on peer authentication over the Unix
+          socket.
+        default: ''
+        no_log: true
+      step_ca_postgres_socket_dir:
+        type: path
+        description: Directory of the PostgreSQL Unix socket.
+        default: /var/run/postgresql
+      step_ca_crl_enabled:
+        type: bool
+        description: Serve a CRL over the insecure HTTP address of the CA. When false the CRL settings
+          are removed from ca.json.
+        default: false
+      step_ca_crl_listen_address:
+        type: str
+        description: Address of the insecure HTTP listener.
+        default: 127.0.0.1
+      step_ca_crl_port:
+        type: int
+        description: Port of the insecure HTTP listener.
+        default: 9001
+      step_ca_crl_address:
+        type: str
+        description: Insecure address as written to ca.json.
+      step_ca_crl_url:
+        type: str
+        description: CRL distribution point.
+      step_ca_trust_system:
+        type: bool
+        description: Add the root certificate to the system trust store.
+        default: true
+      step_ca_trust_ca_path:
+        type: path
+        description: Where the root certificate is copied for update-ca-certificates.
+        default: /usr/local/share/ca-certificates/step-ca-root.crt
+      step_ca_export_enabled:
+        type: bool
+        description: Fetch the root certificate (and the VPN portal public key) to the controller.
+        default: true
+      step_ca_export_dir:
+        type: path
+        description: Controller directory receiving the exported files.
+      step_ca_dnsmasq_enabled:
+        type: bool
+        description: Point the CA domain to the loopback address in dnsmasq when it is installed and the
+          nginx proxy is enabled.
+        default: true
+      step_ca_dnsmasq_binary:
+        type: path
+        description: Path of dnsmasq, used to detect an installation.
+        default: /usr/sbin/dnsmasq
+      step_ca_dnsmasq_hosts_file:
+        type: path
+        description: dnsmasq file receiving the address entry.
+        default: /etc/dnsmasq.d/internal-domains.conf
+      step_ca_dnsmasq_service_name:
+        type: str
+        description: systemd unit restarted after a change.
+        default: dnsmasq
+      step_ca_nginx_enabled:
+        type: bool
+        description: Publish the CA behind nginx under its internal domain, with a certificate obtained
+          from the CA itself through certbot. nginx and certbot must be installed.
+        default: false
+      step_ca_nginx_binary:
+        type: path
+        description: Path of nginx, used to detect an installation.
+        default: /usr/sbin/nginx
+      step_ca_nginx_service_name:
+        type: str
+        description: systemd unit reloaded after a change.
+        default: nginx
+      step_ca_nginx_listen_address:
+        type: str
+        description: Address the proxy listens on.
+        default: 127.0.0.1
+      step_ca_nginx_http_port:
+        type: int
+        description: HTTP port of the proxy.
+        default: 80
+      step_ca_nginx_https_port:
+        type: int
+        description: HTTPS port of the proxy.
+        default: 443
+      step_ca_nginx_sites_available:
+        type: path
+        description: nginx sites-available directory.
+        default: /etc/nginx/sites-available
+      step_ca_nginx_sites_enabled:
+        type: path
+        description: nginx sites-enabled directory.
+        default: /etc/nginx/sites-enabled
+      step_ca_nginx_webroot:
+        type: path
+        description: Webroot used for the ACME HTTP challenge.
+        default: /var/www/html
+      step_ca_nginx_ssl_protocols:
+        type: str
+        description: ssl_protocols of the proxy.
+        default: TLSv1.2 TLSv1.3
+      step_ca_nginx_ssl_ciphers:
+        type: str
+        description: ssl_ciphers of the proxy.
+        default: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+      step_ca_certbot_binary:
+        type: path
+        description: Path of certbot, used to detect an installation.
+        default: /usr/bin/certbot
+      step_ca_certbot_email:
+        type: str
+        description: Contact e-mail for the certificate. Empty registers without an e-mail address.
+        default: ''
+      step_ca_certbot_verify_tls:
+        type: bool
+        description: Verify the TLS certificate of the CA when certbot connects to it, using the root
+          certificate. Disabling it adds --no-verify-ssl.
+        default: true
+      step_ca_letsencrypt_live_dir:
+        type: path
+        description: Directory holding the certbot certificates.
+        default: /etc/letsencrypt/live

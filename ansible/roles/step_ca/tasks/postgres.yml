@@ -1,0 +1,57 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for PostgreSQL
+  ansible.builtin.stat:
+    path: "{{ step_ca_postgres_binary }}"
+  register: step_ca_postgres_stat
+
+- name: Assert PostgreSQL is installed
+  ansible.builtin.assert:
+    that: step_ca_postgres_stat.stat.exists
+    fail_msg: >-
+      step_ca_postgres_enabled needs PostgreSQL ({{ step_ca_postgres_binary }} was not found).
+      Install it first, for example with the postgres role.
+    quiet: true
+
+- name: Create the database role
+  community.postgresql.postgresql_user:
+    name: "{{ step_ca_postgres_user }}"
+    password: "{{ step_ca_postgres_password | default(omit, true) }}"
+    login_unix_socket: "{{ step_ca_postgres_socket_dir }}"
+    state: present
+  become: true
+  become_user: "{{ step_ca_postgres_admin_user }}"
+  no_log: "{{ step_ca_postgres_password | length > 0 }}"
+  when: step_ca_postgres_manage_objects | bool
+
+- name: Create the database
+  community.postgresql.postgresql_db:
+    name: "{{ step_ca_postgres_database }}"
+    owner: "{{ step_ca_postgres_user }}"
+    login_unix_socket: "{{ step_ca_postgres_socket_dir }}"
+    state: present
+  become: true
+  become_user: "{{ step_ca_postgres_admin_user }}"
+  when: step_ca_postgres_manage_objects | bool
+
+- name: Grant the privileges on the database
+  community.postgresql.postgresql_privs:
+    login_db: "{{ step_ca_postgres_database }}"
+    login_unix_socket: "{{ step_ca_postgres_socket_dir }}"
+    type: database
+    privs: ALL
+    role: "{{ step_ca_postgres_user }}"
+    state: present
+  become: true
+  become_user: "{{ step_ca_postgres_admin_user }}"
+  when: step_ca_postgres_manage_objects | bool
+
+- name: Let the CA user reach the PostgreSQL socket
+  ansible.builtin.user:
+    name: "{{ step_ca_user }}"
+    groups: "{{ step_ca_postgres_group }}"
+    append: true
+  notify: step_ca | restart
+  when: step_ca_postgres_group | length > 0

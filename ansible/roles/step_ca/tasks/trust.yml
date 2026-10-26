@@ -1,0 +1,25 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Trust the root certificate system-wide
+  ansible.builtin.copy:
+    src: "{{ step_ca_certs_dir }}/root_ca.crt"
+    dest: "{{ step_ca_trust_ca_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: step_ca | update ca certificates
+  when:
+    - step_ca_trust_system | bool
+    - step_ca_config_stat.stat.exists
+
+- name: Fetch the root certificate to the controller
+  ansible.builtin.fetch:
+    src: "{{ step_ca_certs_dir }}/root_ca.crt"
+    dest: "{{ step_ca_export_dir }}/root_ca.crt"
+    flat: true
+  when:
+    - step_ca_export_enabled | bool
+    - step_ca_config_stat.stat.exists

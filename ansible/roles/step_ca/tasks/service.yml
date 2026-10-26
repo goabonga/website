@@ -1,0 +1,35 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy the systemd unit
+  ansible.builtin.template:
+    src: step-ca.service.j2
+    dest: "/etc/systemd/system/{{ step_ca_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - step_ca | reload systemd
+    - step_ca | restart
+
+- name: Apply pending unit and configuration changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Manage the CA service
+  ansible.builtin.systemd:
+    name: "{{ step_ca_service_name }}"
+    state: "{{ step_ca_service_state }}"
+    enabled: "{{ step_ca_service_enabled }}"
+    daemon_reload: true
+  when: step_ca_config_stat.stat.exists
+
+- name: Wait for the CA
+  ansible.builtin.wait_for:
+    host: "{{ __step_ca_local_host }}"
+    port: "{{ step_ca_port }}"
+    timeout: "{{ step_ca_wait_timeout }}"
+  when:
+    - step_ca_wait_for_ready | bool
+    - step_ca_service_state == 'started'
+    - step_ca_config_stat.stat.exists

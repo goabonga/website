@@ -12,8 +12,10 @@ from uuid import uuid4
 
 from custom_domain.config import settings
 from custom_domain.main import app
+from custom_domain.models import CustomDomain
 from fakes import FakeDatabase
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 
 def before_all(context):
@@ -69,9 +71,21 @@ def after_scenario(context, scenario):
     shutil.rmtree(context.staging_dir, ignore_errors=True)
 
 
+def lookup_id(context, kind, name):
+    """Return the identifier registered for ``{kind:name}``, looking domains up by name."""
+    if (kind, name) in context.ids:
+        return context.ids[(kind, name)]
+    if kind == "domain":
+        with context.db.session() as session:
+            return session.scalar(select(CustomDomain.id).where(CustomDomain.domain == name))
+    raise KeyError((kind, name))
+
+
 def resolve_path(context, path):
     """Replace ``{kind:name}`` placeholders with the identifiers registered by the steps."""
-    return re.sub(r"\{(\w+):([^}]+)\}", lambda m: str(context.ids[(m.group(1), m.group(2))]), path)
+    return re.sub(
+        r"\{(\w+):([^}]+)\}", lambda m: str(lookup_id(context, m.group(1), m.group(2))), path
+    )
 
 
 def http_request(context, method, path, **kwargs):

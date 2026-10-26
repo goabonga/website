@@ -2391,3 +2391,279 @@ class TestSaasAppCheckoutSettings:
             error=None,
         )
         assert "checkout and portal redirects are refused" in html
+
+
+# ---------------------------------------------------------------------------
+# Plan slug and free-form limits
+# ---------------------------------------------------------------------------
+
+
+class TestParsePlanSlug:
+    def test_valid_slugs(self):
+        from internal.routes.billing import parse_plan_slug
+
+        assert parse_plan_slug(" pro ") == "pro"
+        assert parse_plan_slug("team-2024") == "team-2024"
+
+    def test_empty_is_left_to_the_billing_service(self):
+        from internal.routes.billing import parse_plan_slug
+
+        assert parse_plan_slug("") is None
+        assert parse_plan_slug("   ") is None
+
+    def test_invalid_slugs(self):
+        import pytest
+        from internal.routes.billing import parse_plan_slug
+
+        for slug in ("Pro", "two words", "-lead", "trail-", "dou--ble", "under_score", "a" * 101):
+            with pytest.raises(ValueError, match="slug"):
+                parse_plan_slug(slug)
+
+
+class TestParsePlanLimits:
+    def test_names_are_free(self):
+        from internal.routes.billing import parse_plan_limits
+
+        assert parse_plan_limits('{"seats": 5, " api calls ": 1000, "quota": -1, "none": 0}') == {
+            "seats": 5,
+            "api calls": 1000,
+            "quota": -1,
+            "none": 0,
+        }
+
+    def test_empty_means_no_limits(self):
+        from internal.routes.billing import parse_plan_limits
+
+        assert parse_plan_limits("") == {}
+        assert parse_plan_limits("{}") == {}
+
+    def test_values_must_be_whole_numbers(self):
+        import pytest
+        from internal.routes.billing import parse_plan_limits
+
+        for text in ('{"a": 1.5}', '{"a": "3"}', '{"a": null}', '{"a": true}', '{"a": [1]}'):
+            with pytest.raises(ValueError, match="'a' must be a whole number"):
+                parse_plan_limits(text)
+
+    def test_names_must_not_be_blank(self):
+        import pytest
+        from internal.routes.billing import parse_plan_limits
+
+        with pytest.raises(ValueError, match="needs a name"):
+            parse_plan_limits('{"  ": 1}')
+
+    def test_not_an_object(self):
+        import pytest
+        from internal.routes.billing import parse_plan_limits
+
+        for text in ("[1]", "3", '"x"'):
+            with pytest.raises(ValueError, match="JSON object"):
+                parse_plan_limits(text)
+
+    def test_invalid_json(self):
+        import pytest
+        from internal.routes.billing import parse_plan_limits
+
+        with pytest.raises(ValueError, match="not valid JSON"):
+            parse_plan_limits("{nope")
+
+
+_PRODUCT_FORM = {
+    "name": "Pro",
+    "description": "",
+    "sort_order": 1,
+    "default_trial_days": 0,
+    "is_recommended": False,
+    "features_json": "[]",
+    "limits_json": "{}",
+}
+
+
+class TestProductSlugAndLimitsRoutes:
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_sends_the_slug_apart_from_the_metadata(self, mock_client):
+        from internal.routes.billing import product_create
+
+        mock_client.create_product = AsyncMock(
+            return_value=MagicMock(id="p1", stripe_product_id="x")
+        )
+
+        await product_create(
+            _make_request(),
+            saas_id="s1",
+            slug=" pro ",
+            **{**_PRODUCT_FORM, "limits_json": '{"seats": 5}'},
+            auth_result=_make_user(),
+        )
+
+        kwargs = mock_client.create_product.call_args[1]
+        assert kwargs["slug"] == "pro"
+        assert "slug" not in kwargs["metadata"]
+        assert kwargs["metadata"]["limits"] == {"seats": 5}
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_without_slug_lets_the_service_derive_it(self, mock_client):
+        from internal.routes.billing import product_create
+
+        mock_client.create_product = AsyncMock(
+            return_value=MagicMock(id="p1", stripe_product_id="x")
+        )
+
+        await product_create(
+            _make_request(), saas_id="s1", slug="", **_PRODUCT_FORM, auth_result=_make_user()
+        )
+
+        assert mock_client.create_product.call_args[1]["slug"] is None
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_create_refuses_a_bad_slug_or_limit(self, mock_client):
+        from internal.routes.billing import product_create
+
+        mock_client.create_product = AsyncMock()
+
+        bad_slug = await product_create(
+            _make_request(),
+            saas_id="s1",
+            slug="Not A Slug",
+            **_PRODUCT_FORM,
+            auth_result=_make_user(),
+        )
+        bad_limit = await product_create(
+            _make_request(),
+            saas_id="s1",
+            slug="pro",
+            **{**_PRODUCT_FORM, "limits_json": '{"seats": 1.5}'},
+            auth_result=_make_user(),
+        )
+
+        assert bad_slug.headers["location"].startswith("/billing/saas/s1/products/new?error=")
+        assert "must+be+a+whole+number" in bad_limit.headers["location"]
+        mock_client.create_product.assert_not_awaited()
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_sends_the_slug_and_keeps_unknown_metadata(self, mock_client):
+        from internal.routes.billing import product_update
+
+        mock_client.get_product = AsyncMock(
+            return_value=MagicMock(
+                extra_data={"slug": "old", "tier": "gold", "limits": {"gone": 1}, "features": []}
+            )
+        )
+        mock_client.update_product = AsyncMock(return_value=MagicMock(id="p1"))
+
+        await product_update(
+            _make_request(),
+            saas_id="s1",
+            product_id="p1",
+            slug="business",
+            is_active=True,
+            **{**_PRODUCT_FORM, "limits_json": '{"seats": 5}'},
+            auth_result=_make_user(),
+        )
+
+        kwargs = mock_client.update_product.call_args[1]
+        assert kwargs["slug"] == "business"
+        assert kwargs["metadata"]["tier"] == "gold"
+        assert kwargs["metadata"]["limits"] == {"seats": 5}
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_of_an_unknown_product(self, mock_client):
+        from internal.routes.billing import product_update
+
+        mock_client.get_product = AsyncMock(return_value=None)
+        mock_client.update_product = AsyncMock()
+
+        result = await product_update(
+            _make_request(),
+            saas_id="s1",
+            product_id="gone",
+            slug="pro",
+            is_active=True,
+            **_PRODUCT_FORM,
+            auth_result=_make_user(),
+        )
+
+        assert "error=Product+not+found" in result.headers["location"]
+        mock_client.update_product.assert_not_awaited()
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_update_refuses_a_bad_limit(self, mock_client):
+        from internal.routes.billing import product_update
+
+        mock_client.get_product = AsyncMock()
+        mock_client.update_product = AsyncMock()
+
+        result = await product_update(
+            _make_request(),
+            saas_id="s1",
+            product_id="p1",
+            slug="pro",
+            is_active=True,
+            **{**_PRODUCT_FORM, "limits_json": '{"": 1}'},
+            auth_result=_make_user(),
+        )
+
+        assert result.headers["location"].startswith("/billing/saas/s1/products/p1/edit?error=")
+        mock_client.update_product.assert_not_awaited()
+
+
+class TestProductSlugAndLimitsTemplates:
+    def _product(self, **extra):
+        product = MagicMock(id="p1", is_active=True, stripe_product_id="stripe_prod")
+        product.name = "Pro"
+        product.slug = "pro-plan"
+        product.description = None
+        product.created_at = datetime(2024, 1, 1)
+        product.extra_data = {"slug": "stale", **extra}
+        return product
+
+    def _app(self):
+        app = MagicMock(id="s1")
+        app.name = _APP_NAME
+        return app
+
+    def test_form_shows_the_slug_of_the_product(self):
+        html = _render(
+            "product_form.html",
+            saas_app=self._app(),
+            product=self._product(),
+            is_edit=True,
+            error=None,
+        )
+        assert 'value="pro-plan"' in html
+        assert "stale" not in html
+
+    def test_form_checks_the_slug_and_does_not_hard_code_the_trial_maximum(self):
+        html = _render(
+            "product_form.html", saas_app=self._app(), product=None, is_edit=False, error=None
+        )
+        assert 'pattern="[a-z0-9]+(-[a-z0-9]+)*"' in html
+        assert "730" not in html
+
+    def test_list_shows_the_slug(self):
+        html = _render(
+            "products_list.html",
+            saas_app=self._app(),
+            products=[self._product()],
+            success=None,
+            error=None,
+        )
+        assert "<th>Slug</th>" in html
+        assert "pro-plan" in html
+
+    def test_detail_shows_the_slug_and_the_limits_as_they_are(self):
+        product = self._product(limits={"seats": 5000, "storage_bytes": 2147483648, "quota": -1})
+        html = _render(
+            "product_detail.html",
+            saas_app=self._app(),
+            product=product,
+            prices=[],
+            success=None,
+            error=None,
+        )
+        assert "pro-plan" in html
+        assert "5,000" in html
+        assert "2,147,483,648" in html
+        assert "-1" in html
+        assert "Unlimited" not in html
+        assert " GB" not in html

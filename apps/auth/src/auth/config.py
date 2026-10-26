@@ -117,6 +117,19 @@ class Settings(BaseSettings):
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
     tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup
 
+    # Custom domain provisioning
+    custom_domain_cname_target: str = (
+        ""  # CNAME target for custom domains (e.g., "auth.example.com")
+    )
+    custom_domain_nginx_sites_dir: str = "/etc/nginx/sites-enabled"  # Nginx sites directory
+    custom_domain_nginx_template: str = ""  # Path to nginx template (empty = use built-in)
+    custom_domain_nginx_ipv4: str = ""  # IPv4 address for nginx listen (e.g., "203.0.113.10")
+    custom_domain_nginx_ipv6: str = ""  # IPv6 address for nginx listen (e.g., "2001:db8::10")
+    custom_domain_upstream_socket: str = "/run/auth/auth.sock"  # Unix socket for upstream
+    custom_domain_certbot_enabled: bool = True  # Enable automatic SSL via certbot
+    custom_domain_certbot_email: str = ""  # Email for certbot notifications
+    custom_domain_dns_check_interval_minutes: int = 5  # How often to check pending domains
+
     # Templates
     templates_path: str = str(Path(__file__).parent / "templates")  # Templates directory
 
@@ -128,6 +141,10 @@ class Settings(BaseSettings):
     # Celery / Redis
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str | None = None  # Disabled by default (fire-and-forget tasks)
+
+    # Cleanup tasks
+    unverified_user_expiry_days: int = 3  # Days before unverified users are deleted
+    orphan_avatar_cleanup_enabled: bool = True  # Enable/disable orphan avatar cleanup
 
     # Outbound tenant webhooks
     webhook_delivery_timeout_seconds: int = 10  # HTTP timeout per attempt

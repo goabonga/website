@@ -33,6 +33,18 @@ class TestCeleryApp:
 
         schedule = celery_app.conf.beat_schedule
         expected_tasks = [
+            "cleanup-expired-tokens",
+            "cleanup-expired-authorization-codes",
+            "cleanup-expired-device-codes",
+            "cleanup-expired-par-requests",
+            "cleanup-expired-verification-codes",
+            "cleanup-expired-password-reset-tokens",
+            "cleanup-expired-mfa-email-codes",
+            "cleanup-expired-sessions",
+            "cleanup-expired-pats",
+            "cleanup-orphaned-avatars",
+            "cleanup-unverified-users",
+            "check-pending-custom-domains",
             "retry-pending-webhooks",
             "cleanup-webhook-deliveries",
         ]
@@ -42,7 +54,7 @@ class TestCeleryApp:
     def test_beat_schedule_count(self):
         from auth.celery import celery_app
 
-        assert len(celery_app.conf.beat_schedule) == 2
+        assert len(celery_app.conf.beat_schedule) == 14
 
     def test_task_queues(self):
         from auth.celery import celery_app

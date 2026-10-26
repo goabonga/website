@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "GOABONGA"
     debug: bool = False
+    log_level: str = "INFO"
     docs_enabled: bool = False
 
     # CORS

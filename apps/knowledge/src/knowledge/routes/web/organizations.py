@@ -27,9 +27,11 @@ from knowledge.models import (
     OrganizationMember,
     WorkspaceDeletionRequest,
 )
-from knowledge.models.enums import InvitationStatus, OrganizationMemberRole
+from knowledge.models.enums import CustomDomainStatus, InvitationStatus, OrganizationMemberRole
 from knowledge.models.workspace_deletion_request import DeletionRequestStatus
+from knowledge.services import custom_domain as domain_service
 from knowledge.services.billing import BillingAPIError, checkout_redirect_urls, get_billing_client
+from knowledge.services.custom_domain import CustomDomainError, get_custom_domain_client
 from knowledge.services.quotas import QuotaService
 from knowledge.tasks import (
     send_workspace_deleted_email,
@@ -39,6 +41,7 @@ from knowledge.tasks import (
 from knowledge.templating import create_templates
 
 logger = get_logger(__name__)
+
 router = APIRouter(tags=["web-organizations"])
 templates = create_templates()
 
@@ -1276,6 +1279,11 @@ async def update_member_role(
     return RedirectResponse(url="/organizations/members", status_code=302)
 
 
+# =============================================================================
+# Public invitation routes (no auth required to view)
+# =============================================================================
+
+
 @router.get("/invites/{token}", response_class=HTMLResponse)
 async def view_invitation(
     request: Request,
@@ -1433,3 +1441,244 @@ async def accept_invitation(
         max_age=60 * 60 * 24 * 30,
     )
     return response
+
+
+# =============================================================================
+# Custom Domain routes (Enterprise plan only)
+# =============================================================================
+
+
+def _domain_page_context(settings, **extra):
+    """Context shared by the renderings of the custom domain page."""
+    return {"cname_target": settings.custom_domain_cname_target, "settings": settings, **extra}
+
+
+async def _render_domain_page(request, db, auth_result, settings, error=None):
+    return templates.TemplateResponse(
+        request,
+        "tenants/domain.html",
+        {
+            **(await _get_common_context(request, db, auth_result, "organization_settings")),
+            **_domain_page_context(settings, error=error),
+        },
+    )
+
+
+def _registration_message(error: CustomDomainError) -> str:
+    """Explain to the customer why the service did not take the request."""
+    if error.status_code == 409:
+        return "This domain is already registered."
+    if error.status_code in (400, 403):
+        return error.detail
+    return "The custom domain service is not available right now. Please try again later."
+
+
+@router.get("/domain", response_class=HTMLResponse)
+async def custom_domain_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Custom domain settings page (Enterprise only)."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    if not auth_result.is_tenant_admin:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:admin",
+            },
+            status_code=403,
+        )
+
+    organization = auth_result.tenant
+
+    # Check Enterprise plan
+    if not organization.can_use_custom_domain:
+        return RedirectResponse(url="/organizations/settings", status_code=302)
+
+    return await _render_domain_page(request, db, auth_result, get_settings())
+
+
+@router.post("/domain", response_class=HTMLResponse)
+async def update_custom_domain(
+    request: Request,
+    domain: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Register the custom domain of the organization in the custom-domain service."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    if not auth_result.is_tenant_admin:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:admin",
+            },
+            status_code=403,
+        )
+
+    organization = auth_result.tenant
+    settings = get_settings()
+
+    if not organization.can_use_custom_domain:
+        return RedirectResponse(url="/organizations/settings", status_code=302)
+
+    domain = domain.lower().strip()
+
+    # Validate domain format
+    valid, error = domain_service.validate_domain(domain)
+    if not valid:
+        return await _render_domain_page(request, db, auth_result, settings, error)
+
+    # Check if domain is already in use by another organization
+    result = await db.execute(
+        select(Organization).where(
+            Organization.custom_domain == domain,
+            Organization.id != organization.id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return await _render_domain_page(
+            request,
+            db,
+            auth_result,
+            settings,
+            "This domain is already in use by another organization.",
+        )
+
+    # The previous domain of the workspace is replaced: the service forgets it first
+    previous_id = organization.custom_domain_service_id
+    client = get_custom_domain_client()
+    try:
+        if previous_id:
+            await client.delete(previous_id)
+        registered = await client.register(domain, str(organization.id))
+    except CustomDomainError as e:
+        logger.error("Custom domain registration failed for %s: %s", domain, e.detail)
+        return await _render_domain_page(
+            request, db, auth_result, settings, _registration_message(e)
+        )
+
+    organization.custom_domain = domain
+    organization.custom_domain_service_id = registered.id
+    organization.custom_domain_cname_target = registered.cname_target or None
+    organization.custom_domain_status = CustomDomainStatus.PENDING
+    organization.custom_domain_error = None
+    organization.custom_domain_verified_at = None
+    organization.custom_domain_ssl_at = None
+    organization.custom_domain_checked_at = None
+    await db.commit()
+
+    return RedirectResponse(url="/organizations/domain", status_code=302)
+
+
+@router.post("/domain/verify", response_class=HTMLResponse)
+async def retry_domain_verification(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Ask the custom-domain service to verify the DNS of the domain again."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+
+    if organization.custom_domain:
+        client = get_custom_domain_client()
+        try:
+            if organization.custom_domain_service_id:
+                status = await client.verify(organization.custom_domain_service_id)
+                domain_service.apply_status(organization, status)
+            else:
+                # Never registered (legacy domain) or lost by the service: register it
+                registered = await client.register(organization.custom_domain, str(organization.id))
+                organization.custom_domain_service_id = registered.id
+                organization.custom_domain_cname_target = registered.cname_target or None
+                domain_service.apply_status(organization, registered.status)
+            await db.commit()
+        except CustomDomainError as e:
+            logger.error("Custom domain verification failed: %s", e.detail)
+            return await _render_domain_page(
+                request, db, auth_result, get_settings(), _registration_message(e)
+            )
+
+    return RedirectResponse(url="/organizations/domain", status_code=302)
+
+
+@router.get("/domain/status")
+async def domain_status(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Get custom domain status (JSON endpoint for polling)."""
+    if isinstance(auth_result, RedirectResponse):
+        return {"error": "Not authenticated"}
+
+    if not auth_result.tenant:
+        return {"error": "No organization selected"}
+
+    organization = auth_result.tenant
+
+    if not organization.custom_domain:
+        return {"has_domain": False}
+
+    return {
+        "has_domain": True,
+        "domain": organization.custom_domain,
+        "status": organization.custom_domain_status.value
+        if organization.custom_domain_status
+        else None,
+        "error": organization.custom_domain_error,
+    }
+
+
+@router.post("/domain/remove", response_class=HTMLResponse)
+async def remove_custom_domain(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Remove the custom domain of the organization, here and in the service."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+
+    # The service removes the certificate and the web server configuration; the domain
+    # stays on the workspace until the service has accepted the removal.
+    if organization.custom_domain_service_id:
+        try:
+            await get_custom_domain_client().delete(organization.custom_domain_service_id)
+        except CustomDomainError as e:
+            logger.error("Custom domain removal failed: %s", e.detail)
+            return await _render_domain_page(
+                request, db, auth_result, get_settings(), _registration_message(e)
+            )
+
+    domain_service.clear_domain(organization)
+    await db.commit()
+
+    return RedirectResponse(url="/organizations/domain", status_code=302)

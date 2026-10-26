@@ -164,6 +164,37 @@
 </div>
 {% endif %}
 
+{% if tenant.is_enterprise %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Enterprise Features</h2>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+        <div>
+            <strong>Custom Domain</strong>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 4px;">
+                Use your own domain for this workspace
+            </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            {% if tenant.custom_domain %}
+            <span style="font-size: 0.75rem; padding: 4px 12px; border-radius: 9999px; font-weight: 600; text-transform: uppercase;
+                {% if tenant.custom_domain_status and tenant.custom_domain_status.value == 'active' %}
+                background: rgba(63, 185, 80, 0.2); color: var(--accent-green);
+                {% elif tenant.custom_domain_status and tenant.custom_domain_status.value == 'failed' %}
+                background: rgba(248, 81, 73, 0.2); color: var(--accent-red);
+                {% else %}
+                background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow);
+                {% endif %}
+            ">{{ tenant.custom_domain_status.value | replace('_', ' ') | title if tenant.custom_domain_status else 'Not Set' }}</span>
+            {% endif %}
+            <a href="/organizations/domain" class="btn btn-secondary btn-sm">Configure</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if tenant_member and tenant_member.is_owner %}
 <div class="card" style="border-color: var(--accent-red);">
     <div class="card-header">

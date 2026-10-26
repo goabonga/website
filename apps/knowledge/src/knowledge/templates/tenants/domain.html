@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Custom Domain{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Custom Domain</h1>
+    <div class="breadcrumb">
+        Configure a custom domain for your workspace (Enterprise)
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Domain Configuration</h2>
+    </div>
+
+    <form method="POST" action="/organizations/domain">
+        <div class="form-group">
+            <label for="domain">Custom Domain</label>
+            <input type="text" name="domain" id="domain"
+                value="{{ tenant.custom_domain or '' }}"
+                placeholder="app.yourdomain.com"
+                class="form-control">
+            <small style="color: var(--text-muted);">
+                Enter your custom domain (e.g., app.yourdomain.com)
+            </small>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary">Save Domain</button>
+            {% if tenant.custom_domain %}
+            <button type="button" class="btn btn-danger" onclick="removeDomain()">Remove Domain</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% set cname = tenant.custom_domain_cname_target or cname_target %}
+{% if cname %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">DNS Configuration</h2>
+    </div>
+
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+        To use a custom domain, add a CNAME record in your DNS settings:
+    </p>
+
+    <div class="dns-record">
+        <div class="dns-row">
+            <span class="dns-label">Type</span>
+            <span class="dns-value">CNAME</span>
+        </div>
+        <div class="dns-row">
+            <span class="dns-label">Name/Host</span>
+            <span class="dns-value">{{ tenant.custom_domain.split('.')[0] if tenant.custom_domain else 'app' }}</span>
+        </div>
+        <div class="dns-row">
+            <span class="dns-label">Target/Value</span>
+            <span class="dns-value">{{ cname }}</span>
+        </div>
+    </div>
+
+    <p style="color: var(--text-muted); margin-top: 16px; font-size: 0.875rem;">
+        DNS changes may take up to 48 hours to propagate, but usually take effect within a few minutes.
+    </p>
+</div>
+{% endif %}
+
+{% if tenant.custom_domain %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Provisioning Status</h2>
+    </div>
+
+    <div class="status-info" id="status-container">
+        <div class="status-row">
+            <span class="status-label">Domain</span>
+            <span class="status-value">{{ tenant.custom_domain }}</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">Status</span>
+            <span id="domain-status" class="status-badge status-{{ tenant.custom_domain_status.value if tenant.custom_domain_status else 'unknown' }}">
+                {{ tenant.custom_domain_status.value | replace('_', ' ') | title if tenant.custom_domain_status else 'Unknown' }}
+            </span>
+        </div>
+        {% if tenant.custom_domain_error %}
+        <div class="status-row">
+            <span class="status-label">Error</span>
+            <span class="status-value" style="color: var(--accent-red);">{{ tenant.custom_domain_error }}</span>
+        </div>
+        {% endif %}
+        {% if tenant.custom_domain_verified_at %}
+        <div class="status-row">
+            <span class="status-label">DNS Verified</span>
+            <span class="status-value">{{ tenant.custom_domain_verified_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+        </div>
+        {% endif %}
+        {% if tenant.custom_domain_ssl_at %}
+        <div class="status-row">
+            <span class="status-label">SSL Provisioned</span>
+            <span class="status-value">{{ tenant.custom_domain_ssl_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if tenant.custom_domain_status and tenant.custom_domain_status.value in ['pending', 'dns_verifying', 'failed'] %}
+    <div style="margin-top: 16px;">
+        <form method="POST" action="/organizations/domain/verify" style="display: inline;">
+            <button type="submit" class="btn btn-secondary">Retry DNS Verification</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if tenant.custom_domain_status and tenant.custom_domain_status.value == 'active' %}
+    <div class="alert alert-success" style="margin-top: 16px;">
+        Your custom domain is active! You can now access your workspace at
+        <a href="https://{{ tenant.custom_domain }}" target="_blank" style="color: var(--accent-green);">https://{{ tenant.custom_domain }}</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.dns-record {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: monospace;
+}
+
+.dns-row {
+    display: flex;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dns-row:last-child {
+    border-bottom: none;
+}
+
+.dns-label {
+    color: var(--text-muted);
+    min-width: 120px;
+}
+
+.dns-value {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.status-info {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.status-label {
+    color: var(--text-muted);
+}
+
+.status-value {
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending,
+.status-dns_verifying {
+    background: rgba(210, 153, 34, 0.2);
+    color: var(--accent-yellow);
+}
+
+.status-dns_verified,
+.status-ssl_provisioning {
+    background: rgba(88, 166, 255, 0.2);
+    color: var(--accent-blue);
+}
+
+.status-active {
+    background: rgba(63, 185, 80, 0.2);
+    color: var(--accent-green);
+}
+
+.status-failed {
+    background: rgba(248, 81, 73, 0.2);
+    color: var(--accent-red);
+}
+</style>
+
+<script>
+function removeDomain() {
+    if (confirm('Are you sure you want to remove the custom domain?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/organizations/domain/remove';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+{% if tenant.custom_domain and tenant.custom_domain_status and tenant.custom_domain_status.value not in ['active', 'failed'] %}
+// Auto-refresh status every 10 seconds for pending domains
+setInterval(async () => {
+    try {
+        const response = await fetch('/organizations/domain/status');
+        const data = await response.json();
+        if (data.has_domain && data.status) {
+            const statusEl = document.getElementById('domain-status');
+            if (statusEl) {
+                const statusText = data.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                statusEl.textContent = statusText;
+                statusEl.className = 'status-badge status-' + data.status;
+
+                // Reload page if status changed to active or failed
+                if (data.status === 'active' || data.status === 'failed') {
+                    location.reload();
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Failed to fetch status:', e);
+    }
+}, 10000);
+{% endif %}
+</script>
+{% endblock %}

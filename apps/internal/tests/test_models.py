@@ -97,6 +97,61 @@ class TestUserScopeHelpers:
         assert mock_admin_user.can_delete("anything") is True
 
 
+class TestEmailCampaignProperties:
+    """Test EmailCampaign computed properties without database.
+
+    Uses SimpleNamespace + property.fget to avoid SQLAlchemy instrumentation.
+    """
+
+    def _test_property(self, prop_name, expected, **kwargs):
+        from types import SimpleNamespace
+
+        from internal.models.email_campaign import EmailCampaign
+
+        ns = SimpleNamespace(
+            total_recipients=kwargs.get("total_recipients", 0),
+            sent_count=kwargs.get("sent_count", 0),
+            delivered_count=kwargs.get("delivered_count", 0),
+            opened_count=kwargs.get("opened_count", 0),
+            clicked_count=kwargs.get("clicked_count", 0),
+            bounced_count=kwargs.get("bounced_count", 0),
+            complained_count=kwargs.get("complained_count", 0),
+            failed_count=kwargs.get("failed_count", 0),
+        )
+        prop = getattr(EmailCampaign, prop_name)
+        assert prop.fget(ns) == expected
+
+    def test_progress_percent(self):
+        self._test_property("progress_percent", 75.0, total_recipients=100, sent_count=75)
+
+    def test_progress_percent_zero_recipients(self):
+        self._test_property("progress_percent", 0.0, total_recipients=0, sent_count=0)
+
+    def test_open_rate(self):
+        self._test_property("open_rate", 25.0, delivered_count=200, opened_count=50)
+
+    def test_open_rate_zero_delivered(self):
+        self._test_property("open_rate", 0.0, delivered_count=0, opened_count=0)
+
+    def test_click_rate(self):
+        self._test_property("click_rate", 10.0, delivered_count=200, clicked_count=20)
+
+    def test_bounce_rate(self):
+        self._test_property("bounce_rate", 5.0, sent_count=100, bounced_count=5)
+
+    def test_bounce_rate_zero_sent(self):
+        self._test_property("bounce_rate", 0.0, sent_count=0, bounced_count=0)
+
+    def test_click_rate_zero_delivered(self):
+        self._test_property("click_rate", 0.0, delivered_count=0, clicked_count=0)
+
+    def test_complaint_rate(self):
+        self._test_property("complaint_rate", 0.03, delivered_count=10000, complained_count=3)
+
+    def test_complaint_rate_zero_delivered(self):
+        self._test_property("complaint_rate", 0.0, delivered_count=0, complained_count=0)
+
+
 class TestContactProperties:
     """Test Contact computed properties without database.
 

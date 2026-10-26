@@ -2683,6 +2683,7 @@ name = "webhooks"
 version = "0.0.0"
 source = { editable = "apps/webhooks" }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "pydantic" },
@@ -2691,6 +2692,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=42.0.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "httpx", specifier = ">=0.26.0" },
     { name = "pydantic", specifier = ">=2.0.0" },

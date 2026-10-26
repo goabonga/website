@@ -133,11 +133,6 @@ def step_no_tenant(context):
     assert _tenant(context) is None
 
 
-@then('the redirect location should be "{location}"')
-def step_location(context, location):
-    assert context.response.headers["location"] == location
-
-
 @when('I create the tenant "{name}" with slug "{slug}"')
 def step_create_tenant(context, name, slug):
     db = MagicMock()

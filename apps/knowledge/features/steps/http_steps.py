@@ -29,3 +29,8 @@ def step_header_present(context, name):
     assert name in context.response.headers, (
         f"header {name!r} missing: {dict(context.response.headers)}"
     )
+
+
+@then('the redirect location should be "{location}"')
+def step_redirect_location(context, location):
+    assert context.response.headers["location"] == location, context.response.headers

@@ -125,3 +125,27 @@ async def server_client(server_user: User) -> AsyncGenerator[AsyncClient, None]:
             headers={"Authorization": "Bearer header.payload.signature"},
         ) as test_client:
             yield test_client
+
+
+@pytest.fixture
+def admin_user() -> User:
+    """A user holding ``vpn:admin``."""
+    return User(
+        id=uuid4(),
+        email="admin@example.com",
+        name="Admin User",
+        scopes=["vpn:admin", "vpn:connect", "openid"],
+        client_id="admin-client-id",
+    )
+
+
+@pytest_asyncio.fixture
+async def admin_client(admin_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Client authenticated as an administrator (``vpn:admin``)."""
+    with authenticated_as(admin_user):
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer header.payload.signature"},
+        ) as test_client:
+            yield test_client

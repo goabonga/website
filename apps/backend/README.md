@@ -10,6 +10,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint for monitoring and load balancer probes |
+| GET | `/.well-known/security.txt` | public | Return security.txt content (RFC 9116) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

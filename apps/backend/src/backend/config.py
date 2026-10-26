@@ -30,5 +30,16 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://localhost/app"
 
+    # security.txt (RFC 9116)
+    security_contact: str = ""
+    security_expires: str = ""
+    security_encryption: str = ""
+    security_acknowledgments: str = ""
+    security_preferred_languages: str = ""
+    security_canonical: str = ""
+    security_policy: str = ""
+    security_hiring: str = ""
+    security_csaf: str = ""
+
 
 settings = Settings()

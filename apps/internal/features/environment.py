@@ -233,6 +233,11 @@ def before_all(context):
     context.mock_mailler_campaigns = p.start()
     context._patchers.append(p)
 
+    # Prompt generator (local import in route function, patch at source)
+    p = patch("internal.services.prompt_generator.PromptGeneratorService")
+    context.mock_prompt_generator_cls = p.start()
+    context._patchers.append(p)
+
 
 def before_scenario(context, scenario):
     """Reset state before each scenario."""
@@ -261,6 +266,7 @@ def before_scenario(context, scenario):
         context.mock_mailler_groups,
         context.mock_mailler_templates,
         context.mock_mailler_campaigns,
+        context.mock_prompt_generator_cls,
     ]:
         p_mock.reset_mock()
 
@@ -275,6 +281,11 @@ def before_scenario(context, scenario):
 
 def after_scenario(context, scenario):
     """Clean up after each scenario."""
+    # Restore OpenAI settings if modified by prompts/knowledge steps
+    if getattr(context, "_openai_key_needs_restore", False):
+        from internal.config import settings as _settings
+
+        _settings.__dict__["openai_api_key"] = ""
 
     # Stop any httpx patchers started by auth steps
     patcher = getattr(context, "_httpx_patcher", None)

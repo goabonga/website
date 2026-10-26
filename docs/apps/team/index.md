@@ -16,6 +16,7 @@ is tested with pytest and behave.
 | [Agents](04-agents.md) | agents of a team |
 | [Conversations](05-conversations.md) | conversations, participants and messages |
 | [Memory](06-memory.md) | team memory entries with embeddings |
+| [Skills](07-skills.md) | Agent Skills attached to agents |
 
 ## Running the tests
 

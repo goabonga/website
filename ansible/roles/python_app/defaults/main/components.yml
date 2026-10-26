@@ -44,6 +44,11 @@ python_app_component_defaults:
   sudoers: []
   # Join the step group to read the provisioner password.
   stepca_group_member: false
+  # Privileged helper of the custom_domain worker. Installs the helper script
+  # from the release, creates its staging directory and the ACME webroot, and
+  # grants sudo rights for exactly its command lines (website_custom_domain_*).
+  custom_domain_helper:
+    enabled: false
 
   # Health probe: the unit is only considered started once it answers.
   healthcheck:

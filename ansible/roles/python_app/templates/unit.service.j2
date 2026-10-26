@@ -89,7 +89,7 @@ RestartSec=5
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-{% if python_app__c.sudoers | length == 0 %}
+{% if not (python_app__sudo | bool) %}
 NoNewPrivileges=true
 CapabilityBoundingSet=
 {% else %}

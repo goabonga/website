@@ -84,6 +84,10 @@
   ansible.builtin.include_tasks: script.yml
   when: python_app__c.type == 'script'
 
+- name: Install the privileged helper of {{ python_app__unit }}
+  ansible.builtin.include_tasks: custom_domain_helper.yml
+  when: python_app__c.custom_domain_helper.enabled | bool
+
 - name: Deploy the unit of {{ python_app__unit }}
   ansible.builtin.template:
     src: unit.service.j2

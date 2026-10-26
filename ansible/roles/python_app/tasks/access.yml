@@ -35,22 +35,33 @@
     append: true
   when: python_app__groups_present | length > 0
 
+- name: Work out the sudo rights of {{ python_app__user }}
+  ansible.builtin.set_fact:
+    python_app__sudoers_plain: "{{ python_app__comps | map(attribute='sudoers') | flatten | unique | list }}"
+    python_app__sudoers_helper: >-
+      {{ python_app__helper_rules
+         if python_app__comps | selectattr('custom_domain_helper.enabled') | list | length > 0
+         else [] }}
+
 - name: Grant sudo rights to {{ python_app__user }}
   ansible.builtin.copy:
     dest: "/etc/sudoers.d/{{ python_app__user }}"
     content: |
       # Managed by Ansible (goabonga.website.python_app)
-      {% for command in python_app__comps | map(attribute='sudoers') | flatten | unique %}
+      {% for command in python_app__sudoers_plain %}
       {{ python_app__user }} ALL=(ALL) NOPASSWD: {{ command }}
+      {% endfor %}
+      {% for rule in python_app__sudoers_helper %}
+      {{ python_app__user }} ALL=(root) NOPASSWD: {{ rule }}
       {% endfor %}
     owner: root
     group: root
     mode: "0440"
     validate: /usr/sbin/visudo -cf %s
-  when: python_app__comps | map(attribute='sudoers') | flatten | length > 0
+  when: (python_app__sudoers_plain + python_app__sudoers_helper) | length > 0
 
 - name: Revoke the sudo rights of {{ python_app__user }}
   ansible.builtin.file:
     path: "/etc/sudoers.d/{{ python_app__user }}"
     state: absent
-  when: python_app__comps | map(attribute='sudoers') | flatten | length == 0
+  when: (python_app__sudoers_plain + python_app__sudoers_helper) | length == 0

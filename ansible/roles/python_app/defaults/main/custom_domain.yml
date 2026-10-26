@@ -2,8 +2,50 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Settings of the custom_domain application.
+# Settings of the custom_domain application. The paths and binaries are the
+# values of the matching settings of the service (NGINX_SITES_DIR, CERTBOT_BIN,
+# ...) and are rendered both into the environment of the worker and into the
+# sudoers rules of the privileged helper, so that the two always agree.
 
 # Celery queue of the three processes (CELERY_QUEUE); the worker consumes it
 # (--queues), the API and beat publish to it.
 website_custom_domain_celery_queue: custom-domain
+
+# Default CNAME target handed to the customers (DEFAULT_CNAME_TARGET of the
+# API). Empty means every authorized client must carry its own.
+website_custom_domain_cname_target: ""
+
+# Where the privileged helper is installed (PRIVILEGED_HELPER). Owned by root
+# and not writable by anyone else.
+website_custom_domain_helper: /usr/local/sbin/custom-domain-privileged
+
+# Directory the worker stages the rendered virtual hosts in, read back by the
+# helper (PRIVILEGED_STAGING_DIR). Owned by the account of the application.
+website_custom_domain_staging_dir: /var/lib/custom-domain/staging
+
+# nginx directory receiving the virtual hosts of the customers (NGINX_SITES_DIR).
+website_custom_domain_sites_dir: /etc/nginx/sites-enabled
+
+# Prefix of the file names written in that directory (NGINX_CONFIG_PREFIX).
+website_custom_domain_config_prefix: custom-domain-
+
+# nginx, systemctl, certbot and openssl binaries and the unit reloaded after a
+# change (NGINX_BIN, SYSTEMCTL_BIN, CERTBOT_BIN, OPENSSL_BIN, NGINX_SERVICE).
+# They must be owned by root and not writable by others.
+website_custom_domain_nginx_bin: /usr/sbin/nginx
+website_custom_domain_systemctl_bin: /usr/bin/systemctl
+website_custom_domain_certbot_bin: /usr/bin/certbot
+website_custom_domain_openssl_bin: /usr/bin/openssl
+website_custom_domain_nginx_service: nginx
+
+# Webroot of the HTTP-01 challenge (CERTBOT_WEBROOT). nginx must serve it on
+# /.well-known/acme-challenge/ for the customer domains; it is created when
+# missing.
+website_custom_domain_webroot: /var/www/certbot
+
+# Directory of the certificates (LETSENCRYPT_DIR).
+website_custom_domain_letsencrypt_dir: "{{ website_letsencrypt_dir }}"
+
+# Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email
+# when empty. One of the two is required by the worker.
+website_custom_domain_certbot_email: ""

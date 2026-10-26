@@ -363,21 +363,10 @@ website_apps_catalog:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
       CELERY_QUEUE: "{{ website_custom_domain_celery_queue }}"
+      DEFAULT_CNAME_TARGET: "{{ website_custom_domain_cname_target }}"
       TOKEN_VALIDATION_MODE: "introspection"
       TOKEN_INTROSPECTION_CACHE_TTL: "60"
       OAUTH2_CLIENT_CACHE_TTL: "300"
-      NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
-      NGINX_CONFIG_PREFIX: "custom-domain-"
-      NGINX_IPV4: "{{ website_listen_ipv4 }}"
-      NGINX_IPV6: "{{ website_listen_ipv6 }}"
-      CERTBOT_ENABLED: "true"
-      CERTBOT_EMAIL: "{{ website_certbot_email }}"
-      CERTBOT_WEBROOT: "/var/www/certbot"
-      DNS_CHECK_INTERVAL_MINUTES: "5"
-      CERTIFICATE_RENEWAL_DAYS: "30"
-      DOMAIN_ACTIVATION_TIMEOUT_HOURS: "48"
-      DOMAIN_HEALTH_CHECK_INTERVAL_HOURS: "24"
-      SOFT_DELETE_PURGE_DAYS: "30"
     secret_names: ["OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
@@ -399,33 +388,48 @@ website_apps_catalog:
       DOMAIN_HEALTH_CHECK_INTERVAL_HOURS: "24"
       SOFT_DELETE_PURGE_DAYS: "30"
 
+  # The worker is the only process that reaches the privileged helper: it needs
+  # sudo (no NoNewPrivileges) and write access to the paths the helper touches.
+  # The paths marked with - may not exist before the first certificate.
   custom_domain_worker:
     app: custom_domain
     type: celery_worker
-    sudoers:
-      - "/usr/sbin/nginx -t"
-      - "/usr/bin/systemctl reload nginx"
-      - "/usr/bin/certbot certonly *"
-      - "/usr/bin/cp /tmp/* /etc/nginx/sites-enabled/*"
-      - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
-      - "/usr/bin/mkdir -p /var/www/certbot"
+    custom_domain_helper:
+      enabled: true
     celery:
       queues: ["{{ website_custom_domain_celery_queue }}"]
     postgres:
       database: custom_domain
       async_db: true
+    hardening:
+      read_write_paths:
+        - "{{ website_custom_domain_staging_dir }}"
+        - "{{ website_custom_domain_sites_dir }}"
+        - "{{ website_custom_domain_webroot }}"
+        - "-{{ website_custom_domain_letsencrypt_dir }}"
+        - "-/var/lib/letsencrypt"
+        - "-/var/log/letsencrypt"
+        - "-/var/log/nginx"
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
       CELERY_QUEUE: "{{ website_custom_domain_celery_queue }}"
       REDIS_URL: "{{ website_redis_url }}?db=13"
-      NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
-      NGINX_CONFIG_PREFIX: "custom-domain-"
+      NGINX_SITES_DIR: "{{ website_custom_domain_sites_dir }}"
+      NGINX_CONFIG_PREFIX: "{{ website_custom_domain_config_prefix }}"
       NGINX_IPV4: "{{ website_listen_ipv4 }}"
       NGINX_IPV6: "{{ website_listen_ipv6 }}"
+      NGINX_BIN: "{{ website_custom_domain_nginx_bin }}"
+      NGINX_SERVICE: "{{ website_custom_domain_nginx_service }}"
+      SYSTEMCTL_BIN: "{{ website_custom_domain_systemctl_bin }}"
       CERTBOT_ENABLED: "true"
-      CERTBOT_EMAIL: "{{ website_certbot_email }}"
-      CERTBOT_WEBROOT: "/var/www/certbot"
+      CERTBOT_BIN: "{{ website_custom_domain_certbot_bin }}"
+      CERTBOT_EMAIL: "{{ python_app__custom_domain_email }}"
+      CERTBOT_WEBROOT: "{{ website_custom_domain_webroot }}"
+      OPENSSL_BIN: "{{ website_custom_domain_openssl_bin }}"
+      LETSENCRYPT_DIR: "{{ website_custom_domain_letsencrypt_dir }}"
+      PRIVILEGED_HELPER: "{{ website_custom_domain_helper }}"
+      PRIVILEGED_STAGING_DIR: "{{ website_custom_domain_staging_dir }}"
       DNS_CHECK_INTERVAL_MINUTES: "5"
       CERTIFICATE_RENEWAL_DAYS: "30"
       DOMAIN_ACTIVATION_TIMEOUT_HOURS: "48"

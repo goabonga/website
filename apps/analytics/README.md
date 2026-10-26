@@ -15,6 +15,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/.well-known/security.txt` | public | Return security.txt content (RFC 9116) |
 | POST | `/collect` | public | Collect analytics events |
 | GET | `/collect` | public | Lightweight GET endpoint for beacon/pixel tracking |
+| GET | `/p/{pixel_key}.gif` | public | Track email open via tracking pixel |
+| GET | `/p/{pixel_key}` | public | Track pixel without .gif extension (fallback) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -35,6 +37,7 @@ directory; see `.env.example`.
 - PostgreSQL storage for sessions and events (SQLAlchemy models, Alembic revision `001`).
 - User agent parsing and optional MaxMind GeoIP lookups.
 - Event collection: `POST /collect` and the `GET /collect` beacon with session cookies.
+- Campaigns and email tracking pixels (`/p/{key}.gif`, Alembic revision `002`).
 
 Each feature has a page in `docs/apps/analytics/`.
 

@@ -196,3 +196,86 @@ class TestScheduleFromATemplate:
             },
         )
         assert response.status_code == 404
+
+
+class TestScheduleIsIdempotent:
+    _PAYLOAD = {
+        "to_email": "recipient@example.com",
+        "subject": "Scheduled",
+        "html_content": "<p>Hello</p>",
+        "scheduled_at": "2026-06-01T10:00:00Z",
+    }
+
+    async def test_the_first_request_stores_the_key(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute = AsyncMock(return_value=result)
+        response = await auth_client.post(
+            "/api/v1/schedule", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+        )
+        assert response.status_code == 200
+        assert mock_db_session.add.call_args[0][0].idempotency_key == "key-1"
+
+    async def test_a_repeated_request_returns_the_first_email(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        from datetime import UTC, datetime
+
+        existing = MagicMock()
+        existing.id = "6f1b53a8-1c83-4d44-9d7e-7f7b8a1d2c33"
+        existing.to_email = "recipient@example.com"
+        existing.scheduled_at = datetime.now(UTC)
+        existing.task_id = None
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = existing
+        mock_db_session.execute = AsyncMock(return_value=result)
+
+        response = await auth_client.post(
+            "/api/v1/schedule", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "scheduled"
+        assert response.json()["id"] == existing.id
+        mock_db_session.add.assert_not_called()
+
+    async def test_a_concurrent_request_with_the_same_key(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        from sqlalchemy.exc import IntegrityError
+
+        first = MagicMock()
+        first.scalar_one_or_none.return_value = None
+        existing = MagicMock()
+        existing.id = "6f1b53a8-1c83-4d44-9d7e-7f7b8a1d2c33"
+        existing.to_email = "recipient@example.com"
+        existing.scheduled_at = None
+        existing.task_id = None
+        winner = MagicMock()
+        winner.scalar_one_or_none.return_value = existing
+        mock_db_session.execute = AsyncMock(side_effect=[first, winner])
+        mock_db_session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+
+        response = await auth_client.post(
+            "/api/v1/schedule", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["id"] == existing.id
+
+    async def test_an_unrelated_integrity_error_is_not_hidden(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        import pytest
+        from sqlalchemy.exc import IntegrityError
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute = AsyncMock(return_value=result)
+        mock_db_session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+        with pytest.raises(IntegrityError):
+            await auth_client.post(
+                "/api/v1/schedule", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+            )

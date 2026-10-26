@@ -1,0 +1,8 @@
+{{ ansible_managed | comment }}
+server = {{ step_ca_client_acme_url }}
+agree-tos = true
+{% if step_ca_client_certbot_email %}
+email = {{ step_ca_client_certbot_email }}
+{% else %}
+register-unsafely-without-email = true
+{% endif %}

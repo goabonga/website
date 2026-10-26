@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the step_ca_client configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: step_ca_client_enabled | bool
+  tags: [step_ca_client]
+
+- name: Trust the step-ca root certificate
+  ansible.builtin.import_tasks: trust.yml
+  when: step_ca_client_enabled | bool
+  tags: [step_ca_client]
+
+- name: Configure certbot for step-ca
+  ansible.builtin.import_tasks: certbot.yml
+  when:
+    - step_ca_client_enabled | bool
+    - step_ca_client_install_certbot | bool
+  tags: [step_ca_client]

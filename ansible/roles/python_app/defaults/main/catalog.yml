@@ -563,19 +563,10 @@ website_apps_catalog:
       APP_BASE_URL: "https://{{ website_hostnames.knowledge }}"
       COOKIE_SECURE: "true"
       COOKIE_DOMAIN: "{{ website_hostnames.knowledge }}"
-      EMAIL_BACKEND: "mailler"
-      SMTP_HOST: "{{ website_smtp_host }}"
-      SMTP_PORT: "{{ website_smtp_port }}"
-      SMTP_TLS: "true"
-      MAILLER_URL: "http://localhost"
-      MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
-      MAILLER_PROVIDER: "{{ website_mailler_provider }}"
-      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
       BILLING_SOCKET_PATH: "/run/billing/billing.sock"
       TENANT_BASE_DOMAIN: "{{ website_hostnames.knowledge }}"
       TENANT_CUSTOM_DOMAIN_LOOKUP: "true"
     secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET", "BILLING_WEBHOOK_SECRET"]
-    optional_secret_names: ["SMTP_PASSWORD"]
     oauth2:
       enabled: true
 
@@ -593,13 +584,6 @@ website_apps_catalog:
     app: knowledge
     type: celery_worker
     extra_groups: ["billing", "mailler"]
-    sudoers:
-      - "/usr/sbin/nginx -t"
-      - "/usr/bin/systemctl reload nginx"
-      - "/usr/bin/certbot certonly *"
-      - "/usr/bin/cp /tmp/* /etc/nginx/sites-enabled/*"
-      - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
-      - "/usr/bin/mkdir -p /var/www/certbot"
     celery:
       queues: ["knowledge"]
     postgres:
@@ -608,24 +592,8 @@ website_apps_catalog:
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
-      EMAIL_BACKEND: "mailler"
-      SMTP_HOST: "{{ website_smtp_host }}"
-      SMTP_PORT: "{{ website_smtp_port }}"
-      SMTP_TLS: "true"
-      MAILLER_URL: "http://localhost"
       MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
-      MAILLER_PROVIDER: "{{ website_mailler_provider }}"
-      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
-      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
-      CUSTOM_DOMAIN_NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
-      CUSTOM_DOMAIN_NGINX_IPV4: "{{ website_listen_ipv4 }}"
-      CUSTOM_DOMAIN_NGINX_IPV6: "{{ website_listen_ipv6 }}"
-      CUSTOM_DOMAIN_UPSTREAM_SOCKET: "/run/knowledge/knowledge.sock"
-      CUSTOM_DOMAIN_CERTBOT_ENABLED: "true"
-      CUSTOM_DOMAIN_CERTBOT_EMAIL: "{{ website_certbot_email }}"
-      CUSTOM_DOMAIN_DNS_CHECK_INTERVAL_MINUTES: "5"
     secret_names: ["MAILLER_CLIENT_SECRET", "OPENAI_API_KEY"]
-    optional_secret_names: ["SMTP_PASSWORD"]
 
   mailler:
     healthcheck:

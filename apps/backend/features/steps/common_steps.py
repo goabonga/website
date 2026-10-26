@@ -31,3 +31,22 @@ def step_check_json_exact_keys(context, keys):
     expected_keys = {k.strip() for k in keys.split(",")}
     actual_keys = set(context.response.json().keys())
     assert actual_keys == expected_keys, f"Expected keys {expected_keys}, got {actual_keys}"
+
+
+@then('the response content type should be "{content_type}"')
+def step_check_content_type(context, content_type):
+    actual = context.response.headers.get("content-type", "")
+    assert content_type in actual, f"Expected content type '{content_type}', got '{actual}'"
+
+
+@then('the response body should contain "{text}"')
+def step_check_body_contains(context, text):
+    assert text in context.response.text, (
+        f"Expected body to contain '{text}', got: {context.response.text[:500]}"
+    )
+
+
+@then("the response body should be empty")
+def step_check_body_empty(context):
+    body = context.response.text.strip()
+    assert body == "", f"Expected empty body, got: {body[:200]}"

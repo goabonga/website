@@ -1,0 +1,3 @@
+# Minimal dependencies for the OpenVPN hook script (scripts/openvpn.py)
+# Only httpx is needed for OAuth2 token requests and API calls
+httpx>=0.26.0

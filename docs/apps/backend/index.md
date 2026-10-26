@@ -13,6 +13,7 @@ feature: what it does, how it is configured, how it is tested.
 1. [Application foundation](01-foundation.md): settings, logging, database
    base, FastAPI application and the `/health` probe.
 2. [security.txt endpoint](02-security-txt.md): RFC 9116 disclosure file built from settings.
+3. [OAuth2 token authentication](03-oauth2-authentication.md): JWT and opaque token validation, scopes.
 
 ## Running the tests
 

@@ -115,14 +115,18 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
+      libs: ${{ steps.list.outputs.libs }}
     steps:
       - uses: actions/checkout@v6
-      - name: List the applications
+      - name: List the applications and the libraries
         id: list
         run: |
           matrix=$(find apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -sc '{app: .}')
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
           echo "${matrix}"
+          libs=$(find libs -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort | jq -R . | jq -sc '{lib: .}')
+          echo "libs=${libs}" >> "$GITHUB_OUTPUT"
+          echo "${libs}"
 
   test:
     name: test (${{ matrix.app }})
@@ -197,6 +201,30 @@ jobs:
           fail_ci_if_error: false
           disable_search: true
 
+  libs:
+    name: libs (${{ matrix.lib }})
+    needs: [apps]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.apps.outputs.libs) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}-${{ matrix.lib }}
+          python-version: "3.11"
+      - run: uv sync --frozen --package "${{ matrix.lib }}" --group dev
+      # The browser tests of the libraries launch Chromium.
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - run: uv run --no-sync playwright install --with-deps chromium
+      - run: uv run --no-sync pytest "libs/${{ matrix.lib }}"
+
   bandit:
     name: bandit
     runs-on: ubuntu-24.04
@@ -253,7 +281,7 @@ jobs:
 
   release:
     name: release
-    needs: [lint, license-headers, multicz, docs, ansible, test, bandit, pip-audit, osv-scanner]
+    needs: [lint, license-headers, multicz, docs, ansible, test, libs, bandit, pip-audit, osv-scanner]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:

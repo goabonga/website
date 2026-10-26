@@ -6,6 +6,7 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+import numpy as np
 import pytest
 
 
@@ -54,3 +55,19 @@ def audiosocket_session(mock_stream_reader, mock_stream_writer):
 def silence_320():
     """320 bytes of silence (zero-valued PCM), one 20 ms AudioSocket frame."""
     return b"\x00" * 320
+
+
+@pytest.fixture
+def tone_8k_samples():
+    """Generate a 440Hz tone at 8kHz, 20ms (160 samples = 320 bytes)."""
+    t = np.arange(160) / 8000
+    samples = (np.sin(2 * np.pi * 440 * t) * 16000).astype("<i2")
+    return samples.tobytes()
+
+
+@pytest.fixture
+def tone_24k_samples():
+    """Generate a 440Hz tone at 24kHz, 20ms (480 samples = 960 bytes)."""
+    t = np.arange(480) / 24000
+    samples = (np.sin(2 * np.pi * 440 * t) * 16000).astype("<i2")
+    return samples.tobytes()

@@ -65,6 +65,7 @@ linear chain:
 | `006_mcp_releases` | `mcp_releases` and `mcp_release_assets`. |
 | `007_workspace_deletion_scheduled` | `scheduled` deletion status, scheduling and reminder columns. |
 | `008_add_custom_domain_fields` | Custom domain columns and status enum on `tenants`. |
+| `009_custom_domain_service` | `custom_domain_service_id` and `custom_domain_cname_target` on `tenants`. |
 
 Revisions `003` to `007` check whether each object already
 exists before creating it, so they can be replayed on a database that was

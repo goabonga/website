@@ -19,6 +19,7 @@ from auth.core.security import AESEncryption
 from auth.db.models.rbac import Role
 from auth.db.models.user import User
 from auth.services.jwks import JWKSService
+from auth.services.trust import TrustPolicyService
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,20 @@ def get_encryption() -> AESEncryption:
 def get_jwks_service() -> JWKSService:
     """Get JWKS service instance."""
     return JWKSService(get_encryption())
+
+
+def get_trust_service() -> TrustPolicyService:
+    """Get trust policy service instance."""
+    return TrustPolicyService()
+
+
+@lru_cache
+def get_branding_service():
+    """Get branding service instance (cached)."""
+    from auth.services.branding import BrandingService
+
+    templates_dir = Path(__file__).parent.parent / "templates"
+    return BrandingService(templates_dir, async_session_factory)
 
 
 @lru_cache

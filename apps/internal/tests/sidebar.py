@@ -73,6 +73,7 @@ SECTIONS: dict[str, Section] = {
     "analytics": Section("/analytics", "analytics:*"),
     "mailler": Section("/mailler", "mailler:*"),
     "contacts": Section("/contacts", "contacts:*"),
+    "contact_groups": Section("/contact-groups", "contacts:*"),
     "vpn": Section("/vpn/sessions", "vpn:admin", "vpn:admin"),
     "billing": Section("/billing", "billing:*", "billing:read"),
     "team": Section("/team", "team:*"),
@@ -88,6 +89,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.team.team_client",
     "internal.routes.mailler.mailler_client",
     "internal.routes.contacts.mailler_client",
+    "internal.routes.contact_groups.mailler_client",
 )
 
 
@@ -617,6 +619,39 @@ async def configure_contacts(env: "Env") -> dict:
     return {}
 
 
+async def configure_contact_groups(env: "Env") -> dict:
+    """Make the mailler service return one group with one member."""
+    group = {
+        "id": 1,
+        "name": "Newsletter",
+        "slug": "newsletter",
+        "description": "Newsletter subscribers",
+        "member_count": 1,
+        "is_dynamic": False,
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+    }
+    contact = {
+        "id": 1,
+        "email": "test@example.com",
+        "first_name": "Test",
+        "last_name": "User",
+        "full_name": "Test User",
+        "status": "active",
+        "source": "manual",
+        "groups": [],
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+    }
+    mailler = env.client("contact_groups.mailler_client")
+    mailler.get_contact_groups.return_value = _page([group])
+    mailler.get_contact_group.return_value = group
+    mailler.get_group_contacts.return_value = _page([contact], 50)
+    mailler.get_contacts.return_value = _page([contact], 50)
+    mailler.get_contacts_not_in_group.return_value = _page([contact], 50)
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -678,6 +713,13 @@ PAGES: dict[str, list[Page]] = {
         Page("/contacts/import", "contacts", configure_contacts),
         Page("/contacts/42", "contacts", configure_contacts),
         Page("/contacts/42/edit", "contacts", configure_contacts),
+    ],
+    "contact_groups": [
+        Page("/contact-groups", "contact_groups", configure_contact_groups),
+        Page("/contact-groups/new", "contact_groups", configure_contact_groups),
+        Page("/contact-groups/1", "contact_groups", configure_contact_groups),
+        Page("/contact-groups/1/edit", "contact_groups", configure_contact_groups),
+        Page("/contact-groups/1/add-contacts", "contact_groups", configure_contact_groups),
     ],
 }
 

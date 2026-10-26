@@ -32,3 +32,5 @@ one feature as it exists in the code.
    client credentials and token exchange.
 10. [Introspection, revocation and userinfo](10-oidc-introspection.md) -
     token status, revocation and the profile of the user.
+11. [Worked example](11-oidc-example.md) - a toy application logging in
+    through the fake provider, in pytest and behave.

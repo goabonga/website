@@ -71,3 +71,16 @@ def tone_24k_samples():
     t = np.arange(480) / 24000
     samples = (np.sin(2 * np.pi * 440 * t) * 16000).astype("<i2")
     return samples.tobytes()
+
+
+# --- WebSocket mock (fake OpenAI side) ---
+
+
+@pytest.fixture
+def mock_websocket():
+    """Return an AsyncMock that behaves like a websockets ClientConnection."""
+    ws = AsyncMock()
+    ws.send = AsyncMock()
+    ws.close = AsyncMock()
+    ws.recv = AsyncMock()
+    return ws

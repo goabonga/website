@@ -28,3 +28,4 @@ feature adds, its settings and how it is tested.
 | [Administration statistics](11-admin-stats.md) | Overview, top clients, recent activity and dashboard |
 | [Command line interface](12-cli.md) | Seed, client and template commands |
 | [Python client SDK](13-python-sdk.md) | Typed sync and async client for the API |
+| [TCP upstream targets](14-upstream-targets.md) | Host and port upstreams next to Unix sockets, strict validation |

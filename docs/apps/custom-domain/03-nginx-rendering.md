@@ -15,7 +15,8 @@ A domain goes through two configurations:
    and redirects everything else to HTTPS. It is written first so that the
    ACME challenge can succeed.
 2. **HTTPS** (`templates/nginx_https.conf.j2`): defines an `upstream`
-   pointing at the domain's Unix socket (`server unix:<upstream_target>;`),
+   pointing at the domain's upstream (`server {{ upstream_server }};`: a Unix
+   socket or a TCP address, see the TCP upstream targets page),
    keeps the port 80 block, and adds a `443 ssl http2` server with the
    Let's Encrypt certificate, modern TLS settings, HSTS and security headers,
    WebSocket-aware proxying and a `/health` location.
@@ -26,7 +27,8 @@ feature) replace either file. Every template receives the same context:
 | Variable | Value |
 | --- | --- |
 | `domain` | The domain name. |
-| `upstream_target` | The domain's upstream socket or URL. |
+| `upstream_target` | The domain's upstream as stored. |
+| `upstream_server`, `upstream_type` | The `server` directive value for that upstream and its kind (`unix` or `tcp`). |
 | `certbot_webroot` | `CERTBOT_WEBROOT`. |
 | `ssl_certificate`, `ssl_certificate_key` | `<LETSENCRYPT_DIR>/live/<domain>/fullchain.pem` and `privkey.pem`. |
 | `nginx_ipv4`, `nginx_ipv6` | `NGINX_IPV4` and `NGINX_IPV6` (may be `None`). The default templates do not use them. |

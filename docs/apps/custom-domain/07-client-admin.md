@@ -30,7 +30,7 @@ OAuth2 `client_id`.
 | --- | --- | --- |
 | `client_id` | yes | OAuth2 client identifier, unique. Not editable afterwards. |
 | `name` | yes | Display name. |
-| `default_upstream_target` | yes | Upstream socket or URL used when a domain does not give one. |
+| `default_upstream_target` | yes | Upstream (socket path or `host:port`) used when a domain does not give one. |
 | `default_cname_target` | yes | CNAME target used when a domain does not give one. |
 | `description` | no | Free text. |
 | `default_nginx_template_id` | no | Template used for the client's domains that have none of their own; the SSL provisioning task honours it (domain template, then this one, then the global default). |

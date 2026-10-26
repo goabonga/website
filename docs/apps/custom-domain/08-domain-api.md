@@ -53,7 +53,7 @@ and skip this check.
 Body: `domain` (required), `owner_id` (required, the tenant that owns the
 domain), `owner_type` (default `organization`), and the optional
 `upstream_target`, `cname_target`, `nginx_template_id` and `metadata`. The
-upstream defaults to the caller's client `default_upstream_target`; the CNAME to
+upstream (a socket path or `host:port`, validated, see the TCP upstream targets page) defaults to the caller's client `default_upstream_target`; the CNAME to
 its `default_cname_target`, then to the `DEFAULT_CNAME_TARGET` setting. Nothing
 is built in: when no value can be found the answer is `400 No upstream target`
 or `400 No CNAME target`.

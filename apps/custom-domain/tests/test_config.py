@@ -113,3 +113,5 @@ class TestSettings:
         assert hasattr(settings, "celery_broker_url")
         assert hasattr(settings, "dns_check_interval_minutes")
         assert settings.sse_heartbeat_interval == 30
+        assert settings.certificate_renewal_days == 30
+        assert settings.soft_delete_purge_days == 30

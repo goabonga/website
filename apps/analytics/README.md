@@ -7,7 +7,7 @@ repository root.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
@@ -18,8 +18,22 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/p/{pixel_key}.gif` | public | Track email open via tracking pixel |
 | GET | `/p/{pixel_key}` | public | Track pixel without .gif extension (fallback) |
 | GET | `/t/{tracking_key}` | public | Track campaign link click and redirect |
+| GET | `/api/v1/stats/overview` | scope `analytics:read` | Get overview statistics for the analytics dashboard |
+| GET | `/api/v1/stats/daily` | scope `analytics:read` | Get daily statistics for the analytics dashboard |
+| GET | `/api/v1/stats/countries` | scope `analytics:read` | Get statistics by country |
+| GET | `/api/v1/stats/devices` | scope `analytics:read` | Get statistics by device type |
+| GET | `/api/v1/stats/browsers` | scope `analytics:read` | Get statistics by browser |
+| GET | `/api/v1/stats/referrers` | scope `analytics:read` | Get statistics by referrer |
+| GET | `/api/v1/stats/pages` | scope `analytics:read` | Get statistics by page |
+| GET | `/api/v1/stats/events` | scope `analytics:read` | Get statistics by event type |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+### Scopes
+
+The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
+
+- `analytics:read` - checked by 8 routes
 
 ## Run
 
@@ -41,6 +55,7 @@ directory; see `.env.example`.
 - Campaigns and email tracking pixels (`/p/{key}.gif`, Alembic revision `002`).
 - Campaign link redirects with click tracking (`/t/{key}`).
 - OAuth2/OIDC bearer authentication with scope checks (token introspection, token exchange).
+- Secured traffic statistics under `/api/v1/stats`.
 
 Each feature has a page in `docs/apps/analytics/`.
 

@@ -11,6 +11,7 @@ from ..sidebar import (
     prepare_page,
     running_app,
     scope_sets,
+    sidebar_hrefs,
 )
 
 
@@ -23,3 +24,18 @@ async def test_sidebar_on_page(tmp_path, page):
             response = await env.get(path, scopes)
             assert response.status_code == 200, f"{path} as {scopes}: {response.status_code}"
             assert_sidebar(response.text, scopes, page.section)
+
+
+@pytest.mark.parametrize(
+    "path", ["/mailler/clients", "/mailler/clients/new", "/mailler/clients/client-001/edit"]
+)
+async def test_clients_pages_add_no_sidebar_link(tmp_path, path):
+    """The clients pages belong to the Mailler section: they add no link of their own."""
+    page = next(page for page in PAGES["mailler"] if page.path == path)
+    async with running_app(tmp_path) as env:
+        await prepare_page(env, page)
+        response = await env.get(path, ["mailler:*"])
+        assert response.status_code == 200
+        hrefs = sidebar_hrefs(response.text)
+        assert "/mailler" in hrefs
+        assert not [href for href in hrefs if href.startswith("/mailler/")]

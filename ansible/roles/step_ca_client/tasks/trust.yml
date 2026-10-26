@@ -1,0 +1,46 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the certificate directory
+  ansible.builtin.file:
+    path: "{{ step_ca_client_root_cert_dest | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Store the root certificate
+  ansible.builtin.copy:
+    src: "{{ step_ca_client_root_cert }}"
+    dest: "{{ step_ca_client_root_cert_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add the root certificate to the trust store (Debian family)
+  ansible.builtin.copy:
+    src: "{{ step_ca_client_root_cert }}"
+    dest: "{{ step_ca_client_trust_path_debian }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: step_ca_client | update ca certificates
+  when:
+    - step_ca_client_trust_system | bool
+    - ansible_facts['os_family'] == 'Debian'
+
+- name: Add the root certificate to the trust store (Arch Linux)
+  ansible.builtin.copy:
+    src: "{{ step_ca_client_root_cert }}"
+    dest: "{{ step_ca_client_trust_path_archlinux }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: step_ca_client | update ca trust
+  when:
+    - step_ca_client_trust_system | bool
+    - ansible_facts['os_family'] == 'Archlinux'
+
+- name: Apply the trust store update
+  ansible.builtin.meta: flush_handlers

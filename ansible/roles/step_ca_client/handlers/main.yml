@@ -1,0 +1,15 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Update the system CA certificates
+  ansible.builtin.command:
+    cmd: update-ca-certificates
+  changed_when: true
+  listen: step_ca_client | update ca certificates
+
+- name: Update the system CA trust
+  ansible.builtin.command:
+    cmd: update-ca-trust
+  changed_when: true
+  listen: step_ca_client | update ca trust

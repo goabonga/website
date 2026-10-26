@@ -1,0 +1,6 @@
+#!/bin/sh
+{{ ansible_managed | comment }}
+# Reload the services that use the renewed certificates.
+{% for service in step_ca_client_deploy_hook_services %}
+systemctl reload {{ service | quote }} 2>/dev/null || true
+{% endfor %}

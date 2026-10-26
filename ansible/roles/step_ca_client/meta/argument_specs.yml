@@ -1,0 +1,74 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Trust a step-ca root certificate and point certbot at its ACME server
+    description:
+    - Copies the root certificate of a step-ca authority from the controller, adds it to the system trust
+      store and configures certbot to request certificates from the authority's ACME directory.
+    options:
+      step_ca_client_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      step_ca_client_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages (Debian family).
+        default: true
+      step_ca_client_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      step_ca_client_root_cert:
+        type: path
+        description: Root certificate on the controller. The step_ca role fetches it there by default.
+      step_ca_client_root_cert_dest:
+        type: path
+        description: Where the root certificate is stored on the host.
+        default: /etc/step-ca/certs/root_ca.crt
+      step_ca_client_trust_system:
+        type: bool
+        description: Add the root certificate to the system trust store.
+        default: true
+      step_ca_client_trust_path_debian:
+        type: path
+        description: Trust anchor path on Debian-family hosts (update-ca-certificates).
+        default: /usr/local/share/ca-certificates/step-ca-root.crt
+      step_ca_client_trust_path_archlinux:
+        type: path
+        description: Trust anchor path on Arch Linux (update-ca-trust).
+        default: /etc/ca-certificates/trust-source/anchors/step-ca-root.crt
+      step_ca_client_install_certbot:
+        type: bool
+        description: Install certbot and configure it for the authority.
+        default: true
+      step_ca_client_certbot_package:
+        type: str
+        description: Package providing certbot.
+        default: certbot
+      step_ca_client_acme_url:
+        type: str
+        description: ACME directory URL of the authority.
+        default: https://step-ca.internal/acme/acme/directory
+      step_ca_client_certbot_email:
+        type: str
+        description: Contact e-mail written to cli.ini. Empty registers without an e-mail address.
+        default: ''
+      step_ca_client_certbot_config_dir:
+        type: path
+        description: certbot configuration directory.
+        default: /etc/letsencrypt
+      step_ca_client_deploy_hook_enabled:
+        type: bool
+        description: Install a deploy hook reloading services after a renewal. When false the hook is
+          removed.
+        default: true
+      step_ca_client_deploy_hook_name:
+        type: str
+        description: File name of the deploy hook in renewal-hooks/deploy.
+        default: reload-services.sh
+      step_ca_client_deploy_hook_services:
+        type: list
+        description: Services reloaded by the deploy hook. A service that is not running is ignored.
+        elements: str

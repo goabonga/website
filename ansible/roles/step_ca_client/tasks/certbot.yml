@@ -1,0 +1,52 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install certbot (Debian family)
+  ansible.builtin.apt:
+    name: "{{ step_ca_client_certbot_package }}"
+    state: present
+    update_cache: "{{ step_ca_client_apt_update_cache }}"
+    cache_valid_time: "{{ step_ca_client_apt_cache_valid_time }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install certbot (Arch Linux)
+  community.general.pacman:
+    name: "{{ step_ca_client_certbot_package }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Create the certbot directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ step_ca_client_certbot_config_dir }}"
+    - "{{ step_ca_client_certbot_config_dir }}/renewal-hooks"
+    - "{{ step_ca_client_certbot_config_dir }}/renewal-hooks/deploy"
+
+- name: Point certbot at the step-ca ACME directory
+  ansible.builtin.template:
+    src: cli.ini.j2
+    dest: "{{ step_ca_client_certbot_config_dir }}/cli.ini"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install the renewal deploy hook
+  ansible.builtin.template:
+    src: deploy-hook.sh.j2
+    dest: "{{ step_ca_client_certbot_config_dir }}/renewal-hooks/deploy/{{ step_ca_client_deploy_hook_name }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: step_ca_client_deploy_hook_enabled | bool
+
+- name: Remove the renewal deploy hook
+  ansible.builtin.file:
+    path: "{{ step_ca_client_certbot_config_dir }}/renewal-hooks/deploy/{{ step_ca_client_deploy_hook_name }}"
+    state: absent
+  when: not (step_ca_client_deploy_hook_enabled | bool)

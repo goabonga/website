@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is supported
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] in ['Debian', 'Archlinux']
+    fail_msg: The step_ca_client role supports Debian-family and Arch Linux hosts.
+    quiet: true
+
+- name: Look for the root certificate on the controller
+  ansible.builtin.stat:
+    path: "{{ step_ca_client_root_cert }}"
+  delegate_to: localhost
+  become: false
+  register: step_ca_client_root_stat
+
+- name: Assert the root certificate exists
+  ansible.builtin.assert:
+    that: step_ca_client_root_stat.stat.exists
+    fail_msg: >-
+      The step-ca root certificate was not found on the controller at {{ step_ca_client_root_cert }}.
+      Run the step_ca role first (it fetches the certificate) or set step_ca_client_root_cert.
+    quiet: true

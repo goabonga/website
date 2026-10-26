@@ -1,0 +1,68 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the step_ca_client role. Every knob is prefixed with `step_ca_client_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+step_ca_client_enabled: true
+
+# Refresh the apt cache before installing packages (Debian family).
+step_ca_client_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+step_ca_client_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Root certificate
+# ======================================================================
+# Root certificate on the controller. The step_ca role fetches it there by default.
+step_ca_client_root_cert: '{{ inventory_dir | dirname }}/exports/step-ca/root_ca.crt'
+
+# Where the root certificate is stored on the host.
+step_ca_client_root_cert_dest: /etc/step-ca/certs/root_ca.crt
+
+
+# ======================================================================
+# System trust store
+# ======================================================================
+# Add the root certificate to the system trust store.
+step_ca_client_trust_system: true
+
+# Trust anchor path on Debian-family hosts (update-ca-certificates).
+step_ca_client_trust_path_debian: /usr/local/share/ca-certificates/step-ca-root.crt
+
+# Trust anchor path on Arch Linux (update-ca-trust).
+step_ca_client_trust_path_archlinux: /etc/ca-certificates/trust-source/anchors/step-ca-root.crt
+
+
+# ======================================================================
+# Certbot
+# ======================================================================
+# Install certbot and configure it for the authority.
+step_ca_client_install_certbot: true
+
+# Package providing certbot.
+step_ca_client_certbot_package: certbot
+
+# ACME directory URL of the authority.
+step_ca_client_acme_url: https://step-ca.internal/acme/acme/directory
+
+# Contact e-mail written to cli.ini. Empty registers without an e-mail address.
+step_ca_client_certbot_email: ''
+
+# certbot configuration directory.
+step_ca_client_certbot_config_dir: /etc/letsencrypt
+
+# Install a deploy hook reloading services after a renewal. When false the hook is removed.
+step_ca_client_deploy_hook_enabled: true
+
+# File name of the deploy hook in renewal-hooks/deploy.
+step_ca_client_deploy_hook_name: reload-services.sh
+
+# Services reloaded by the deploy hook. A service that is not running is ignored.
+step_ca_client_deploy_hook_services:
+- nginx

@@ -534,7 +534,7 @@ website_apps_catalog:
     secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
 
   knowledge:
-    extra_groups: ["billing", "mailler"]
+    extra_groups: ["billing", "custom-domain"]
     healthcheck:
       enabled: true
     nginx:
@@ -551,6 +551,8 @@ website_apps_catalog:
       REDIS_URL: "{{ website_redis_url }}?db=9"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_knowledge_celery_queue }}"
+      CELERY_TIMEZONE: "{{ website_knowledge_celery_timezone }}"
       EMBEDDING_MODEL: "text-embedding-3-small"
       EMBEDDING_DIMENSION: "1536"
       DEFAULT_SIMILARITY_THRESHOLD: "0.7"
@@ -563,10 +565,26 @@ website_apps_catalog:
       APP_BASE_URL: "https://{{ website_hostnames.knowledge }}"
       COOKIE_SECURE: "true"
       COOKIE_DOMAIN: "{{ website_hostnames.knowledge }}"
-      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
       TENANT_BASE_DOMAIN: "{{ website_hostnames.knowledge }}"
       TENANT_CUSTOM_DOMAIN_LOOKUP: "true"
-    secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET", "BILLING_WEBHOOK_SECRET"]
+      OPERATOR_NAME: "{{ website_knowledge_operator_name }}"
+      CONTACT_EMAIL: "{{ website_knowledge_contact_email }}"
+      SALES_EMAIL: "{{ website_knowledge_sales_email }}"
+      LEGAL_EMAIL: "{{ website_knowledge_legal_email }}"
+      PRIVACY_EMAIL: "{{ website_knowledge_privacy_email }}"
+      SUPPORT_URL: "{{ website_knowledge_support_url }}"
+      QUOTA_FALLBACK_LIMITS: "{{ website_knowledge_quota_fallback_limits }}"
+      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      BILLING_CLIENT_ID: "{{ website_knowledge_billing_client_id }}"
+      BILLING_SAAS_ID: "{{ website_knowledge_billing_saas_id }}"
+      BILLING_APP_SLUG: "{{ website_knowledge_billing_app_slug }}"
+      BILLING_CHECKOUT_SUCCESS_URL: "{{ website_knowledge_billing_checkout_success_url }}"
+      BILLING_CHECKOUT_CANCEL_URL: "{{ website_knowledge_billing_checkout_cancel_url }}"
+      CUSTOM_DOMAIN_SERVICE_SOCKET_PATH: "/run/custom-domain/custom-domain.sock"
+      CUSTOM_DOMAIN_CLIENT_ID: "{{ website_knowledge_custom_domain_client_id }}"
+      CUSTOM_DOMAIN_CNAME_TARGET: "{{ website_knowledge_custom_domain_cname_target }}"
+    secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET", "BILLING_WEBHOOK_SECRET", "CUSTOM_DOMAIN_WEBHOOK_SECRET"]
+    optional_secret_names: ["BILLING_CLIENT_SECRET", "CUSTOM_DOMAIN_CLIENT_SECRET", "GITHUB_WEBHOOK_SECRET"]
     oauth2:
       enabled: true
 
@@ -579,21 +597,35 @@ website_apps_catalog:
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_knowledge_celery_queue }}"
+      CELERY_TIMEZONE: "{{ website_knowledge_celery_timezone }}"
 
+  # The worker sends the emails through mailler and keeps the custom domains in
+  # step with the custom-domain service: it needs their sockets and the OAuth
+  # client of the application, and nothing else (no sudo, nginx or certbot).
   knowledge_worker:
     app: knowledge
     type: celery_worker
-    extra_groups: ["billing", "mailler"]
+    extra_groups: ["mailler", "custom-domain"]
     celery:
-      queues: ["knowledge"]
+      queues: ["{{ website_knowledge_celery_queue }}"]
     postgres:
       database: knowledge
       async_db: true
     env_vars:
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_knowledge_celery_queue }}"
+      CELERY_TIMEZONE: "{{ website_knowledge_celery_timezone }}"
+      APP_BASE_URL: "https://{{ website_hostnames.knowledge }}"
       MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
-    secret_names: ["MAILLER_CLIENT_SECRET", "OPENAI_API_KEY"]
+      MAILLER_CLIENT_ID: "{{ website_knowledge_mailler_client_id }}"
+      CUSTOM_DOMAIN_SERVICE_SOCKET_PATH: "/run/custom-domain/custom-domain.sock"
+      CUSTOM_DOMAIN_CLIENT_ID: "{{ website_knowledge_custom_domain_client_id }}"
+    secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET"]
+    optional_secret_names: ["MAILLER_CLIENT_SECRET", "CUSTOM_DOMAIN_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
 
   mailler:
     healthcheck:

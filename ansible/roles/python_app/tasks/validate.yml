@@ -93,6 +93,23 @@
     quiet: true
   when: "'internal' in python_app__apps"
 
+- name: Check the billing settings of knowledge
+  ansible.builtin.assert:
+    that:
+      - website_knowledge_quota_fallback_limits is mapping
+      - >-
+        website_knowledge_billing_saas_id | string | length == 0 or
+        (website_knowledge_billing_app_slug | string | length > 0
+         and website_knowledge_billing_checkout_success_url | string | length > 0
+         and website_knowledge_billing_checkout_cancel_url | string | length > 0)
+    fail_msg: >-
+      knowledge: website_knowledge_billing_saas_id needs website_knowledge_billing_app_slug and the
+      two checkout URLs (website_knowledge_billing_checkout_success_url and
+      website_knowledge_billing_checkout_cancel_url), and website_knowledge_quota_fallback_limits
+      must be a dictionary of limits by plan slug.
+    quiet: true
+  when: "'knowledge' in python_app__apps"
+
 - name: Check the OAuth client of the OpenVPN hooks
   ansible.builtin.assert:
     that:

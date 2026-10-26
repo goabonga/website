@@ -1,0 +1,161 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the postgres role. Every knob is prefixed with `postgres_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+postgres_enabled: true
+
+# Refresh the apt cache before installing packages.
+postgres_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+postgres_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation
+# ======================================================================
+# Major PostgreSQL version to install (must exist in the distribution repositories).
+postgres_version: '17'
+
+# Packages installed for the server. python3-psycopg2 is required by the
+# community.postgresql modules.
+postgres_packages:
+- postgresql-{{ postgres_version }}
+- postgresql-client-{{ postgres_version }}
+- python3-psycopg2
+
+# Additional packages to install (for example contrib extensions).
+postgres_extra_packages: []
+
+# Install the pgvector extension package.
+postgres_pgvector_enabled: false
+
+# Package providing pgvector.
+postgres_pgvector_package: postgresql-{{ postgres_version }}-pgvector
+
+# Databases in which `CREATE EXTENSION vector` is executed when pgvector is enabled.
+postgres_pgvector_databases: []
+
+
+# ======================================================================
+# Paths and service
+# ======================================================================
+# systemd unit managing the cluster.
+postgres_service_name: postgresql
+
+# Directory holding postgresql.conf, pg_hba.conf and pg_ident.conf.
+postgres_config_dir: /etc/postgresql/{{ postgres_version }}/main
+
+# Cluster data directory.
+postgres_data_dir: /var/lib/postgresql/{{ postgres_version }}/main
+
+# State of the service after configuration.
+postgres_service_state: started
+
+# Enable the service at boot.
+postgres_service_enabled: true
+
+
+# ======================================================================
+# Connections
+# ======================================================================
+# TCP port. Set to 0 to disable TCP and listen on the Unix socket only.
+postgres_port: 5432
+
+# Value of listen_addresses when TCP is enabled.
+postgres_listen_addresses: localhost
+
+# Unix socket directory.
+postgres_socket_dir: /var/run/postgresql
+
+# Octal permissions of the Unix socket.
+postgres_socket_permissions: '0770'
+
+# Group owning the Unix socket. Empty keeps the server default.
+postgres_socket_group: ''
+
+# Maximum number of concurrent connections.
+postgres_max_connections: 100
+
+
+# ======================================================================
+# Authentication
+# ======================================================================
+# Method for local (Unix socket) connections of non-postgres users (peer, md5, scram-
+# sha-256, trust).
+postgres_local_auth: peer
+
+# Method for the loopback TCP entries (only rendered when the port is not 0).
+postgres_host_auth: scram-sha-256
+
+# Additional pg_hba.conf lines rendered after the defaults.
+postgres_hba_extra_rules: []
+
+# Entries of pg_ident.conf for peer or ident maps.
+postgres_ident_maps: []
+
+
+# ======================================================================
+# Tuning
+# ======================================================================
+# shared_buffers.
+postgres_shared_buffers: 128MB
+
+# work_mem.
+postgres_work_mem: 4MB
+
+# maintenance_work_mem.
+postgres_maintenance_work_mem: 64MB
+
+# effective_cache_size.
+postgres_effective_cache_size: 4GB
+
+# wal_level.
+postgres_wal_level: replica
+
+# max_wal_size.
+postgres_max_wal_size: 1GB
+
+# min_wal_size.
+postgres_min_wal_size: 80MB
+
+# Additional postgresql.conf settings as a name/value mapping, appended verbatim (strings
+# are quoted).
+postgres_extra_settings: {}
+
+
+# ======================================================================
+# Logging and locale
+# ======================================================================
+# log_rotation_age.
+postgres_log_rotation_age: 1d
+
+# log_rotation_size.
+postgres_log_rotation_size: 10MB
+
+# log_line_prefix.
+postgres_log_line_prefix: '%m [%p] %q%u@%d '
+
+# timezone and log_timezone.
+postgres_timezone: UTC
+
+# Value for lc_messages, lc_monetary, lc_numeric and lc_time.
+postgres_locale: en_US.UTF-8
+
+# default_text_search_config.
+postgres_text_search_config: pg_catalog.english
+
+
+# ======================================================================
+# Roles and databases
+# ======================================================================
+# PostgreSQL roles to create.
+postgres_users: []
+
+# Databases to create.
+postgres_databases: []

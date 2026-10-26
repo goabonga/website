@@ -1,0 +1,39 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy postgresql.conf
+  ansible.builtin.template:
+    src: postgresql.conf.j2
+    dest: "{{ postgres_config_dir }}/postgresql.conf"
+    owner: postgres
+    group: postgres
+    mode: "0644"
+  notify: postgres | restart
+
+- name: Deploy pg_hba.conf
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgres_config_dir }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: postgres | reload
+
+- name: Deploy pg_ident.conf
+  ansible.builtin.template:
+    src: pg_ident.conf.j2
+    dest: "{{ postgres_config_dir }}/pg_ident.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: postgres | reload
+
+- name: Manage the PostgreSQL service
+  ansible.builtin.systemd:
+    name: "{{ postgres_service_name }}"
+    state: "{{ postgres_service_state }}"
+    enabled: "{{ postgres_service_enabled }}"
+
+- name: Apply pending restarts and reloads
+  ansible.builtin.meta: flush_handlers

@@ -330,3 +330,45 @@ bump_files = [
 ]
 changelog = "ansible/playbooks/apps.CHANGELOG.md"
 depends_on = ["ansible"]
+
+# Deployed state of the production environment. Not a library: it is bumped
+# only by the deploy workflows, after a successful apply, and the release job
+# of ci.yml leaves every deploy-* component out. Everything that ends up on the
+# host is listed in depends_on so that a change upstream makes the environment
+# owe a deployment.
+[components.deploy-production]
+tag_format = "deploy-production-v{version}"
+paths = ["deploy/production/**"]
+bump_files = [
+    { file = "deploy/production/deploy.yml", key = "version" },
+]
+changelog = "deploy/production/CHANGELOG.md"
+depends_on = [
+    "ansible",
+    "playbook-bootstrap",
+    "playbook-site",
+    "playbook-apps",
+    "analytics",
+    "apt-server",
+    "asterisk",
+    "auth",
+    "backend",
+    "billing",
+    "custom-domain",
+    "frontend",
+    "internal",
+    "knowledge",
+    "mailler",
+    "mta-sts",
+    "reachy-mini-api",
+    "team",
+    "vpn-portal",
+    "webhooks",
+]
+
+# Surfaces the upstream commits (depends_on) in the changelog and release
+# notes of a component: which application and collection changes a deployment
+# actually shipped.
+[plugins.upstream-notes]
+max_commits = 30
+include_prereleases = false

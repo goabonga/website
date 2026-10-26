@@ -165,3 +165,78 @@ Feature: Knowledge base entry management
       | entry_ids |       |
     Then the response status code should be 303
     And I should be redirected to a URL containing "error=No+entries+selected"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the knowledge list
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/knowledge"
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new knowledge entry form
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/knowledge/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the generate knowledge form
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    And OpenAI is configured
+    When I send a GET request to "/knowledge/generate"
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the knowledge entry detail
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    And a knowledge entry exists with question "Why?" and answer "Because."
+    When I view the knowledge entry detail
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the knowledge entry edit form
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    And a knowledge entry exists with question "Why?" and answer "Because."
+    When I view the knowledge entry edit form
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the knowledge entry validation
+    Given I am authenticated with only the scopes "knowledge:* vpn:admin billing:read" granted by token exchange
+    And a knowledge entry exists with question "Why?" and answer "Because."
+    When I view the knowledge entry validation
+    Then the response status code should be 200
+    And the active sidebar link should be "/knowledge"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the knowledge list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    When I send a GET request to "/knowledge"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                             | vpn     | billing |
+      | knowledge:*                        | hidden  | hidden  |
+      | knowledge:* vpn:admin              | visible | hidden  |
+      | knowledge:* billing:read           | hidden  | visible |
+      | knowledge:* vpn:admin billing:read | visible | visible |
+      | *                                  | visible | visible |

@@ -8,7 +8,7 @@ from html.parser import HTMLParser
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from behave import given, then
+from behave import given, then, when
 from internal.auth.models import User
 from internal.services.token_exchange import TokenExchangeError
 
@@ -135,3 +135,22 @@ def step_team_skill_exists(context, skill_id):
     )
     context.mock_team.get_skill = AsyncMock(return_value=skill)
     context.mock_team.list_skills = AsyncMock(return_value=[skill])
+
+
+@when("I view the knowledge entry validation")
+def step_view_knowledge_validation(context):
+    from httpx import ASGITransport, AsyncClient
+
+    entry_id = getattr(context, "entry_id", 99999)
+    cookies = {"access_token": "test-token"} if context.authenticated else {}
+
+    async def _do_request():
+        async with AsyncClient(
+            transport=ASGITransport(app=context.app),
+            base_url="http://test",
+            cookies=cookies,
+            follow_redirects=False,
+        ) as client:
+            return await client.get(f"/knowledge/{entry_id}/validation")
+
+    context.response = context.loop.run_until_complete(_do_request())

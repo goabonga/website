@@ -17,7 +17,21 @@ class TestToolRegistry:
         assert "create_task" in ToolService._registry
         assert "http_request" in ToolService._registry
         # New tools
+        assert "github_create_issue" in ToolService._registry
+        assert "github_create_pr" in ToolService._registry
+        assert "github_comment" in ToolService._registry
+        assert "file_read" in ToolService._registry
+        assert "file_write" in ToolService._registry
+        assert "file_delete" in ToolService._registry
+        assert "dir_mkdir" in ToolService._registry
+        assert "dir_rmdir" in ToolService._registry
+        assert "dir_list" in ToolService._registry
+        assert "git_clone" in ToolService._registry
+        assert "git_commit_push" in ToolService._registry
+        assert "postgres_query" in ToolService._registry
         assert "service_call" in ToolService._registry
+        assert "github_list_runs" in ToolService._registry
+        assert "github_get_run_logs" in ToolService._registry
         assert "team_status" in ToolService._registry
         assert "save_memory" in ToolService._registry
         assert "update_memory" in ToolService._registry

@@ -3,7 +3,10 @@
 
 """Step definitions asserting the admin sidebar rendered on a page."""
 
+from datetime import datetime
 from html.parser import HTMLParser
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from behave import given, then
 from internal.auth.models import User
@@ -115,3 +118,20 @@ def step_sidebar_link_state(context, href, state):
     assert (href in hrefs) == (state == "visible"), (
         f"Expected the sidebar link to '{href}' to be {state}. Links: {hrefs}"
     )
+
+
+@given('a team agent skill exists with id "{skill_id}"')
+def step_team_skill_exists(context, skill_id):
+    skill = SimpleNamespace(
+        id=skill_id,
+        agent_id="agent-1",
+        name="Search",
+        description="Searches the knowledge base",
+        content="",
+        allowed_tools=[],
+        config={},
+        is_active=True,
+        created_at=datetime(2024, 1, 1),
+    )
+    context.mock_team.get_skill = AsyncMock(return_value=skill)
+    context.mock_team.list_skills = AsyncMock(return_value=[skill])

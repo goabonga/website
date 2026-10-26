@@ -3,6 +3,7 @@
 
 """Tests for web organizations routes (knowledge/routes/web/organizations.py)."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from knowledge.auth.models import User, WebAuthContext
 from knowledge.database import get_db
 from knowledge.internal import internal_app
 from knowledge.models.enums import (
+    InvitationStatus,
     OrganizationMemberRole,
     PlanType,
 )
@@ -78,6 +80,20 @@ def _make_result(scalar_one_or_none=None, scalar=0, scalars_all=None):
     result.scalar.return_value = scalar
     result.scalars.return_value.all.return_value = scalars_all or []
     return result
+
+
+def _make_invitation(**overrides):
+    inv = MagicMock()
+    inv.id = overrides.get("id", uuid4())
+    inv.organization_id = overrides.get("organization_id", TEST_TENANT_ID)
+    inv.email = overrides.get("email", "invited@example.com")
+    inv.role = overrides.get("role", OrganizationMemberRole.MEMBER)
+    inv.token = overrides.get("token", "inv-token-123")
+    inv.status = overrides.get("status", InvitationStatus.PENDING)
+    inv.invited_by = overrides.get("invited_by", TEST_USER_ID)
+    inv.expires_at = overrides.get("expires_at", datetime.now(UTC) + timedelta(days=7))
+    inv.accepted_at = overrides.get("accepted_at")
+    return inv
 
 
 @pytest.fixture
@@ -144,6 +160,26 @@ async def web_client_no_tenant(mock_db):
 async def web_client_non_admin(mock_db):
     member = _make_mock_member(is_admin=False, is_owner=False)
     auth = _build_auth(member=member, is_admin=False, is_owner=False)
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+
+    async with AsyncClient(
+        transport=ASGITransport(app=internal_app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    internal_app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def web_client_admin_not_owner(mock_db):
+    member = _make_mock_member(is_admin=True, is_owner=False)
+    auth = _build_auth(member=member, is_admin=True, is_owner=False)
 
     async def override_get_db():
         yield mock_db
@@ -742,6 +778,602 @@ async def test_update_settings_non_admin(mock_templates, web_client_non_admin, m
     assert response.status_code == 403
 
 
+@patch("knowledge.routes.web.organizations.templates")
+async def test_members_page(mock_templates, web_client, mock_db):
+    member = _make_mock_member()
+    inv = _make_invitation()
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalars_all=[member]),  # members
+            _make_result(scalars_all=[inv]),  # invitations
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/members")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/members.html"
+
+
+async def test_members_page_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.get("/organizations/members", follow_redirects=False)
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_members_page_non_admin(mock_templates, web_client_non_admin, mock_db):
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+
+    response = await web_client_non_admin.get("/organizations/members")
+    assert response.status_code == 403
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_invite_form(mock_templates, web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalars_all=[]))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/invite")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/invite.html"
+
+
+async def test_invite_form_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.get("/organizations/invite", follow_redirects=False)
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_invite_form_non_admin(mock_templates, web_client_non_admin, mock_db):
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+    response = await web_client_non_admin.get("/organizations/invite")
+    assert response.status_code == 403
+
+
+@patch("knowledge.tasks.send_workspace_invitation_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+async def test_create_invitation_success(mock_settings, mock_email, web_client, mock_db):
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        "/organizations/invite",
+        data={"email": "new@example.com", "role": "member"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/members"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_create_invitation_already_pending(mock_templates, web_client, mock_db):
+    existing = _make_invitation(email="dup@example.com")
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalar_one_or_none=existing),  # already exists
+            _make_result(scalars_all=[_make_mock_tenant()]),  # tenants
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.post(
+        "/organizations/invite",
+        data={"email": "dup@example.com", "role": "member"},
+    )
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert "already pending" in ctx["error"]
+
+
+async def test_create_invitation_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        "/organizations/invite",
+        data={"email": "x@x.com", "role": "member"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_create_invitation_non_admin(mock_templates, web_client_non_admin, mock_db):
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+    response = await web_client_non_admin.post(
+        "/organizations/invite",
+        data={"email": "x@x.com", "role": "member"},
+    )
+    assert response.status_code == 403
+
+
+@patch("knowledge.tasks.send_workspace_invitation_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+async def test_create_invitation_invalid_role(mock_settings, mock_email, web_client, mock_db):
+    """Invalid role defaults to MEMBER."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        "/organizations/invite",
+        data={"email": "x@x.com", "role": "invalid_role"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+@patch("knowledge.tasks.send_workspace_invitation_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+async def test_create_invitation_owner_role_by_non_owner(
+    mock_settings, mock_email, web_client_admin_not_owner, mock_db
+):
+    """Admin (non-owner) inviting as owner gets downgraded to admin."""
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client_admin_not_owner.post(
+        "/organizations/invite",
+        data={"email": "x@x.com", "role": "owner"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+@patch("knowledge.tasks.send_workspace_invitation_email")
+@patch("knowledge.routes.web.organizations.get_settings")
+async def test_resend_invitation(mock_settings, mock_email, web_client, mock_db):
+    settings = MagicMock()
+    settings.app_base_url = "http://test"
+    mock_settings.return_value = settings
+
+    inv = _make_invitation()
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
+
+    inv_id = uuid4()
+    response = await web_client.post(
+        f"/organizations/invitations/{inv_id}/resend",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/members"
+
+
+async def test_resend_invitation_not_found(web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        f"/organizations/invitations/{uuid4()}/resend",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_resend_invitation_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        f"/organizations/invitations/{uuid4()}/resend",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/dashboard"
+
+
+async def test_revoke_invitation(web_client, mock_db):
+    inv = _make_invitation()
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
+
+    response = await web_client.post(
+        f"/organizations/invitations/{inv.id}/revoke",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert inv.status == InvitationStatus.REVOKED
+
+
+async def test_revoke_invitation_not_found(web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        f"/organizations/invitations/{uuid4()}/revoke",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_revoke_invitation_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        f"/organizations/invitations/{uuid4()}/revoke",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_remove_member_success(web_client, mock_db):
+    other_user_id = uuid4()
+    member = _make_mock_member(user_id=other_user_id, role=OrganizationMemberRole.MEMBER)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client.post(
+        f"/organizations/members/{member.id}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    mock_db.delete.assert_called_once_with(member)
+
+
+async def test_remove_member_self(web_client, mock_db):
+    """Cannot remove yourself."""
+    member = _make_mock_member(user_id=TEST_USER_ID)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client.post(
+        f"/organizations/members/{member.id}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    mock_db.delete.assert_not_called()
+
+
+async def test_remove_owner_by_non_owner(web_client_admin_not_owner, mock_db):
+    """Admin cannot remove owner."""
+    member = _make_mock_member(
+        user_id=uuid4(),
+        role=OrganizationMemberRole.OWNER,
+    )
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client_admin_not_owner.post(
+        f"/organizations/members/{member.id}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    mock_db.delete.assert_not_called()
+
+
+async def test_remove_member_not_found(web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        f"/organizations/members/{uuid4()}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_remove_member_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        f"/organizations/members/{uuid4()}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_update_member_role_success(web_client, mock_db):
+    other_user_id = uuid4()
+    member = _make_mock_member(user_id=other_user_id, role=OrganizationMemberRole.MEMBER)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client.post(
+        f"/organizations/members/{member.id}/role",
+        data={"role": "admin"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert member.role == OrganizationMemberRole.ADMIN
+
+
+async def test_update_member_role_self(web_client, mock_db):
+    """Cannot change own role."""
+    member = _make_mock_member(user_id=TEST_USER_ID)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client.post(
+        f"/organizations/members/{member.id}/role",
+        data={"role": "member"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_update_member_role_invalid(web_client, mock_db):
+    """Invalid role value is ignored."""
+    member = _make_mock_member(user_id=uuid4(), role=OrganizationMemberRole.MEMBER)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client.post(
+        f"/organizations/members/{member.id}/role",
+        data={"role": "superadmin"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+async def test_update_member_role_owner_by_non_owner(web_client_admin_not_owner, mock_db):
+    """Non-owner promoting to owner gets capped to admin."""
+    member = _make_mock_member(user_id=uuid4(), role=OrganizationMemberRole.MEMBER)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
+
+    response = await web_client_admin_not_owner.post(
+        f"/organizations/members/{member.id}/role",
+        data={"role": "owner"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert member.role == OrganizationMemberRole.ADMIN
+
+
+async def test_update_member_role_not_found(web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+    response = await web_client.post(
+        f"/organizations/members/{uuid4()}/role",
+        data={"role": "admin"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_view_invitation_success(mock_cookie, mock_templates, web_client, mock_db):
+    """View valid invitation when not logged in."""
+    inv = _make_invitation()
+    org = _make_mock_tenant()
+    mock_cookie.return_value = None
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalar_one_or_none=inv),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/invites/inv-token-123")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/invite_view.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_view_invitation_not_found(mock_templates, web_client, mock_db):
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/invites/bad")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/invite_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_view_invitation_not_pending(mock_templates, web_client, mock_db):
+    inv = _make_invitation(status=InvitationStatus.ACCEPTED)
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/invites/tok")
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/invite_error.html"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_view_invitation_expired(mock_templates, web_client, mock_db):
+    inv = _make_invitation(expires_at=datetime.now(UTC) - timedelta(days=1))
+    mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    response = await web_client.get("/organizations/invites/tok")
+    assert response.status_code == 200
+    assert inv.status == InvitationStatus.EXPIRED
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_view_invitation_logged_in(mock_cookie, mock_templates, web_client, mock_db):
+    """View invitation when logged in shows user."""
+    inv = _make_invitation()
+    org = _make_mock_tenant()
+    mock_cookie.return_value = "jwt_token"
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalar_one_or_none=inv),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(
+            return_value={
+                "sub": str(TEST_USER_ID),
+                "email": "test@example.com",
+            }
+        )
+        mock_jwt.return_value = validator
+
+        response = await web_client.get("/organizations/invites/inv-token-123")
+        assert response.status_code == 200
+        ctx = mock_templates.TemplateResponse.call_args[0][2]
+        assert ctx["user"] is not None
+
+
+@patch("knowledge.routes.web.organizations.templates")
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_view_invitation_logged_in_invalid_token(
+    mock_cookie, mock_templates, web_client, mock_db
+):
+    """View invitation when logged in but token is invalid -> user=None."""
+    inv = _make_invitation()
+    org = _make_mock_tenant()
+    mock_cookie.return_value = "bad_jwt"
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalar_one_or_none=inv),
+            _make_result(scalar_one_or_none=org),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(side_effect=Exception("bad token"))
+        mock_jwt.return_value = validator
+
+        response = await web_client.get("/organizations/invites/inv-token-123")
+        assert response.status_code == 200
+        ctx = mock_templates.TemplateResponse.call_args[0][2]
+        assert ctx["user"] is None
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_not_logged_in(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = None
+
+    response = await web_client.post(
+        "/organizations/invites/tok/accept",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_invalid_token(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = "bad_jwt"
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(side_effect=Exception("bad"))
+        mock_jwt.return_value = validator
+
+        response = await web_client.post(
+            "/organizations/invites/tok/accept",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert "/auth/login" in response.headers["location"]
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_success(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = "jwt"
+    inv = _make_invitation()
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(
+            return_value={
+                "sub": str(TEST_USER_ID),
+                "email": "test@example.com",
+            }
+        )
+        mock_jwt.return_value = validator
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_result(scalar_one_or_none=inv),  # get invitation
+                _make_result(scalar_one_or_none=None),  # not already member
+            ]
+        )
+
+        response = await web_client.post(
+            "/organizations/invites/tok/accept",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert response.headers["location"] == "/dashboard"
+        assert inv.status == InvitationStatus.ACCEPTED
+        mock_db.add.assert_called_once()  # new member added
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_already_member(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = "jwt"
+    inv = _make_invitation()
+    existing_member = _make_mock_member()
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(
+            return_value={
+                "sub": str(TEST_USER_ID),
+                "email": "test@example.com",
+            }
+        )
+        mock_jwt.return_value = validator
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_result(scalar_one_or_none=inv),
+                _make_result(scalar_one_or_none=existing_member),
+            ]
+        )
+
+        response = await web_client.post(
+            "/organizations/invites/tok/accept",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert inv.status == InvitationStatus.ACCEPTED
+        mock_db.add.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_not_found(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = "jwt"
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(
+            return_value={
+                "sub": str(TEST_USER_ID),
+            }
+        )
+        mock_jwt.return_value = validator
+
+        mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=None))
+
+        response = await web_client.post(
+            "/organizations/invites/tok/accept",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert "/organizations/invites/tok" in response.headers["location"]
+
+
+@patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
+async def test_accept_invitation_expired(mock_cookie, web_client, mock_db):
+    mock_cookie.return_value = "jwt"
+    inv = _make_invitation(expires_at=datetime.now(UTC) - timedelta(days=1))
+
+    with patch("knowledge.auth.jwt.get_jwt_validator") as mock_jwt:
+        validator = MagicMock()
+        validator.validate_token_with_introspection = AsyncMock(
+            return_value={
+                "sub": str(TEST_USER_ID),
+            }
+        )
+        mock_jwt.return_value = validator
+
+        mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
+
+        response = await web_client.post(
+            "/organizations/invites/tok/accept",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert inv.status == InvitationStatus.EXPIRED
+
+
 @pytest.fixture
 async def web_client_redirect(mock_db):
     """Client where get_web_auth_context returns a RedirectResponse (unauthenticated)."""
@@ -834,6 +1466,72 @@ async def test_update_organization_settings_auth_redirect(web_client_redirect):
     assert "/auth/login" in response.headers["location"]
 
 
+async def test_organization_members_auth_redirect(web_client_redirect):
+    """Line 935: organization_members returns auth redirect."""
+    response = await web_client_redirect.get("/organizations/members", follow_redirects=False)
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_invite_form_auth_redirect(web_client_redirect):
+    """Line 989: invite_form returns auth redirect."""
+    response = await web_client_redirect.get("/organizations/invite", follow_redirects=False)
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_create_invitation_auth_redirect(web_client_redirect):
+    """Line 1023: create_invitation returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/invite",
+        data={"email": "x@x.com", "role": "member"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_resend_invitation_auth_redirect(web_client_redirect):
+    """Line 1113: resend_invitation returns auth redirect."""
+    response = await web_client_redirect.post(
+        f"/organizations/invitations/{uuid4()}/resend",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_revoke_invitation_auth_redirect(web_client_redirect):
+    """Line 1160: revoke_invitation returns auth redirect."""
+    response = await web_client_redirect.post(
+        f"/organizations/invitations/{uuid4()}/revoke",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_remove_member_auth_redirect(web_client_redirect):
+    """Line 1192: remove_member returns auth redirect."""
+    response = await web_client_redirect.post(
+        f"/organizations/members/{uuid4()}/remove",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_update_member_role_auth_redirect(web_client_redirect):
+    """Lines 1233, 1236: update_member_role returns auth redirect."""
+    response = await web_client_redirect.post(
+        f"/organizations/members/{uuid4()}/role",
+        data={"role": "admin"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
 @patch("knowledge.routes.web.organizations.templates")
 @patch("knowledge.routes.web.organizations.get_billing_client")
 async def test_pricing_page_multiple_plans_match_second(
@@ -916,3 +1614,14 @@ async def test_upgrade_plan_no_sub_personal_workspace(mock_billing, mock_setting
     call_kwargs = billing.create_checkout_session.call_args[1]
     assert call_kwargs["customer_name"] == "Test User"
     internal_app.dependency_overrides.clear()
+
+
+async def test_update_member_role_no_tenant(web_client_no_tenant):
+    """Line 1236: update_member_role redirects to dashboard when no tenant."""
+    response = await web_client_no_tenant.post(
+        f"/organizations/members/{uuid4()}/role",
+        data={"role": "admin"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/dashboard"

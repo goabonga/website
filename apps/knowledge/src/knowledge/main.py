@@ -20,7 +20,7 @@ from knowledge.auth.token_exchange import get_token_exchange_client
 from knowledge.config import get_settings
 from knowledge.internal import internal_app
 from knowledge.logging import get_logger, setup_logging
-from knowledge.middleware import APITrackingMiddleware
+from knowledge.middleware import APITrackingMiddleware, TenantMiddleware
 from knowledge.routes import (
     collaborators,
     collection_invitations,
@@ -91,6 +91,7 @@ Vector storage and semantic search platform for AI agents and applications.
 - **Collaborators**: Share collections with team members
 - **Collection invitations**: Invite users to collaborate on collections
 - **Usage tracking**: Successful API calls are recorded per tenant
+- **Multi-tenant**: Subdomain and custom domain tenant resolution
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -144,6 +145,14 @@ app.add_middleware(
 
 # API tracking middleware (records API calls per tenant for quota management)
 app.add_middleware(APITrackingMiddleware)
+
+# Tenant resolution middleware (path prefix, subdomain, custom domain CNAME)
+if settings.tenant_base_domain:  # pragma: no cover - requires module reload with live settings
+    app.add_middleware(
+        TenantMiddleware,
+        base_domain=settings.tenant_base_domain,
+        custom_domain_lookup=settings.tenant_custom_domain_lookup,
+    )
 
 # =============================================================================
 # PUBLIC API ROUTES

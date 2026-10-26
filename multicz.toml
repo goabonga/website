@@ -232,6 +232,7 @@ paths = [
     "apps/vpn-portal/src/**",
     "apps/vpn-portal/features/**",
     "apps/vpn-portal/tests/**",
+    "apps/vpn-portal/alembic/**",
     "apps/vpn-portal/pyproject.toml",
 ]
 bump_files = [

@@ -41,3 +41,4 @@ The browser itself is installed once with `uv run playwright install chromium`.
 - [User cache and webhooks](08-user-cache-webhooks.md)
 - [Web login sessions](09-web-sessions.md)
 - [Public web pages](10-web-ui.md)
+- [Package dashboard](11-dashboard.md)

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Dependabot v2 configuration.
+
+version: 2
+
+updates:
+  # Python dependencies of the whole uv workspace, read from the root uv.lock.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      # Bundle routine root tooling bumps into a single weekly PR. The
+      # signed-rewrite script maps "dev-tools group" to chore(workspace).
+      dev-tools:
+        applies-to: version-updates
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "pytest*"
+          - "behave"
+          - "pre-commit"
+          - "ansible-core"
+    # Plain types here: the dependabot-rewrite workflow re-scopes each commit
+    # with a scope from the closed list in CLAUDE.md (an application name or
+    # workspace). Without the rewrite the messages are still valid.
+    commit-message:
+      prefix: "fix"
+      prefix-development: "chore"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # Pinned versions of GitHub Actions in `.github/workflows/*.yml`.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      ci-actions:
+        applies-to: version-updates
+        patterns:
+          - "actions/*"
+          - "astral-sh/*"
+          - "codecov/*"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"

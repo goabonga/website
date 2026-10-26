@@ -150,3 +150,49 @@ class TestScheduleIsLimited:
         )
         assert response.status_code == 429
         mock_db_session.add.assert_not_called()
+
+
+class TestScheduleFromATemplate:
+    async def test_the_template_is_rendered_when_scheduling(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        template = MagicMock()
+        template.slug = "welcome"
+        template.status = "active"
+        template.subject_template = "Hello {{ name }}"
+        template.html_compiled = "<p>Hello {{ name }}</p>"
+        template.plain_text = None
+        template.variables = ["name"]
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = template
+        mock_db_session.execute = AsyncMock(return_value=result)
+
+        response = await auth_client.post(
+            "/api/v1/schedule",
+            json={
+                "to_email": "recipient@example.com",
+                "template_slug": "welcome",
+                "variables": {"name": "Ann"},
+                "scheduled_at": "2026-06-01T10:00:00Z",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["missing_variables"] == []
+        email = mock_db_session.add.call_args[0][0]
+        assert (email.subject, email.html_content) == ("Hello Ann", "<p>Hello Ann</p>")
+        assert email.metadata_ == {"template_slug": "welcome"}
+
+    async def test_missing_template(self, auth_client: AsyncClient, mock_db_session):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute = AsyncMock(return_value=result)
+        response = await auth_client.post(
+            "/api/v1/schedule",
+            json={
+                "to_email": "recipient@example.com",
+                "template_slug": "nope",
+                "scheduled_at": "2026-06-01T10:00:00Z",
+            },
+        )
+        assert response.status_code == 404

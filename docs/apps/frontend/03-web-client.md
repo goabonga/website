@@ -92,5 +92,6 @@ behave (`features/web_client.feature`, steps in
 - The generator refuses to run without a build
 
 The last two scenarios need Node.js and are skipped without it. The full
-`npm ci` and `npm run build` are not part of the automated tests because they
-need network access.
+`npm ci` and `npm run build` need network access: they are run by the browser
+scenarios of [SPA serving](04-spa-serving.md), which build the web client and
+open it in a browser.

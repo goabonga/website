@@ -16,6 +16,9 @@ from custom_domain.schemas import (
     DomainListItem,
     DomainResponse,
     DomainUpdate,
+    EventHistoryItem,
+    ProgressStep,
+    ReprovisionError,
     TemplateCreate,
     TemplateListItem,
     TemplateResponse,
@@ -186,3 +189,36 @@ class TestTemplateSchemas:
             created_at=now,
         )
         assert data.domains_count == 10
+
+
+class TestEventSchemas:
+    """Tests for event schemas."""
+
+    def test_progress_step(self):
+        """Test ProgressStep schema."""
+        data = ProgressStep(
+            current_step="dns_check",
+            steps_completed=["init"],
+            steps_remaining=["certbot", "nginx"],
+            percentage=25,
+        )
+        assert data.percentage == 25
+
+    def test_event_history_item(self):
+        """Test EventHistoryItem schema."""
+        now = datetime.now(UTC)
+        data = EventHistoryItem(
+            type="progress",
+            step="dns_check",
+            message="DNS verified",
+            timestamp=now,
+        )
+        assert data.type == "progress"
+
+    def test_reprovision_error(self):
+        """Test ReprovisionError schema."""
+        data = ReprovisionError(
+            domain="test.example.com",
+            error="Failed to provision",
+        )
+        assert data.domain == "test.example.com"

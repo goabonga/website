@@ -6,7 +6,7 @@
 from datetime import UTC, datetime
 
 from custom_domain.models import AuthorizedClient, CustomDomain, NginxTemplate
-from custom_domain.models.enums import DomainStatus
+from custom_domain.models.enums import DomainStatus, ProvisioningStep
 
 
 class TestDomainStatus:
@@ -23,6 +23,17 @@ class TestDomainStatus:
         assert DomainStatus.SUSPENDED == "suspended"
         assert DomainStatus.EXPIRED == "expired"
         assert DomainStatus.DEPROVISIONING == "deprovisioning"
+
+
+class TestProvisioningStep:
+    """Tests for ProvisioningStep enum."""
+
+    def test_enum_values(self):
+        """Test enum has expected values."""
+        assert ProvisioningStep.DNS_CHECK == "dns_check"
+        assert ProvisioningStep.NGINX_HTTP == "nginx_http"
+        assert ProvisioningStep.CERTBOT == "certbot"
+        assert ProvisioningStep.NGINX_HTTPS == "nginx_https"
 
 
 class TestAuthorizedClient:

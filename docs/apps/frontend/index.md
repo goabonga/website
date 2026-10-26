@@ -14,6 +14,7 @@ behave.
 | [Logging](02-logging.md) | stdout/stderr split and request context in log lines |
 | [Web client](03-web-client.md) | Vite and TypeScript sources, build and template generator |
 | [SPA serving](04-spa-serving.md) | Template rendering, runtime configuration and static files |
+| [security.txt](05-security-txt.md) | RFC 9116 vulnerability disclosure contact |
 
 ## Running the tests
 

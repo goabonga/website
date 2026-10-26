@@ -697,6 +697,20 @@
                     </a>
                 </div>
 
+                {% if user.has_scope('*') or (tenant_member and tenant_member.is_admin) %}
+                <div class="nav-section">
+                    <div class="nav-section-title">Workspace</div>
+                    <a href="/tenants/settings" class="nav-item {% if active_section == 'organization_settings' %}active{% endif %}">
+                        <span class="nav-item-icon">&#9881;</span>
+                        General
+                    </a>
+                    <a href="/tenants/pricing" class="nav-item {% if active_section == 'pricing' %}active{% endif %}">
+                        <span class="nav-item-icon">&#128176;</span>
+                        Billing
+                    </a>
+                </div>
+                {% endif %}
+
                 <div class="nav-section">
                     <div class="nav-section-title">Account</div>
                     <a href="/auth/account" class="nav-item {% if active_section == 'account_profile' %}active{% endif %}">
@@ -721,7 +735,19 @@
             </nav>
 
             <div class="sidebar-footer">
-                {% if tenant %}
+                {% if tenants and tenants|length > 1 %}
+                <div class="tenant-switcher">
+                    <form action="/tenants/switch" method="post">
+                        <select name="tenant_id" onchange="this.form.submit()">
+                            {% for t in tenants %}
+                            <option value="{{ t.id }}" {% if tenant and t.id == tenant.id %}selected{% endif %}>
+                                {{ t.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+                {% elif tenant %}
                 <div class="tenant-switcher">
                     <small style="color: var(--text-muted);">{{ tenant.name }}</small>
                 </div>

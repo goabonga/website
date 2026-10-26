@@ -1,0 +1,962 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing & Plans{% endblock %}
+
+{% block head %}
+<style>
+    /* Pricing page layout - fixed header, scrollable content */
+    .pricing-page {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 48px); /* Account for main-content padding */
+        overflow: hidden;
+    }
+
+    .pricing-header {
+        text-align: center;
+        padding-bottom: 24px;
+        flex-shrink: 0;
+    }
+
+    .pricing-header h1 {
+        font-size: 2rem;
+        margin-bottom: 12px;
+    }
+
+    .pricing-header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .pricing-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0 4px 24px 4px;
+    }
+
+    .pricing-grid {
+        display: flex;
+        gap: 24px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 8px 4px 16px 4px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pricing-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        min-width: 280px;
+        max-width: 320px;
+        flex-shrink: 0;
+        scroll-snap-align: start;
+    }
+
+    .pricing-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .pricing-card.current {
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 1px var(--accent-green);
+    }
+
+    .pricing-card.recommended {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 1px var(--accent-blue);
+    }
+
+    .pricing-card.recommended::before {
+        content: 'Most Popular';
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--accent-blue);
+        color: white;
+        padding: 4px 16px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .pricing-card.current::after {
+        content: 'Current Plan ({{ current_billing_period | capitalize }})';
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background-color: rgba(63, 185, 80, 0.15);
+        color: var(--accent-green);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .switch-period-btn {
+        width: 100%;
+    }
+
+    .switch-period-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .plan-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .plan-description {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 24px;
+    }
+
+    .plan-price {
+        margin-bottom: 24px;
+    }
+
+    .plan-price .amount {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    .plan-price .currency {
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+    }
+
+    .plan-price .period {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+
+    .plan-price .original-price {
+        text-decoration: line-through;
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin-right: 8px;
+    }
+
+    .billing-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .billing-toggle-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .billing-toggle-label.active {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 56px;
+        height: 28px;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 20px;
+        height: 20px;
+        background-color: var(--text-primary);
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+    }
+
+    .toggle-switch.yearly::after {
+        transform: translateX(28px);
+    }
+
+    .toggle-switch.yearly {
+        background-color: var(--accent-blue);
+        border-color: var(--accent-blue);
+    }
+
+    .savings-badge {
+        display: inline-block;
+        background-color: rgba(63, 185, 80, 0.15);
+        color: var(--accent-green);
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .price-monthly, .price-yearly {
+        transition: opacity 0.2s ease;
+    }
+
+    .price-yearly {
+        display: none;
+    }
+
+    .billing-yearly .price-monthly {
+        display: none;
+    }
+
+    .billing-yearly .price-yearly {
+        display: block;
+    }
+
+    .plan-features {
+        list-style: none;
+        margin-bottom: 32px;
+        flex-grow: 1;
+    }
+
+    .plan-features li {
+        padding: 8px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .plan-features li::before {
+        content: '✓';
+        color: var(--accent-green);
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .plan-features li.highlight {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .plan-features li.disabled {
+        color: var(--text-muted);
+        text-decoration: line-through;
+    }
+
+    .plan-features li.disabled::before {
+        content: '✗';
+        color: var(--text-muted);
+    }
+
+    .plan-action {
+        margin-top: auto;
+    }
+
+    .plan-action .btn {
+        width: 100%;
+        padding: 12px 24px;
+        font-size: 1rem;
+    }
+
+    .plan-action .btn-outline {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .plan-action .btn-outline:hover {
+        background-color: var(--bg-input);
+    }
+
+    .enterprise-contact {
+        text-align: center;
+        margin-top: 48px;
+        padding: 32px;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+    }
+
+    .enterprise-contact h3 {
+        font-size: 1.25rem;
+        margin-bottom: 12px;
+    }
+
+    .enterprise-contact p {
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+    }
+
+    .faq-section {
+        margin-top: 64px;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .faq-section h2 {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .faq-item {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+
+    .faq-question {
+        padding: 16px 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 500;
+    }
+
+    .faq-question:hover {
+        background-color: var(--bg-input);
+    }
+
+    .faq-answer {
+        padding: 0 20px 16px;
+        color: var(--text-secondary);
+        display: none;
+    }
+
+    .faq-item.open .faq-answer {
+        display: block;
+    }
+
+    .faq-item.open .faq-toggle {
+        transform: rotate(180deg);
+    }
+
+    .faq-toggle {
+        transition: transform 0.2s ease;
+    }
+
+    /* Proration Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal-content {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 0;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+
+    .proration-details {
+        margin-bottom: 24px;
+    }
+
+    .proration-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .proration-item:last-child {
+        border-bottom: none;
+    }
+
+    .proration-item.credit {
+        color: var(--accent-green);
+    }
+
+    .proration-item.total {
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-top: 16px;
+        margin-top: 8px;
+        border-top: 2px solid var(--border-color);
+    }
+
+    .proration-label {
+        color: var(--text-secondary);
+    }
+
+    .proration-amount {
+        font-weight: 500;
+    }
+
+    .proration-summary {
+        background-color: var(--bg-input);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+    }
+
+    .proration-summary p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .modal-actions .btn {
+        flex: 1;
+        padding: 12px 24px;
+    }
+
+    .upgrade-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid transparent;
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .pricing-page {
+            height: auto;
+            overflow: visible;
+        }
+
+        .pricing-content {
+            overflow: visible;
+        }
+
+        .pricing-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .billing-toggle {
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .pricing-card {
+            min-width: 260px;
+            max-width: 280px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pricing-page">
+<div class="pricing-header">
+    <h1>Choose Your Plan</h1>
+    <p>Scale your knowledge base with the right plan for your team</p>
+    <div class="billing-toggle">
+        <span class="billing-toggle-label active" data-billing="monthly" onclick="if(currentBillingPeriod !== 'monthly') toggleBilling()">Monthly</span>
+        <div class="toggle-switch" id="billingToggle" onclick="toggleBilling()"></div>
+        <span class="billing-toggle-label" data-billing="yearly" onclick="if(currentBillingPeriod !== 'yearly') toggleBilling()">Yearly{% if plans %}{% set best_saving = plans | map(attribute='yearly_savings_percent') | max %}{% if best_saving > 0 %}<span class="savings-badge">Save up to {{ best_saving }}%</span>{% endif %}{% endif %}</span>
+    </div>
+</div>
+
+<div class="pricing-content">
+{% if request.query_params.get('success') %}
+<div class="alert alert-success" style="max-width: 600px; margin: 0 auto 24px; padding: 16px; background: rgba(63, 185, 80, 0.15); border: 1px solid var(--accent-green); border-radius: 8px; text-align: center;">
+    {% if request.query_params.get('upgraded') %}
+    Plan upgraded successfully! Your new plan is now active.
+    {% else %}
+    Payment successful! Your subscription is now active.
+    {% endif %}
+</div>
+{% endif %}
+
+{% if request.query_params.get('cancelled') %}
+<div class="alert alert-warning" style="max-width: 600px; margin: 0 auto 24px; padding: 16px; background: rgba(227, 179, 65, 0.15); border: 1px solid #e3b341; border-radius: 8px; text-align: center;">
+    Checkout was cancelled. You can try again when you're ready.
+</div>
+{% endif %}
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-error" style="max-width: 600px; margin: 0 auto 24px; padding: 16px; background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; border-radius: 8px; text-align: center;">
+    {{ request.query_params.get('error') }}
+</div>
+{% endif %}
+
+{% if billing_error %}
+<div class="alert alert-error" style="max-width: 600px; margin: 0 auto 24px; padding: 16px; background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; border-radius: 8px; text-align: center;">
+    Unable to load pricing: {{ billing_error }}
+</div>
+{% endif %}
+
+<div class="pricing-grid">
+{% if plans %}
+    {# Dynamic plans from billing API #}
+    {% for plan in plans %}
+    <div class="pricing-card {% if plan.is_recommended %}recommended{% endif %} {% if current_plan == plan.slug %}current{% endif %}">
+        <div class="plan-name">{{ plan.name }}</div>
+        <div class="plan-description">{{ plan.description or '' }}</div>
+        <div class="plan-price">
+            {% set monthly = plan.monthly_price %}
+            {% set yearly = plan.yearly_price %}
+            {% if monthly and not monthly.is_custom %}
+            {# Monthly price display #}
+            <div class="price-monthly">
+                <span class="currency">$</span><span class="amount">{{ monthly.display_amount }}</span>
+                <span class="period">/ month</span>
+            </div>
+            {# Yearly price display (shown as monthly equivalent) #}
+            <div class="price-yearly">
+                {% if yearly %}
+                <span class="original-price">${{ monthly.display_amount }}</span>
+                <span class="currency">$</span><span class="amount">{{ plan.yearly_monthly_equivalent }}</span>
+                <span class="period">/ month</span>
+                {% if plan.yearly_savings_percent > 0 %}
+                <div style="margin-top: 4px;">
+                    <span class="savings-badge">Save {{ plan.yearly_savings_percent }}%</span>
+                </div>
+                {% endif %}
+                {% else %}
+                <span class="currency">$</span><span class="amount">{{ monthly.display_amount }}</span>
+                <span class="period">/ month</span>
+                {% endif %}
+            </div>
+            {% else %}
+            <span class="amount" style="font-size: 1.5rem;">Custom</span>
+            <span class="period">pricing</span>
+            {% endif %}
+        </div>
+        <ul class="plan-features">
+            {% for feature in plan.features %}
+            <li class="{% if feature.highlight %}highlight{% endif %}{% if feature.disabled %}disabled{% endif %}">{{ feature.label }}</li>
+            {% endfor %}
+        </ul>
+        <div class="plan-action">
+            {% if plan.monthly_price and plan.monthly_price.is_custom %}
+            {% if site().sales_email %}
+            <a href="mailto:{{ site().sales_email }}?subject={{ ('Inquiry: ' ~ plan.name) | urlencode }}&body={{ ('Workspace ID: ' ~ tenant.id ~ '\nWorkspace name: ' ~ tenant.name) | urlencode }}" class="btn btn-secondary">Contact Sales</a>
+            {% endif %}
+            {% elif plan.is_free %}
+            {% if current_plan == plan.slug %}
+            <button class="btn btn-outline" disabled>Current Plan</button>
+            {% else %}
+            <span class="btn btn-outline" style="opacity: 0.5;">Downgrade not available</span>
+            {% endif %}
+            {% elif current_plan == plan.slug %}
+            {# Same plan - allow switching billing period #}
+            {% if plan.yearly_price and plan.monthly_price %}
+            <button type="button" class="btn btn-secondary switch-period-btn"
+                    data-price-id-monthly="{{ plan.monthly_price.id }}"
+                    data-price-id-yearly="{{ plan.yearly_price.id }}"
+                    data-plan-name="{{ plan.name }}"
+                    data-plan-amount-monthly="{{ plan.monthly_price.display_amount }}"
+                    data-plan-amount-yearly="{{ plan.yearly_monthly_equivalent }}"
+                    data-current-period="{{ current_billing_period }}">
+                <span class="switch-monthly" style="{% if current_billing_period == 'monthly' %}display:none{% endif %}">Switch to Monthly</span>
+                <span class="switch-yearly" style="{% if current_billing_period == 'yearly' %}display:none{% endif %}">Switch to Yearly</span>
+            </button>
+            {% else %}
+            <button class="btn btn-outline" disabled>Current Plan</button>
+            {% endif %}
+            {% else %}
+            <button type="button" class="btn btn-primary upgrade-btn"
+                    data-price-id-monthly="{{ plan.monthly_price.id }}"
+                    data-price-id-yearly="{{ plan.yearly_price.id if plan.yearly_price else plan.monthly_price.id }}"
+                    data-plan-name="{{ plan.name }}"
+                    data-plan-amount-monthly="{{ plan.monthly_price.display_amount }}"
+                    data-plan-amount-yearly="{{ plan.yearly_monthly_equivalent if plan.yearly_price else plan.monthly_price.display_amount }}">
+                Upgrade to {{ plan.name }}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% elif not billing_error %}
+    <p class="no-plans">The plans are not available right now. Please try again later.</p>
+{% endif %}
+</div>
+
+<div class="faq-section">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>How do I upgrade my plan?</span>
+            <span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            Click the upgrade button on your desired plan. You are sent to the secure payment page, or your subscription is changed with a proration when you already have one.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Can I downgrade my plan?</span>
+            <span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            Plan downgrades are handled manually to ensure your data is preserved. Please contact support to discuss downgrade options.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>What happens if I exceed my limits?</span>
+            <span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            You'll receive a warning when approaching your limits. Once exceeded, new documents or API calls may be rejected until you upgrade or the next billing cycle begins.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Is there a free trial for paid plans?</span>
+            <span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            Some paid plans include a free trial. When a plan has one, its length is shown when you subscribe.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>What payment methods do you accept?</span>
+            <span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            We accept credit cards, PayPal, and bank transfers for annual plans. Enterprise customers can also pay via invoice.
+        </div>
+    </div>
+</div>
+</div> <!-- /.pricing-content -->
+</div> <!-- /.pricing-page -->
+
+<!-- Proration Preview Modal -->
+<div id="prorationModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Plan Upgrade</h3>
+            <button class="modal-close" onclick="closeProrationModal()">&times;</button>
+        </div>
+
+        <div id="prorationLoading" style="text-align: center; padding: 40px;">
+            <div class="spinner" style="width: 32px; height: 32px; margin: 0 auto 16px;"></div>
+            <p style="color: var(--text-secondary);">Calculating proration...</p>
+        </div>
+
+        <div id="prorationContent" style="display: none;">
+            <div class="proration-summary">
+                <p>You're upgrading from <strong id="currentPlanName">-</strong> to <strong id="newPlanName">-</strong>.</p>
+                <p style="margin-top: 8px;">We'll credit the unused time on your current plan.</p>
+            </div>
+
+            <div class="proration-details" id="prorationDetails">
+                <!-- Line items will be inserted here -->
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeProrationModal()">Cancel</button>
+                <form id="upgradeForm" action="/organizations/upgrade" method="POST" style="flex: 1; margin: 0;">
+                    <input type="hidden" name="price_id" id="upgradePriceId" value="">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="confirmUpgradeBtn">
+                        Confirm Upgrade
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div id="prorationError" style="display: none;">
+            <div style="text-align: center; padding: 20px;">
+                <p style="color: var(--accent-red); margin-bottom: 16px;" id="prorationErrorMsg">An error occurred</p>
+                <button class="btn btn-outline" onclick="closeProrationModal()">Close</button>
+            </div>
+        </div>
+
+        <div id="noSubscription" style="display: none;">
+            <div class="proration-summary">
+                <p>You're subscribing to <strong id="newPlanNameNoSub">-</strong>.</p>
+                <p style="margin-top: 8px;">You'll be redirected to complete the payment.</p>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeProrationModal()">Cancel</button>
+                <form id="checkoutForm" action="/organizations/checkout" method="POST" style="flex: 1; margin: 0;">
+                    <input type="hidden" name="price_id" id="checkoutPriceId" value="">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Continue to Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPriceId = null;
+    let currentBillingPeriod = 'monthly';
+
+    function toggleBilling() {
+        const toggle = document.getElementById('billingToggle');
+        const pricingGrid = document.querySelector('.pricing-grid');
+        const labels = document.querySelectorAll('.billing-toggle-label');
+
+        if (currentBillingPeriod === 'monthly') {
+            currentBillingPeriod = 'yearly';
+            toggle.classList.add('yearly');
+            pricingGrid.classList.add('billing-yearly');
+        } else {
+            currentBillingPeriod = 'monthly';
+            toggle.classList.remove('yearly');
+            pricingGrid.classList.remove('billing-yearly');
+        }
+
+        // Update active label
+        labels.forEach(label => {
+            label.classList.toggle('active', label.dataset.billing === currentBillingPeriod);
+        });
+
+        // Update switch period buttons
+        updateSwitchButtons();
+    }
+
+    function updateSwitchButtons() {
+        document.querySelectorAll('.switch-period-btn').forEach(btn => {
+            const userCurrentPeriod = btn.dataset.currentPeriod;
+            const switchMonthly = btn.querySelector('.switch-monthly');
+            const switchYearly = btn.querySelector('.switch-yearly');
+
+            if (currentBillingPeriod === 'yearly') {
+                // Viewing yearly prices
+                if (userCurrentPeriod === 'yearly') {
+                    // Already on yearly - show "Current Plan" state
+                    switchMonthly.style.display = 'none';
+                    switchYearly.style.display = 'none';
+                    btn.disabled = true;
+                    btn.textContent = 'Current Plan';
+                } else {
+                    // On monthly, viewing yearly - can switch to yearly
+                    switchMonthly.style.display = 'none';
+                    switchYearly.style.display = 'inline';
+                    btn.disabled = false;
+                }
+            } else {
+                // Viewing monthly prices
+                if (userCurrentPeriod === 'monthly') {
+                    // Already on monthly - show "Current Plan" state
+                    switchMonthly.style.display = 'none';
+                    switchYearly.style.display = 'none';
+                    btn.disabled = true;
+                    btn.textContent = 'Current Plan';
+                } else {
+                    // On yearly, viewing monthly - can switch to monthly
+                    switchMonthly.style.display = 'inline';
+                    switchYearly.style.display = 'none';
+                    btn.disabled = false;
+                }
+            }
+        });
+    }
+
+    function getCurrentPriceData(btn) {
+        const suffix = currentBillingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+        return {
+            priceId: btn.dataset[`priceId${suffix}`],
+            planName: btn.dataset.planName,
+            planAmount: btn.dataset[`planAmount${suffix}`]
+        };
+    }
+
+    document.querySelectorAll('.upgrade-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const { priceId, planName, planAmount } = getCurrentPriceData(this);
+
+            currentPriceId = priceId;
+            showProrationModal(priceId, planName, planAmount);
+        });
+    });
+
+    // Handle switch billing period buttons (same plan, different period)
+    document.querySelectorAll('.switch-period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userCurrentPeriod = this.dataset.currentPeriod;
+            // Get the opposite period's price
+            const targetPeriod = currentBillingPeriod === 'yearly' ? 'yearly' : 'monthly';
+            const suffix = targetPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+            const priceId = this.dataset[`priceId${suffix}`];
+            const planName = this.dataset.planName + ' (' + (targetPeriod === 'yearly' ? 'Yearly' : 'Monthly') + ')';
+            const planAmount = this.dataset[`planAmount${suffix}`];
+
+            currentPriceId = priceId;
+            showProrationModal(priceId, planName, planAmount);
+        });
+    });
+
+    async function showProrationModal(priceId, planName, planAmount) {
+        const modal = document.getElementById('prorationModal');
+        const loading = document.getElementById('prorationLoading');
+        const content = document.getElementById('prorationContent');
+        const error = document.getElementById('prorationError');
+        const noSub = document.getElementById('noSubscription');
+
+        // Reset modal state
+        loading.style.display = 'block';
+        content.style.display = 'none';
+        error.style.display = 'none';
+        noSub.style.display = 'none';
+
+        // Show modal
+        modal.classList.add('open');
+
+        try {
+            const response = await fetch(`/organizations/upgrade/preview?price_id=${priceId}`);
+            const data = await response.json();
+
+            loading.style.display = 'none';
+
+            if (data.error) {
+                if (data.has_subscription === false) {
+                    // No subscription - show checkout form
+                    document.getElementById('newPlanNameNoSub').textContent = planName;
+                    document.getElementById('checkoutPriceId').value = priceId;
+                    noSub.style.display = 'block';
+                } else {
+                    document.getElementById('prorationErrorMsg').textContent = data.error;
+                    error.style.display = 'block';
+                }
+                return;
+            }
+
+            // Show proration details
+            document.getElementById('currentPlanName').textContent = data.current_plan_name;
+            document.getElementById('newPlanName').textContent = data.new_plan_name;
+            document.getElementById('upgradePriceId').value = priceId;
+
+            // Build line items
+            const detailsContainer = document.getElementById('prorationDetails');
+            let html = '';
+
+            data.line_items.forEach(item => {
+                const isCredit = item.amount < 0;
+                html += `
+                    <div class="proration-item ${isCredit ? 'credit' : ''}">
+                        <span class="proration-label">${item.description}</span>
+                        <span class="proration-amount">${item.display_amount}</span>
+                    </div>
+                `;
+            });
+
+            // Add total
+            html += `
+                <div class="proration-item total">
+                    <span class="proration-label">Amount due today</span>
+                    <span class="proration-amount">${data.display_total}</span>
+                </div>
+            `;
+
+            if (data.credit_applied > 0) {
+                html += `
+                    <p style="margin-top: 12px; font-size: 0.875rem; color: var(--accent-green);">
+                        ${data.display_credit} credit applied from your current plan
+                    </p>
+                `;
+            }
+
+            detailsContainer.innerHTML = html;
+            content.style.display = 'block';
+
+        } catch (err) {
+            loading.style.display = 'none';
+            document.getElementById('prorationErrorMsg').textContent = 'Failed to load proration details. Please try again.';
+            error.style.display = 'block';
+            console.error('Proration preview error:', err);
+        }
+    }
+
+    function closeProrationModal() {
+        document.getElementById('prorationModal').classList.remove('open');
+        currentPriceId = null;
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeProrationModal();
+        }
+    });
+
+    // Close modal on overlay click
+    document.getElementById('prorationModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeProrationModal();
+        }
+    });
+</script>
+{% endblock %}

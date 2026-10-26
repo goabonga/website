@@ -106,3 +106,12 @@ def step_sidebar_lists_exactly(context):
 def step_sidebar_user(context, email):
     actual = _sidebar(context).user_email
     assert actual == email, f"Expected sidebar user '{email}', got '{actual}'"
+
+
+@then('the sidebar link to "{href}" should be {state}')
+def step_sidebar_link_state(context, href, state):
+    assert state in ("visible", "hidden"), f"Unknown state '{state}'"
+    hrefs = [link["href"] for link in _sidebar(context).links]
+    assert (href in hrefs) == (state == "visible"), (
+        f"Expected the sidebar link to '{href}' to be {state}. Links: {hrefs}"
+    )

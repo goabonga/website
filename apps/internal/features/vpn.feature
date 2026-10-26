@@ -43,3 +43,35 @@ Feature: VPN session management
     Given I am not authenticated
     When I send a POST request to "/vpn/sessions/ABC123DEF456/revoke"
     Then the response status code should be 302
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the VPN sessions list
+    Given I am authenticated with only the scopes "vpn:admin" granted by token exchange
+    And VPN sessions exist
+    When I send a GET request to "/vpn/sessions"
+    Then the response status code should be 200
+    And the active sidebar link should be "/vpn/sessions"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the VPN sessions list when the service is unavailable
+    Given I am authenticated with only the scopes "vpn:admin" granted by token exchange
+    And the VPN service is unavailable
+    When I send a GET request to "/vpn/sessions"
+    Then the response status code should be 200
+    And the active sidebar link should be "/vpn/sessions"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the VPN sessions list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And VPN sessions exist
+    When I send a GET request to "/vpn/sessions"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+
+    Examples:
+      | scopes    | vpn     |
+      | vpn:admin | visible |
+      | *         | visible |

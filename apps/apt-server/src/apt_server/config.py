@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     def apt_architectures_list(self) -> list[str]:
         return [s.strip() for s in self.apt_architectures.split(",") if s.strip()]
 
+    # Session (web UI login via OAuth2 Authorization Code + PKCE)
+    session_secret: str = ""
+    session_cookie_name: str = "apt_session"
+    session_max_age: int = 86400  # 24 hours
+
     # Webhook (receive events from auth service)
     webhook_secret: str = ""
 
@@ -158,6 +163,7 @@ def get_settings() -> Settings:
     overrides = {}
     for env_name, field_name in [
         ("OAUTH2_CLIENT_SECRET", "oauth2_client_secret"),
+        ("SESSION_SECRET", "session_secret"),
         ("WEBHOOK_SECRET", "webhook_secret"),
     ]:
         cred = get_credential(env_name)

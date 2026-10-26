@@ -69,10 +69,25 @@ async def resolve_caller(
     # 1. Try Authorization header (Basic or Bearer — used by apt clients and API)
     username, password = _extract_credentials(authorization)
 
+    # 2. Fall back to web session cookie (used by the browser-based UI)
     session_display_name = ""
     session_name = ""
     session_avatar_url = ""
     from_session = False
+    if password is None:
+        from apt_server.config import settings
+        from apt_server.services.session import read_session_cookie
+
+        cookie = request.cookies.get(settings.session_cookie_name)
+        if cookie:
+            result = read_session_cookie(cookie)
+            if result:
+                password = result.token
+                session_display_name = result.display_name
+                session_name = result.name
+                session_avatar_url = result.avatar_url
+                from_session = True
+
     if password is None:
         return None
     if not jwks_manager.is_configured:

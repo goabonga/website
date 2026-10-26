@@ -24,6 +24,7 @@ dependencies = [
     "mrml>=0.2.0",
     "psycopg2-binary>=2.9.0",
     "pydantic-settings>=2.1.0",
+    "pyjwt>=2.8.0",
     "pyotp>=2.9.0",
     "python-multipart>=0.0.7",
     "qrcode[pil]>=7.4.0",

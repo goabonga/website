@@ -9,10 +9,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
+import jwt
 from fastapi import Depends, Request
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,12 +24,19 @@ from auth.db.models.rbac import Role
 from auth.db.models.user import User
 from auth.middlewares.tenant import get_session_cookie_name
 from auth.services.auth import AuthService
+from auth.services.device_code import DeviceCodeService
 from auth.services.email import EmailService
+from auth.services.jar import JARService
 from auth.services.jwks import JWKSService
 from auth.services.mfa import MFAService
+from auth.services.oauth2_client import OAuth2ClientService
+from auth.services.par import PARService
 from auth.services.password import PasswordService
+from auth.services.pat import PAT_PREFIX, PersonalAccessTokenService
 from auth.services.profile import ProfileService
 from auth.services.session import SessionService
+from auth.services.token import TokenService
+from auth.services.token_exchange import TokenExchangeService
 from auth.services.trust import TrustPolicyService
 from auth.services.user import UserService
 
@@ -121,14 +129,56 @@ def get_mfa_service() -> MFAService:
     return MFAService(get_encryption())
 
 
+def get_oauth2_client_service() -> OAuth2ClientService:
+    """Get OAuth2 client service instance."""
+    return OAuth2ClientService()
+
+
+def get_token_service() -> TokenService:
+    """Get token service instance."""
+    return TokenService(get_jwks_service())
+
+
+def get_device_code_service() -> DeviceCodeService:
+    """Get device code service instance."""
+    return DeviceCodeService()
+
+
+def get_par_service() -> PARService:
+    """Get PAR service instance."""
+    return PARService()
+
+
+def get_jar_service() -> JARService:
+    """Get JAR service instance."""
+    return JARService()
+
+
+def get_token_exchange_service() -> TokenExchangeService:
+    """Get token exchange service instance."""
+    return TokenExchangeService()
+
+
 def get_profile_service() -> ProfileService:
     """Get profile service instance."""
     return ProfileService()
 
 
+def get_pat_service() -> PersonalAccessTokenService:
+    """Get PAT service instance."""
+    return PersonalAccessTokenService()
+
+
 def get_trust_service() -> TrustPolicyService:
     """Get trust policy service instance."""
     return TrustPolicyService()
+
+
+def get_pairwise_service():
+    """Get pairwise subject service instance."""
+    from auth.services.pairwise import PairwiseSubjectService
+
+    return PairwiseSubjectService()
 
 
 @lru_cache
@@ -179,6 +229,161 @@ async def get_current_user(
         return None
 
     return session.user
+
+
+async def validate_bearer_token(
+    request: Request,
+    db: AsyncSession,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> BearerTokenAuth | None:
+    """Validate Bearer token and return authentication info.
+
+    The JWT ``sub`` claim is a pairwise identifier (per-tenant).  This function
+    resolves it back to the real user_id so callers always receive a usable subject.
+
+    Args:
+        request: The HTTP request.
+        db: Database session.
+        credentials: Bearer token credentials from header.
+
+    Returns:
+        BearerTokenAuth if valid token, None otherwise.
+    """
+    if not credentials:
+        return None
+
+    token = credentials.credentials
+
+    try:
+        # Decode without verification first to get claims
+        unverified = jwt.decode(token, options={"verify_signature": False})
+    except jwt.DecodeError:
+        logger.debug("Bearer token decode failed")
+        return None
+
+    jti = unverified.get("jti")
+    if not jti:
+        logger.debug("Bearer token missing jti")
+        return None
+
+    # Validate token exists and is not revoked in database
+    token_service = get_token_service()
+    access_token = await token_service.get_access_token_by_jti(db, jti)
+    if not access_token:
+        logger.debug("Bearer token not found in database: jti=%s", jti)
+        return None
+
+    if access_token.revoked_at is not None:
+        logger.debug("Bearer token revoked: jti=%s", jti)
+        return None
+
+    now = datetime.now(UTC)
+    if access_token.expires_at < now:
+        logger.debug("Bearer token expired: jti=%s", jti)
+        return None
+
+    # Extract scopes from token
+    scope_str = unverified.get("scope", "")
+    scopes = scope_str.split() if scope_str else []
+
+    subject = unverified.get("sub")
+
+    # Resolve pairwise subject back to real user_id
+    if subject:
+        subject = await _resolve_pairwise_subject(db, subject, access_token)
+
+    return BearerTokenAuth(
+        client_id=unverified.get("client_id", ""),
+        scopes=scopes,
+        subject=subject,
+    )
+
+
+async def _resolve_pairwise_subject(
+    db: AsyncSession,
+    subject: str,
+    access_token: Any,
+) -> str:
+    """Resolve a pairwise subject identifier back to the real user_id.
+
+    Falls back to the original subject value when:
+    - The access_token has no associated client (should not happen).
+    - The pairwise service cannot resolve the sub (old token format).
+
+    Args:
+        db: Database session.
+        subject: The ``sub`` claim from the JWT.
+        access_token: The validated AccessToken row.
+
+    Returns:
+        The real user_id as a string, or the original subject as fallback.
+    """
+    client_service = get_oauth2_client_service()
+    client = await client_service.get_by_id(db, access_token.client_id)
+    if not client:
+        logger.warning(
+            "Pairwise resolution skipped: client not found for access_token jti=%s",
+            access_token.jti,
+        )
+        return subject
+
+    pairwise_service = get_pairwise_service()
+    real_user_id = await pairwise_service.resolve_user_id_for_client(db, subject, client)
+    if real_user_id is not None:
+        return str(real_user_id)
+
+    # Backward compatibility: the sub might be a raw user_id from a token
+    # issued before pairwise was enabled.
+    logger.warning(
+        "Pairwise resolution failed for sub=%s, client=%s — "
+        "falling back to raw sub (old token format)",
+        subject,
+        client.client_id,
+    )
+    return subject
+
+
+async def validate_pat_token(
+    request: Request,
+    db: AsyncSession,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> PATAuth | None:
+    """Validate Personal Access Token and return authentication info.
+
+    Args:
+        request: The HTTP request.
+        db: Database session.
+        credentials: Bearer token credentials from header.
+
+    Returns:
+        PATAuth if valid PAT, None otherwise.
+    """
+    if not credentials:
+        return None
+
+    token = credentials.credentials
+
+    # Check if this is a PAT (has our prefix)
+    if not token.startswith(PAT_PREFIX):
+        return None
+
+    pat_service = get_pat_service()
+    pat = await pat_service.validate_token(db, token)
+
+    if not pat:
+        return None
+
+    # Update usage stats
+    client_ip = request.client.host if request.client else None
+    await pat_service.update_token_usage(db, pat, client_ip)
+
+    return PATAuth(
+        user_id=str(pat.user_id),
+        pat_id=str(pat.id),
+        scopes=list(pat.scopes),
+        tenant_id=str(pat.tenant_id) if pat.tenant_id else None,
+        target_client_id=str(pat.target_client_id) if pat.target_client_id else None,
+    )
 
 
 def token_has_scope(scopes: list[str], required_scope: str) -> bool:

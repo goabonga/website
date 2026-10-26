@@ -96,6 +96,23 @@ class Settings(BaseSettings):
     mfa_issuer_name: str = "Auth"  # Issuer name shown in authenticator apps
     mfa_email_code_expiry_minutes: int = 10  # MFA email code validity in minutes
 
+    # OAuth2
+    authorization_code_expiry_minutes: int = 10  # Authorization code validity
+    access_token_expiry_minutes: int = 60  # Access token validity (1 hour)
+    refresh_token_expiry_days: int = 30  # Refresh token validity (30 days)
+    id_token_expiry_minutes: int = 60  # ID token validity (1 hour)
+    # Group scopes: a client allowed the group scope may request any scope of the listed
+    # resources, e.g. {"suite:*": ["notes", "tasks"]} lets "notes:read" through. JSON in the
+    # environment. Empty by default: the groups are a deployment choice.
+    scope_groups: dict[str, list[str]] = {}
+
+    # Device Authorization (RFC 8628)
+    device_code_expiry_minutes: int = 15  # Device code validity
+    device_code_interval: int = 5  # Minimum polling interval in seconds
+
+    # Pushed Authorization Requests (RFC 9126)
+    par_request_expiry_seconds: int = 60  # PAR request_uri validity (1 minute)
+
     # Multi-tenancy
     tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
     tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup

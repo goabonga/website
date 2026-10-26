@@ -3,6 +3,7 @@
 
 """Application middlewares."""
 
+from auth.middlewares.cors import OAuth2CORSMiddleware
 from auth.middlewares.session import SlidingSessionMiddleware
 from auth.middlewares.tenant import (
     TenantContext,
@@ -13,6 +14,7 @@ from auth.middlewares.tenant import (
 )
 
 __all__ = [
+    "OAuth2CORSMiddleware",
     "SlidingSessionMiddleware",
     "TenantContext",
     "TenantMiddleware",

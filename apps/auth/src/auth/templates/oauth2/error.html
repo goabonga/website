@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Authorization Error{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1>Authorization Error</h1>
+
+    <div class="error-box">
+        <div class="error-code">{{ error }}</div>
+        {% if error_description %}
+        <p class="error-description">{{ error_description }}</p>
+        {% endif %}
+    </div>
+
+    <div class="error-details">
+        {% if error == "invalid_request" %}
+        <p>The authorization request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed.</p>
+        {% elif error == "unauthorized_client" %}
+        <p>The client is not authorized to request an authorization code using this method.</p>
+        {% elif error == "access_denied" %}
+        <p>The resource owner or authorization server denied the request.</p>
+        {% elif error == "unsupported_response_type" %}
+        <p>The authorization server does not support obtaining an authorization code using this method.</p>
+        {% elif error == "invalid_scope" %}
+        <p>The requested scope is invalid, unknown, or malformed.</p>
+        {% elif error == "server_error" %}
+        <p>The authorization server encountered an unexpected condition that prevented it from fulfilling the request.</p>
+        {% elif error == "temporarily_unavailable" %}
+        <p>The authorization server is currently unable to handle the request due to a temporary overloading or maintenance.</p>
+        {% endif %}
+    </div>
+
+    <p class="link">
+        <a href="/">Return to Home</a>
+    </p>
+</div>
+
+<style>
+.error-container {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+}
+.error-box {
+    background: rgba(214, 48, 49, 0.2);
+    border: 1px solid rgba(214, 48, 49, 0.3);
+    color: var(--error-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+.error-code {
+    font-family: monospace;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.error-description {
+    margin: 0;
+}
+.error-details {
+    color: var(--text-muted-color);
+    margin: 20px 0;
+}
+.error-details p {
+    margin: 0;
+}
+</style>
+{% endblock %}

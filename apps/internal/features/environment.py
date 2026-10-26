@@ -7,13 +7,14 @@ Scenarios run fully in-process, without any external infrastructure:
 
 - the FastAPI application is driven through an ASGI transport;
 - the OAuth2 token validation is mocked;
+- every outbound service client is mocked.
 """
 
 import asyncio
 import contextlib
 import os
 import uuid
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 # Set required env vars BEFORE any internal import
 os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.local")
@@ -125,6 +126,13 @@ def before_all(context):
     context.mock_exchange_validate = context._token_exchange_validate_patcher.start()
     context.mock_exchange_exchange = context._token_exchange_exchange_patcher.start()
 
+    # --- External service client mocking ---
+    # All service clients must use AsyncMock so their methods are awaitable
+
+    p = patch("internal.routes.analytics.analytics_client", new_callable=AsyncMock)
+    context.mock_analytics = p.start()
+    context._patchers.append(p)
+
 
 def before_scenario(context, scenario):
     """Reset state before each scenario."""
@@ -139,6 +147,12 @@ def before_scenario(context, scenario):
     context.user_name = TEST_USER_NAME
     context.authenticated = True
     _configure_auth(context)
+
+    # Reset all service mocks
+    for p_mock in [
+        context.mock_analytics,
+    ]:
+        p_mock.reset_mock()
 
 
 def after_scenario(context, scenario):

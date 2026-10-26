@@ -21,7 +21,7 @@ extends it.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Returns `{"status": "healthy"}`; used for monitoring and readiness probes. Hidden from the OpenAPI schema. |
-| GET | `/docs`, `/redoc`, `/openapi.json` | Swagger UI, ReDoc and the schema. Only registered when `DOCS_ENABLED=true`; otherwise they answer `404`. |
+| GET | `/docs`, `/redoc`, `/openapi.json` | Swagger UI, ReDoc and the schema. Only registered when `DOCS_ENABLED=true`; otherwise they are not handled by the foundation (see [SPA serving](04-spa-serving.md) for what answers them). |
 
 ## Settings
 
@@ -57,7 +57,7 @@ switch and the CORS policy.
 behave (`features/foundation.feature`) has these scenarios:
 
 - Health check reports a healthy server
-- API documentation is disabled by default
+- API documentation is disabled by default (the Swagger UI page is not served)
 - API documentation can be enabled
 - Cross-origin requests are allowed by default
 - Cross-origin requests can be restricted to listed origins

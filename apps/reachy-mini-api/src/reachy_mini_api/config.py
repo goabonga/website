@@ -42,13 +42,14 @@ class Settings(BaseSettings):
     oauth2_issuer: str = ""  # OIDC issuer URL (e.g., https://auth.example.com)
     oauth2_swagger_client_id: str = ""  # OAuth2 PKCE client ID for Swagger UI
 
-    # OAuth2 confidential client used for token introspection (RFC 7662)
+    # OAuth2 confidential client for token introspection (RFC 7662) and exchange (RFC 8693)
     oauth2_client_id: str = ""
     oauth2_client_secret: str = get_credential("OAUTH2_CLIENT_SECRET", "")
 
-    # Redis for the introspection cache
+    # Redis for the introspection and token exchange cache
     redis_url: str = ""  # e.g., unix:///run/redis/redis.sock?db=5
     redis_key_prefix: str = "reachy"
+    oauth2_client_cache_ttl: int = 300  # token exchange cache, 5 minutes
 
     # Token introspection cache (RFC 7662)
     token_introspection_cache_ttl: int = 60  # seconds

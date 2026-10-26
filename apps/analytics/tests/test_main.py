@@ -33,6 +33,8 @@ class TestAppConfiguration:
 
         assert app.url_path_for("health_check") == "/health"
         assert app.url_path_for("security_txt") == "/.well-known/security.txt"
+        assert app.url_path_for("collect_events") == "/collect"
+        assert app.url_path_for("collect_beacon") == "/collect"
 
 
 class TestVersion:

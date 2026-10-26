@@ -35,6 +35,8 @@ class TestAppConfiguration:
         assert app.url_path_for("security_txt") == "/.well-known/security.txt"
         assert app.url_path_for("collect_events") == "/collect"
         assert app.url_path_for("collect_beacon") == "/collect"
+        assert app.url_path_for("track_pixel", pixel_key="k") == "/p/k.gif"
+        assert app.url_path_for("track_pixel_no_extension", pixel_key="k") == "/p/k"
 
 
 class TestVersion:

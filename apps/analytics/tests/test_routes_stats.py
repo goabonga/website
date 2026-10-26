@@ -14,6 +14,10 @@ from analytics.routes.stats import (
     DailyStats,
     DeviceStats,
     EventStats,
+    IPDetailStats,
+    IPEventStats,
+    IPPageStats,
+    IPStats,
     OverviewStats,
     PageStats,
     ReferrerStats,
@@ -89,6 +93,47 @@ class TestResponseModels:
     def test_event_stats(self):
         stats = EventStats(event_type="click", count=300, unique_sessions=200)
         assert stats.event_type == "click"
+
+    def test_ip_stats(self):
+        now = datetime.now(UTC)
+        stats = IPStats(
+            ip_address="1.2.3.4",
+            sessions=5,
+            pageviews=20,
+            countries=["US"],
+            browsers=["Chrome"],
+            device_types=["desktop"],
+            first_seen=now,
+            last_seen=now,
+        )
+        assert stats.ip_address == "1.2.3.4"
+
+    def test_ip_page_stats(self):
+        stats = IPPageStats(page_url="/about", pageviews=10)
+        assert stats.page_url == "/about"
+
+    def test_ip_event_stats(self):
+        stats = IPEventStats(event_type="click", count=5)
+        assert stats.event_type == "click"
+
+    def test_ip_detail_stats(self):
+        now = datetime.now(UTC)
+        stats = IPDetailStats(
+            ip_address="1.2.3.4",
+            total_sessions=10,
+            total_pageviews=50,
+            total_events=100,
+            countries=["US"],
+            cities=["NYC"],
+            browsers=["Chrome"],
+            device_types=["desktop"],
+            operating_systems=["Windows"],
+            referrers=["google.com"],
+            first_seen=now,
+            last_seen=now,
+            sessions_by_day=[],
+        )
+        assert stats.ip_address == "1.2.3.4"
 
     def test_stats_response(self):
         stats = StatsResponse(success=True, data={"key": "value"})
@@ -383,6 +428,165 @@ class TestGetBrowserStats:
         assert len(data) == 2
         assert data[0]["browser"] == "Chrome"
         assert data[0]["percentage"] == 70.0
+
+
+class TestGetIPStats:
+    """Tests for GET /api/v1/stats/ips endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_ip_stats(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        ip_rows = [
+            _make_row(
+                ip_address="1.2.3.4",
+                sessions=10,
+                first_seen=now - timedelta(days=5),
+                last_seen=now,
+                countries=["US", None],
+                browsers=["Chrome", None],
+                device_types=["desktop", None],
+            ),
+        ]
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_rows_result(ip_rows),
+                _make_scalar_result(50),  # pageviews for 1.2.3.4
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/ips")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["ip_address"] == "1.2.3.4"
+        assert data[0]["sessions"] == 10
+        assert data[0]["pageviews"] == 50
+        # None values should be filtered out
+        assert data[0]["countries"] == ["US"]
+        assert data[0]["browsers"] == ["Chrome"]
+        assert data[0]["device_types"] == ["desktop"]
+
+    @pytest.mark.asyncio
+    async def test_ip_stats_empty(self, patched_app, mock_db):
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_rows_result([]),
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/ips")
+
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    @pytest.mark.asyncio
+    async def test_ip_stats_null_pageviews(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        ip_rows = [
+            _make_row(
+                ip_address="5.6.7.8",
+                sessions=2,
+                first_seen=now,
+                last_seen=now,
+                countries=[],
+                browsers=[],
+                device_types=[],
+            ),
+        ]
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_rows_result(ip_rows),
+                _make_scalar_result(None),  # no pageviews
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/ips")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[0]["pageviews"] == 0
+
+
+class TestGetIPDetail:
+    """Tests for GET /api/v1/stats/ips/{ip_address} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_ip_detail(self, patched_app, mock_db):
+        now = datetime.now(UTC)
+        agg_row = _make_row(
+            sessions=5,
+            first_seen=now - timedelta(days=3),
+            last_seen=now,
+            countries=["US", None],
+            cities=["NYC", None],
+            browsers=["Chrome", None],
+            device_types=["desktop", None],
+            operating_systems=["Windows", None],
+            referrers=["google.com", None],
+        )
+        daily_rows = [
+            _make_row(date="2025-01-01", sessions=3),
+            _make_row(date="2025-01-02", sessions=2),
+        ]
+        page_rows = [
+            _make_row(page_url="/home", pageviews=10),
+        ]
+        event_rows = [
+            _make_row(event_type="click", count=5),
+        ]
+
+        # Mock execute: check, agg, pageviews, events, daily, pages, events_by_type
+        agg_result = MagicMock()
+        agg_result.one.return_value = agg_row
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_result(5),  # check IP exists
+                agg_result,  # aggregated stats
+                _make_scalar_result(20),  # total pageviews
+                _make_scalar_result(30),  # total events
+                _make_rows_result(daily_rows),  # daily
+                _make_rows_result(page_rows),  # pages
+                _make_rows_result(event_rows),  # events by type
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/ips/1.2.3.4")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ip_address"] == "1.2.3.4"
+        assert data["total_sessions"] == 5
+        assert data["total_pageviews"] == 20
+        assert data["total_events"] == 30
+        assert data["countries"] == ["US"]
+        assert data["cities"] == ["NYC"]
+        assert len(data["sessions_by_day"]) == 2
+        assert len(data["pages"]) == 1
+        assert len(data["events"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_ip_detail_not_found(self, patched_app, mock_db):
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalar_result(0),  # IP not found (0 sessions)
+            ]
+        )
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/stats/ips/9.9.9.9")
+
+        assert resp.status_code == 404
 
 
 class TestGetReferrerStats:

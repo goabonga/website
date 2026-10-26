@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# ansible-galaxy collection install -r requirements.yml
+#
+# The collection lives in the ansible/ directory of the monorepo and is not
+# published to Ansible Galaxy: it is installed from Git. Pin version to a
+# release tag of the collection (ansible-vX.Y.Z) for reproducible runs.
+collections:
+  - name: https://github.com/goabonga/website.git#/ansible/
+    type: git
+    version: main

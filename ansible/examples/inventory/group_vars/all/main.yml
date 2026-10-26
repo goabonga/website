@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Infrastructure settings shared by every host. Role defaults are documented in
+# the pages of the goabonga.website roles; only what differs is set here.
+
+# DNS zone the applications are served under (auth.example.com, api.example.com).
+website_domain: example.com
+
+# Deploy account created by bootstrap.yml.
+users_deploy_name: deploy
+users_deploy_ssh_public_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyReplaceMe ops@example.com"
+
+# Redis over a Unix socket, shared with the applications (they follow this value).
+redis_socket: /run/redis/redis.sock
+
+# Certificates.
+certbot_email: ops@example.com
+certbot_agree_tos: true
+# Reload nginx after each renewal.
+certbot_reload_service: nginx
+website_certbot_email: "{{ certbot_email }}"
+
+# Optional roles are off by default; enable them per group, for example in
+# inventory/group_vars/internal_ca.yml:
+#   site_step_ca: true
+#   site_step_ca_client: true

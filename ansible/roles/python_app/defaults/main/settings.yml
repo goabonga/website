@@ -109,8 +109,14 @@ website_redis_group: redis
 
 # Redis Unix socket (follows the redis role); an empty value selects TCP.
 website_redis_socket: "{{ redis_socket | default('') }}"
+
+# Redis host, used when there is no socket.
 website_redis_host: 127.0.0.1
+
+# Redis TCP port, used when there is no socket.
 website_redis_port: 6379
+
+# Redis password, used when there is no socket (empty for none).
 website_redis_password: ""
 
 # Redis URL for clients that accept the unix:// scheme.
@@ -126,13 +132,19 @@ website_celery_redis_url: >-
      if website_redis_socket | length > 0
      else website_redis_url }}
 
-# Celery broker and result backend (Redis databases 0 and 1).
+# Celery broker (Redis database 0).
 website_celery_broker_url: "{{ website_celery_redis_url ~ '?db=0' if website_redis_socket | length > 0 else website_redis_url ~ '/0' }}"
+
+# Celery result backend.
 website_celery_result_backend: "{{ website_celery_redis_url ~ '?db=1' if website_redis_socket | length > 0 else website_redis_url ~ '/1' }}"
 
-# SMTP settings handed to the applications that send mail directly.
+# SMTP host handed to the applications that send mail directly.
 website_smtp_host: localhost
+
+# SMTP port.
 website_smtp_port: "587"
+
+# Use TLS for SMTP ("true" or "false").
 website_smtp_tls: "true"
 
 # Issuer shared by every application that validates tokens.
@@ -165,9 +177,11 @@ website_run_migrations: true
 # Web front
 # ---------------------------------------------------------------------------
 
-# Address nginx listens on for public virtual hosts (empty listens on every
-# address).
+# IPv4 address nginx listens on for public virtual hosts (empty listens on
+# every address).
 website_listen_ipv4: "{{ (ansible_facts.get('default_ipv4') or {}).get('address', '') }}"
+
+# IPv6 address nginx listens on for public virtual hosts (empty for none).
 website_listen_ipv6: "{{ (ansible_facts.get('default_ipv6') or {}).get('address', '') }}"
 
 # Address internal virtual hosts (zone website_internal_domain) listen on.
@@ -184,9 +198,10 @@ website_certbot_email: ""
 # Webroot used for the ACME HTTP-01 challenges.
 website_acme_webroot: /var/www/html
 
-# ACME directory and root certificate of the internal CA used by the virtual
-# hosts with ssl: step-ca.
+# ACME directory of the internal CA used by the virtual hosts with ssl: step-ca.
 website_step_ca_acme_url: "https://step-ca.{{ website_internal_domain }}/acme/acme/directory"
+
+# Root certificate of that CA.
 website_step_ca_root: /etc/step-ca/certs/root_ca.crt
 
 # Directory of the Let's Encrypt certificates.
@@ -195,28 +210,36 @@ website_letsencrypt_dir: /etc/letsencrypt
 # nginx snippet with custom error pages, included only when the file exists.
 website_nginx_error_pages_snippet: /etc/nginx/snippets/error-pages.conf
 
-# TLS settings of the virtual hosts.
+# TLS protocols of the virtual hosts.
 website_nginx_ssl_protocols: "TLSv1.2 TLSv1.3"
+
+# TLS ciphers of the virtual hosts.
 website_nginx_ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
 
-# Directories of the dnsmasq instances that resolve internal host names. The
-# second one is optional and only used when it exists.
+# Configuration directory of the dnsmasq instance that resolves internal host
+# names on the host.
 website_dnsmasq_dir: /etc/dnsmasq.d
+
+# Configuration directory of the dnsmasq instance that serves the VPN clients,
+# used only when it exists.
 website_dnsmasq_vpn_dir: /etc/dnsmasq-vpn.d
 
-# Route 53 credentials for wildcard certificates (ssl_dns_provider route53).
+# Route 53 access key id for wildcard certificates (ssl_dns_provider route53).
 website_aws_route53_access_key_id: ""
+
+# Route 53 secret access key for wildcard certificates.
 website_aws_route53_secret_access_key: ""
 
 # ---------------------------------------------------------------------------
 # AWS SES
 # ---------------------------------------------------------------------------
 
-# AWS credentials for the SES/SNS webhook configuration of the components that
-# set ses_webhook. When empty the AWS CLI uses its own credential chain.
+# AWS access key id for the SES/SNS webhook configuration of the components
+# that set ses_webhook. When empty the AWS CLI uses its own credential chain.
 website_aws_ses_access_key_id: ""
+
+# AWS secret access key for the SES/SNS configuration.
 website_aws_ses_secret_access_key: ""
-website_aws_ses_region: ""
 
 # ---------------------------------------------------------------------------
 # OpenVPN hooks
@@ -236,8 +259,12 @@ website_apparmor_local_dir: /etc/apparmor.d/local
 # Asterisk
 # ---------------------------------------------------------------------------
 
-# Configuration directory and account of Asterisk (follow the asterisk role).
+# Configuration directory of Asterisk (follows the asterisk role).
 website_asterisk_config_dir: "{{ asterisk_config_dir | default('/etc/asterisk') }}"
+
+# Account that owns the Asterisk configuration (follows the asterisk role).
 website_asterisk_user: "{{ asterisk_user | default('asterisk') }}"
+
+# Group that owns the Asterisk configuration (follows the asterisk role).
 website_asterisk_group: "{{ asterisk_group | default('asterisk') }}"
 

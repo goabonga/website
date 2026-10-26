@@ -1,0 +1,74 @@
+<mjml>
+  <mj-head>
+    <mj-title>A package has been shared with you</mj-title>
+    <mj-preview>%sharer% shared %package_name% %package_version% with you</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+      <mj-text font-size="14px" color="#e0e0e0" line-height="1.6" />
+      <mj-button font-size="14px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#1a1a2e">
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text font-size="22px" font-weight="bold" color="#e94560" align="center">
+          %app_name%
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#16213e" border-radius="8px" padding="30px">
+      <mj-column>
+        <mj-text font-size="18px" font-weight="bold" color="#e0e0e0">
+          Package shared with you
+        </mj-text>
+        <mj-text>
+          <strong style="color: #74b9ff;">%sharer%</strong> has granted you
+          <strong style="color: #00b894;">%role%</strong> access to:
+        </mj-text>
+        <mj-text padding="15px 0">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #a0a0a0;">Package</td>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #e0e0e0; font-family: 'SF Mono', Consolas, monospace;">%package_name%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #a0a0a0;">Version</td>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #e0e0e0; font-family: 'SF Mono', Consolas, monospace;">%package_version%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #a0a0a0;">Architecture</td>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #e0e0e0;">%package_arch%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #a0a0a0;">Component</td>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #e0e0e0;">%package_component%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #a0a0a0;">Access</td>
+              <td style="padding: 8px 12px; border: 1px solid #0f3460; color: #00b894; font-weight: bold;">%role%</td>
+            </tr>
+          </table>
+        </mj-text>
+        <mj-text font-size="13px" color="#a0a0a0">
+          To install this package, make sure you have a PAT configured for the
+          <strong style="color: #e0e0e0;">%package_component%</strong> component, then run:
+        </mj-text>
+        <mj-text font-family="'SF Mono', Consolas, monospace" font-size="13px" color="#74b9ff" background-color="#0d1117" padding="12px" border-radius="4px">
+          sudo apt install %package_name%=%package_version%
+        </mj-text>
+        <mj-button background-color="#e94560" color="white" href="%package_url%" border-radius="8px" padding="20px 0 0 0">
+          View package details
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text font-size="12px" color="#6c757d" align="center">
+          You received this email because someone shared a package with you on %app_name%.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -299,3 +299,62 @@ async def test_package_page_offers_management_to_the_owner_only(http, login_call
 
     assert f"/dashboard/{mine.id}/share" in owner_view
     assert f"/dashboard/{mine.id}/delete" in admin_view
+
+
+@pytest.fixture
+def notifications(monkeypatch):
+    sent: list[dict] = []
+
+    async def record(**kwargs) -> None:
+        sent.append(kwargs)
+
+    from apt_server.services import email
+
+    monkeypatch.setattr(email, "send_package_shared", record)
+    return sent
+
+
+async def test_sharing_with_an_email_notifies_the_grantee(
+    http, login_caller, mine, notifications
+) -> None:
+    login_caller("alice", [], display_name="alice@example.com")
+
+    await http.post(
+        f"/dashboard/{mine.id}/share",
+        data={"grantee": "bob@example.com", "grantee_type": "user", "role": "write"},
+    )
+
+    (message,) = notifications
+    assert message["to_email"] == "bob@example.com"
+    assert message["to_name"] == "bob"
+    assert message["sharer"] == "alice@example.com"
+    assert message["role"] == "write"
+    assert message["package_name"] == "tool"
+    assert message["package_url"] == f"https://test/packages/{mine.id}"
+
+
+async def test_sharing_with_a_group_or_an_opaque_id_sends_nothing(
+    http, login_caller, mine, notifications
+) -> None:
+    login_caller("alice", [])
+
+    await http.post(
+        f"/dashboard/{mine.id}/share", data={"grantee": "team:ops", "grantee_type": "group"}
+    )
+    await http.post(
+        f"/dashboard/{mine.id}/share", data={"grantee": "sub-123", "grantee_type": "user"}
+    )
+
+    assert notifications == []
+
+
+async def test_a_rejected_duplicate_grant_does_not_notify_again(
+    http, login_caller, mine, notifications
+) -> None:
+    login_caller("alice", [])
+    data = {"grantee": "bob@example.com", "grantee_type": "user"}
+
+    await http.post(f"/dashboard/{mine.id}/share", data=data)
+    await http.post(f"/dashboard/{mine.id}/share", data=data)
+
+    assert len(notifications) == 1

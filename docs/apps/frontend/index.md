@@ -16,6 +16,7 @@ behave.
 | [SPA serving](04-spa-serving.md) | Template rendering, runtime configuration and static files |
 | [security.txt](05-security-txt.md) | RFC 9116 vulnerability disclosure contact |
 | [Server-side analytics](06-analytics.md) | Page view tracking sent to the analytics service |
+| [Deployment](07-deployment.md) | Process, environment, client build and nginx requirements |
 
 ## Running the tests
 

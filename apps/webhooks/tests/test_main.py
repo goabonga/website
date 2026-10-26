@@ -168,3 +168,19 @@ class TestBrevoRegistration:
             # Registered but not wired to an internal API yet: 503, not 404.
             response = await _post(app, "/webhooks/brevo")
         assert response.status_code == 503
+
+
+class TestSESRegistration:
+    """Tests for conditional registration of the SES route."""
+
+    async def test_route_not_registered_by_default(self):
+        from webhooks.main import app
+
+        response = await _post(app, "/webhooks/ses")
+        assert response.status_code == 404
+
+    async def test_route_registered_when_enabled(self):
+        with _reloaded_app({"SES_ENABLED": "true"}) as app:
+            # Registered but not wired to an internal API yet: 503, not 404.
+            response = await _post(app, "/webhooks/ses")
+        assert response.status_code == 503

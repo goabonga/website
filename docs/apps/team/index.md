@@ -12,6 +12,7 @@ is tested with pytest and behave.
 |------|---------|
 | [Foundation](01-foundation.md) | settings, logging, database session, health check, CORS |
 | [OAuth2 authentication](02-authentication.md) | bearer token validation, scopes and token exchange |
+| [Teams](03-teams.md) | teams CRUD and the first database migration |
 
 ## Running the tests
 

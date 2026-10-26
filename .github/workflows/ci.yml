@@ -273,6 +273,16 @@ jobs:
             --pinentry-mode loopback --sign > /dev/null
           KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEY_ID"
+      # Components named deploy-* record what is deployed to an environment:
+      # only the deploy workflows bump them, after a successful apply.
+      - name: Select the releasable components
+        id: components
+        run: |
+          set -euo pipefail
+          ARGS=$(uv tool run multicz config --output json \
+            | jq -r '.components | keys[] | select(startswith("deploy-") | not) | "--component " + .' \
+            | tr '\n' ' ')
+          echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
       - name: Plan release
         run: uv tool run multicz plan --summary "$GITHUB_STEP_SUMMARY"
       - name: Bump, commit, tag, push (signed)
@@ -280,7 +290,7 @@ jobs:
         if: steps.gpg.outputs.available == 'true'
         run: |
           set -euo pipefail
-          PLAN=$(uv tool run multicz bump --commit --tag --push --sign --output json)
+          PLAN=$(uv tool run multicz bump ${{ steps.components.outputs.args }} --commit --tag --push --sign --output json)
           BUMPED=$(echo "$PLAN" | jq -r '.bumps | to_entries | map("\(.key)=\(.value.next_version)") | join(" ")')
           echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
       - name: Bump, commit, tag, push
@@ -288,7 +298,7 @@ jobs:
         if: steps.gpg.outputs.available != 'true'
         run: |
           set -euo pipefail
-          PLAN=$(uv tool run multicz bump --commit --tag --push --output json)
+          PLAN=$(uv tool run multicz bump ${{ steps.components.outputs.args }} --commit --tag --push --output json)
           BUMPED=$(echo "$PLAN" | jq -r '.bumps | to_entries | map("\(.key)=\(.value.next_version)") | join(" ")')
           echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
       - name: Resolve release outputs

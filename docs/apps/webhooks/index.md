@@ -21,3 +21,5 @@ documents one feature as it exists in the code.
    optional HMAC verification.
 5. [Amazon SES webhook proxy](05-ses.md) - raw proxy for SES notifications
    delivered through SNS.
+6. [Stripe webhook proxy](06-stripe.md) - raw proxy; signature checked by
+   the billing service.

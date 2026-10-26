@@ -3,12 +3,15 @@
 
 """Tests for auth.api.deps — FastAPI dependency injection."""
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from tests.conftest import (
+    make_access_token,
+    make_personal_access_token,
     make_session,
     make_user,
 )
@@ -178,11 +181,56 @@ class TestServiceFactories:
 
         assert isinstance(get_mfa_service(), MFAService)
 
+    def test_get_oauth2_client_service(self):
+        from auth.api.deps import get_oauth2_client_service
+        from auth.services.oauth2_client import OAuth2ClientService
+
+        assert isinstance(get_oauth2_client_service(), OAuth2ClientService)
+
+    @patch("auth.api.deps.get_encryption", return_value=MagicMock())
+    @patch("auth.api.deps.get_jwks_service")
+    def test_get_token_service(self, mock_jwks, mock_enc):
+        from auth.api.deps import get_token_service
+
+        mock_jwks.return_value = MagicMock()
+        result = get_token_service()
+        assert result is not None
+
+    def test_get_device_code_service(self):
+        from auth.api.deps import get_device_code_service
+        from auth.services.device_code import DeviceCodeService
+
+        assert isinstance(get_device_code_service(), DeviceCodeService)
+
+    def test_get_par_service(self):
+        from auth.api.deps import get_par_service
+        from auth.services.par import PARService
+
+        assert isinstance(get_par_service(), PARService)
+
+    def test_get_jar_service(self):
+        from auth.api.deps import get_jar_service
+        from auth.services.jar import JARService
+
+        assert isinstance(get_jar_service(), JARService)
+
+    def test_get_token_exchange_service(self):
+        from auth.api.deps import get_token_exchange_service
+        from auth.services.token_exchange import TokenExchangeService
+
+        assert isinstance(get_token_exchange_service(), TokenExchangeService)
+
     def test_get_profile_service(self):
         from auth.api.deps import get_profile_service
         from auth.services.profile import ProfileService
 
         assert isinstance(get_profile_service(), ProfileService)
+
+    def test_get_pat_service(self):
+        from auth.api.deps import get_pat_service
+        from auth.services.pat import PersonalAccessTokenService
+
+        assert isinstance(get_pat_service(), PersonalAccessTokenService)
 
     def test_get_trust_service(self):
         from auth.api.deps import get_trust_service
@@ -299,9 +347,257 @@ class TestGetCurrentUser:
 # ---------------------------------------------------------------------------
 
 
+class TestValidateBearerToken:
+    @pytest.mark.asyncio
+    async def test_no_credentials_returns_none(self):
+        from auth.api.deps import validate_bearer_token
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), None)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.jwt")
+    async def test_decode_error_returns_none(self, mock_jwt):
+        import jwt as real_jwt
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.side_effect = real_jwt.DecodeError("bad")
+        mock_jwt.DecodeError = real_jwt.DecodeError
+
+        creds = MagicMock()
+        creds.credentials = "invalid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.jwt")
+    async def test_no_jti_returns_none(self, mock_jwt):
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.return_value = {"sub": "user1"}  # no jti
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_token_service")
+    @patch("auth.api.deps.jwt")
+    async def test_token_not_in_db_returns_none(self, mock_jwt, mock_token_svc):
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.return_value = {"jti": "abc123", "sub": "user1"}
+        svc = MagicMock()
+        svc.get_access_token_by_jti = AsyncMock(return_value=None)
+        mock_token_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_token_service")
+    @patch("auth.api.deps.jwt")
+    async def test_revoked_token_returns_none(self, mock_jwt, mock_token_svc):
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.return_value = {"jti": "abc123"}
+        at = make_access_token(jti="abc123", revoked_at=datetime.now(UTC))
+        svc = MagicMock()
+        svc.get_access_token_by_jti = AsyncMock(return_value=at)
+        mock_token_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_token_service")
+    @patch("auth.api.deps.jwt")
+    async def test_expired_token_returns_none(self, mock_jwt, mock_token_svc):
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.return_value = {"jti": "abc123"}
+        at = make_access_token(
+            jti="abc123",
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
+        )
+        at.revoked_at = None
+        svc = MagicMock()
+        svc.get_access_token_by_jti = AsyncMock(return_value=at)
+        mock_token_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_token_service")
+    @patch("auth.api.deps.jwt")
+    async def test_valid_token_returns_bearer_auth(self, mock_jwt, mock_token_svc):
+        from auth.api.deps import BearerTokenAuth, validate_bearer_token
+
+        mock_jwt.decode.return_value = {
+            "jti": "abc123",
+            "scope": "users:read users:write",
+            "client_id": "my_client",
+            "sub": "user_42",
+        }
+        at = make_access_token(jti="abc123")
+        at.revoked_at = None
+        at.expires_at = datetime.now(UTC) + timedelta(hours=1)
+        svc = MagicMock()
+        svc.get_access_token_by_jti = AsyncMock(return_value=at)
+        mock_token_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        # Mock db for pairwise resolution (returns no client → fallback to raw sub)
+        mock_db = AsyncMock()
+        mock_client_result = MagicMock()
+        mock_client_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_client_result
+
+        result = await validate_bearer_token(MagicMock(), mock_db, creds)
+        assert isinstance(result, BearerTokenAuth)
+        assert result.client_id == "my_client"
+        assert result.scopes == ["users:read", "users:write"]
+        assert result.subject == "user_42"
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_token_service")
+    @patch("auth.api.deps.jwt")
+    async def test_empty_scope_returns_empty_list(self, mock_jwt, mock_token_svc):
+        from auth.api.deps import validate_bearer_token
+
+        mock_jwt.decode.return_value = {"jti": "abc123", "scope": ""}
+        at = make_access_token(jti="abc123")
+        at.revoked_at = None
+        at.expires_at = datetime.now(UTC) + timedelta(hours=1)
+        svc = MagicMock()
+        svc.get_access_token_by_jti = AsyncMock(return_value=at)
+        mock_token_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = "valid.token"
+
+        result = await validate_bearer_token(MagicMock(), AsyncMock(), creds)
+        assert result.scopes == []
+
+
 # ---------------------------------------------------------------------------
 # validate_pat_token
 # ---------------------------------------------------------------------------
+
+
+class TestValidatePatToken:
+    @pytest.mark.asyncio
+    async def test_no_credentials_returns_none(self):
+        from auth.api.deps import validate_pat_token
+
+        result = await validate_pat_token(MagicMock(), AsyncMock(), None)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_not_pat_prefix_returns_none(self):
+        from auth.api.deps import validate_pat_token
+
+        creds = MagicMock()
+        creds.credentials = "Bearer some-jwt-token"
+
+        result = await validate_pat_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_pat_service")
+    async def test_invalid_pat_returns_none(self, mock_pat_svc):
+        from auth.api.deps import validate_pat_token
+        from auth.services.pat import PAT_PREFIX
+
+        svc = MagicMock()
+        svc.validate_token = AsyncMock(return_value=None)
+        mock_pat_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}invalidtoken"
+
+        result = await validate_pat_token(MagicMock(), AsyncMock(), creds)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_pat_service")
+    async def test_valid_pat_returns_pat_auth(self, mock_pat_svc):
+        from auth.api.deps import PATAuth, validate_pat_token
+        from auth.services.pat import PAT_PREFIX
+
+        uid = uuid.uuid4()
+        pat = make_personal_access_token(
+            user_id=uid,
+            scopes=["users:read", "users:write"],
+        )
+        pat.tenant_id = uuid.uuid4()
+        pat.target_client_id = uuid.uuid4()
+
+        svc = MagicMock()
+        svc.validate_token = AsyncMock(return_value=pat)
+        svc.update_token_usage = AsyncMock()
+        mock_pat_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}validtoken"
+
+        request = MagicMock()
+        request.client.host = "10.0.0.1"
+
+        result = await validate_pat_token(request, AsyncMock(), creds)
+        assert isinstance(result, PATAuth)
+        assert result.user_id == str(uid)
+        assert result.pat_id == str(pat.id)
+        assert result.scopes == ["users:read", "users:write"]
+        assert result.tenant_id == str(pat.tenant_id)
+        assert result.target_client_id == str(pat.target_client_id)
+        svc.update_token_usage.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_pat_service")
+    async def test_valid_pat_no_client_ip(self, mock_pat_svc):
+        from auth.api.deps import validate_pat_token
+        from auth.services.pat import PAT_PREFIX
+
+        pat = make_personal_access_token()
+        pat.tenant_id = None
+        pat.target_client_id = None
+
+        svc = MagicMock()
+        svc.validate_token = AsyncMock(return_value=pat)
+        svc.update_token_usage = AsyncMock()
+        mock_pat_svc.return_value = svc
+
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}validtoken"
+
+        request = MagicMock()
+        request.client = None
+
+        result = await validate_pat_token(request, AsyncMock(), creds)
+        assert result is not None
+        assert result.tenant_id is None
+        assert result.target_client_id is None
+        svc.update_token_usage.assert_awaited_once_with(
+            svc.update_token_usage.call_args[0][0],
+            pat,
+            None,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -467,3 +763,13 @@ class TestGetUserAdminPermissions:
         assert perms["users:write"] is False
         assert perms["can_view_clients"] is False
         assert perms["clients:read"] is False
+
+
+class TestServiceFactoriesExtra:
+    """Coverage for service factories not exercised elsewhere."""
+
+    def test_get_pairwise_service(self):
+        from auth.api.deps import get_pairwise_service
+        from auth.services.pairwise import PairwiseSubjectService
+
+        assert isinstance(get_pairwise_service(), PairwiseSubjectService)

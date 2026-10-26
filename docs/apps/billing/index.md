@@ -25,6 +25,7 @@ tested.
 | 4 | [Stripe service](04-stripe-service.md) | Stripe SDK wrapper enforcing `saas_id` metadata |
 | 5 | [SaaS applications](05-saas-apps.md) | Onboarding and management of tenants |
 | 6 | [Products](06-products.md) | Product catalog per tenant |
+| 7 | [Prices](07-prices.md) | One-time, recurring and metered prices |
 
 ## Running the tests
 

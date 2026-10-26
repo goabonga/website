@@ -19,6 +19,7 @@ documented on its own page.
 | [Sending emails](04-send.md) | `POST /send`, Celery worker, first migration |
 | [Listing and reading emails](05-emails.md) | Paginated list and detail of stored emails |
 | [Sending statistics](06-stats.md) | Totals, per-provider and per-day counters |
+| [Scheduling and periodic tasks](07-schedule.md) | `POST /schedule`, beat tasks |
 
 ## Running the tests
 

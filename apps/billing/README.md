@@ -25,6 +25,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Metered usage events
 - Partitioning of the API per SaaS application: OAuth clients are bound to the applications they may act on, with an admin API and the `billing-admin` command
 - Stripe webhook processing and subscription events pushed to each SaaS application
+- Celery tasks for usage reporting, cleanup and Stripe catalog sync
 
 ## Routes and scopes
 
@@ -107,6 +108,10 @@ uv run --package billing billing-admin client bind --saas example-app --client-i
 
 # Start the API
 uv run --package billing uvicorn billing.main:app --reload --port 8000
+
+# Start a Celery worker and the beat scheduler
+uv run --package billing celery -A billing.celery worker --loglevel=info
+uv run --package billing celery -A billing.celery beat --loglevel=info
 ```
 
 ## Development

@@ -18,3 +18,5 @@ one feature as it exists in the code.
 2. [Settings](02-settings.md) - the `E2E_*` environment variables.
 3. [Browser session](03-browser-session.md) - one browser per run, one
    isolated context per scenario.
+4. [Diagnostics and failure artifacts](04-diagnostics.md) - console and
+   page-error capture, screenshot, trace and HTML of failed scenarios.

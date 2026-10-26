@@ -1,0 +1,93 @@
+{% extends "auth/account_base.html" %}
+
+{% block account_content %}
+<div class="account-card">
+    <div class="account-card-header">
+        <h2>Profile Information</h2>
+    </div>
+
+    <form method="post" action="/auth/account">
+        <div class="account-form-row">
+            <div class="account-form-group">
+                <label for="given_name">First Name</label>
+                <input type="text" id="given_name" name="given_name" class="form-control"
+                    value="{{ profile.given_name or '' }}" placeholder="John">
+            </div>
+            <div class="account-form-group">
+                <label for="family_name">Last Name</label>
+                <input type="text" id="family_name" name="family_name" class="form-control"
+                    value="{{ profile.family_name or '' }}" placeholder="Doe">
+            </div>
+        </div>
+
+        <div class="account-form-group">
+            <label for="nickname">Nickname</label>
+            <input type="text" id="nickname" name="nickname" class="form-control"
+                value="{{ profile.nickname or '' }}" placeholder="johnd">
+            <p class="help-text">A short name or alias</p>
+        </div>
+
+        <div class="account-form-group">
+            <label for="preferred_username">Preferred Username</label>
+            <input type="text" id="preferred_username" name="preferred_username" class="form-control"
+                value="{{ profile.preferred_username or '' }}" placeholder="john_doe">
+            <p class="help-text">Your display name across the platform</p>
+        </div>
+
+        <div class="account-form-group">
+            <label for="picture">Profile Picture URL</label>
+            <input type="text" id="picture" name="picture" class="form-control"
+                value="{{ profile.picture or '' }}" placeholder="https://example.com/avatar.jpg or /uploads/...">
+            <p class="help-text">Supports both full URLs and relative paths for uploaded images</p>
+        </div>
+
+        <div class="account-form-group">
+            <label for="website">Website</label>
+            <input type="url" id="website" name="website" class="form-control"
+                value="{{ profile.website or '' }}" placeholder="https://example.com">
+        </div>
+
+        <div class="account-form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="tel" id="phone_number" name="phone_number" class="form-control"
+                value="{{ profile.phone_number or '' }}" placeholder="+1 234 567 8900">
+        </div>
+
+        <div class="account-form-row">
+            <div class="account-form-group">
+                <label for="zoneinfo">Timezone</label>
+                <select id="zoneinfo" name="zoneinfo" class="form-control">
+                    <option value="">Select timezone</option>
+                    <option value="UTC" {% if profile.zoneinfo == 'UTC' %}selected{% endif %}>UTC</option>
+                    <option value="Europe/Paris" {% if profile.zoneinfo == 'Europe/Paris' %}selected{% endif %}>Europe/Paris</option>
+                    <option value="Europe/London" {% if profile.zoneinfo == 'Europe/London' %}selected{% endif %}>Europe/London</option>
+                    <option value="Europe/Berlin" {% if profile.zoneinfo == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin</option>
+                    <option value="America/New_York" {% if profile.zoneinfo == 'America/New_York' %}selected{% endif %}>America/New York</option>
+                    <option value="America/Los_Angeles" {% if profile.zoneinfo == 'America/Los_Angeles' %}selected{% endif %}>America/Los Angeles</option>
+                    <option value="America/Chicago" {% if profile.zoneinfo == 'America/Chicago' %}selected{% endif %}>America/Chicago</option>
+                    <option value="Asia/Tokyo" {% if profile.zoneinfo == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo</option>
+                    <option value="Asia/Shanghai" {% if profile.zoneinfo == 'Asia/Shanghai' %}selected{% endif %}>Asia/Shanghai</option>
+                    <option value="Australia/Sydney" {% if profile.zoneinfo == 'Australia/Sydney' %}selected{% endif %}>Australia/Sydney</option>
+                </select>
+            </div>
+            <div class="account-form-group">
+                <label for="locale">Language</label>
+                <select id="locale" name="locale" class="form-control">
+                    <option value="">Select language</option>
+                    <option value="en-US" {% if profile.locale == 'en-US' %}selected{% endif %}>English (US)</option>
+                    <option value="en-GB" {% if profile.locale == 'en-GB' %}selected{% endif %}>English (UK)</option>
+                    <option value="fr-FR" {% if profile.locale == 'fr-FR' %}selected{% endif %}>French</option>
+                    <option value="de-DE" {% if profile.locale == 'de-DE' %}selected{% endif %}>German</option>
+                    <option value="es-ES" {% if profile.locale == 'es-ES' %}selected{% endif %}>Spanish</option>
+                    <option value="it-IT" {% if profile.locale == 'it-IT' %}selected{% endif %}>Italian</option>
+                    <option value="pt-BR" {% if profile.locale == 'pt-BR' %}selected{% endif %}>Portuguese (BR)</option>
+                    <option value="ja-JP" {% if profile.locale == 'ja-JP' %}selected{% endif %}>Japanese</option>
+                    <option value="zh-CN" {% if profile.locale == 'zh-CN' %}selected{% endif %}>Chinese</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

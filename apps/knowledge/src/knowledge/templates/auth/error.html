@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication Error{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 100px auto; text-align: center;">
+    <div class="empty-state-icon">&#128274;</div>
+    <h1 style="margin-bottom: 16px;">Authentication Error</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 24px;">
+        {{ error_description or "An error occurred during authentication." }}
+    </p>
+    {% if error %}
+    <div class="alert alert-error" style="text-align: left; margin-bottom: 24px;">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+    <a href="/auth/login" class="btn btn-primary">Try Again</a>
+</div>
+{% endblock %}

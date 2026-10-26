@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{% if active_tab == 'security' %}Security{% else %}Profile{% endif %}{% endblock %}
+
+{% block content %}
+<div class="account-container">
+    <div class="account-header">
+        <h1>Account Settings</h1>
+        <p>Manage your profile and security settings</p>
+    </div>
+
+    <div class="account-tabs">
+        <a href="/auth/account" class="account-tab {% if active_tab == 'profile' %}active{% endif %}">Profile</a>
+        <a href="/auth/account/security" class="account-tab {% if active_tab == 'security' %}active{% endif %}">Security</a>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    {% block account_content %}{% endblock %}
+</div>
+
+<style>
+.account-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.account-header {
+    margin-bottom: 24px;
+}
+
+.account-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.account-header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.account-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
+    gap: 24px;
+}
+
+.account-tab {
+    padding: 12px 0;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.account-tab:hover {
+    color: var(--text-primary);
+}
+
+.account-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-blue);
+}
+
+/* Account card */
+.account-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.account-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.account-card-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Form styles */
+.account-form-group {
+    margin-bottom: 20px;
+}
+
+.account-form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.account-form-group .help-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.account-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 600px) {
+    .account-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* MFA status */
+.mfa-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background-color: var(--surface-color);
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.mfa-status .icon {
+    font-size: 1.5rem;
+}
+
+.mfa-status .status-text {
+    flex: 1;
+}
+
+.mfa-status .status-text strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.mfa-status .status-text span {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* QR Code */
+.qr-container {
+    text-align: center;
+    padding: 24px;
+    background-color: white;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.qr-container img {
+    max-width: 200px;
+    height: auto;
+}
+
+.secret-code {
+    font-family: monospace;
+    font-size: 1rem;
+    padding: 12px;
+    background-color: var(--surface-color);
+    border-radius: 6px;
+    letter-spacing: 2px;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* Backup codes */
+.backup-codes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.backup-code {
+    font-family: monospace;
+    font-size: 0.875rem;
+    padding: 8px 12px;
+    background-color: var(--surface-color);
+    border-radius: 4px;
+    text-align: center;
+}
+
+/* Password requirements */
+.password-requirements li {
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    transition: color 0.15s ease;
+}
+
+.password-requirements li.valid {
+    color: var(--accent-green);
+}
+
+.password-requirements li.valid::marker {
+    content: "✓ ";
+}
+
+.password-requirements li.invalid {
+    color: var(--accent-red);
+}
+</style>
+{% endblock %}

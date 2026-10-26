@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 100px auto; text-align: center;">
+    <div class="empty-state-icon">&#128683;</div>
+    <h1 style="margin-bottom: 16px;">Access Denied</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 24px;">
+        You don't have permission to access this resource.
+    </p>
+    {% if required_scope %}
+    <div class="alert alert-warning" style="text-align: left; margin-bottom: 24px;">
+        <strong>Required permission:</strong> {{ required_scope }}
+    </div>
+    {% endif %}
+    <div style="display: flex; gap: 12px; justify-content: center;">
+        <a href="/dashboard" class="btn btn-secondary">Go to Dashboard</a>
+        <a href="/auth/logout" class="btn btn-primary">Switch Account</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Deletion Request Sent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Check Your Email</h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <div style="padding: 32px;">
+        <div style="font-size: 48px; margin-bottom: 24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue);">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+        </div>
+
+        <h2 style="margin-bottom: 16px;">Confirmation Email Sent</h2>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            We've sent a confirmation email to <strong>{{ email }}</strong>
+        </p>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            To complete the deletion of <strong>"{{ workspace_name }}"</strong>,
+            please click the confirmation link in the email.
+        </p>
+
+        <div style="background-color: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: var(--text-primary); margin: 0;">
+                <strong>Note:</strong> The link will expire in 24 hours.
+            </p>
+        </div>
+
+        <a href="/dashboard" class="btn btn-secondary">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

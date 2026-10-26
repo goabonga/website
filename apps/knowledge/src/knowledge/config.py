@@ -160,6 +160,7 @@ class Settings(BaseSettings):
     sales_email: str = ""  # "contact sales" of the plans with a custom price
     legal_email: str = ""  # legal notice and terms of service
     privacy_email: str = ""  # privacy policy and data subject requests
+    support_url: str = ""  # where the customers of a deleted workspace can get help
 
 
 # Secrets that can be delivered as systemd credentials or environment variables.

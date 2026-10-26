@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Workspace Deletion Scheduled{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Deletion Scheduled</h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <div style="padding: 32px;">
+        <div style="font-size: 48px; margin-bottom: 24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue);">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+        </div>
+
+        <h2 style="margin-bottom: 16px;">Workspace Deletion Scheduled</h2>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            Your workspace <strong>"{{ workspace_name }}"</strong> is scheduled for deletion.
+        </p>
+
+        <div style="background-color: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent-blue); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: var(--text-primary); margin: 0 0 8px 0; font-weight: 500;">
+                Deletion Date
+            </p>
+            <p style="font-size: 1.25rem; color: var(--text-primary); margin: 0;">
+                {{ scheduled_deletion_at.strftime('%B %d, %Y at %H:%M UTC') }}
+            </p>
+        </div>
+
+        {% if subscription_cancelled %}
+        <div style="background-color: rgba(63, 185, 80, 0.1); border: 1px solid var(--accent-green); border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
+            <p style="color: var(--text-primary); margin: 0 0 8px 0; font-weight: 500;">
+                What happens next:
+            </p>
+            <ul style="color: var(--text-secondary); margin: 0; padding-left: 20px;">
+                <li>Your subscription has been cancelled</li>
+                <li>You can continue using the workspace until the deletion date</li>
+                <li>All data will be permanently deleted after this date</li>
+                <li>You will not be charged for the next billing period</li>
+            </ul>
+        </div>
+        {% endif %}
+
+        <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 24px;">
+            If you change your mind, please contact support before the scheduled deletion date.
+        </p>
+
+        <a href="/dashboard" class="btn btn-primary">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

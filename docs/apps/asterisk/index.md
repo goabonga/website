@@ -25,6 +25,7 @@ each feature builds on the previous ones.
 4. [OpenAI Realtime client](04-openai-realtime.md): WebSocket client, tools and barge-in.
 5. [Call handler](05-call-handler.md): per-call bridge, greeting, interruption and hangup.
 6. [Knowledge base](06-knowledge-base.md): optional pgvector RAG tool.
+7. [Deployment and operations](07-deployment.md): local development, runtime layout and Asterisk integration.
 
 ## Testing
 

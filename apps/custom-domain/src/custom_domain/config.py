@@ -118,6 +118,7 @@ class Settings(BaseSettings):
     privileged_helper: str = ""
     privileged_staging_dir: str = ""
     privileged_timeout_seconds: int = 120
+    template_validation_timeout_seconds: int = 30
 
     # DNS verification
     dns_check_interval_minutes: int = 5

@@ -16,6 +16,7 @@ from custom_domain.config import settings
 from custom_domain.database import engine
 from custom_domain.logging import get_logger
 from custom_domain.routes import health
+from custom_domain.routes.admin import templates
 
 logger = get_logger(__name__)
 
@@ -106,6 +107,9 @@ async def debug_exception_handler(request: Request, exc: Exception):
 
 # Health check
 app.include_router(health.router)
+
+# Admin routes
+app.include_router(templates.router, prefix="/api/v1")
 
 
 @app.get("/")

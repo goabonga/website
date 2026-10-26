@@ -10,3 +10,4 @@ file and the page listed below.
 ## Features
 
 - [Foundation](00-foundation.md): settings, logging, application and `/health`.
+- [security.txt](01-security-txt.md): RFC 9116 vulnerability disclosure file.

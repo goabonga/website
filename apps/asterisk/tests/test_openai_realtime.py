@@ -5,6 +5,7 @@
 
 import asyncio
 import base64
+import contextlib
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -126,10 +127,8 @@ class TestConnect:
         assert client._receive_task is not None
         # Clean up
         client._receive_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await client._receive_task
-        except asyncio.CancelledError:
-            pass
 
     @patch("asterisk.openai_realtime.websockets.connect", new_callable=AsyncMock)
     async def test_connect_sends_session_config(self, mock_connect, client, mock_websocket):
@@ -142,10 +141,8 @@ class TestConnect:
         assert first_msg["type"] == "session.update"
         # Clean up
         client._receive_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await client._receive_task
-        except asyncio.CancelledError:
-            pass
 
     @patch("asterisk.openai_realtime.websockets.connect", new_callable=AsyncMock)
     async def test_connect_failure_raises(self, mock_connect, client):

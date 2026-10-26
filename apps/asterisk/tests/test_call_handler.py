@@ -452,9 +452,8 @@ class TestOnInterrupt:
             def empty(self):
                 # First call returns False (there's an item), but get_nowait will fail
                 self._empty_call_count += 1
-                if self._empty_call_count == 1:
-                    return False  # Lie: say not empty
-                return True
+                # First call lies (says not empty), later calls tell the truth
+                return self._empty_call_count != 1
 
             def get_nowait(self):
                 raise asyncio.QueueEmpty()

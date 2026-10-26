@@ -54,10 +54,17 @@ website_mailler_clients: []
 
 # Directories of <slug>.mjml and <slug>.json files imported as the templates of
 # a client after the clients are registered, on every run (an existing template
-# is updated). The directory is a path on the host, for example in the release
-# of the application that owns the templates. Each entry:
+# is updated). The directory is a path on the host, or the directory printed by
+# a module of the application that owns the templates, so that it always
+# follows the release in use. Each entry:
 #   client_id   client that owns the templates (required)
-#   directory   path of the directory on the host (required)
+#   directory   path of the directory on the host
+#   app         catalog application that owns the templates, instead of the
+#               directory (for example knowledge); it must be deployed before
+#               mailler in website_apps_enabled (the first time)
+#   module      with app, module run with the Python of that application as
+#               `python -m <module>` that prints the directory
+#               (knowledge.email_templates for knowledge)
 #   status      status of the templates that do not state one (active by default)
 website_mailler_template_dirs: []
 

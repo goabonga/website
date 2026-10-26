@@ -25,8 +25,14 @@
   ansible.builtin.assert:
     that:
       - item.client_id is defined and item.client_id | string | length > 0
-      - item.directory is defined and item.directory | string | length > 0
-    fail_msg: "Each entry of website_mailler_template_dirs needs a client_id and a directory."
+      - >-
+        (item.directory | default('') | string | length > 0)
+        != (item.app | default('') | string | length > 0 and item.module | default('') | string | length > 0)
+      - item.app is not defined or item.app in python_app__all | map(attribute='id') | list
+    fail_msg: >-
+      Each entry of website_mailler_template_dirs needs a client_id and either a directory or the app
+      (a catalog application) and the module that prints the directory (entry:
+      {{ item.client_id | default('?') }}).
     quiet: true
   loop: "{{ website_mailler_template_dirs }}"
   loop_control:
@@ -106,7 +112,15 @@
       set +a
       args=()
       [ -z "$STATUS" ] || args+=(--status "$STATUS")
-      exec "$VENV/bin/mailler" templates import --client-id "$CLIENT_ID" "${args[@]}" "$DIRECTORY"
+      directory="$DIRECTORY"
+      if [ -z "$directory" ]; then
+        if [ ! -x "$APP_PYTHON" ]; then
+          echo "$APP_PYTHON does not exist: deploy the application before mailler" >&2
+          exit 1
+        fi
+        directory=$("$APP_PYTHON" -m "$MODULE")
+      fi
+      exec "$VENV/bin/mailler" templates import --client-id "$CLIENT_ID" "${args[@]}" "$directory"
     executable: /bin/bash
     chdir: "{{ python_app__current }}"
   environment:
@@ -114,13 +128,17 @@
     VENV: "{{ python_app__venv }}"
     HOME: "{{ python_app__dir }}"
     CLIENT_ID: "{{ item.client_id }}"
-    DIRECTORY: "{{ item.directory }}"
+    DIRECTORY: "{{ item.directory | default('') }}"
+    MODULE: "{{ item.module | default('') }}"
+    APP_PYTHON: >-
+      {{ (website_base_dir ~ '/' ~ (python_app__all | selectattr('id', 'equalto', item.app) | map(attribute='name') | first) ~ '/venv/bin/python')
+         if item.app | default('') | length > 0 else '' }}
     STATUS: "{{ item.status | default('') }}"
   become: true
   become_user: "{{ python_app__user }}"
   loop: "{{ website_mailler_template_dirs }}"
   loop_control:
-    label: "{{ item.client_id }}: {{ item.directory }}"
+    label: "{{ item.client_id }}: {{ item.directory | default(item.app ~ ' ' ~ item.module) }}"
   register: python_app__templates
   changed_when: python_app__templates.stdout | default('') is search(' [1-9][0-9]* new')
   when: not ansible_check_mode

@@ -25,9 +25,11 @@ def call_app(app, method, path, **kwargs):
 
 
 def before_all(context):
+    from knowledge.internal import internal_app
     from knowledge.main import app
 
     context.app = app
+    context.internal_app = internal_app
     context.call_app = call_app
     context.call = lambda method, path, **kwargs: call_app(app, method, path, **kwargs)
 
@@ -35,7 +37,9 @@ def before_all(context):
 def before_scenario(context, scenario):
     context.response = None
     context.app.dependency_overrides.clear()
+    context.internal_app.dependency_overrides.clear()
 
 
 def after_scenario(context, scenario):
     context.app.dependency_overrides.clear()
+    context.internal_app.dependency_overrides.clear()

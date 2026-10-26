@@ -23,6 +23,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/api/v1/templates/{template_id}` | scope `mailler:write` | Delete an email template |
 | POST | `/api/v1/templates/compile` | scope `mailler:read` | Compile MJML to HTML without saving |
 | POST | `/api/v1/templates/{template_id}/render` | scope `mailler:read` | Render a template with provided variables |
+| GET | `/api/v1/contacts` | scope `mailler:read` | List the contacts of the calling client with pagination |
+| POST | `/api/v1/contacts` | scope `mailler:write` | Create a new contact |
+| POST | `/api/v1/contacts/bulk` | scope `mailler:write` | Create multiple contacts at once |
+| GET | `/api/v1/contacts/{contact_id}` | scope `mailler:read` | Get contact by ID |
+| GET | `/api/v1/contacts/by-email/{email}` | scope `mailler:read` | Get a contact of the calling client by email address |
+| PUT | `/api/v1/contacts/{contact_id}` | scope `mailler:write` | Update a contact |
+| DELETE | `/api/v1/contacts/{contact_id}` | scope `mailler:write` | Delete a contact |
+| POST | `/api/v1/contacts/{contact_id}/unsubscribe` | scope `mailler:write` | Unsubscribe a contact from all emails |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -33,6 +41,6 @@ Emails, templates, contacts, groups and campaigns belong to the client of the ac
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
 - `mailler:send` - checked by 2 routes
-- `mailler:read` - checked by 8 routes
+- `mailler:read` - checked by 11 routes
 - `mailler:stats` - checked by 1 route
-- `mailler:write` - checked by 3 routes
+- `mailler:write` - checked by 8 routes

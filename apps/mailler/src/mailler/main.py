@@ -12,6 +12,7 @@ from mailler import __version__
 from mailler.config import settings
 from mailler.logging import get_logger, setup_logging
 from mailler.routes import (
+    contacts,
     emails,
     health,
     providers,
@@ -122,3 +123,4 @@ app.include_router(emails.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
+app.include_router(contacts.router, prefix="/api/v1")

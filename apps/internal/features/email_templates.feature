@@ -265,3 +265,60 @@ Feature: Email templates management
       | field | value |
     Then the response status code should be 303
     And I should be redirected to a URL containing "error=No+templates+selected"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the email templates list
+    Given I am authenticated with only the scopes "email_templates:* vpn:admin billing:read" granted by token exchange
+    And the templates API returns a list of templates
+    When I send a GET request to "/email-templates"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-templates"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new email template form
+    Given I am authenticated with only the scopes "email_templates:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/email-templates/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-templates"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the email template detail
+    Given I am authenticated with only the scopes "email_templates:* vpn:admin billing:read" granted by token exchange
+    And a template exists via API with id 1
+    When I send a GET request to "/email-templates/1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-templates"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the email template edit form
+    Given I am authenticated with only the scopes "email_templates:* vpn:admin billing:read" granted by token exchange
+    And a template exists via API with id 1
+    When I send a GET request to "/email-templates/1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-templates"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the email templates list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the templates API returns a list of templates
+    When I send a GET request to "/email-templates"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                                   | vpn     | billing |
+      | email_templates:*                        | hidden  | hidden  |
+      | email_templates:* vpn:admin              | visible | hidden  |
+      | email_templates:* billing:read           | hidden  | visible |
+      | email_templates:* vpn:admin billing:read | visible | visible |
+      | *                                        | visible | visible |

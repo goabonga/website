@@ -22,3 +22,5 @@ documents one feature as it exists in the code.
 5. [Server and services status](05-status.md) - host information and the
    list of monitored services.
 6. [WebSocket channel](06-websocket.md) - real-time messages on `/ws`.
+7. [Token introspection](07-introspection.md) - revocation check, opaque
+   tokens and the Redis cache.

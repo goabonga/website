@@ -237,6 +237,24 @@ Settings of the `custom_domain` application. The paths and binaries are the valu
 | `website_custom_domain_certbot_email` | `""` | Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email when empty. One of the two is required by the worker. |
 | `website_custom_domain_clients` | `[]` | Applications allowed to register customer domains, created in the database after the migrations when missing and never modified afterwards. Each entry has client_id and name (required), and optionally description, upstream (socket path or host:port), cname, max_domains, webhook_url and webhook_secret (at least 32 characters, required with webhook_url). |
 
+### Mailler
+
+Settings of the `mailler` application. Its defaults describe no deployment: nothing is sent and nobody is trusted until they are set. Required status: none is required on a new database; `website_mailler_legacy_client_id` is required when the database holds data created before the client registry (the migration stops with an explanation otherwise), and the provider settings are required as soon as the credential of the provider is given: `PROTONMAIL_PASSWORD` needs the host, the port and the user, `SES_ACCESS_KEY` needs the region (the role fails before changing anything).
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_mailler_celery_queue` | `"mailler"` | Celery queue of the three mailler processes (CELERY_QUEUE); the worker consumes it (--queues), the API and beat publish to it. |
+| `website_mailler_legacy_client_id` | `""` | OAuth2 client that owns the data created before the client registry existed (LEGACY_CLIENT_ID). Required only when the database already holds templates, contacts, groups or campaigns: migration 006 stops with an explanation when it is empty. |
+| `website_mailler_cors_origins` | `[]` | Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none. |
+| `website_mailler_unsubscribe_base_url` | `""` | Public base URL of the API including /api/v1, used to build the unsubscribe links of the campaigns (UNSUBSCRIBE_BASE_URL). Required to send campaigns. |
+| `website_mailler_protonmail_host` | `{{ protonmail_bridge_smtp_host \| default('') }}` | Protonmail Bridge SMTP host (PROTONMAIL_HOST); follows the protonmail_bridge role. Required, with the port and the user, when the PROTONMAIL_PASSWORD secret is provided. |
+| `website_mailler_protonmail_port` | `{{ protonmail_bridge_smtp_port \| default(0) }}` | Protonmail Bridge SMTP port (PROTONMAIL_PORT); follows the protonmail_bridge role, 0 when it is not used. |
+| `website_mailler_protonmail_user` | `""` | Protonmail Bridge account (PROTONMAIL_USER). |
+| `website_mailler_ses_region` | `""` | AWS SES region (SES_REGION). Required when the SES_ACCESS_KEY secret is provided. |
+| `website_mailler_provider` | `"brevo"` | Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth, apt_server and knowledge, MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client of the application may use. |
+| `website_mailler_clients` | `[]` | Applications allowed to send through mailler, registered after the migrations when missing and never modified afterwards. Each entry has client_id (required) and optionally name, from_email, from_name, reply_to, allowed_senders (email or email=Name), allowed_providers, default_provider, rate_limit_per_minute, daily_quota, callback_url and callback_secret (required with callback_url). |
+| `website_mailler_template_dirs` | `[]` | Directories of <slug>.mjml and <slug>.json files imported as the templates of a client on every run. Each entry has client_id and directory (a path on the host) and optionally status. |
+
 ### Host names
 
 | Variable | Default | Description |
@@ -415,6 +433,26 @@ finishes.
 After the migrations the role also seeds the default nginx template and
 creates the missing entries of `website_custom_domain_clients` with the
 `custom-domain` command.
+
+### Mailler data
+
+`mailler` refuses every OAuth client that is not registered, and each client
+only sees its own emails, templates, contacts and campaigns. After the
+migrations the role fills the registry from the inventory:
+
+- each entry of `website_mailler_clients` is registered with
+  `mailler clients register` when its `client_id` is not in the registry yet.
+  An existing client is never modified: change it with
+  `mailler clients update` or the API. A `callback_secret` is handed to the
+  command through a temporary file (`0600`) that is removed afterwards;
+- each entry of `website_mailler_template_dirs` is imported with
+  `mailler templates import`, on every run. The import creates or updates the
+  templates of the directory and compiles them all before writing, so a
+  template that fails to compile blocks the whole directory. The task is
+  reported as changed only when it created a template.
+
+Every OAuth client an application sends with must be registered: the web
+client and the backend client of an application are two clients for mailler.
 
 ## Tags
 

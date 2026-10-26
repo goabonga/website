@@ -23,6 +23,9 @@ dependencies = [
     "psycopg2-binary>=2.9.9",
     "pgvector>=0.3.6",
     "alembic>=1.14.0",
+    "redis>=5.2.0",
+    "httpx>=0.28.0",
+    "PyJWT[crypto]>=2.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]

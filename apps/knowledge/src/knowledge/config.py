@@ -49,8 +49,43 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://knowledge:knowledge@localhost:5440/knowledge_test"
 
+    # Redis
+    redis_url: str = "redis://localhost:6387/0"
+    redis_key_prefix: str = "knowledge"
+
+    # OAuth2/OIDC (via auth service)
+    oauth2_issuer: str = ""  # e.g., https://auth.example.com
+
+    # Public client (Swagger UI) - uses PKCE, no secret
+    oauth2_swagger_client_id: str = ""
+
+    # Confidential client (API server) - for token exchange & introspection
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+
+    # Token caching
+    oauth2_token_cache_ttl: int = 300  # 5 minutes for token exchange
+    oauth2_introspection_cache_ttl: int = 60  # 1 minute for introspection
+    oauth2_trusted_issuers: str = ""
+    jwks_cache_ttl: int = 3600
+
+
+# Secrets that can be delivered as systemd credentials or environment variables.
+CREDENTIAL_FIELDS = {
+    "oauth2_client_secret": "OAUTH2_CLIENT_SECRET",
+}
+
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+    """Get cached settings instance with credential overrides for secrets.
+
+    A secret only overrides the setting when a credential or an environment variable
+    provides it, so that a value from the `.env` file stays in effect otherwise.
+    """
+    settings = Settings()
+    for field, name in CREDENTIAL_FIELDS.items():
+        value = get_credential(name)
+        if value:
+            setattr(settings, field, value)
+    return settings

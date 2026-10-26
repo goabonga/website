@@ -14,6 +14,8 @@ installed from Git; it is not published to Ansible Galaxy.
   [Deploying applications](05-deploying-apps.md).
 - **Three playbooks**: `bootstrap`, `site` and `apps`. See
   [Playbooks](06-playbooks.md).
+- **A production deployment pipeline**: drift check, pull request and apply
+  from GitHub Actions. See [Production deployment](08-production-deployment.md).
 - **An example project** in `ansible/examples/`: inventory, variables, vault
   template and `ansible.cfg` to copy as the start of an infrastructure
   repository.

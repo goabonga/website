@@ -84,7 +84,7 @@ There is no SMTP secret: the service sends nothing itself.
   socket (the upstream is part of the registration of the client in that service, and the nginx
   user needs access to the socket).
 - After the first deployment of the platform services, the templates are imported into mailler
-  and the OAuth2 client is registered in all three services, see the platform onboarding page.
+  and the OAuth2 client is registered in all three services, see [Platform onboarding](23-platform-onboarding.md).
 - Logs go to stdout (info) and stderr (warning and above), captured by systemd
   into separate files (see [Foundation](00-foundation.md)).
 

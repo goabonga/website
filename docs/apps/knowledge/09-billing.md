@@ -9,7 +9,7 @@ through `BillingClient`, and it receives subscription events on a webhook to kee
 organization's plan in sync. Nothing about the billing tenant is built into the code:
 the identifier, the slug, the secrets and the redirect URLs are settings, and
 the onboarding of the application as a client of billing is described on the
-platform onboarding page.
+[platform onboarding page](23-platform-onboarding.md).
 
 ## Billing client
 

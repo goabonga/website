@@ -46,7 +46,7 @@ mailler templates import --client-id <knowledge OAuth2 client id> \
 Mailler compiles the MJML when it imports it (nothing is written if one template does not
 compile; `--dry-run` only checks). The five templates were compiled and rendered with
 the code of mailler (`mailler.services.mjml` and `mailler.services.rendering`) while this
-page was written; see the platform onboarding page for the registration of the client.
+page was written; see the [platform onboarding page](23-platform-onboarding.md) for the registration of the client.
 
 ## Sending
 

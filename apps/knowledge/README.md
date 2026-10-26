@@ -43,6 +43,7 @@ applications. It is a member of the `website` uv workspace.
 - Workspace deletion confirmed by email, scheduled at the end of the billing
   period and cancellable.
 - Custom domain settings page for Enterprise workspaces.
+- Onboarding as a client of the mailler, custom-domain and billing services.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 

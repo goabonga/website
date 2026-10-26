@@ -24,6 +24,30 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     loop.close()
 
 
+@pytest.fixture(autouse=True)
+def deployment_settings(monkeypatch, tmp_path):
+    """Give the settings that have no default the values a deployment would provide."""
+    from custom_domain.config import settings
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    values = {
+        "nginx_sites_dir": str(tmp_path / "sites-enabled"),
+        "nginx_config_prefix": "custom-domain-",
+        "nginx_bin": "/usr/sbin/nginx",
+        "nginx_service": "nginx",
+        "systemctl_bin": "/usr/bin/systemctl",
+        "certbot_webroot": "/srv/acme",
+        "letsencrypt_dir": "/srv/letsencrypt",
+        "sudo_bin": "sudo",
+        "privileged_helper": "/opt/custom-domain/privileged-helper",
+        "privileged_staging_dir": str(staging),
+    }
+    for name, value in values.items():
+        monkeypatch.setattr(settings, name, value)
+    return settings
+
+
 @pytest.fixture
 def mock_db_session():
     """Create a mock database session."""
@@ -239,6 +263,17 @@ def mock_redis():
     mock.close = AsyncMock()
     mock.aclose = AsyncMock()
     return mock
+
+
+@pytest.fixture
+def mock_subprocess():
+    """Mock asyncio subprocess for certbot/nginx."""
+    with patch("asyncio.create_subprocess_exec") as mock:
+        process = AsyncMock()
+        process.returncode = 0
+        process.communicate = AsyncMock(return_value=(b"", b""))
+        mock.return_value = process
+        yield mock
 
 
 @pytest.fixture

@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from custom_domain.config import ConfigurationError, settings
+from custom_domain.config import settings
 from custom_domain.logging import get_logger
 from custom_domain.models.template import NginxTemplate
 from custom_domain.services.privileged import run_privileged, stage_file
@@ -172,7 +172,7 @@ class TemplateService:
             if not result.ok:
                 return False, result.stderr or "Unknown error"
             return True, ""
-        except (ConfigurationError, OSError, TimeoutError) as e:
+        except Exception as e:
             logger.warning("Nginx syntax validation failed: %s", e)
             return False, str(e)
         finally:

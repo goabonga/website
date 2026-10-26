@@ -107,3 +107,4 @@ class TestSettings:
         assert hasattr(settings, "database_url")
         assert hasattr(settings, "redis_url")
         assert hasattr(settings, "oauth2_issuer")
+        assert hasattr(settings, "nginx_sites_dir")

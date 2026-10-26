@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install fail2ban
+  ansible.builtin.import_tasks: install.yml
+  when: fail2ban_enabled | bool
+  tags: [fail2ban]
+
+- name: Configure fail2ban
+  ansible.builtin.import_tasks: configure.yml
+  when: fail2ban_enabled | bool
+  tags: [fail2ban]
+
+- name: Start fail2ban
+  ansible.builtin.import_tasks: service.yml
+  when: fail2ban_enabled | bool
+  tags: [fail2ban]

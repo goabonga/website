@@ -1,0 +1,12 @@
+{{ ansible_managed | comment }}
+
+[{{ item.name }}]
+enabled = {{ 'true' if item.enabled | default(true) | bool else 'false' }}
+{% for key in ['filter', 'port', 'protocol', 'logpath', 'backend', 'maxretry', 'bantime', 'findtime', 'banaction', 'action'] %}
+{% if item[key] is defined %}
+{{ key }} = {{ item[key] }}
+{% endif %}
+{% endfor %}
+{% for line in item.extra | default([]) %}
+{{ line }}
+{% endfor %}

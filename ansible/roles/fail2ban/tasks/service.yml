@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Manage the fail2ban service
+  ansible.builtin.systemd:
+    name: "{{ fail2ban_service_name }}"
+    state: "{{ fail2ban_service_state }}"
+    enabled: "{{ fail2ban_service_enabled }}"
+
+- name: Apply pending restarts
+  ansible.builtin.meta: flush_handlers

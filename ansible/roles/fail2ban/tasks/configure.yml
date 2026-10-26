@@ -1,0 +1,73 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Build the list of jails
+  ansible.builtin.set_fact:
+    fail2ban__jails: "{{ fail2ban__builtin_jails | selectattr('enabled') | list + fail2ban_jails }}"
+    fail2ban__disabled_jails: "{{ fail2ban__builtin_jails | rejectattr('enabled') | map(attribute='name') | list }}"
+    fail2ban__filters: "{{ (fail2ban__asterisk_filter if fail2ban_asterisk_enabled | bool else []) + fail2ban_filters }}"
+
+- name: Ensure the configuration directories exist
+  ansible.builtin.file:
+    path: "{{ fail2ban_config_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [jail.d, filter.d]
+
+- name: Render jail.local
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: "{{ fail2ban_config_dir }}/jail.local"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: fail2ban | restart
+
+- name: Render the filters
+  ansible.builtin.template:
+    src: filter.local.j2
+    dest: "{{ fail2ban_config_dir }}/filter.d/{{ item.name }}.local"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ fail2ban__filters }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: fail2ban | restart
+
+- name: Render the jails
+  ansible.builtin.template:
+    src: jail.d.local.j2
+    dest: "{{ fail2ban_config_dir }}/jail.d/{{ item.name }}.local"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ fail2ban__jails }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: fail2ban | restart
+
+- name: Remove the jails of disabled integrations
+  ansible.builtin.file:
+    path: "{{ fail2ban_config_dir }}/jail.d/{{ item }}.local"
+    state: absent
+  loop: "{{ fail2ban__disabled_jails }}"
+  notify: fail2ban | restart
+
+- name: Remove the Asterisk filter when the integration is disabled
+  ansible.builtin.file:
+    path: "{{ fail2ban_config_dir }}/filter.d/asterisk.local"
+    state: absent
+  when: not (fail2ban_asterisk_enabled | bool)
+  notify: fail2ban | restart
+
+- name: Test the fail2ban configuration
+  ansible.builtin.command:
+    cmd: fail2ban-client --test
+  changed_when: false
+  when:
+    - fail2ban_test_config | bool
+    - not ansible_check_mode

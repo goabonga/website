@@ -20,6 +20,7 @@ tested.
 | # | Feature | Summary |
 |---|---------|---------|
 | 1 | [Foundation](01-foundation.md) | Settings, logging, database session, health endpoint |
+| 2 | [Authentication](02-authentication.md) | JWT validation, introspection, token exchange, scopes |
 
 ## Running the tests
 

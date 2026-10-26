@@ -77,3 +77,37 @@ Feature: Admin dashboard and conversation management
       | field            | value |
     Then the response status code should be 303
     And I should be redirected to a URL containing "error=No+conversations+selected"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the admin dashboard
+    Given I am authenticated with only the scopes "conversations:*" granted by token exchange
+    And the auth client returns a user for the dashboard
+    When I send a GET request to "/"
+    Then the response status code should be 200
+    And the active sidebar link should be "/"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the conversations list
+    Given I am authenticated with only the scopes "conversations:*" granted by token exchange
+    When I send a GET request to "/conversations"
+    Then the response status code should be 200
+    And the active sidebar link should be "/conversations"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the conversation detail
+    Given I am authenticated with only the scopes "conversations:*" granted by token exchange
+    And a conversation exists with title "Hello World"
+    And the conversation has a message with role "user" and content "Hi there"
+    And the auth client returns user info for conversation owner
+    When I view the conversation detail
+    Then the response status code should be 200
+    And the active sidebar link should be "/conversations"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the missing conversation
+    Given I am authenticated with only the scopes "conversations:*" granted by token exchange
+    When I send a GET request to "/conversations/00000000-0000-0000-0000-000000000099"
+    Then the response status code should be 200
+    And the active sidebar link should be "/conversations"
+    And the sidebar should show the user "admin@test.local"

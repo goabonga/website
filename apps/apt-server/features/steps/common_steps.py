@@ -21,3 +21,8 @@ def check_status(context, status):
 @then('the JSON field "{field}" is "{value}"')
 def check_json_field(context, field, value):
     assert str(context.response.json()[field]) == value
+
+
+@when('I call "{path}" using bearer token "{token}"')
+def request_with_bearer(context, path, token):
+    context.response = context.client.get(path, headers={"Authorization": f"Bearer {token}"})

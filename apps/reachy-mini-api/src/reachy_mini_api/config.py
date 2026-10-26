@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Reachy Mini API"
     debug: bool = False
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     docs_enabled: bool = False
 
     # CORS

@@ -39,7 +39,7 @@
 - name: Register the data of {{ python_app__app }}
   ansible.builtin.include_tasks: "onboarding_{{ python_app__app }}.yml"
   when:
-    - python_app__app in ['custom_domain', 'mailler']
+    - python_app__app in ['custom_domain', 'mailler', 'billing']
     - python_app__sha | length > 0
 
 - name: Configure the log rotation of {{ python_app__app }}

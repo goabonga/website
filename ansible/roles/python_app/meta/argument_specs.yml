@@ -748,3 +748,18 @@ argument_specs:
         - Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
         default: []
         elements: str
+      website_billing_saas_apps:
+        type: list
+        description:
+        - SaaS applications created in the database after the migrations when missing, never
+          modified afterwards. Each entry has slug and name (required) and optionally description,
+          webhook_url and checkout_urls (allowed redirect prefixes).
+        default: []
+        elements: dict
+      website_billing_client_bindings:
+        type: list
+        description:
+        - Bindings of existing OAuth clients to SaaS applications, created when missing. Each
+          entry has saas (slug of an existing application) and client_id.
+        default: []
+        elements: dict

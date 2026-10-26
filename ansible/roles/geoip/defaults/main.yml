@@ -1,0 +1,129 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the geoip role. Every knob is prefixed with `geoip_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+geoip_enabled: true
+
+# Refresh the apt cache before installing packages.
+geoip_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+geoip_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# MaxMind account
+# ======================================================================
+# MaxMind account ID. Required when the role is enabled. Provide it from a vault.
+geoip_account_id: ''
+
+# MaxMind license key. Required when the role is enabled. Provide it from a vault.
+geoip_license_key: ''
+
+# Edition IDs to download (GeoLite2-City, GeoLite2-Country, GeoLite2-ASN, ...). The first
+# one is the marker of the initial download.
+geoip_editions:
+- GeoLite2-City
+- GeoLite2-Country
+
+
+# ======================================================================
+# Installation
+# ======================================================================
+# How geoipupdate is installed: from the distribution packages (`apt`) or from an upstream
+# .deb release (`deb`).
+geoip_install_method: apt
+
+# Package installed with the `apt` method.
+geoip_package: geoipupdate
+
+# Install the libmaxminddb reader packages below.
+geoip_install_reader_tools: true
+
+# Packages providing mmdblookup and the MaxMind DB library.
+geoip_reader_packages:
+- libmaxminddb0
+- mmdb-bin
+
+# geoipupdate release installed with the `deb` method.
+geoip_deb_version: 7.1.0
+
+# Architecture suffix of the .deb file.
+geoip_deb_arch: '{{ ''arm64'' if ansible_facts[''architecture''] in [''aarch64'', ''arm64''] else ''amd64''
+  }}'
+
+# Download URL of the .deb for the `deb` method.
+geoip_deb_url: https://github.com/maxmind/geoipupdate/releases/download/v{{ geoip_deb_version }}/geoipupdate_{{
+  geoip_deb_version }}_linux_{{ geoip_deb_arch }}.deb
+
+# Optional checksum of the .deb in the `algorithm:value` form accepted by get_url.
+geoip_deb_checksum: ''
+
+# Directory where the .deb is stored.
+geoip_deb_download_dir: /var/cache/geoipupdate
+
+
+# ======================================================================
+# Configuration
+# ======================================================================
+# Path of the geoipupdate configuration file.
+geoip_config_file: /etc/GeoIP.conf
+
+# Directory receiving the .mmdb files.
+geoip_database_dir: /usr/share/GeoIP
+
+# Lock file preventing concurrent updates.
+geoip_lock_file: /var/lock/geoipupdate.lock
+
+# Update server host name. Empty uses the geoipupdate default.
+geoip_host: ''
+
+# HTTP proxy used by geoipupdate (host:port). Empty for none.
+geoip_proxy: ''
+
+# Proxy credentials as `user:password`. Empty for none.
+geoip_proxy_user_password: ''
+
+# Keep the modification time of downloaded files.
+geoip_preserve_file_times: false
+
+# Number of parallel downloads. 0 leaves the geoipupdate default (needs geoipupdate 6 or
+# newer when set).
+geoip_parallelism: 0
+
+
+# ======================================================================
+# Updates
+# ======================================================================
+# Command run by the initial download, the cron job and the change handler.
+geoip_update_command: /usr/bin/geoipupdate -f {{ geoip_config_file }}
+
+# Run the update command once when the first edition is not on disk yet.
+geoip_initial_download: true
+
+# Run the update command when the configuration file changes.
+geoip_update_on_config_change: true
+
+# Install a cron job refreshing the databases. When false the job is removed.
+geoip_schedule_enabled: true
+
+# Package providing cron, installed when scheduling is enabled. Empty skips the
+# installation.
+geoip_cron_package: cron
+
+# Name of the cron entry and of its file in /etc/cron.d.
+geoip_cron_name: geoip-update
+
+# Cron minute field.
+geoip_cron_minute: '0'
+
+# Cron hour field.
+geoip_cron_hour: '3'
+
+# Cron weekday field (MaxMind publishes on Tuesdays).
+geoip_cron_weekday: 0,3

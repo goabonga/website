@@ -1,0 +1,144 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install geoipupdate and keep MaxMind GeoLite2 databases current
+    description:
+    - Installs geoipupdate and the libmaxminddb tools, renders GeoIP.conf, downloads the databases and
+      schedules periodic updates.
+    options:
+      geoip_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      geoip_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      geoip_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      geoip_account_id:
+        type: str
+        description: MaxMind account ID. Required when the role is enabled. Provide it from a vault.
+        default: ''
+        no_log: true
+      geoip_license_key:
+        type: str
+        description: MaxMind license key. Required when the role is enabled. Provide it from a vault.
+        default: ''
+        no_log: true
+      geoip_editions:
+        type: list
+        description: Edition IDs to download (GeoLite2-City, GeoLite2-Country, GeoLite2-ASN, ...). The
+          first one is the marker of the initial download.
+        elements: str
+      geoip_install_method:
+        type: str
+        description: 'How geoipupdate is installed: from the distribution packages (`apt`) or from an
+          upstream .deb release (`deb`).'
+        choices:
+        - apt
+        - deb
+        default: apt
+      geoip_package:
+        type: str
+        description: Package installed with the `apt` method.
+        default: geoipupdate
+      geoip_install_reader_tools:
+        type: bool
+        description: Install the libmaxminddb reader packages below.
+        default: true
+      geoip_reader_packages:
+        type: list
+        description: Packages providing mmdblookup and the MaxMind DB library.
+        elements: str
+      geoip_deb_version:
+        type: str
+        description: geoipupdate release installed with the `deb` method.
+        default: 7.1.0
+      geoip_deb_arch:
+        type: str
+        description: Architecture suffix of the .deb file.
+      geoip_deb_url:
+        type: str
+        description: Download URL of the .deb for the `deb` method.
+      geoip_deb_checksum:
+        type: str
+        description: Optional checksum of the .deb in the `algorithm:value` form accepted by get_url.
+        default: ''
+      geoip_deb_download_dir:
+        type: path
+        description: Directory where the .deb is stored.
+        default: /var/cache/geoipupdate
+      geoip_config_file:
+        type: path
+        description: Path of the geoipupdate configuration file.
+        default: /etc/GeoIP.conf
+      geoip_database_dir:
+        type: path
+        description: Directory receiving the .mmdb files.
+        default: /usr/share/GeoIP
+      geoip_lock_file:
+        type: path
+        description: Lock file preventing concurrent updates.
+        default: /var/lock/geoipupdate.lock
+      geoip_host:
+        type: str
+        description: Update server host name. Empty uses the geoipupdate default.
+        default: ''
+      geoip_proxy:
+        type: str
+        description: HTTP proxy used by geoipupdate (host:port). Empty for none.
+        default: ''
+      geoip_proxy_user_password:
+        type: str
+        description: Proxy credentials as `user:password`. Empty for none.
+        default: ''
+        no_log: true
+      geoip_preserve_file_times:
+        type: bool
+        description: Keep the modification time of downloaded files.
+        default: false
+      geoip_parallelism:
+        type: int
+        description: Number of parallel downloads. 0 leaves the geoipupdate default (needs geoipupdate
+          6 or newer when set).
+        default: 0
+      geoip_update_command:
+        type: str
+        description: Command run by the initial download, the cron job and the change handler.
+      geoip_initial_download:
+        type: bool
+        description: Run the update command once when the first edition is not on disk yet.
+        default: true
+      geoip_update_on_config_change:
+        type: bool
+        description: Run the update command when the configuration file changes.
+        default: true
+      geoip_schedule_enabled:
+        type: bool
+        description: Install a cron job refreshing the databases. When false the job is removed.
+        default: true
+      geoip_cron_package:
+        type: str
+        description: Package providing cron, installed when scheduling is enabled. Empty skips the installation.
+        default: cron
+      geoip_cron_name:
+        type: str
+        description: Name of the cron entry and of its file in /etc/cron.d.
+        default: geoip-update
+      geoip_cron_minute:
+        type: str
+        description: Cron minute field.
+        default: '0'
+      geoip_cron_hour:
+        type: str
+        description: Cron hour field.
+        default: '3'
+      geoip_cron_weekday:
+        type: str
+        description: Cron weekday field (MaxMind publishes on Tuesdays).
+        default: 0,3

@@ -1,0 +1,65 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install geoipupdate from the distribution
+  ansible.builtin.apt:
+    name: "{{ geoip_package }}"
+    state: present
+    update_cache: "{{ geoip_apt_update_cache }}"
+    cache_valid_time: "{{ geoip_apt_cache_valid_time }}"
+  when: geoip_install_method == 'apt'
+
+- name: Install geoipupdate from an upstream release
+  when: geoip_install_method == 'deb'
+  block:
+    - name: Read the installed geoipupdate version
+      ansible.builtin.command:
+        cmd: dpkg-query --show --showformat=${Version} geoipupdate
+      register: geoip_installed_version
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Ensure the download directory exists
+      ansible.builtin.file:
+        path: "{{ geoip_deb_download_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      when: geoip_installed_version.rc != 0 or not (geoip_installed_version.stdout is version(geoip_deb_version, '>='))
+
+    - name: Download the geoipupdate package
+      ansible.builtin.get_url:
+        url: "{{ geoip_deb_url }}"
+        dest: "{{ geoip_deb_download_dir }}/geoipupdate_{{ geoip_deb_version }}_{{ geoip_deb_arch }}.deb"
+        checksum: "{{ geoip_deb_checksum | default(omit, true) }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: geoip_installed_version.rc != 0 or not (geoip_installed_version.stdout is version(geoip_deb_version, '>='))
+
+    - name: Install the geoipupdate package
+      ansible.builtin.apt:
+        deb: "{{ geoip_deb_download_dir }}/geoipupdate_{{ geoip_deb_version }}_{{ geoip_deb_arch }}.deb"
+        state: present
+      when: geoip_installed_version.rc != 0 or not (geoip_installed_version.stdout is version(geoip_deb_version, '>='))
+
+- name: Install the MaxMind DB reader tools
+  ansible.builtin.apt:
+    name: "{{ geoip_reader_packages }}"
+    state: present
+    update_cache: "{{ geoip_apt_update_cache }}"
+    cache_valid_time: "{{ geoip_apt_cache_valid_time }}"
+  when: geoip_install_reader_tools | bool
+
+- name: Install cron
+  ansible.builtin.apt:
+    name: "{{ geoip_cron_package }}"
+    state: present
+    update_cache: "{{ geoip_apt_update_cache }}"
+    cache_valid_time: "{{ geoip_apt_cache_valid_time }}"
+  when:
+    - geoip_schedule_enabled | bool
+    - geoip_cron_package | length > 0

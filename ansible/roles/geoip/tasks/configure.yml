@@ -1,0 +1,21 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Ensure the database directory exists
+  ansible.builtin.file:
+    path: "{{ geoip_database_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the geoipupdate configuration
+  ansible.builtin.template:
+    src: GeoIP.conf.j2
+    dest: "{{ geoip_config_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: geoip | update databases

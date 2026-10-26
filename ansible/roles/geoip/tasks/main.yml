@@ -1,0 +1,23 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the geoip configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: geoip_enabled | bool
+  tags: [geoip]
+
+- name: Install geoipupdate
+  ansible.builtin.import_tasks: install.yml
+  when: geoip_enabled | bool
+  tags: [geoip]
+
+- name: Configure geoipupdate
+  ansible.builtin.import_tasks: configure.yml
+  when: geoip_enabled | bool
+  tags: [geoip]
+
+- name: Download and schedule database updates
+  ansible.builtin.import_tasks: update.yml
+  when: geoip_enabled | bool
+  tags: [geoip]

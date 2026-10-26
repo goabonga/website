@@ -16,6 +16,8 @@ All code, comments, task names and documentation are written in English.
 - `apps/<name>/` - one uv workspace member per application.
 - `ansible/` - Ansible collection (Galaxy layout) for provisioning and
   deployment.
+- `libs/` - uv workspace members that are not applications and are not released
+  (`libs/e2e-support`: support code for the browser scenarios).
 - `docs/` - Zensical documentation site.
 
 ## Commit scopes

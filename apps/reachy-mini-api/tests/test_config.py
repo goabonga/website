@@ -63,6 +63,7 @@ class TestSettings:
         assert s.redis_url == ""
         assert s.redis_key_prefix == "reachy"
         assert s.token_introspection_cache_ttl == 60
+        assert s.oauth2_client_cache_ttl == 300
 
     def test_settings_from_env(self):
         """Load settings from environment variables."""
@@ -81,6 +82,7 @@ class TestSettings:
             "REDIS_URL": "redis://localhost:6379/5",
             "REDIS_KEY_PREFIX": "custom",
             "TOKEN_INTROSPECTION_CACHE_TTL": "10",
+            "OAUTH2_CLIENT_CACHE_TTL": "20",
         }
         with patch.dict(os.environ, env, clear=True):
             s = Settings(_env_file=None)
@@ -98,6 +100,7 @@ class TestSettings:
         assert s.redis_url == "redis://localhost:6379/5"
         assert s.redis_key_prefix == "custom"
         assert s.token_introspection_cache_ttl == 10
+        assert s.oauth2_client_cache_ttl == 20
 
     def test_settings_from_env_file(self, tmp_path):
         """Load settings from a .env file."""

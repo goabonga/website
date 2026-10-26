@@ -1,0 +1,15 @@
+{% if total_pages > 1 %}
+<nav style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #0f3460;">
+    <span class="text-muted" style="font-size: 0.85rem;">{{ total }} package{{ 's' if total != 1 else '' }} &middot; page {{ page }} of {{ total_pages }}</span>
+    <div style="display: flex; gap: 0.5rem;">
+        {% if page > 1 %}
+        <a href="?{{ pagination_query(page - 1) }}" class="btn btn-secondary btn-sm">Previous</a>
+        {% endif %}
+        {% if page < total_pages %}
+        <a href="?{{ pagination_query(page + 1) }}" class="btn btn-secondary btn-sm">Next</a>
+        {% endif %}
+    </div>
+</nav>
+{% elif total > 0 %}
+<p class="text-muted" style="font-size: 0.85rem; margin-top: 0.75rem;">{{ total }} package{{ 's' if total != 1 else '' }}</p>
+{% endif %}

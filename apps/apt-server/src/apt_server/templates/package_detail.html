@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ package.name }} {{ package.version }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ package.name }} <span class="text-muted" style="font-size: 1rem;">{{ package.version }}</span></h1>
+    <a href="/" class="btn btn-secondary btn-sm">Back to list</a>
+</div>
+
+<p style="margin-bottom: 1.5rem;">
+    <span class="badge badge-info">{{ package.component }}</span>
+    <span class="badge badge-info">{{ package.suite }}</span>
+    <span class="badge badge-info">{{ package.architecture }}</span>
+    {% if package.visibility.value == 'public' %}
+    <span class="badge badge-success">public</span>
+    {% else %}
+    <span class="badge badge-danger">{{ package.visibility.value }}</span>
+    {% endif %}
+</p>
+
+
+<div class="admin-card">
+    <h2>Install</h2>
+    <pre><code>sudo apt install {{ package.name }}={{ package.version }}</code></pre>
+</div>
+
+<div class="admin-card">
+    <h2>Details</h2>
+    <dl>
+        <dt>Description</dt><dd>{{ package.description or "No description provided." }}</dd>
+        <dt>Version</dt><dd class="mono">{{ package.version }}</dd>
+        <dt>Architecture</dt><dd>{{ package.architecture }}</dd>
+        <dt>Size</dt><dd>{{ package.size | filesizeformat }}</dd>
+        <dt>SHA-256</dt><dd class="mono">{{ package.sha256 }}</dd>
+        <dt>SHA-1</dt><dd class="mono">{{ package.sha1 }}</dd>
+        <dt>MD5</dt><dd class="mono">{{ package.md5 }}</dd>
+        <dt>Filename</dt><dd class="mono">{{ package.filename }}</dd>
+        <dt>Uploaded</dt><dd>{{ package.uploaded_at.strftime('%Y-%m-%d %H:%M UTC') }}</dd>
+        <dt>Owner</dt><dd class="mono">{{ owner_display }}</dd>
+    </dl>
+</div>
+
+{% if package.control %}
+<div class="admin-card">
+    <h2>Control stanza</h2>
+    <pre><code>{% for key, value in package.control.items() %}{{ key }}: {{ value }}
+{% endfor %}</code></pre>
+</div>
+{% endif %}
+{% endblock %}

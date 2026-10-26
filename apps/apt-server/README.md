@@ -16,6 +16,7 @@ access control.
 - Chunked upload sessions for large packages
 - User cache kept in sync by signed webhooks from the auth service
 - Web login with OAuth2 Authorization Code and PKCE
+- Web pages: package list, client setup instructions, package detail
 
 ## Routes and scopes
 
@@ -51,6 +52,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/callback` | public | Handle the OAuth2 callback: exchange code for token, set session cookie |
 | GET | `/logout` | public | Clear the session cookie and redirect to the landing page |
 | POST | `/webhooks/auth` | public; `X-Webhook-Signature` HMAC checked when `WEBHOOK_SECRET` is set | Receive and process auth service webhook events |
+| GET | `/` | public; the package list is filtered by the caller's access | Home page: filtered + paginated package list |
+| GET | `/setup` | public | Dedicated setup documentation page |
+| GET | `/packages/{package_id}` | public package, else session or token with read access | Per-package detail page |
 
 The built web client and other static files are served publicly under `/static`.
 

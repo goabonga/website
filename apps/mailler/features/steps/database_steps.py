@@ -114,16 +114,27 @@ def step_provider_stats(context, provider, count, counter):
         assert getattr(stats, f"{counter}_count") == count, getattr(stats, f"{counter}_count")
 
 
-@given("the following emails are stored")
-def step_seed_emails(context):
-    """Seed emails from a table; optional columns: subject, provider, status, client_id."""
+def _seed_table(context, client_id=None):
+    """Seed emails from a table; optional columns: alias, subject, provider, status, client_id."""
     for row in context.table:
         fields = {
             key: row[key]
             for key in ("subject", "provider", "status", "client_id")
             if key in row.headings
         }
+        if client_id is not None:
+            fields["client_id"] = client_id
         alias = row["alias"] if "alias" in row.headings else None
         email_id = seed_email(context, row["to_email"], **fields)
         if alias:
             context.created_ids[alias] = email_id
+
+
+@given("the following emails are stored")
+def step_seed_emails(context):
+    _seed_table(context)
+
+
+@given('the following emails are stored for client "{client}"')
+def step_seed_client_emails(context, client):
+    _seed_table(context, client)

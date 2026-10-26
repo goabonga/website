@@ -8,6 +8,10 @@ from pydantic import BaseModel
 
 from mta_sts import __version__
 from mta_sts.config import settings
+from mta_sts.logging import setup_logging
+
+# Configure logging
+setup_logging(level=settings.log_level)
 
 app = FastAPI(
     title=settings.app_name,

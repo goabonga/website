@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     def apt_architectures_list(self) -> list[str]:
         return [s.strip() for s in self.apt_architectures.split(",") if s.strip()]
 
+    # Webhook (receive events from auth service)
+    webhook_secret: str = ""
+
     # Chunked upload settings
     upload_chunk_size: int = 5 * 1024 * 1024  # 5 MB per chunk
     upload_max_size: int = 500 * 1024 * 1024  # 500 MB total
@@ -155,6 +158,7 @@ def get_settings() -> Settings:
     overrides = {}
     for env_name, field_name in [
         ("OAUTH2_CLIENT_SECRET", "oauth2_client_secret"),
+        ("WEBHOOK_SECRET", "webhook_secret"),
     ]:
         cred = get_credential(env_name)
         if cred:

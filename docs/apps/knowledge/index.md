@@ -45,6 +45,7 @@ how it is tested with pytest and behave.
     MCP download page.
 17. [Collection and document pages](16-web-collections-documents.md):
     managing the knowledge base from the browser.
+18. [Search page](17-web-search.md): searching the workspace from the browser.
 
 ## Running the tests
 

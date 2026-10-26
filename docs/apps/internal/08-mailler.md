@@ -33,6 +33,8 @@ All three pages request the `mailler` resource (`read`, `write`, `delete`) plus 
   provider and by status (`pending`, `queued`, `sent`, `delivered`, `bounced`, `failed`).
 - **E-mail detail** (`/mailler/emails/{id}`): one e-mail. The id must be a UUID; an invalid or
   unknown id redirects to the list with an error message.
+- **Clients** (`/mailler/clients...`): the registry of the applications allowed to use the
+  service, for holders of `mailler:admin`, see [Mailler clients](08a-mailler-clients.md).
 
 ## Mailler client
 

@@ -350,17 +350,17 @@ argument_specs:
       website_redis_host:
         type: str
         description:
-        - website_redis_host
+        - Redis host, used when there is no socket.
         default: 127.0.0.1
       website_redis_port:
         type: int
         description:
-        - website_redis_port
+        - Redis TCP port, used when there is no socket.
         default: 6379
       website_redis_password:
         type: str
         description:
-        - website_redis_password
+        - Redis password, used when there is no socket (empty for none).
         default: ''
       website_redis_url:
         type: str
@@ -373,25 +373,25 @@ argument_specs:
       website_celery_broker_url:
         type: str
         description:
-        - Celery broker and result backend (Redis databases 0 and 1).
+        - Celery broker (Redis database 0).
       website_celery_result_backend:
         type: str
         description:
-        - website_celery_result_backend
+        - Celery result backend.
       website_smtp_host:
         type: str
         description:
-        - SMTP settings handed to the applications that send mail directly.
+        - SMTP host handed to the applications that send mail directly.
         default: localhost
       website_smtp_port:
         type: str
         description:
-        - website_smtp_port
+        - SMTP port.
         default: '587'
       website_smtp_tls:
         type: str
         description:
-        - website_smtp_tls
+        - Use TLS for SMTP ("true" or "false").
         default: 'true'
       website_oauth2_issuer:
         type: str
@@ -426,11 +426,11 @@ argument_specs:
       website_listen_ipv4:
         type: str
         description:
-        - Address nginx listens on for public virtual hosts (empty listens on every address).
+        - IPv4 address nginx listens on for public virtual hosts (empty listens on every address).
       website_listen_ipv6:
         type: str
         description:
-        - website_listen_ipv6
+        - IPv6 address nginx listens on for public virtual hosts (empty for none).
       website_internal_listen:
         type: str
         description:
@@ -456,12 +456,11 @@ argument_specs:
       website_step_ca_acme_url:
         type: str
         description:
-        - 'ACME directory and root certificate of the internal CA used by the virtual hosts
-          with ssl: step-ca.'
+        - 'ACME directory of the internal CA used by the virtual hosts with ssl: step-ca.'
       website_step_ca_root:
         type: str
         description:
-        - website_step_ca_root
+        - Root certificate of that CA.
         default: /etc/step-ca/certs/root_ca.crt
       website_letsencrypt_dir:
         type: str
@@ -476,49 +475,45 @@ argument_specs:
       website_nginx_ssl_protocols:
         type: str
         description:
-        - TLS settings of the virtual hosts.
+        - TLS protocols of the virtual hosts.
         default: TLSv1.2 TLSv1.3
       website_nginx_ssl_ciphers:
         type: str
         description:
-        - website_nginx_ssl_ciphers
+        - TLS ciphers of the virtual hosts.
         default: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
       website_dnsmasq_dir:
         type: str
         description:
-        - Directories of the dnsmasq instances that resolve internal host names. The second
-          one is optional and only used when it exists.
+        - Configuration directory of the dnsmasq instance that resolves internal host names
+          on the host.
         default: /etc/dnsmasq.d
       website_dnsmasq_vpn_dir:
         type: str
         description:
-        - website_dnsmasq_vpn_dir
+        - Configuration directory of the dnsmasq instance that serves the VPN clients, used
+          only when it exists.
         default: /etc/dnsmasq-vpn.d
       website_aws_route53_access_key_id:
         type: str
         description:
-        - Route 53 credentials for wildcard certificates (ssl_dns_provider route53).
+        - Route 53 access key id for wildcard certificates (ssl_dns_provider route53).
         default: ''
       website_aws_route53_secret_access_key:
         type: str
         description:
-        - website_aws_route53_secret_access_key
+        - Route 53 secret access key for wildcard certificates.
         default: ''
       website_aws_ses_access_key_id:
         type: str
         description:
-        - AWS credentials for the SES/SNS webhook configuration of the components that set
+        - AWS access key id for the SES/SNS webhook configuration of the components that set
           ses_webhook. When empty the AWS CLI uses its own credential chain.
         default: ''
       website_aws_ses_secret_access_key:
         type: str
         description:
-        - website_aws_ses_secret_access_key
-        default: ''
-      website_aws_ses_region:
-        type: str
-        description:
-        - website_aws_ses_region
+        - AWS secret access key for the SES/SNS configuration.
         default: ''
       website_openvpn_server_conf:
         type: str
@@ -537,12 +532,12 @@ argument_specs:
       website_asterisk_config_dir:
         type: str
         description:
-        - Configuration directory and account of Asterisk (follow the asterisk role).
+        - Configuration directory of Asterisk (follows the asterisk role).
       website_asterisk_user:
         type: str
         description:
-        - website_asterisk_user
+        - Account that owns the Asterisk configuration (follows the asterisk role).
       website_asterisk_group:
         type: str
         description:
-        - website_asterisk_group
+        - Group that owns the Asterisk configuration (follows the asterisk role).

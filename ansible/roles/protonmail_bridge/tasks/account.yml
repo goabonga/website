@@ -1,0 +1,59 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the service group
+  ansible.builtin.group:
+    name: "{{ protonmail_bridge_group }}"
+    system: true
+    state: present
+
+- name: Create the service user
+  ansible.builtin.user:
+    name: "{{ protonmail_bridge_user }}"
+    group: "{{ protonmail_bridge_group }}"
+    uid: "{{ protonmail_bridge_uid | default(omit, true) }}"
+    home: "{{ protonmail_bridge_home }}"
+    shell: /bin/bash
+    system: true
+    create_home: true
+    state: present
+  register: protonmail_bridge_user_info
+
+- name: Resolve the runtime directory
+  ansible.builtin.set_fact:
+    protonmail_bridge_runtime_dir_effective: >-
+      {{ protonmail_bridge_runtime_dir
+         if protonmail_bridge_runtime_dir | length > 0
+         else '/run/user/' ~ protonmail_bridge_user_info.uid | default(0) }}
+
+- name: Enable lingering for the service user
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ protonmail_bridge_user }}"
+    creates: "/var/lib/systemd/linger/{{ protonmail_bridge_user }}"
+  when: protonmail_bridge_enable_linger | bool
+
+- name: Create the runtime directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ protonmail_bridge_user }}"
+    group: "{{ protonmail_bridge_group }}"
+    mode: "0700"
+  loop:
+    - "{{ protonmail_bridge_runtime_dir_effective }}"
+    - "{{ protonmail_bridge_runtime_dir_effective }}/keyring"
+
+- name: Create the Bridge directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ protonmail_bridge_user }}"
+    group: "{{ protonmail_bridge_group }}"
+    mode: "0700"
+  loop:
+    - "{{ protonmail_bridge_home }}"
+    - "{{ protonmail_bridge_config_dir }}"
+    - "{{ protonmail_bridge_cache_dir }}"
+    - "{{ protonmail_bridge_home }}/.gnupg"
+    - "{{ protonmail_bridge_home }}/.password-store"

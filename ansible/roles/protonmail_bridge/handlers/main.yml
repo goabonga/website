@@ -1,0 +1,15 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Reload systemd for the Proton Mail Bridge
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: protonmail_bridge | reload systemd
+
+- name: Restart the Proton Mail Bridge
+  ansible.builtin.systemd:
+    name: "{{ protonmail_bridge_service_name }}"
+    state: restarted
+  when: protonmail_bridge_service_state == 'started'
+  listen: protonmail_bridge | restart

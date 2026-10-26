@@ -1,0 +1,30 @@
+#!/bin/bash
+{{ ansible_managed | comment }}
+# Start the Proton Mail Bridge CLI for the one-time interactive login.
+# Run it as the service user: sudo -u {{ protonmail_bridge_user }} {{ protonmail_bridge_setup_script_path }}
+
+export HOME="{{ protonmail_bridge_home }}"
+export GNUPGHOME="{{ protonmail_bridge_home }}/.gnupg"
+export PASSWORD_STORE_DIR="{{ protonmail_bridge_home }}/.password-store"
+export XDG_RUNTIME_DIR="{{ protonmail_bridge_runtime_dir_effective }}"
+
+mkdir -p "$XDG_RUNTIME_DIR/keyring" 2>/dev/null || true
+chmod 700 "$XDG_RUNTIME_DIR" "$XDG_RUNTIME_DIR/keyring" 2>/dev/null || true
+
+cat <<'MSG'
+Proton Mail Bridge setup
+
+Useful commands in the Bridge CLI:
+  login        sign in with your Proton account
+  info         show the IMAP/SMTP credentials after login
+  list         list the connected accounts
+  change mode  switch between combined and split address mode
+  help         list every command
+  exit         leave the CLI
+
+The password shown by `info` is specific to the Bridge and differs from your
+Proton password. IMAP listens on {{ protonmail_bridge_imap_host }}:{{ protonmail_bridge_imap_port }}, SMTP on {{ protonmail_bridge_smtp_host }}:{{ protonmail_bridge_smtp_port }}.
+MSG
+read -r -p "Press Enter to start the Bridge CLI... " _
+
+exec dbus-run-session -- {{ protonmail_bridge_binary }} --cli

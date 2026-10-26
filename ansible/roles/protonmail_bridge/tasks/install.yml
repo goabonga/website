@@ -1,0 +1,53 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install the Bridge dependencies
+  ansible.builtin.apt:
+    name: "{{ protonmail_bridge_packages }}"
+    state: present
+    update_cache: "{{ protonmail_bridge_apt_update_cache }}"
+    cache_valid_time: "{{ protonmail_bridge_apt_cache_valid_time }}"
+
+- name: Ensure the D-Bus system service is running
+  ansible.builtin.systemd:
+    name: dbus
+    state: started
+
+- name: Read the installed Bridge version
+  ansible.builtin.command:
+    cmd: dpkg-query --show --showformat=${Version} protonmail-bridge
+  register: protonmail_bridge_installed_version
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install the Bridge package
+  when: >-
+    protonmail_bridge_installed_version.rc != 0
+    or not (protonmail_bridge_installed_version.stdout is version(protonmail_bridge_version, '>='))
+  block:
+    - name: Ensure the download directory exists
+      ansible.builtin.file:
+        path: "{{ protonmail_bridge_deb_download_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download the Bridge package
+      ansible.builtin.get_url:
+        url: "{{ protonmail_bridge_deb_url }}"
+        dest: "{{ protonmail_bridge_deb_download_dir }}/protonmail-bridge_{{ protonmail_bridge_version }}.deb"
+        checksum: "{{ protonmail_bridge_deb_checksum | default(omit, true) }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Install the downloaded package
+      ansible.builtin.apt:
+        deb: "{{ protonmail_bridge_deb_download_dir }}/protonmail-bridge_{{ protonmail_bridge_version }}.deb"
+        state: present
+      # The package is not downloaded in a check run.
+      when: not ansible_check_mode
+      notify: protonmail_bridge | restart

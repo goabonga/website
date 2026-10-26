@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The protonmail_bridge role only supports Debian-family distributions.
+    quiet: true
+
+- name: Assert the architecture matches the package
+  ansible.builtin.assert:
+    that: ansible_facts['architecture'] in ['x86_64', 'amd64']
+    fail_msg: >-
+      Proton publishes the Bridge .deb for amd64 only. Set protonmail_bridge_deb_url to a
+      package built for this architecture and run on a matching host.
+    quiet: true
+  when: protonmail_bridge_deb_url is search('_amd64\.deb$')

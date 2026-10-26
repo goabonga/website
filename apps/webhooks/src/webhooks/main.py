@@ -53,3 +53,8 @@ if settings.brevo_enabled:
     from webhooks.routes.brevo import router as brevo_router
 
     app.include_router(brevo_router, prefix="/webhooks/brevo", tags=["brevo"])
+
+if settings.ses_enabled:
+    from webhooks.routes.ses import router as ses_router
+
+    app.include_router(ses_router, prefix="/webhooks/ses", tags=["ses"])

@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     brevo_internal_api_socket: str = ""  # Unix socket (overrides URL)
     brevo_internal_api_token: str = ""  # Bearer token for internal API
 
+    # Amazon SES/SNS -> Internal API
+    ses_enabled: bool = False
+    ses_internal_api_url: str = ""
+    ses_internal_api_socket: str = ""  # Unix socket (overrides URL)
+    ses_internal_api_token: str = ""  # Bearer token for internal API
+
 
 settings = Settings(
     brevo_webhook_secret=get_credential(
@@ -69,6 +75,10 @@ settings = Settings(
     brevo_internal_api_token=get_credential(
         "BREVO_INTERNAL_API_TOKEN",
         os.environ.get("BREVO_INTERNAL_API_TOKEN", ""),
+    ),
+    ses_internal_api_token=get_credential(
+        "SES_INTERNAL_API_TOKEN",
+        os.environ.get("SES_INTERNAL_API_TOKEN", ""),
     ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",

@@ -10,6 +10,26 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class ConfigurationError(RuntimeError):
+    """A setting that an operation needs is empty."""
+
+
+def require_setting(name: str, source: object | None = None) -> str:
+    """Return the value of a setting that has no default, or fail with its variable name.
+
+    Args:
+        name: Attribute name on the settings object
+        source: Settings object to read (defaults to the application settings)
+
+    Raises:
+        ConfigurationError: If the setting is empty
+    """
+    value = getattr(source if source is not None else settings, name)
+    if not value:
+        raise ConfigurationError(f"{name.upper()} is not configured")
+    return str(value)
+
+
 def get_credential(name: str, default: str = "") -> str:
     """Read credential from systemd credentials directory or environment.
 
@@ -61,6 +81,28 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/13"
     redis_key_prefix: str = "custom-domain"
+
+    # Nginx (paths and binaries have no default: a deployment must provide them)
+    nginx_sites_dir: str = ""
+    nginx_config_prefix: str = "custom-domain-"
+    nginx_ipv4: str | None = None
+    nginx_ipv6: str | None = None
+    nginx_bin: str = ""
+    nginx_service: str = "nginx"
+    systemctl_bin: str = ""
+
+    # Certbot
+    certbot_webroot: str = ""
+    letsencrypt_dir: str = ""
+
+    # Privileged operations (see services/privileged.py)
+    sudo_bin: str = "sudo"
+    privileged_helper: str = ""
+    privileged_staging_dir: str = ""
+    privileged_timeout_seconds: int = 120
+
+    # Templates
+    templates_dir: str = "custom_domain/templates"
 
     # OAuth2 / OIDC
     oauth2_issuer: str = ""

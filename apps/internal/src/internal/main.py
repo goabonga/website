@@ -3,16 +3,89 @@
 
 """FastAPI main application."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from internal import __version__
+from internal.auth.dependencies import (
+    ACCESS_TOKEN_COOKIE,
+    REFRESH_TOKEN_COOKIE,
+    clear_pending_token_refresh,
+    get_pending_token_refresh,
+)
 from internal.config import settings
 from internal.logging import setup_logging
+from internal.routes import (
+    auth_router,
+)
 
 # Configure logging
 setup_logging(level=settings.log_level)
+
+
+class TokenRefreshMiddleware(BaseHTTPMiddleware):
+    """Middleware to set refreshed token cookies on responses.
+
+    When get_current_user_or_redirect refreshes tokens, it stores them
+    in a global variable. This middleware picks them up and sets the
+    appropriate cookies on the response.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+
+        # Check if tokens were refreshed during request processing
+        tokens = get_pending_token_refresh()
+        if tokens:
+            access_token = tokens.get("access_token")
+            refresh_token = tokens.get("refresh_token")
+            expires_in = tokens.get("expires_in", 3600)
+
+            if access_token:
+                response.set_cookie(
+                    ACCESS_TOKEN_COOKIE,
+                    access_token,
+                    max_age=expires_in,
+                    httponly=True,
+                    secure=settings.cookie_secure,
+                    samesite="lax",
+                )
+
+            if refresh_token:
+                response.set_cookie(
+                    REFRESH_TOKEN_COOKIE,
+                    refresh_token,
+                    max_age=30 * 24 * 3600,  # 30 days
+                    httponly=True,
+                    secure=settings.cookie_secure,
+                    samesite="lax",
+                )
+
+            # Clear the pending refresh
+            clear_pending_token_refresh()
+
+        return response
+
+
+def get_swagger_ui_oauth2_config() -> dict:
+    """Build Swagger UI OAuth2 configuration if OAuth2 is configured."""
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
+swagger_config = get_swagger_ui_oauth2_config()
 
 
 app = FastAPI(
@@ -20,11 +93,24 @@ app = FastAPI(
     description="""
 Internal Admin Dashboard for managing platform services.
 
+## Features
+
+- **OAuth2 authentication**: Cookie-based authentication with scope validation
+
+
+## Authentication
+
+This application uses OAuth2 with cookie-based session management.
+Access is controlled per resource via scoped permissions.
+
+## Required Scopes
+
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
+    **swagger_config,
 )
 
 # CORS middleware
@@ -35,6 +121,9 @@ app.add_middleware(
     allow_methods=settings.cors_methods,
     allow_headers=settings.cors_headers,
 )
+
+# Token refresh middleware (sets cookies when tokens are refreshed during request)
+app.add_middleware(TokenRefreshMiddleware)
 
 
 class HealthResponse(BaseModel):
@@ -47,3 +136,6 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint (hidden from Swagger)."""
     return HealthResponse(status="healthy")
+
+
+app.include_router(auth_router)

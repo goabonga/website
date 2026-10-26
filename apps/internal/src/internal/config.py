@@ -41,13 +41,33 @@ class Settings(BaseSettings):
     cors_methods: list[str] = ["*"]
     cors_headers: list[str] = ["*"]
 
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+    redis_key_prefix: str = "internal"
+
     # Session signing key (read from systemd credentials in production)
     secret_key: str = "change-me-in-production"
+
+    # Web UI
+    app_base_url: str = "https://admin.internal"  # Application URL (for OAuth2 redirect URI)
+    cookie_secure: bool = True  # Set to False for local development without HTTPS
+
+    # OAuth2 / OIDC
+    oauth2_issuer: str = ""  # OIDC issuer URL (e.g., https://auth.goabonga.com)
+    oauth2_swagger_client_id: str = ""  # Public PKCE client for Swagger UI
+    oauth2_frontend_client_id: str = ""  # Public PKCE client for HTML pages
+    oauth2_client_id: str = ""  # Confidential client for introspection/token exchange
+    oauth2_client_secret: str = ""  # Client secret for introspection/token exchange
+    oauth2_client_cache_ttl: int = 300  # Cache exchanged tokens for 5 minutes
+    token_introspection_cache_ttl: int = 60  # seconds
 
 
 # Load settings with credential overrides for secrets
 settings = Settings(
     secret_key=get_credential(
         "SECRET_KEY", os.environ.get("SECRET_KEY", "change-me-in-production")
+    ),
+    oauth2_client_secret=get_credential(
+        "OAUTH2_CLIENT_SECRET", os.environ.get("OAUTH2_CLIENT_SECRET", "")
     ),
 )

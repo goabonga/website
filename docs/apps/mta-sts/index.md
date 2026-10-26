@@ -13,3 +13,5 @@ documents one feature as it exists in the code.
 
 1. [Application foundation](01-foundation.md) - settings, FastAPI
    application and health endpoint.
+2. [Dual-stream logging](02-logging.md) - informational logs on stdout,
+   problems on stderr.

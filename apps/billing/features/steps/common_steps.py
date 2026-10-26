@@ -21,6 +21,12 @@ def _run(context, coro):
 # -- Given Steps --------------------------------------------------------------
 
 
+@given("I am authenticated")
+def step_authenticated(context):
+    """Use the default authenticated client (already set up in environment)."""
+    context.use_auth = True
+
+
 @given("I am not authenticated")
 def step_not_authenticated(context):
     """Use the anonymous client for this scenario."""
@@ -32,6 +38,9 @@ def step_not_authenticated(context):
 
 def _get_client(context):
     """Return the appropriate client based on auth state."""
+    auth = getattr(context, "use_auth", True)
+    if auth:
+        return context.client
     return context.anon_client
 
 

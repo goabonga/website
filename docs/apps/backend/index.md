@@ -23,6 +23,7 @@ feature: what it does, how it is configured, how it is tested.
 10. [LLM client and tools](10-llm-and-tools.md): OpenAI client and the scope-aware tool registry.
 11. [Chat orchestration and streaming](11-chat-orchestration.md): tool routing, streamed answers and SSE events.
 12. [Chat endpoint](12-chat-endpoint.md): `POST /api/v1/chat`, history mode, cookies and rate limiting.
+13. [Database migrations](13-database-migrations.md): Alembic history, offline SQL and local infrastructure.
 
 ## Running the tests
 

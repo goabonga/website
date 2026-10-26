@@ -55,6 +55,16 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/11"
     redis_key_prefix: str = "mailler"  # Cache key prefix for auth tokens
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
+    celery_queue: str = "mailler"  # queue the workers consume (-Q)
+
+    # Delivery retries
+    send_max_retries: int = 3  # attempts before an email is marked as failed
+    send_retry_delay: int = 60  # seconds before the first retry
+    send_retry_backoff_max: int = 300  # upper bound of the exponential backoff, in seconds
+
     # Default sender
     default_from: str = ""  # optional platform sender, used when the caller has none
     default_from_name: str = ""

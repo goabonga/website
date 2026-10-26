@@ -235,3 +235,32 @@ def step_confirmation_asked(context, text):
 @then("the page should not have asked for any confirmation")
 def step_no_confirmation(context):
     assert not context.dialogs.messages, f"confirmations asked: {context.dialogs.messages}"
+
+
+@then('the field "{name}" should contain "{text}"')
+def step_field_contains(context, name, text):
+    from e2e_support.steps import field
+
+    expect(field(context, name)).to_have_value(re.compile(re.escape(text)))
+
+
+@when("I fill \"{name}\" with the text '{text}'")
+def step_fill_with_text(context, name, text):
+    """Fill a field with a text that contains double quotes (JSON, for instance)."""
+    from e2e_support.steps import field
+
+    field(context, name).fill(text)
+
+
+@when('I fill "{name}" with the following lines')
+def step_fill_with_lines(context, name):
+    from e2e_support.steps import field
+
+    field(context, name).fill(context.text)
+
+
+@when('I clear "{name}"')
+def step_clear(context, name):
+    from e2e_support.steps import field
+
+    field(context, name).fill("")

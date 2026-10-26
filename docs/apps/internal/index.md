@@ -24,6 +24,7 @@ feature, in the order they were introduced.
 8. [Mailler statistics](08-mailler.md)
 9. [Contact management](09-contacts.md)
 10. [Contact groups](10-contact-groups.md)
+11. [Email templates](11-email-templates.md)
 
 ## Running locally
 

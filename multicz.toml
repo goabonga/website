@@ -193,3 +193,19 @@ bump_files = [
 ]
 changelog = "apps/mailler/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.apt-server]
+tag_format = "apt-server-v{version}"
+paths = [
+    "apps/apt-server/src/**",
+    "apps/apt-server/features/**",
+    "apps/apt-server/tests/**",
+    "apps/apt-server/alembic/**",
+    "apps/apt-server/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/apt-server/pyproject.toml", key = "project.version" },
+    { file = "apps/apt-server/src/apt_server/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/apt-server/CHANGELOG.md"
+post_bump = ["uv lock"]

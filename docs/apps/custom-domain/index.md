@@ -20,3 +20,4 @@ feature adds, its settings and how it is tested.
 | [Nginx configuration rendering](03-nginx-rendering.md) | Jinja2 templates and nginx file management |
 | [SSL provisioning](04-ssl-provisioning.md) | Certbot, Celery application, provisioning tasks |
 | [DNS verification](05-dns-verification.md) | CNAME check task and periodic scan |
+| [Nginx template administration](06-template-admin.md) | Admin API for nginx templates |

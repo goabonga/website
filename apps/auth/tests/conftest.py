@@ -3,11 +3,16 @@
 
 """Shared test fixtures for 100% mocked unit tests."""
 
+import os
+import tempfile
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+# Keep uploaded files out of the working directory (the app mounts this directory).
+os.environ.setdefault("UPLOAD_DIRECTORY", tempfile.mkdtemp(prefix="auth-tests-"))
 
 # ---------------------------------------------------------------------------
 # Helper: create a mock that behaves like SQLAlchemy AsyncSession

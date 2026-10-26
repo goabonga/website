@@ -209,6 +209,7 @@ it started, and nginx exposes that path to the loopback address only.
 | --- | --- |
 | `nginx.enabled` | Virtual host, certificate, access and error logs. |
 | `nginx.internal_domain` | Listens on the internal address and registers the name in dnsmasq; with `ssl: step-ca` the certificate comes from the private CA. |
+| `nginx.webhook_paths` | Exact locations that accept `POST` from any address on a virtual host restricted by `allowed_hosts`. |
 | `fail2ban.routes` | A jail per route on the nginx access log. |
 | `sudoers` | Commands the account may run as root, for the custom domain provisioning of the `auth` worker (the `custom_domain` worker uses the privileged helper, and `knowledge` needs none). |
 | `type: audiosocket` / `fastagi` with `asterisk.enabled` | A dialplan context included from `extensions.conf`. |

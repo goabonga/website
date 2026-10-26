@@ -770,3 +770,13 @@ argument_specs:
           apt_server and knowledge, MAILLER_DEFAULT_PROVIDER of internal). It must be one the
           registered client of the application may use.
         default: brevo
+      website_internal_billing_api_url:
+        type: str
+        description:
+        - Base URL of the billing API (BILLING_API_URL of internal), required; the host name of
+          billing by default.
+      website_internal_mailler_api_url:
+        type: str
+        description:
+        - Base URL of the mailler API (MAILLER_API_URL of internal), required; the host name of
+          mailler by default.

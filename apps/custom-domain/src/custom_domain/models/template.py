@@ -31,6 +31,14 @@ class NginxTemplate(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
+    # Owner: the OAuth2 client allowed to use the template (NULL = shared by everyone)
+    client_id: Mapped[str | None] = mapped_column(
+        String(255),
+        index=True,
+        nullable=True,
+        comment="Owning client; NULL for a shared template",
+    )
+
     # Jinja2 templates
     http_template: Mapped[str] = mapped_column(
         Text,

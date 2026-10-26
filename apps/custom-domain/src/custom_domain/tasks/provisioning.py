@@ -7,7 +7,7 @@ import asyncio
 from datetime import UTC, datetime
 
 from celery.exceptions import Retry
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from custom_domain.celery import celery_app
@@ -37,13 +37,17 @@ def resolve_template(db: Session, domain: CustomDomain) -> NginxTemplate | None:
 
     Resolution order: the domain's own template, the default template of the
     domain's client, then the global default. Inactive templates are skipped.
-    ``None`` means the default files shipped with the package.
+    ``None`` means the default files shipped with the package. A template owned by
+    another client is never used, and the global default must be a shared template.
     """
+    usable = or_(NginxTemplate.client_id.is_(None), NginxTemplate.client_id == domain.client_id)
+
     if domain.nginx_template_id:
         template = db.execute(
             select(NginxTemplate).where(
                 NginxTemplate.id == domain.nginx_template_id,
                 NginxTemplate.is_active == True,  # noqa: E712
+                usable,
             )
         ).scalar_one_or_none()
         if template:
@@ -59,6 +63,7 @@ def resolve_template(db: Session, domain: CustomDomain) -> NginxTemplate | None:
             select(NginxTemplate).where(
                 NginxTemplate.id == client_template_id,
                 NginxTemplate.is_active == True,  # noqa: E712
+                usable,
             )
         ).scalar_one_or_none()
         if template:
@@ -68,6 +73,7 @@ def resolve_template(db: Session, domain: CustomDomain) -> NginxTemplate | None:
         select(NginxTemplate).where(
             NginxTemplate.is_default == True,  # noqa: E712
             NginxTemplate.is_active == True,  # noqa: E712
+            NginxTemplate.client_id.is_(None),
         )
     ).scalar_one_or_none()
 

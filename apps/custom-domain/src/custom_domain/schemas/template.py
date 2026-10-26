@@ -14,6 +14,10 @@ class TemplateCreate(BaseModel):
     slug: str = Field(..., description="Unique identifier (slug)")
     name: str = Field(..., description="Display name")
     description: str | None = Field(None, description="Description")
+    client_id: str | None = Field(
+        None,
+        description="OAuth2 client that owns the template; omit for a shared template",
+    )
     http_template: str = Field(
         ...,
         description="Jinja2 template for HTTP-only config",
@@ -46,6 +50,7 @@ class TemplateResponse(BaseModel):
     slug: str
     name: str
     description: str | None = None
+    client_id: str | None = None
     http_template: str
     https_template: str
     is_default: bool
@@ -64,6 +69,7 @@ class TemplateListItem(BaseModel):
     slug: str
     name: str
     description: str | None = None
+    client_id: str | None = None
     is_default: bool
     is_active: bool
     domains_count: int = 0
@@ -71,6 +77,25 @@ class TemplateListItem(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AvailableTemplate(BaseModel):
+    """A template a client can choose for its domains (the sources are not exposed)."""
+
+    id: int
+    slug: str
+    name: str
+    description: str | None = None
+    shared: bool
+
+    model_config = {"from_attributes": True}
+
+
+class AvailableTemplateListResponse(BaseModel):
+    """Templates available to the calling client."""
+
+    items: list[AvailableTemplate]
+    total: int
 
 
 class TemplateListResponse(BaseModel):

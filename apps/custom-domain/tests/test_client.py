@@ -1161,7 +1161,7 @@ class TestTemplatesAPI:
         response_data = {"id": 1, "name": "New"}
         with patch.object(client, "_request", return_value=response_data):
             result = client.templates.create(
-                name="New", http_template="http {}", https_template="https {}"
+                slug="new", name="New", http_template="http {}", https_template="https {}"
             )
             assert result.name == "New"
         client.close()
@@ -1171,11 +1171,11 @@ class TestTemplatesAPI:
         response_data = {"id": 1, "name": "Described"}
         with patch.object(client, "_request", return_value=response_data) as mock_req:
             client.templates.create(
+                slug="described",
                 name="Described",
                 http_template="http {}",
                 https_template="https {}",
                 description="A described template",
-                is_default=True,
             )
             json_data = mock_req.call_args.kwargs.get("json", {})
             assert json_data["description"] == "A described template"
@@ -1541,6 +1541,7 @@ class TestClientInit:
             "AsyncCustomDomainClient",
             "AuthenticationError",
             "AuthorizationError",
+            "AvailableTemplate",
             "Client",
             "ClientList",
             "ClientsAPI",
@@ -1646,7 +1647,9 @@ class TestUpdateMethodsNoneBranches:
         client = self._make_client()
         response_data = {"id": 1, "name": "T1"}
         with patch.object(client, "_request", return_value=response_data) as mock_req:
-            client.templates.create(name="T1", http_template="http {}", https_template="https {}")
+            client.templates.create(
+                slug="t1", name="T1", http_template="http {}", https_template="https {}"
+            )
             json_data = mock_req.call_args.kwargs.get("json", {})
             assert "description" not in json_data
         client.close()

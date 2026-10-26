@@ -263,6 +263,8 @@ class Template:
 
     id: int
     name: str
+    slug: str | None = None
+    client_id: str | None = None
     description: str | None = None
     http_template: str | None = None
     https_template: str | None = None
@@ -277,6 +279,8 @@ class Template:
         return cls(
             id=data["id"],
             name=data["name"],
+            slug=data.get("slug"),
+            client_id=data.get("client_id"),
             description=data.get("description"),
             http_template=data.get("http_template"),
             https_template=data.get("https_template"),
@@ -300,6 +304,28 @@ class TemplateList:
         return cls(
             items=[Template.from_dict(t) for t in data["items"]],
             total=data["total"],
+        )
+
+
+@dataclass
+class AvailableTemplate:
+    """A template a client may put on its domains (no sources)."""
+
+    id: int
+    slug: str
+    name: str
+    shared: bool
+    description: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AvailableTemplate:
+        """Create from API response."""
+        return cls(
+            id=data["id"],
+            slug=data["slug"],
+            name=data["name"],
+            shared=data["shared"],
+            description=data.get("description"),
         )
 
 
@@ -573,9 +599,14 @@ class DomainsAPI:
         return self._client._request("DELETE", f"/domains/{domain_id}")
 
     def lookup(self, domain_name: str) -> DomainLookup:
-        """Lookup domain by name."""
+        """Lookup domain by name (only the caller's own domains are found)."""
         response = self._client._request("GET", f"/domains/lookup/{domain_name}")
         return DomainLookup.from_dict(response)
+
+    def list_available_templates(self) -> list[AvailableTemplate]:
+        """List the nginx templates this client may use for its domains."""
+        response = self._client._request("GET", "/templates")
+        return [AvailableTemplate.from_dict(t) for t in response["items"]]
 
     def verify(self, domain_id: str) -> dict:
         """Trigger DNS verification."""
@@ -799,21 +830,24 @@ class TemplatesAPI:
 
     def create(
         self,
+        slug: str,
         name: str,
         http_template: str,
         https_template: str,
         description: str | None = None,
-        is_default: bool = False,
+        client_id: str | None = None,
     ) -> Template:
-        """Create a new template."""
+        """Create a new template, shared or owned by ``client_id``."""
         data = {
+            "slug": slug,
             "name": name,
             "http_template": http_template,
             "https_template": https_template,
-            "is_default": is_default,
         }
         if description:
             data["description"] = description
+        if client_id:
+            data["client_id"] = client_id
 
         response = self._client._request("POST", "/admin/templates", json=data)
         return Template.from_dict(response)
@@ -1165,6 +1199,11 @@ class AsyncCustomDomainClient:
         """Lookup domain by name."""
         response = await self._request("GET", f"/domains/lookup/{domain_name}")
         return DomainLookup.from_dict(response)
+
+    async def list_available_templates(self) -> list[AvailableTemplate]:
+        """List the nginx templates this client may use for its domains."""
+        response = await self._request("GET", "/templates")
+        return [AvailableTemplate.from_dict(t) for t in response["items"]]
 
     async def get_domain_status(self, domain_id: str) -> DomainStatus_:
         """Get domain status."""

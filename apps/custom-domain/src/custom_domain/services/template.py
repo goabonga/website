@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from custom_domain.config import settings
@@ -66,6 +66,34 @@ class TemplateService:
             select(NginxTemplate).where(
                 NginxTemplate.is_default == True,  # noqa: E712
                 NginxTemplate.is_active == True,  # noqa: E712
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_usable_template(
+        self,
+        db: AsyncSession,
+        template_id: int,
+        client_id: str,
+    ) -> NginxTemplate | None:
+        """Get an active template that a client may use.
+
+        A client may use the shared templates (no owner) and the ones it owns.
+
+        Args:
+            db: Database session
+            template_id: Template ID
+            client_id: OAuth2 client ID of the domain's owner
+
+        Returns:
+            The template, or None when it does not exist, is inactive or belongs to
+            another client
+        """
+        result = await db.execute(
+            select(NginxTemplate).where(
+                NginxTemplate.id == template_id,
+                NginxTemplate.is_active.is_(True),
+                or_(NginxTemplate.client_id.is_(None), NginxTemplate.client_id == client_id),
             )
         )
         return result.scalar_one_or_none()

@@ -330,6 +330,7 @@ def sample_template_data():
         "is_default": True,
         "is_active": True,
         "available_variables": ["domain", "upstream"],
+        "client_id": None,
     }
 
 

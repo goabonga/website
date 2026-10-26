@@ -58,6 +58,7 @@ class TestListTemplates:
         mock_template.description = "The default template"
         mock_template.is_default = True
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.available_variables = ["domain", "upstream"]
         mock_template.created_at = datetime.now(UTC)
 
@@ -240,6 +241,7 @@ class TestGetTemplate:
         mock_template.available_variables = []
         mock_template.is_default = True
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.created_at = datetime.now(UTC)
         mock_template.updated_at = datetime.now(UTC)
 
@@ -290,6 +292,7 @@ class TestUpdateTemplate:
         mock_template.available_variables = []
         mock_template.is_default = True
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.created_at = datetime.now(UTC)
         mock_template.updated_at = datetime.now(UTC)
 
@@ -323,6 +326,7 @@ class TestUpdateTemplate:
         mock_template.available_variables = []
         mock_template.is_default = True
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.created_at = datetime.now(UTC)
         mock_template.updated_at = datetime.now(UTC)
 
@@ -691,6 +695,7 @@ class TestSetDefaultTemplate:
         mock_template.available_variables = []
         mock_template.is_default = False
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.created_at = datetime.now(UTC)
         mock_template.updated_at = datetime.now(UTC)
 
@@ -879,6 +884,7 @@ class TestUpdateTemplateValidHttpsTemplate:
         mock_template.available_variables = []
         mock_template.is_default = False
         mock_template.is_active = True
+        mock_template.client_id = None
         mock_template.created_at = datetime.now(UTC)
         mock_template.updated_at = datetime.now(UTC)
 

@@ -3,6 +3,7 @@
 
 """Application middlewares."""
 
+from auth.middlewares.session import SlidingSessionMiddleware
 from auth.middlewares.tenant import (
     TenantContext,
     TenantMiddleware,
@@ -12,6 +13,7 @@ from auth.middlewares.tenant import (
 )
 
 __all__ = [
+    "SlidingSessionMiddleware",
     "TenantContext",
     "TenantMiddleware",
     "get_tenant_context",

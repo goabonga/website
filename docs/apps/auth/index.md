@@ -26,6 +26,7 @@ The application is documented feature by feature, in the order in which each fea
 11. [Device authorization and pushed authorization requests](11-device-par.md): RFC 8628 device flow and RFC 9126 pushed authorization requests.
 12. [Identity provider federation](12-federation.md): Login through external OIDC identity providers.
 13. [REST API v1](13-rest-api.md): Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
+14. [Organisation API](14-organisation-api.md): JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 
 ## Testing
 

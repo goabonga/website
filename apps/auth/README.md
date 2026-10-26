@@ -17,10 +17,11 @@ Centralized OIDC/OAuth2 authentication service.
 - Device authorization and pushed authorization requests: RFC 8628 device flow and RFC 9126 pushed authorization requests.
 - Identity provider federation: Login through external OIDC identity providers.
 - REST API v1: Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
+- Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no credentials. `session` routes need the session cookie of a signed-in user. `PAT` is a personal access token and `bearer token` an OAuth2 access token, both sent in the `Authorization: Bearer` header; the scopes of the token are checked against the scope named in the table (a wildcard scope also matches).
+HTTP routes served by the application and what each one requires. `public` routes need no credentials. `session` routes need the session cookie of a signed-in user. `PAT` is a personal access token and `bearer token` an OAuth2 access token, both sent in the `Authorization: Bearer` header; the scopes of the token are checked against the scope named in the table (a wildcard scope also matches). `organisation member with scope` means that the caller belongs to the organisation of the path and that the scopes of its organisation role include the named scope.
 
 ### Service and OpenID Connect endpoints
 
@@ -156,6 +157,110 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/api/v1/pats/{pat_id}` | PAT or bearer token; scope `pats:revoke` | Revoke a single personal access token by ID |
 | DELETE | `/api/v1/pats/` | PAT or bearer token; scope `pats:revoke` | Revoke active personal access tokens, optionally filtered by user |
 
+### Organisation REST API
+
+| Method | Path | Required scope / role / auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/v1/me/organisations/` | PAT or bearer token (any scope) | List all organisations the current user belongs to |
+| POST | `/api/v1/me/organisations/` | PAT or bearer token (any scope) | Create a new organisation and assign the current user as owner |
+| GET | `/api/v1/me/organisations/{org_id}/members/` | PAT or bearer token; organisation member with scope `members:read` | List all members of an organisation with pagination |
+| POST | `/api/v1/me/organisations/{org_id}/members/` | PAT or bearer token; organisation member with scope `members:invite` | Add a user to an organisation as a member |
+| PATCH | `/api/v1/me/organisations/{org_id}/members/{user_id}` | PAT or bearer token; organisation member with scope `members:update` | Update the role assigned to an organisation member |
+| DELETE | `/api/v1/me/organisations/{org_id}/members/{user_id}` | PAT or bearer token; organisation member with scope `members:remove` | Remove a user from an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/roles/` | PAT or bearer token; organisation member with scope `roles:read` | List all roles for an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/roles/` | PAT or bearer token; organisation member with scope `roles:write` | Create a custom role for an organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/roles/{role_id}` | PAT or bearer token; organisation member with scope `roles:write` | Update a custom role in an organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/roles/{role_id}` | PAT or bearer token; organisation member with scope `roles:delete` | Delete a custom role from an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:read` | Retrieve the branding configuration for an organisation |
+| PUT | `/api/v1/me/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:write` | Create or replace the branding configuration for an organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:write` | Delete the custom branding configuration for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/templates/` | PAT or bearer token; organisation member with scope `templates:read` | List all custom templates for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:read` | Retrieve a single custom template by name for an organisation |
+| PUT | `/api/v1/me/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:write` | Create or replace a custom template override for an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/templates/{template_name:path}/toggle` | PAT or bearer token; organisation member with scope `templates:write` | Toggle the active state of a custom template override for an organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:write` | Delete a custom template override for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/trust/` | PAT or bearer token; organisation member with scope `trust:read` | Retrieve the trust configuration for an organisation |
+| PUT | `/api/v1/me/organisations/{org_id}/trust/` | PAT or bearer token; organisation member with scope `trust:write` | Update the trust mode for an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/trust/sources` | PAT or bearer token; organisation member with scope `trust:write` | Add a trusted source tenant to an organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/trust/sources/{source_id}` | PAT or bearer token; organisation member with scope `trust:write` | Remove a trusted source tenant from an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/settings/` | PAT or bearer token; organisation member with scope `settings:read` | Retrieve all settings for an organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/settings/` | PAT or bearer token; organisation member with scope `settings:write` | Partially update settings for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/clients/` | PAT or bearer token; organisation member with scope `clients:read` | List OAuth2 clients belonging to an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/clients/` | PAT or bearer token; organisation member with scope `clients:write` | Create a new OAuth2 client for the organisation |
+| GET | `/api/v1/me/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:read` | Get a single OAuth2 client by UUID |
+| PATCH | `/api/v1/me/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:write` | Partially update an OAuth2 client |
+| DELETE | `/api/v1/me/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:delete` | Delete an OAuth2 client |
+| POST | `/api/v1/me/organisations/{org_id}/clients/{client_uuid}/rotate-secret` | PAT or bearer token; organisation member with scope `clients:rotate` | Rotate the client secret for a confidential OAuth2 client |
+| GET | `/api/v1/me/organisations/{org_id}/idps/` | PAT or bearer token; organisation member with scope `idp:read` | List identity providers configured for an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/idps/` | PAT or bearer token; organisation member with scope `idp:write` | Create a new identity provider for the organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/idps/{idp_id}` | PAT or bearer token; organisation member with scope `idp:write` | Partially update an identity provider for the organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/idps/{idp_id}` | PAT or bearer token; organisation member with scope `idp:delete` | Delete an identity provider from the organisation |
+| GET | `/api/v1/me/organisations/{org_id}/registration-fields/` | PAT or bearer token; organisation member with scope `settings:read` | Return the registration field visibility configuration for an organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/registration-fields/` | PAT or bearer token; organisation member with scope `settings:write` | Update the registration field visibility configuration for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/profile-fields/` | PAT or bearer token; organisation member with scope `settings:read` | Return the profile field visibility configuration for the organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/profile-fields/` | PAT or bearer token; organisation member with scope `settings:write` | Update profile field visibility settings for the organisation |
+| GET | `/api/v1/me/organisations/{org_id}/email-sender/` | PAT or bearer token; organisation member with scope `settings:read` | Get the email sender configuration for an organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/email-sender/` | PAT or bearer token; organisation member with scope `settings:write` | Update the email sender configuration for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:read` | Return the allowed-scopes configuration for an organisation |
+| PATCH | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:write` | Update the allowed-scopes configuration for an organisation |
+| GET | `/api/v1/organisations/` | PAT or bearer token; scope `org:read` | List all organisations with pagination |
+| POST | `/api/v1/organisations/` | PAT or bearer token; scope `org:write` | Create a new organisation |
+| GET | `/api/v1/organisations/{org_id}` | PAT or bearer token; scope `org:read` (any organisation) or organisation member | Retrieve a single organisation by ID |
+| PATCH | `/api/v1/organisations/{org_id}` | PAT or bearer token; scope `org:write` (any organisation) or organisation owner | Partially update an organisation's attributes |
+| DELETE | `/api/v1/organisations/{org_id}` | PAT or bearer token; scope `org:delete` | Permanently delete an organisation |
+| POST | `/api/v1/organisations/{org_id}/enable` | PAT or bearer token; scope `org:write` | Enable a previously disabled organisation |
+| POST | `/api/v1/organisations/{org_id}/disable` | PAT or bearer token; scope `org:write` | Disable an active organisation |
+| GET | `/api/v1/organisations/{org_id}/members/` | PAT or bearer token; organisation member with scope `members:read` | List all members of an organisation with pagination |
+| POST | `/api/v1/organisations/{org_id}/members/` | PAT or bearer token; organisation member with scope `members:invite` | Add a user to an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/members/{user_id}` | PAT or bearer token; organisation member with scope `members:update` | Update the role assigned to an organisation member |
+| DELETE | `/api/v1/organisations/{org_id}/members/{user_id}` | PAT or bearer token; organisation member with scope `members:remove` | Remove a user from an organisation |
+| GET | `/api/v1/organisations/{org_id}/roles/` | PAT or bearer token; organisation member with scope `roles:read` | List all roles for an organisation |
+| POST | `/api/v1/organisations/{org_id}/roles/` | PAT or bearer token; organisation member with scope `roles:write` | Create a custom role for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/roles/{role_id}` | PAT or bearer token; organisation member with scope `roles:write` | Update a custom role in an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/roles/{role_id}` | PAT or bearer token; organisation member with scope `roles:delete` | Delete a custom role from an organisation |
+| GET | `/api/v1/organisations/{org_id}/clients/` | PAT or bearer token; organisation member with scope `clients:read` | List OAuth2 clients belonging to an organisation |
+| POST | `/api/v1/organisations/{org_id}/clients/` | PAT or bearer token; organisation member with scope `clients:write` | Create a new OAuth2 client for the organisation |
+| GET | `/api/v1/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:read` | Get a single OAuth2 client by UUID |
+| PATCH | `/api/v1/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:write` | Partially update an OAuth2 client |
+| DELETE | `/api/v1/organisations/{org_id}/clients/{client_uuid}` | PAT or bearer token; organisation member with scope `clients:delete` | Delete an OAuth2 client |
+| POST | `/api/v1/organisations/{org_id}/clients/{client_uuid}/rotate-secret` | PAT or bearer token; organisation member with scope `clients:rotate` | Rotate the client secret for a confidential OAuth2 client |
+| GET | `/api/v1/organisations/{org_id}/idps/` | PAT or bearer token; organisation member with scope `idp:read` | List identity providers configured for an organisation |
+| POST | `/api/v1/organisations/{org_id}/idps/` | PAT or bearer token; organisation member with scope `idp:write` | Create a new identity provider for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/idps/{idp_id}` | PAT or bearer token; organisation member with scope `idp:write` | Partially update an identity provider for an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/idps/{idp_id}` | PAT or bearer token; organisation member with scope `idp:delete` | Delete an identity provider from an organisation |
+| GET | `/api/v1/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:read` | Return the branding configuration for an organisation |
+| PUT | `/api/v1/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:write` | Create or replace the branding configuration for an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/branding/` | PAT or bearer token; organisation member with scope `branding:write` | Delete the custom branding for an organisation, reverting to defaults |
+| GET | `/api/v1/organisations/{org_id}/templates/` | PAT or bearer token; organisation member with scope `templates:read` | List all custom templates for an organisation |
+| GET | `/api/v1/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:read` | Get a single custom template for an organisation by name |
+| PUT | `/api/v1/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:write` | Create or replace a custom template for an organisation |
+| POST | `/api/v1/organisations/{org_id}/templates/{template_name:path}/toggle` | PAT or bearer token; organisation member with scope `templates:write` | Toggle the active state of a custom template for an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/templates/{template_name:path}` | PAT or bearer token; organisation member with scope `templates:write` | Delete a custom template override for an organisation |
+| GET | `/api/v1/organisations/{org_id}/trust/` | PAT or bearer token; organisation member with scope `trust:read` | Return the trust configuration for an organisation |
+| PUT | `/api/v1/organisations/{org_id}/trust/` | PAT or bearer token; organisation member with scope `trust:write` | Set the trust mode for an organisation |
+| POST | `/api/v1/organisations/{org_id}/trust/sources` | PAT or bearer token; organisation member with scope `trust:write` | Add a trusted source tenant to an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/trust/sources/{source_id}` | PAT or bearer token; organisation member with scope `trust:write` | Remove a trusted source tenant from an organisation |
+| GET | `/api/v1/organisations/{org_id}/settings/` | PAT or bearer token; organisation member with scope `settings:read` | Return all JSONB settings for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/settings/` | PAT or bearer token; organisation member with scope `settings:write` | Partially update JSONB settings for an organisation using shallow merge |
+| GET | `/api/v1/organisations/{org_id}/registration-fields/` | PAT or bearer token; organisation member with scope `settings:read` | Get registration field visibility toggles for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/registration-fields/` | PAT or bearer token; organisation member with scope `settings:write` | Update registration field visibility toggles for an organisation |
+| GET | `/api/v1/organisations/{org_id}/profile-fields/` | PAT or bearer token; organisation member with scope `settings:read` | Return the profile field visibility toggles for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/profile-fields/` | PAT or bearer token; organisation member with scope `settings:write` | Partially update profile field visibility toggles for an organisation |
+| GET | `/api/v1/organisations/{org_id}/email-sender/` | PAT or bearer token; organisation member with scope `settings:read` | Return the custom email sender configuration for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/email-sender/` | PAT or bearer token; organisation member with scope `settings:write` | Update the custom email sender configuration for an organisation |
+| GET | `/api/v1/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:read` | Return the allowed-scopes configuration for an organisation |
+| PATCH | `/api/v1/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:write` | Update the allowed-scopes configuration for an organisation |
+| GET | `/api/v1/organisations/{org_id}/webhooks/events` | PAT or bearer token; organisation member with scope `webhooks:read` | List all subscribable webhook event types for an organisation |
+| GET | `/api/v1/organisations/{org_id}/webhooks/` | PAT or bearer token; organisation member with scope `webhooks:read` | List all webhooks registered for an organisation |
+| POST | `/api/v1/organisations/{org_id}/webhooks/` | PAT or bearer token; organisation member with scope `webhooks:write` | Create a new webhook endpoint for an organisation |
+| GET | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}` | PAT or bearer token; organisation member with scope `webhooks:read` | Retrieve a single webhook by ID |
+| PATCH | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}` | PAT or bearer token; organisation member with scope `webhooks:write` | Partially update a webhook's configuration |
+| DELETE | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}` | PAT or bearer token; organisation member with scope `webhooks:delete` | Permanently delete a webhook and its delivery history |
+| POST | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/rotate-secret` | PAT or bearer token; organisation member with scope `webhooks:write` | Rotate the HMAC-SHA256 signing secret for a webhook |
+| POST | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/test` | PAT or bearer token; organisation member with scope `webhooks:write` | Send a test delivery to verify a webhook endpoint is reachable |
+| GET | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/deliveries` | PAT or bearer token; organisation member with scope `webhooks:read` | List delivery attempts for a specific webhook |
+| POST | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/replay` | PAT or bearer token; organisation member with scope `webhooks:write` | Replay a past webhook delivery with a fresh envelope |
+
 ### Legacy profile API
 
 | Method | Path | Required scope / role / auth | Description |
@@ -209,9 +314,9 @@ Platform scopes (`ADMIN_SCOPES` in `apps/auth/src/auth/db/models/rbac.py`) are t
 | `scopes:write` | Create and update scopes | 2 |
 | `scopes:delete` | Delete scopes | 1 |
 | `org:*` | All organisation operations | 0 |
-| `org:read` | View organisations, their members and identity providers | 0 |
-| `org:write` | Create and update organisations, their members and identity providers | 0 |
-| `org:delete` | Delete organisations and identity providers | 0 |
+| `org:read` | View organisations, their members and identity providers | 2 |
+| `org:write` | Create and update organisations, their members and identity providers | 4 |
+| `org:delete` | Delete organisations and identity providers | 1 |
 | `pats:*` | All PAT management operations (admin) | 0 |
 | `pats:read` | View all users' personal access tokens | 2 |
 | `pats:revoke` | Revoke any user's personal access tokens | 2 |
@@ -229,51 +334,51 @@ Platform roles (`DEFAULT_ROLES`, system roles):
 | `readonly` | Read-only access to all resources | `users:read`, `clients:read`, `sessions:read`, `jwks:read`, `roles:read`, `scopes:read` |
 | `operator` | Read access + session revocation | `users:read`, `clients:read`, `sessions:read`, `sessions:revoke` |
 
-Organisation scopes (`TENANT_SCOPES` in `apps/auth/src/auth/db/models/tenant.py`) are carried by the role of a member inside an organisation.
+Organisation scopes (`TENANT_SCOPES` in `apps/auth/src/auth/db/models/tenant.py`) are carried by the role of a member inside an organisation. The last column counts the routes above that name the scope. Each organisation can restrict the scopes its roles may use.
 
-| Scope | Description |
-| --- | --- |
-| `*` | Full access to all tenant operations |
-| `members:*` | All member operations |
-| `members:read` | View tenant members |
-| `members:invite` | Invite new members |
-| `members:update` | Update member roles |
-| `members:remove` | Remove members from tenant |
-| `settings:*` | All settings operations |
-| `settings:read` | View tenant settings |
-| `settings:write` | Modify tenant settings (name, e-mail sender, allowed scopes, fields) |
-| `domain:*` | All custom domain operations |
-| `domain:read` | View the custom domain and its verification status |
-| `domain:write` | Set, remove and verify the custom domain |
-| `roles:*` | All role operations |
-| `roles:read` | View tenant roles |
-| `roles:write` | Create and modify custom roles |
-| `roles:delete` | Delete custom roles |
-| `idp:*` | All identity provider operations |
-| `idp:read` | View identity provider configurations |
-| `idp:write` | Configure identity providers |
-| `idp:delete` | Delete identity providers |
-| `branding:*` | All branding operations |
-| `branding:read` | View branding settings |
-| `branding:write` | Modify branding (colors, logos, CSS) |
-| `templates:*` | All template operations |
-| `templates:read` | View custom templates |
-| `templates:write` | Modify custom templates |
-| `clients:*` | All OAuth2 client operations |
-| `clients:read` | View organization's OAuth2 clients |
-| `clients:write` | Create and modify OAuth2 clients |
-| `clients:delete` | Delete OAuth2 clients |
-| `clients:rotate` | Rotate OAuth2 client secrets |
-| `trust:*` | All trust policy operations |
-| `trust:read` | View trust policy settings |
-| `trust:write` | Modify trust policy |
-| `billing:*` | All billing operations |
-| `billing:read` | View billing information |
-| `billing:write` | Modify billing settings |
-| `webhooks:*` | All webhook operations |
-| `webhooks:read` | View webhook configurations and deliveries |
-| `webhooks:write` | Create and modify webhooks |
-| `webhooks:delete` | Delete webhooks |
+| Scope | Description | Routes |
+| --- | --- | --- |
+| `*` | Full access to all tenant operations | 0 |
+| `members:*` | All member operations | 0 |
+| `members:read` | View tenant members | 2 |
+| `members:invite` | Invite new members | 2 |
+| `members:update` | Update member roles | 2 |
+| `members:remove` | Remove members from tenant | 2 |
+| `settings:*` | All settings operations | 0 |
+| `settings:read` | View tenant settings | 10 |
+| `settings:write` | Modify tenant settings (name, e-mail sender, allowed scopes, fields) | 10 |
+| `domain:*` | All custom domain operations | 0 |
+| `domain:read` | View the custom domain and its verification status | 0 |
+| `domain:write` | Set, remove and verify the custom domain | 0 |
+| `roles:*` | All role operations | 0 |
+| `roles:read` | View tenant roles | 2 |
+| `roles:write` | Create and modify custom roles | 4 |
+| `roles:delete` | Delete custom roles | 2 |
+| `idp:*` | All identity provider operations | 0 |
+| `idp:read` | View identity provider configurations | 2 |
+| `idp:write` | Configure identity providers | 4 |
+| `idp:delete` | Delete identity providers | 2 |
+| `branding:*` | All branding operations | 0 |
+| `branding:read` | View branding settings | 2 |
+| `branding:write` | Modify branding (colors, logos, CSS) | 4 |
+| `templates:*` | All template operations | 0 |
+| `templates:read` | View custom templates | 4 |
+| `templates:write` | Modify custom templates | 6 |
+| `clients:*` | All OAuth2 client operations | 0 |
+| `clients:read` | View organization's OAuth2 clients | 4 |
+| `clients:write` | Create and modify OAuth2 clients | 4 |
+| `clients:delete` | Delete OAuth2 clients | 2 |
+| `clients:rotate` | Rotate OAuth2 client secrets | 2 |
+| `trust:*` | All trust policy operations | 0 |
+| `trust:read` | View trust policy settings | 2 |
+| `trust:write` | Modify trust policy | 6 |
+| `billing:*` | All billing operations | 0 |
+| `billing:read` | View billing information | 0 |
+| `billing:write` | Modify billing settings | 0 |
+| `webhooks:*` | All webhook operations | 0 |
+| `webhooks:read` | View webhook configurations and deliveries | 4 |
+| `webhooks:write` | Create and modify webhooks | 5 |
+| `webhooks:delete` | Delete webhooks | 1 |
 
 Default organisation roles (`DEFAULT_TENANT_ROLES`):
 

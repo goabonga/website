@@ -37,6 +37,7 @@ service under systemd. Each application can be pinned to one of its releases
 | [Tags](04-tags.md) | Running a part of a playbook. |
 | [Deploying applications](05-deploying-apps.md) | The catalog, the overrides, releases and rollbacks. |
 | [Playbooks](06-playbooks.md) | What `bootstrap`, `site` and `apps` run, and their switches. |
+| [Onboarding a SaaS application](07-saas-onboarding.md) | Registering the clients of custom-domain, mailler and billing. |
 | [Roles](roles/index.md) | One page per role, with every variable. |
 
 ## Requirements

@@ -15,6 +15,7 @@ immutable dataclass; nothing is hard-coded in the scenarios.
 | `E2E_SKIP_BROWSER` | `false` | Skip every `@browser` scenario and start no browser |
 | `E2E_TIMEOUT` | `10000` | Default timeout of Playwright actions and expectations, in milliseconds |
 | `E2E_TRACE` | `true` | Record a Playwright trace and keep it when the scenario fails |
+| `E2E_SCREENSHOTS` | `off` | Screenshots kept for scenarios that passed: `off`, `scenario` (one per scenario, `1`/`true` also select it) or `steps` (one after every step as well) |
 
 Booleans accept `1`/`0`, `true`/`false`, `yes`/`no` and `on`/`off`, in any
 case. A blank `E2E_ARTIFACTS_DIR` falls back to the default.

@@ -3,7 +3,7 @@
 
 """Tests for team/main.py."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 
 class TestAppRoutes:
@@ -73,3 +73,139 @@ class TestLifespan:
                 mock_logger.info.assert_called()
                 startup_call = mock_logger.info.call_args_list[0]
                 assert "Starting" in str(startup_call)
+
+    async def test_lifespan_shutdown_logs(self):
+        """Lifespan shutdown should log a shutting down message."""
+        from team.main import app as main_app
+        from team.main import lifespan
+
+        with (
+            patch("team.main.logger") as mock_logger,
+            patch("team.main.jwks_manager") as mock_jwks,
+            patch("team.main.token_exchange_client") as mock_te,
+            patch("team.main.introspection_client") as mock_intro,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_intro.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            shutdown_calls = [
+                c for c in mock_logger.info.call_args_list if "Shutting down" in str(c)
+            ]
+            assert len(shutdown_calls) >= 1
+
+    async def test_lifespan_shutdown_closes_jwks_manager(self):
+        """Lifespan shutdown should close the JWKS manager."""
+        from team.main import app as main_app
+        from team.main import lifespan
+
+        with (
+            patch("team.main.logger"),
+            patch("team.main.jwks_manager") as mock_jwks,
+            patch("team.main.token_exchange_client") as mock_te,
+            patch("team.main.introspection_client") as mock_intro,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_intro.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_jwks.close.assert_awaited_once()
+
+    async def test_lifespan_shutdown_closes_introspection_client(self):
+        """Lifespan shutdown should close the introspection client."""
+        from team.main import app as main_app
+        from team.main import lifespan
+
+        with (
+            patch("team.main.logger"),
+            patch("team.main.jwks_manager") as mock_jwks,
+            patch("team.main.token_exchange_client") as mock_te,
+            patch("team.main.introspection_client") as mock_intro,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_intro.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_intro.close.assert_awaited_once()
+
+    async def test_lifespan_shutdown_closes_token_exchange_client(self):
+        """Lifespan shutdown should close the token exchange client."""
+        from team.main import app as main_app
+        from team.main import lifespan
+
+        with (
+            patch("team.main.logger"),
+            patch("team.main.jwks_manager") as mock_jwks,
+            patch("team.main.token_exchange_client") as mock_te,
+            patch("team.main.introspection_client") as mock_intro,
+        ):
+            mock_jwks.close = AsyncMock()
+            mock_te.close = AsyncMock()
+            mock_intro.close = AsyncMock()
+
+            async with lifespan(main_app):
+                pass
+
+            mock_te.close.assert_awaited_once()
+
+
+class TestGetSwaggerOauth2Config:
+    """Tests for get_swagger_ui_oauth2_config()."""
+
+    def test_returns_empty_dict_without_issuer(self):
+        """Should return empty dict when oauth2_issuer is not set."""
+        with patch("team.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = "some-client"
+
+            from team.main import get_swagger_ui_oauth2_config
+
+            result = get_swagger_ui_oauth2_config()
+            assert result == {}
+
+    def test_returns_empty_dict_without_client_id(self):
+        """Should return empty dict when oauth2_swagger_client_id is not set."""
+        with patch("team.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = ""
+
+            from team.main import get_swagger_ui_oauth2_config
+
+            result = get_swagger_ui_oauth2_config()
+            assert result == {}
+
+    def test_returns_config_with_both_set(self):
+        """Should return full config when both issuer and client_id are set."""
+        with patch("team.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger-client"
+
+            from team.main import get_swagger_ui_oauth2_config
+
+            result = get_swagger_ui_oauth2_config()
+
+        assert "swagger_ui_init_oauth" in result
+        assert result["swagger_ui_init_oauth"]["clientId"] == "swagger-client"
+        assert result["swagger_ui_init_oauth"]["usePkceWithAuthorizationCodeGrant"] is True
+        assert "swagger_ui_parameters" in result
+        assert result["swagger_ui_parameters"]["persistAuthorization"] is True
+
+    def test_returns_empty_dict_when_both_empty(self):
+        """Should return empty dict when both settings are empty."""
+        with patch("team.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = ""
+
+            from team.main import get_swagger_ui_oauth2_config
+
+            result = get_swagger_ui_oauth2_config()
+            assert result == {}

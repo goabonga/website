@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from reachy_mini_api import __version__
 from reachy_mini_api.api import router as api_router
-from reachy_mini_api.auth import jwks_manager
+from reachy_mini_api.auth import introspection_client, jwks_manager
 from reachy_mini_api.config import settings
 from reachy_mini_api.logging import get_logger, log_action, setup_logging
 from reachy_mini_api.middleware import RequestLoggingMiddleware
@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(f"Starting {settings.app_name}")
     yield
     logger.info(f"Shutting down {settings.app_name}")
+    await introspection_client.close()
     await jwks_manager.close()
 
 
@@ -93,7 +94,8 @@ Internal API for the Reachy Mini robot to fetch reports and data.
 
 This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
 only `openid`, `profile`, and `email` scopes. Routes validate the bearer
-token against the issuer JWKS and check the scopes it carries.
+token against the issuer JWKS, check that it was not revoked and check the
+scopes it carries.
 
 ## Required Scopes
 

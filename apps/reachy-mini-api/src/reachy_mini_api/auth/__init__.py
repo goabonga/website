@@ -11,6 +11,7 @@ from reachy_mini_api.auth.dependencies import (
     get_current_user,
     require_scopes,
 )
+from reachy_mini_api.auth.introspection import introspection_client
 from reachy_mini_api.auth.jwks import jwks_manager
 from reachy_mini_api.auth.models import User
 
@@ -21,6 +22,7 @@ __all__ = [
     "User",
     "get_auth_context",
     "get_current_user",
+    "introspection_client",
     "jwks_manager",
     "require_scopes",
 ]

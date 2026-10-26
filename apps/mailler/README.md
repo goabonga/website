@@ -15,6 +15,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/emails/{email_id}` | scope `mailler:read` | Get email details by ID |
 | GET | `/api/v1/stats` | scope `mailler:stats` | Get the email sending statistics of the calling client (real-time from emails table) |
 | GET | `/api/v1/providers` | scope `mailler:read` | List available (configured) email providers |
+| POST | `/api/v1/webhooks/brevo` | scope `mailler:webhooks`; HMAC signature checked when `WEBHOOK_HMAC_SECRET` is set | Handle Brevo webhook events |
 | GET | `/api/v1/templates` | scope `mailler:read` | List the email templates of the calling client with pagination |
 | POST | `/api/v1/templates` | scope `mailler:write` | Create a new email template |
 | GET | `/api/v1/templates/{template_id}` | scope `mailler:read` | Get email template by ID |
@@ -66,4 +67,5 @@ The application defines no scope, it only checks the ones carried by the access 
 - `mailler:send` - checked by 6 routes
 - `mailler:read` - checked by 20 routes
 - `mailler:stats` - checked by 1 route
+- `mailler:webhooks` - checked by 1 route
 - `mailler:write` - checked by 16 routes

@@ -104,22 +104,49 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                oauth2_client_secret="",
             )
 
         assert s.app_name == "Team"
         assert s.docs_enabled is True
         assert s.database_echo is False
         assert s.log_level == "INFO"
+        assert s.oauth2_token_cache_ttl == 300
+        assert s.oauth2_introspection_cache_ttl == 60
 
     def test_default_database_url(self):
         """Settings should have a default database URL."""
         with patch.dict(os.environ, {}, clear=False):
             s = Settings(
                 _env_file=None,
+                oauth2_client_secret="",
             )
 
         assert "postgresql+asyncpg" in s.database_url
         assert "team" in s.database_url
+
+    def test_default_redis_url(self):
+        """Settings should have a default Redis URL."""
+        with patch.dict(os.environ, {}, clear=False):
+            s = Settings(
+                _env_file=None,
+                oauth2_client_secret="",
+            )
+
+        assert s.redis_url.startswith("redis://")
+
+    def test_empty_oauth2_by_default(self):
+        """OAuth2 settings should be empty strings by default."""
+        with patch.dict(os.environ, {}, clear=False):
+            s = Settings(
+                _env_file=None,
+                oauth2_client_secret="",
+            )
+
+        assert s.oauth2_issuer == ""
+        assert s.oauth2_swagger_client_id == ""
+        assert s.oauth2_client_id == ""
+        assert s.oauth2_client_secret == ""
 
     def test_settings_from_env_vars(self):
         """Settings should load from environment variables."""
@@ -133,6 +160,7 @@ class TestSettings:
         with patch.dict(os.environ, env, clear=False):
             s = Settings(
                 _env_file=None,
+                oauth2_client_secret="",
             )
 
         assert s.app_name == "Custom Team"

@@ -15,6 +15,7 @@ feature, in the order they were introduced.
 2. [OAuth2 authentication](02-authentication.md)
 3. [Analytics dashboards](03-analytics.md)
 4. [Admin dashboard and chat history](04-dashboard.md)
+5. [VPN session management](05-vpn.md)
 
 ## Running locally
 

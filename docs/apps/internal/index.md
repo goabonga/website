@@ -21,6 +21,7 @@ feature, in the order they were introduced.
    - [Checkout URL allow-list and branding](06b-billing-checkout-urls.md)
    - [Plan slug and free-form limits](06c-billing-plans.md)
 7. [Team AI administration](07-team.md)
+8. [Mailler statistics](08-mailler.md)
 
 ## Running locally
 

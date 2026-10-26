@@ -6,7 +6,14 @@
 import uuid
 
 from auth.core.security import hash_password
-from auth.db.models.tenant import CustomDomainStatus, Tenant, TenantTrustMode
+from auth.db.models.tenant import (
+    CustomDomainStatus,
+    Tenant,
+    TenantTrustMode,
+    TenantWebhook,
+    WebhookDelivery,
+    WebhookDeliveryStatus,
+)
 from auth.db.models.user import User, UserEmail, UserPassword
 
 DEFAULT_PASSWORD = "Passw0rd!x"
@@ -59,3 +66,32 @@ def make_user(
 
 def new_id():
     return uuid.uuid4()
+
+
+def make_webhook(session, tenant, url, events, *, name="hook", secret="whsec"):
+    """Insert an active webhook subscription for ``tenant``."""
+    webhook = TenantWebhook(
+        tenant_id=tenant.id, name=name, url=url, events=events, secret=secret, headers={}
+    )
+    session.add(webhook)
+    session.flush()
+    return webhook
+
+
+def make_delivery(session, webhook, *, event="user.created", max_attempts=5):
+    """Insert a pending delivery for ``webhook``."""
+    delivery = WebhookDelivery(
+        webhook_id=webhook.id,
+        tenant_id=webhook.tenant_id,
+        event=event,
+        idempotency_key=uuid.uuid4().hex,
+        request_url=webhook.url,
+        request_headers={},
+        request_body={"event": event, "data": {}},
+        status=WebhookDeliveryStatus.PENDING,
+        attempt=0,
+        max_attempts=max_attempts,
+    )
+    session.add(delivery)
+    session.flush()
+    return delivery

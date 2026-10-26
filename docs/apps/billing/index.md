@@ -33,6 +33,7 @@ tested.
 | 11 | [Checkout](11-checkout.md) | Stripe Checkout sessions |
 | 12 | [Usage](12-usage.md) | Metered usage events |
 | 12a | [Client partitioning](12a-client-partitioning.md) | OAuth client to SaaS bindings, admin scope, onboarding |
+| 13 | [Webhooks](13-webhooks.md) | Stripe events and tenant notifications |
 
 ## Running the tests
 

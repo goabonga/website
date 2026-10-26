@@ -266,6 +266,7 @@ paths = [
     "apps/knowledge/src/**",
     "apps/knowledge/features/**",
     "apps/knowledge/tests/**",
+    "apps/knowledge/alembic/**",
     "apps/knowledge/pyproject.toml",
 ]
 bump_files = [

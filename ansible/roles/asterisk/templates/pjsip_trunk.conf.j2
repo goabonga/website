@@ -1,0 +1,58 @@
+{{ ansible_managed | comment(decoration='; ') }}
+{% set t = asterisk_trunk_name %}
+{% if asterisk_transport_manage | bool %}
+
+[{{ asterisk_transport_name }}]
+type=transport
+protocol={{ asterisk_transport_protocol }}
+bind={{ asterisk_transport_bind_address }}:{{ asterisk_transport_port }}
+{% endif %}
+{% if asterisk_trunk_register | bool %}
+
+[{{ t }}]
+type=registration
+outbound_auth={{ t }}-auth
+server_uri=sip:{{ asterisk_trunk_server }}
+client_uri=sip:{{ asterisk_trunk_username }}@{{ asterisk_trunk_server }}
+retry_interval={{ asterisk_trunk_retry_interval }}
+expiration={{ asterisk_trunk_expiration }}
+{% endif %}
+
+[{{ t }}-auth]
+type=auth
+auth_type=userpass
+username={{ asterisk_trunk_username }}
+password={{ asterisk_trunk_password }}
+
+[{{ t }}-aor]
+type=aor
+contact=sip:{{ asterisk_trunk_server }}
+qualify_frequency={{ asterisk_trunk_qualify_frequency }}
+
+[{{ t }}-endpoint]
+type=endpoint
+transport={{ asterisk_transport_name }}
+context={{ asterisk_trunk_context }}
+disallow=all
+{% for codec in asterisk_trunk_codecs %}
+allow={{ codec }}
+{% endfor %}
+outbound_auth={{ t }}-auth
+aors={{ t }}-aor
+from_user={{ asterisk_trunk_username }}
+from_domain={{ asterisk_trunk_server }}
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+trust_id_inbound=yes
+send_pai=yes
+send_rpid=yes
+{% for key, value in asterisk_trunk_extra_endpoint_options.items() %}
+{{ key }}={{ value }}
+{% endfor %}
+
+[{{ t }}-identify]
+type=identify
+endpoint={{ t }}-endpoint
+match={{ asterisk_trunk_server }}

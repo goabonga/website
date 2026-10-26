@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Manage the Asterisk service
+  ansible.builtin.systemd:
+    name: "{{ asterisk_service_name }}"
+    state: "{{ asterisk_service_state }}"
+    enabled: "{{ asterisk_service_enabled }}"
+
+- name: Apply pending reloads and restarts
+  ansible.builtin.meta: flush_handlers

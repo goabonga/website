@@ -1,0 +1,33 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the asterisk configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]
+
+- name: Install Asterisk
+  ansible.builtin.import_tasks: install.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]
+
+- name: Configure the SIP trunk
+  ansible.builtin.import_tasks: trunk.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]
+
+- name: Open the firewall for SIP and RTP
+  ansible.builtin.import_tasks: firewall.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]
+
+- name: Start Asterisk
+  ansible.builtin.import_tasks: service.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]
+
+- name: Protect SIP with fail2ban
+  ansible.builtin.import_tasks: fail2ban.yml
+  when: asterisk_enabled | bool
+  tags: [asterisk]

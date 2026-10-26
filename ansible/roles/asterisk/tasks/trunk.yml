@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Deploy the PJSIP trunk configuration
+  ansible.builtin.template:
+    src: pjsip_trunk.conf.j2
+    dest: "{{ asterisk_config_dir }}/{{ asterisk_trunk_pjsip_file }}"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+  diff: false
+  notify: asterisk | reload
+  when: asterisk_trunk_enabled | bool
+
+- name: Deploy the inbound dialplan
+  ansible.builtin.template:
+    src: extensions_trunk.conf.j2
+    dest: "{{ asterisk_config_dir }}/{{ asterisk_trunk_dialplan_file }}"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+  notify: asterisk | reload
+  when: asterisk_trunk_enabled | bool
+
+- name: Include the trunk files from the main configuration
+  ansible.builtin.lineinfile:
+    path: "{{ asterisk_config_dir }}/{{ item.main }}"
+    regexp: "^#include\\s+{{ item.file | regex_escape }}\\s*$"
+    line: "#include {{ item.file }}"
+    state: "{{ 'present' if asterisk_trunk_enabled | bool else 'absent' }}"
+  loop:
+    - { main: pjsip.conf, file: "{{ asterisk_trunk_pjsip_file }}" }
+    - { main: extensions.conf, file: "{{ asterisk_trunk_dialplan_file }}" }
+  loop_control:
+    label: "{{ item.main }}"
+  notify: asterisk | reload
+
+- name: Remove the trunk files when the trunk is disabled
+  ansible.builtin.file:
+    path: "{{ asterisk_config_dir }}/{{ item }}"
+    state: absent
+  loop:
+    - "{{ asterisk_trunk_pjsip_file }}"
+    - "{{ asterisk_trunk_dialplan_file }}"
+  notify: asterisk | reload
+  when: not (asterisk_trunk_enabled | bool)

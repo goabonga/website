@@ -1,0 +1,11 @@
+{{ ansible_managed | comment }}
+
+[{{ asterisk_fail2ban_jail_name }}]
+enabled = true
+port = {{ asterisk_fail2ban_ports }}
+protocol = {{ asterisk_fail2ban_protocol }}
+filter = {{ asterisk_fail2ban_jail_name }}
+logpath = {{ asterisk_fail2ban_logpath }}
+maxretry = {{ asterisk_fail2ban_maxretry }}
+findtime = {{ asterisk_fail2ban_findtime }}
+bantime = {{ asterisk_fail2ban_bantime }}

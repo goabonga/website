@@ -1,0 +1,26 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  role_name: asterisk
+  author: Chris
+  description: Install Asterisk with a PJSIP SIP trunk, dialplan, firewall and fail2ban
+    integration
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - asterisk
+  - sip
+  - pjsip
+  - voip
+  - telephony
+dependencies: []

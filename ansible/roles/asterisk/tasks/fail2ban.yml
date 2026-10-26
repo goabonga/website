@@ -1,0 +1,42 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for the fail2ban client
+  ansible.builtin.stat:
+    path: "{{ asterisk_fail2ban_client }}"
+  register: asterisk_fail2ban_client_stat
+
+- name: Deploy the fail2ban filter
+  ansible.builtin.template:
+    src: fail2ban-filter.conf.j2
+    dest: "{{ asterisk_fail2ban_filter_dir }}/{{ asterisk_fail2ban_jail_name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: asterisk | reload fail2ban
+  when:
+    - asterisk_fail2ban_enabled | bool
+    - asterisk_fail2ban_client_stat.stat.exists or not (asterisk_fail2ban_require_installed | bool)
+
+- name: Deploy the fail2ban jail
+  ansible.builtin.template:
+    src: fail2ban-jail.conf.j2
+    dest: "{{ asterisk_fail2ban_jail_dir }}/{{ asterisk_fail2ban_jail_name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: asterisk | reload fail2ban
+  when:
+    - asterisk_fail2ban_enabled | bool
+    - asterisk_fail2ban_client_stat.stat.exists or not (asterisk_fail2ban_require_installed | bool)
+
+- name: Remove the fail2ban jail and filter
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ asterisk_fail2ban_jail_dir }}/{{ asterisk_fail2ban_jail_name }}.conf"
+    - "{{ asterisk_fail2ban_filter_dir }}/{{ asterisk_fail2ban_jail_name }}.conf"
+  notify: asterisk | reload fail2ban
+  when: not (asterisk_fail2ban_enabled | bool)

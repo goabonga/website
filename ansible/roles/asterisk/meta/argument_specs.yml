@@ -1,0 +1,248 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install Asterisk with a PJSIP SIP trunk, dialplan, firewall and fail2ban integration
+    description:
+    - Installs Asterisk from the distribution, disables unused RADIUS modules and optionally configures
+      a PJSIP SIP trunk with an inbound dialplan, firewall rules for SIP and RTP, and a fail2ban jail.
+    options:
+      asterisk_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      asterisk_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      asterisk_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      asterisk_packages:
+        type: list
+        description: Packages to install.
+        elements: str
+      asterisk_user:
+        type: str
+        description: Owner of the generated configuration files.
+        default: asterisk
+      asterisk_group:
+        type: str
+        description: Group of the generated configuration files.
+        default: asterisk
+      asterisk_config_dir:
+        type: path
+        description: Asterisk configuration directory.
+        default: /etc/asterisk
+      asterisk_service_name:
+        type: str
+        description: systemd unit name.
+        default: asterisk
+      asterisk_service_state:
+        type: str
+        description: State of the service after configuration.
+        choices:
+        - started
+        - stopped
+        default: started
+      asterisk_service_enabled:
+        type: bool
+        description: Enable the service at boot.
+        default: true
+      asterisk_noload_modules:
+        type: list
+        description: Modules marked `noload` in modules.conf.
+        elements: str
+      asterisk_transport_manage:
+        type: bool
+        description: Declare the PJSIP transport together with the trunk. Disable it when pjsip.conf already
+          defines one.
+        default: true
+      asterisk_transport_name:
+        type: str
+        description: Name of the PJSIP transport section.
+        default: transport-udp
+      asterisk_transport_protocol:
+        type: str
+        description: Transport protocol.
+        choices:
+        - udp
+        - tcp
+        - tls
+        default: udp
+      asterisk_transport_bind_address:
+        type: str
+        description: Address the transport binds to.
+        default: 0.0.0.0
+      asterisk_transport_port:
+        type: int
+        description: Port the transport binds to; also the port opened by the firewall and watched by
+          fail2ban.
+        default: 5060
+      asterisk_trunk_enabled:
+        type: bool
+        description: Configure the SIP trunk and the inbound dialplan. When false their files and include
+          lines are removed.
+        default: false
+      asterisk_trunk_name:
+        type: str
+        description: Prefix of the PJSIP sections (<name>-auth, <name>-aor, <name>-endpoint, ...).
+        default: trunk
+      asterisk_trunk_server:
+        type: str
+        description: SIP server (host name) of the provider. Required when the trunk is enabled.
+        default: ''
+      asterisk_trunk_username:
+        type: str
+        description: SIP account / number registered with the provider. Required when the trunk is enabled.
+        default: ''
+      asterisk_trunk_password:
+        type: str
+        description: SIP account password. Required when the trunk is enabled. Provide it from a vault.
+        default: ''
+        no_log: true
+      asterisk_trunk_register:
+        type: bool
+        description: Register the account with the provider. Disable for IP-authenticated trunks.
+        default: true
+      asterisk_trunk_retry_interval:
+        type: int
+        description: Seconds between registration retries.
+        default: 60
+      asterisk_trunk_expiration:
+        type: int
+        description: Registration expiration in seconds.
+        default: 3600
+      asterisk_trunk_qualify_frequency:
+        type: int
+        description: Seconds between qualify (keep-alive) requests to the provider.
+        default: 60
+      asterisk_trunk_codecs:
+        type: list
+        description: Codecs allowed on the trunk, in order of preference.
+        elements: str
+      asterisk_trunk_context:
+        type: str
+        description: Dialplan context receiving inbound calls.
+        default: from-trunk
+      asterisk_trunk_extra_endpoint_options:
+        type: dict
+        description: 'Additional PJSIP endpoint options rendered as `key=value`, for example {dtmf_mode:
+          rfc4733}.'
+      asterisk_trunk_pjsip_file:
+        type: str
+        description: File (relative to the configuration directory) holding the generated PJSIP sections;
+          it is included from pjsip.conf.
+        default: pjsip_trunk.conf
+      asterisk_trunk_dialplan_file:
+        type: str
+        description: File (relative to the configuration directory) holding the generated dialplan; it
+          is included from extensions.conf.
+        default: extensions_trunk.conf
+      asterisk_incoming_context:
+        type: str
+        description: Dialplan context that receives calls without a more specific route, for example the
+          context of an AGI application. Empty plays a sound and hangs up.
+        default: ''
+      asterisk_incoming_sound:
+        type: str
+        description: Sound played when no incoming context is set.
+        default: hello-world
+      asterisk_dids:
+        type: list
+        description: Per-number routes.
+        elements: dict
+        options:
+          number:
+            type: str
+            description: Dialled number (extension pattern) to route.
+            required: true
+          description:
+            type: str
+            description: Free text written to the dialplan log line.
+          context:
+            type: str
+            description: Dialplan context receiving the call. Takes precedence over extension.
+          extension:
+            type: str
+            description: Endpoint dialled when no context is set, for example PJSIP/100.
+      asterisk_did_dial_timeout:
+        type: int
+        description: Seconds to ring an endpoint for DID routes using `extension`.
+        default: 30
+      asterisk_firewall_enabled:
+        type: bool
+        description: Open the SIP and RTP ports with iptables.
+        default: false
+      asterisk_firewall_chain:
+        type: str
+        description: iptables chain receiving the rules.
+        default: INPUT
+      asterisk_firewall_rtp_ports:
+        type: str
+        description: RTP port range to open. It must match rtp.conf.
+        default: 10000:20000
+      asterisk_firewall_persist:
+        type: bool
+        description: Save the rule set after a change.
+        default: true
+      asterisk_firewall_rules_file:
+        type: path
+        description: File receiving the saved rule set (iptables-persistent format).
+        default: /etc/iptables/rules.v4
+      asterisk_fail2ban_enabled:
+        type: bool
+        description: Deploy the fail2ban filter and jail. When false they are removed.
+        default: true
+      asterisk_fail2ban_require_installed:
+        type: bool
+        description: Deploy only when the fail2ban client is present, so the role never depends on the
+          fail2ban role.
+        default: true
+      asterisk_fail2ban_client:
+        type: path
+        description: Path of the fail2ban client used to detect an installation.
+        default: /usr/bin/fail2ban-client
+      asterisk_fail2ban_service_name:
+        type: str
+        description: systemd unit reloaded after a change.
+        default: fail2ban
+      asterisk_fail2ban_jail_name:
+        type: str
+        description: Name of the jail and of the filter. It differs from the `asterisk` filter shipped
+          by fail2ban on purpose.
+        default: asterisk-pjsip
+      asterisk_fail2ban_filter_dir:
+        type: path
+        description: Directory receiving the filter.
+        default: /etc/fail2ban/filter.d
+      asterisk_fail2ban_jail_dir:
+        type: path
+        description: Directory receiving the jail.
+        default: /etc/fail2ban/jail.d
+      asterisk_fail2ban_logpath:
+        type: path
+        description: Log file watched by the jail.
+        default: /var/log/asterisk/messages.log
+      asterisk_fail2ban_ports:
+        type: str
+        description: Ports banned by the jail.
+        default: 5060,5061
+      asterisk_fail2ban_protocol:
+        type: str
+        description: Protocol banned by the jail.
+        default: udp
+      asterisk_fail2ban_maxretry:
+        type: int
+        description: Failures before a ban.
+        default: 3
+      asterisk_fail2ban_findtime:
+        type: str
+        description: Window in which failures are counted.
+        default: 10m
+      asterisk_fail2ban_bantime:
+        type: str
+        description: Duration of a ban.
+        default: 24h

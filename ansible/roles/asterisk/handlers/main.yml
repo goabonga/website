@@ -1,0 +1,31 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Reload Asterisk
+  ansible.builtin.systemd:
+    name: "{{ asterisk_service_name }}"
+    state: reloaded
+  when: asterisk_service_state == 'started'
+  listen: asterisk | reload
+
+- name: Restart Asterisk
+  ansible.builtin.systemd:
+    name: "{{ asterisk_service_name }}"
+    state: restarted
+  when: asterisk_service_state == 'started'
+  listen: asterisk | restart
+
+- name: Save the iptables rules
+  ansible.builtin.shell:
+    cmd: "iptables-save > {{ asterisk_firewall_rules_file | quote }}"
+  changed_when: true
+  when: asterisk_firewall_persist | bool
+  listen: asterisk | save iptables
+
+- name: Reload fail2ban for Asterisk
+  ansible.builtin.systemd:
+    name: "{{ asterisk_fail2ban_service_name }}"
+    state: reloaded
+  when: asterisk_fail2ban_client_stat.stat.exists | default(false)
+  listen: asterisk | reload fail2ban

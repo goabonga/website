@@ -1,0 +1,19 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install Asterisk
+  ansible.builtin.apt:
+    name: "{{ asterisk_packages }}"
+    state: present
+    update_cache: "{{ asterisk_apt_update_cache }}"
+    cache_valid_time: "{{ asterisk_apt_cache_valid_time }}"
+
+- name: Disable unused modules
+  ansible.builtin.lineinfile:
+    path: "{{ asterisk_config_dir }}/modules.conf"
+    regexp: "^noload\\s*=>\\s*{{ item | regex_escape }}"
+    line: "noload => {{ item }}"
+    insertafter: "^\\[modules\\]"
+  loop: "{{ asterisk_noload_modules }}"
+  notify: asterisk | restart

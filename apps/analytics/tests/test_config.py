@@ -81,3 +81,16 @@ class TestSettings:
         assert s.database_url == "postgresql:///analytics"
         assert s.database_echo is True
         assert s.data_retention_days == 30
+
+    def test_geoip_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.geoip_enabled is True
+        assert s.geoip_database_path == "/usr/share/GeoIP/GeoLite2-City.mmdb"
+
+    def test_geoip_env_override(self):
+        env = {"GEOIP_ENABLED": "false", "GEOIP_DATABASE_PATH": "/tmp/city.mmdb"}
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.geoip_enabled is False
+        assert s.geoip_database_path == "/tmp/city.mmdb"

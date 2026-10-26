@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     sendgrid_internal_api_socket: str = ""  # Unix socket (overrides URL)
     sendgrid_internal_api_token: str = ""  # Bearer token for internal API
 
+    # GitHub (placeholder) -> Internal API
+    github_enabled: bool = False
+    github_webhook_secret: str = ""
+    github_internal_api_url: str = ""
+    github_internal_api_socket: str = ""  # Unix socket (overrides URL)
+    github_internal_api_token: str = ""  # Bearer token for internal API
+
 
 settings = Settings(
     brevo_webhook_secret=get_credential(
@@ -104,6 +111,14 @@ settings = Settings(
     sendgrid_internal_api_token=get_credential(
         "SENDGRID_INTERNAL_API_TOKEN",
         os.environ.get("SENDGRID_INTERNAL_API_TOKEN", ""),
+    ),
+    github_webhook_secret=get_credential(
+        "GITHUB_WEBHOOK_SECRET",
+        os.environ.get("GITHUB_WEBHOOK_SECRET", ""),
+    ),
+    github_internal_api_token=get_credential(
+        "GITHUB_INTERNAL_API_TOKEN",
+        os.environ.get("GITHUB_INTERNAL_API_TOKEN", ""),
     ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",

@@ -68,3 +68,8 @@ if settings.sendgrid_enabled:
     from webhooks.routes.sendgrid import router as sendgrid_router
 
     app.include_router(sendgrid_router, prefix="/webhooks/sendgrid", tags=["sendgrid"])
+
+if settings.github_enabled:
+    from webhooks.routes.github import router as github_router
+
+    app.include_router(github_router, prefix="/webhooks/github", tags=["github"])

@@ -15,6 +15,7 @@ documented on its own page.
 | --- | --- |
 | [Application foundation](01-foundation.md) | Settings, logging, database sessions, health check |
 | [OAuth2 authentication](02-authentication.md) | Bearer token validation and scope checks |
+| [Email providers](03-providers.md) | Brevo, SendGrid, AWS SES and Protonmail adapters, signatures |
 
 ## Running the tests
 

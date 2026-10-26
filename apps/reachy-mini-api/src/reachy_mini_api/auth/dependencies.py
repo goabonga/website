@@ -9,12 +9,22 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 
+from reachy_mini_api.auth.introspection import TokenRevokedError, introspection_client
 from reachy_mini_api.auth.jwks import jwks_manager
 from reachy_mini_api.auth.models import User
 from reachy_mini_api.config import settings
 from reachy_mini_api.logging import get_logger, set_request_context
 
 logger = get_logger(__name__)
+
+
+def _is_jwt_token(token: str) -> bool:
+    """Check if a token looks like a JWT (3 base64url segments separated by dots).
+
+    PersonalAccessTokens and other opaque tokens do not have this structure.
+    """
+    parts = token.split(".")
+    return len(parts) == 3 and all(len(part) > 0 for part in parts)
 
 
 async def _extract_bearer_token(request: Request) -> str | None:
@@ -78,7 +88,7 @@ class AuthContext:
 
 def _set_request_identity(request: Request, claims: dict, user: User) -> None:
     """Expose the authenticated identity to the request and to structured logging."""
-    client_id = claims.get("client_id") or claims.get("azp")
+    client_id = claims.get("client_id") or claims.get("azp") or settings.oauth2_client_id
     set_request_context(user_id=str(user.id), client_id=client_id)
     request.state.user_id = str(user.id)
     request.state.client_id = client_id
@@ -93,6 +103,7 @@ async def get_auth_context(
     Supports:
     - OAuth2 Authorization Code flow (Swagger UI with PKCE)
     - Authorization: Bearer <jwt_token> (API clients)
+    - Authorization: Bearer <opaque_token> (PersonalAccessTokens)
     """
     if token is None:
         raise HTTPException(
@@ -108,8 +119,20 @@ async def get_auth_context(
         )
 
     try:
-        claims = await jwks_manager.validate_token(token)
+        if _is_jwt_token(token):
+            claims = await introspection_client.validate_token_with_introspection(token)
+        else:
+            logger.debug("Opaque token detected, using introspection-only validation")
+            claims = await introspection_client.validate_opaque_token(token)
+
         user = User.from_jwt_claims(claims)
+    except TokenRevokedError:
+        logger.info("Token revoked - access denied")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+        )
     except Exception as e:
         logger.info("Invalid token: %s", e)
         raise HTTPException(
@@ -132,8 +155,9 @@ async def get_current_user(
 def require_scopes(*required_scopes: str) -> Callable:
     """Create a dependency that requires specific scopes.
 
-    The token signature is validated against the issuer JWKS and the scopes
-    carried by the token are checked, with wildcard support.
+    The token is validated (JWKS signature and revocation check for JWTs,
+    introspection for opaque tokens) and the scopes carried by the token are
+    checked, with wildcard support.
 
     Usage:
         @router.get("/resource")
@@ -167,9 +191,24 @@ def require_scopes(*required_scopes: str) -> Callable:
                 detail="OAuth2 not configured",
             )
 
+        is_jwt = _is_jwt_token(token)
+        if not is_jwt:
+            logger.debug("Opaque token detected, using introspection")
+
         try:
-            claims = await jwks_manager.validate_token(token)
+            if is_jwt:
+                claims = await introspection_client.validate_token_with_introspection(token)
+            else:
+                claims = await introspection_client.validate_opaque_token(token)
+
             user = User.from_jwt_claims(claims)
+        except TokenRevokedError:
+            logger.info("Token revoked - access denied (scope check)")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+            )
         except Exception as e:
             logger.info("Invalid token (scope check): %s", e)
             raise HTTPException(

@@ -3,7 +3,11 @@
 
 """Tests for mailler.config module."""
 
-from mailler.config import Settings
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+from mailler.config import Settings, get_credential
 
 
 class TestSettingsDefaults:
@@ -42,3 +46,94 @@ class TestSettingsFromEnvironment:
     def test_unknown_variables_are_ignored(self, monkeypatch):
         monkeypatch.setenv("SOMETHING_UNKNOWN", "x")
         assert not hasattr(Settings(_env_file=None), "something_unknown")
+
+
+class TestAuthSettings:
+    """OAuth2 and cache settings introduced with authentication."""
+
+    def test_oauth2_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.oauth2_issuer == ""
+        assert s.admin_scope == "mailler:admin"
+        assert s.oauth2_client_id == ""
+        assert s.oauth2_client_secret == ""
+        assert s.oauth2_swagger_client_id == ""
+        assert s.oauth2_trusted_issuers == ""
+        assert s.oauth2_client_cache_ttl == 300
+        assert s.token_introspection_cache_ttl == 60
+        assert s.jwks_cache_ttl == 3600
+
+    def test_redis_defaults(self):
+        s = Settings(_env_file=None)
+        assert s.redis_url == "redis://localhost:6379/11"
+        assert s.redis_key_prefix == "mailler"
+
+
+class TestGetCredential:
+    """Tests for get_credential function."""
+
+    def test_reads_from_credentials_directory(self, tmp_path: Path):
+        cred_file = tmp_path / "MY_SECRET"
+        cred_file.write_text("secret-value\n")
+
+        with patch.dict(os.environ, {"CREDENTIALS_DIRECTORY": str(tmp_path)}):
+            result = get_credential("MY_SECRET", "default")
+
+        assert result == "secret-value"
+
+    def test_strips_whitespace_from_credential_file(self, tmp_path: Path):
+        cred_file = tmp_path / "MY_SECRET"
+        cred_file.write_text("  secret  \n")
+
+        with patch.dict(os.environ, {"CREDENTIALS_DIRECTORY": str(tmp_path)}):
+            result = get_credential("MY_SECRET")
+
+        assert result == "secret"
+
+    def test_falls_back_to_env_var(self):
+        with patch.dict(
+            os.environ,
+            {"MY_SECRET": "env-value"},
+            clear=False,
+        ):
+            # Remove CREDENTIALS_DIRECTORY if set
+            env = dict(os.environ)
+            env.pop("CREDENTIALS_DIRECTORY", None)
+            env["MY_SECRET"] = "env-value"
+            with patch.dict(os.environ, env, clear=True):
+                result = get_credential("MY_SECRET", "default")
+
+        assert result == "env-value"
+
+    def test_returns_default_when_not_found(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = get_credential("NONEXISTENT", "default-val")
+
+        assert result == "default-val"
+
+    def test_returns_empty_string_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = get_credential("NONEXISTENT")
+
+        assert result == ""
+
+    def test_credential_file_takes_priority_over_env(self, tmp_path: Path):
+        cred_file = tmp_path / "MY_SECRET"
+        cred_file.write_text("file-value")
+
+        with patch.dict(
+            os.environ,
+            {"CREDENTIALS_DIRECTORY": str(tmp_path), "MY_SECRET": "env-value"},
+        ):
+            result = get_credential("MY_SECRET", "default")
+
+        assert result == "file-value"
+
+    def test_missing_credential_file_falls_back_to_env(self, tmp_path: Path):
+        with patch.dict(
+            os.environ,
+            {"CREDENTIALS_DIRECTORY": str(tmp_path), "MY_SECRET": "env-value"},
+        ):
+            result = get_credential("MY_SECRET", "default")
+
+        assert result == "env-value"

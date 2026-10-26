@@ -96,6 +96,16 @@ class Settings(BaseSettings):
     protonmail_user: str = ""
     protonmail_password: str = ""
 
+    # Inbound email processing (IMAP via Protonmail Bridge)
+    inbound_enabled: bool = False
+    inbound_imap_port: int = 0  # IMAP port of the mailbox (the host is PROTONMAIL_HOST)
+    inbound_poll_interval: int = 30  # seconds between IMAP polls
+    inbound_webhook_url: str = ""  # Target service URL for forwarding
+    inbound_webhook_secret: str = ""  # Optional HMAC secret for webhook auth
+    inbound_processed_folder: str = "Processed"  # IMAP folder for processed emails
+    inbound_attachments_dir: str = ""  # directory where attachments are stored
+    inbound_attachment_ttl: int = 86400  # 24 hours
+
     # Webhook HMAC signature (shared secret with webhooks service)
     webhook_hmac_secret: str = ""
 
@@ -128,5 +138,8 @@ settings = Settings(
     ),
     webhook_hmac_secret=get_credential(
         "WEBHOOK_HMAC_SECRET", os.environ.get("WEBHOOK_HMAC_SECRET", "")
+    ),
+    inbound_webhook_secret=get_credential(
+        "INBOUND_WEBHOOK_SECRET", os.environ.get("INBOUND_WEBHOOK_SECRET", "")
     ),
 )

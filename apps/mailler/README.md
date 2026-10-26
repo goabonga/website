@@ -55,6 +55,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/campaigns/{campaign_id}/sends` | scope `mailler:read` | List sends for a campaign |
 | GET | `/api/v1/unsubscribe` | public; HMAC-signed link | Display unsubscribe confirmation page |
 | POST | `/api/v1/unsubscribe` | public; HMAC-signed link | Process unsubscribe request |
+| GET | `/api/v1/inbound/attachments/{download_token}` | public; unguessable download token | Download an inbound email attachment by its token (only when `INBOUND_ENABLED` is set) |
+| GET | `/api/v1/inbound/emails` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | List inbound emails with pagination (only when `INBOUND_ENABLED` is set) |
+| GET | `/api/v1/inbound/emails/{email_id}` | scope `mailler:admin` (`ADMIN_SCOPE` setting) | Get inbound email details by ID (only when `INBOUND_ENABLED` is set) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -69,3 +72,4 @@ The application defines no scope, it only checks the ones carried by the access 
 - `mailler:stats` - checked by 1 route
 - `mailler:webhooks` - checked by 1 route
 - `mailler:write` - checked by 16 routes
+- `mailler:admin` - crosses the client boundary and manages the registered clients (`ADMIN_SCOPE` setting); checked by 2 routes

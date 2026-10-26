@@ -3,9 +3,32 @@
 
 """Application configuration."""
 
+import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_credential(name: str, default: str = "") -> str:
+    """Read a secret from systemd credentials or environment.
+
+    Args:
+        name: Credential name (e.g., STRIPE_SECRET_KEY).
+        default: Default value if not found.
+
+    Returns:
+        The credential value.
+    """
+    # First check systemd credentials directory
+    creds_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    if creds_dir:
+        cred_file = Path(creds_dir) / name
+        if cred_file.exists():
+            return cred_file.read_text().strip()
+
+    # Fall back to environment variable
+    return os.environ.get(name, default)
 
 
 class Settings(BaseSettings):
@@ -34,11 +57,37 @@ class Settings(BaseSettings):
     database_pool_size: int = 10
     database_max_overflow: int = 20
 
+    # Redis
+    redis_url: str = "redis://localhost:6379/10"
+    redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens
+
+    # OAuth2/OIDC (via auth service)
+    oauth2_issuer: str = ""  # e.g., https://auth.example.invalid
+    oauth2_trusted_issuers: str = ""  # Comma-separated additional trusted issuers
+
+    # Public client (Swagger UI) - uses PKCE, no secret
+    oauth2_swagger_client_id: str = ""
+
+    # Confidential client (API server) - for token exchange & introspection
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+
+    # Token caching
+    token_introspection_cache_ttl: int = 60  # Alias for introspection cache TTL
+    oauth2_client_cache_ttl: int = 300  # Cache TTL for OAuth2 client metadata
+    jwks_cache_ttl: int = 3600  # 1 hour
+    oauth2_http_timeout: float = 10.0  # seconds, calls to the auth service
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    return Settings(
+        oauth2_client_secret=get_credential(
+            "OAUTH2_CLIENT_SECRET",
+            os.environ.get("OAUTH2_CLIENT_SECRET", ""),
+        ),
+    )
 
 
 settings = get_settings()

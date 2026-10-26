@@ -33,3 +33,4 @@ class Workflow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     team = relationship("Team", back_populates="workflows")
+    tasks = relationship("Task", back_populates="workflow")

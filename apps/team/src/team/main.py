@@ -19,6 +19,7 @@ from team.routes.team import (
     memory,
     messages,
     skills,
+    tasks,
     team_conversations,
     teams,
     workflows,
@@ -118,6 +119,7 @@ app.include_router(agents.router)
 app.include_router(conversations.router)
 app.include_router(messages.router)
 app.include_router(workflows.router)
+app.include_router(tasks.router)
 app.include_router(memory.router)
 app.include_router(skills.router)
 app.include_router(team_conversations.router)

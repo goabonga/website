@@ -49,3 +49,17 @@ website_custom_domain_letsencrypt_dir: "{{ website_letsencrypt_dir }}"
 # Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email
 # when empty. One of the two is required by the worker.
 website_custom_domain_certbot_email: ""
+
+# Applications allowed to register customer domains (authorized clients),
+# created in the database after the migrations when missing. An existing client
+# is never modified (use the admin API to change one). Each entry:
+#   client_id       OAuth2 client of the application (required)
+#   name            display name (required)
+#   description     optional
+#   upstream        socket path or host:port nginx forwards to
+#   cname           CNAME target given to the customers of this client
+#   max_domains     quota of live domains (none when omitted)
+#   webhook_url     https URL notified of the status of the domains
+#   webhook_secret  HMAC secret, at least 32 characters, required with
+#                   webhook_url (keep it in the vault)
+website_custom_domain_clients: []

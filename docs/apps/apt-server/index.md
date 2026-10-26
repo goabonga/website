@@ -18,3 +18,4 @@ model and how it is tested (pytest and behave).
 - [APT client endpoints](05-apt-endpoints.md)
 - [Package API](06-package-api.md)
 - [Chunked upload](07-chunked-upload.md)
+- [User cache and webhooks](08-user-cache-webhooks.md)

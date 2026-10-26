@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from custom_domain.main import app
+from fakes import FakeDatabase
 from httpx import ASGITransport, AsyncClient
 
 
@@ -27,6 +28,8 @@ def before_scenario(context, scenario):
     context.app = app
     context.response = None
     context.token = None
+    context.db = FakeDatabase()
+    context.db.install(app)
     context.patchers = []
     context.cleanups = []
 

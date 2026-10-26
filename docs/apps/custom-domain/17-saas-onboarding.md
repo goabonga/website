@@ -60,6 +60,10 @@ custom-domain create-client \
 Nothing in the service is specific to one application: no identifier, quota, CNAME
 or upstream is built in, they all come from this registry, the request or a setting.
 
+On a host deployed with Ansible, the registry can be declared in the inventory
+(`website_custom_domain_clients`): see
+[Onboarding a SaaS application](../../ansible/07-saas-onboarding.md).
+
 ## 3. Reachability
 
 - The upstream must be reachable from the nginx host, and for a Unix socket the nginx

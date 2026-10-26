@@ -21,3 +21,4 @@ documents one feature as it exists in the code.
    and notification endpoints.
 5. [Server and services status](05-status.md) - host information and the
    list of monitored services.
+6. [WebSocket channel](06-websocket.md) - real-time messages on `/ws`.

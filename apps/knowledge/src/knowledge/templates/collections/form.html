@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}New{% endif %} Collection{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if is_edit %}Edit Collection{% else %}New Collection{% endif %}</h1>
+    <div class="breadcrumb">
+        <a href="/collections">Collections</a> /
+        {% if is_edit %}
+        <a href="/collections/{{ collection.id }}">{{ collection.name }}</a> / Edit
+        {% else %}
+        New
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <form method="post" action="{% if is_edit %}/collections/{{ collection.id }}/edit{% else %}/collections/new{% endif %}">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="form-control"
+                   placeholder="My Collection"
+                   value="{{ form_name if form_name is defined else (collection.name if collection else '') }}"
+                   required
+                   autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      class="form-control"
+                      placeholder="Optional description for this collection...">{{ form_description if form_description is defined else (collection.description if collection else '') }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Save Changes{% else %}Create Collection{% endif %}
+            </button>
+            <a href="{% if is_edit %}/collections/{{ collection.id }}{% else %}/collections{% endif %}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

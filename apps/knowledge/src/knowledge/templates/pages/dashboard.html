@@ -84,6 +84,7 @@
 <div class="card">
     <div class="card-header">
         <h2 class="card-title">Recent Collections</h2>
+        <a href="/collections/new" class="btn btn-primary btn-sm">New Collection</a>
     </div>
 
     {% if recent_collections %}
@@ -100,11 +101,15 @@
             {% for collection in recent_collections %}
             <tr>
                 <td>
-                    {{ collection.name }}
+                    <a href="/collections/{{ collection.id }}" style="color: var(--accent-blue); text-decoration: none;">
+                        {{ collection.name }}
+                    </a>
                 </td>
                 <td style="color: var(--text-secondary);">{{ collection.description or '-' }}</td>
                 <td style="color: var(--text-muted);">{{ collection.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td></td>
+                <td>
+                    <a href="/collections/{{ collection.id }}" class="btn btn-secondary btn-sm">View</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -114,8 +119,28 @@
         <div class="empty-state-icon">&#128451;</div>
         <h3>No collections yet</h3>
         <p>Create your first collection to start storing documents.</p>
+        <a href="/collections/new" class="btn btn-primary" style="margin-top: 16px;">Create Collection</a>
     </div>
     {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Quick Actions</h2>
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="/collections" class="btn btn-secondary">
+            <span style="margin-right: 8px;">&#128451;</span>
+            All Collections
+        </a>
+        {% if docs_enabled %}
+        <a href="/docs" class="btn btn-secondary">
+            <span style="margin-right: 8px;">&#128195;</span>
+            API Docs
+        </a>
+        {% endif %}
+    </div>
 </div>
 
 {% endif %}

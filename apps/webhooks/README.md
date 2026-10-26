@@ -27,6 +27,16 @@ Read from the environment (a `.env` file is loaded when present).
 | `CORS_CREDENTIALS` | Allow credentials in CORS requests | `true` |
 | `CORS_METHODS` | Allowed HTTP methods (JSON list) | `["*"]` |
 | `CORS_HEADERS` | Allowed headers (JSON list) | `["*"]` |
+| `OAUTH2_TOKEN_URL` | Token endpoint of the authorization server | - |
+| `OAUTH2_CLIENT_ID` | OAuth2 client identifier | - |
+| `OAUTH2_CLIENT_SECRET` | OAuth2 client secret (also read from systemd credentials) | - |
+
+## Downstream authentication
+
+When the three `OAUTH2_*` variables are set, the gateway acquires an access
+token with the `client_credentials` grant and sends it as a `Bearer` token
+to internal services. Without OAuth2 configuration a static bearer token is
+used when one is provided.
 
 ## Logging
 

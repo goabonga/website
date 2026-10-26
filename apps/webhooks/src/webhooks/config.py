@@ -3,7 +3,29 @@
 
 """Application configuration."""
 
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_credential(name: str, default: str = "") -> str:
+    """Read a secret from systemd credentials or environment.
+
+    Args:
+        name: Credential name (e.g., SECRET_KEY).
+        default: Default value if not found.
+
+    Returns:
+        The credential value.
+    """
+    creds_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    if creds_dir:
+        cred_file = Path(creds_dir) / name
+        if cred_file.exists():
+            return cred_file.read_text().strip()
+
+    return os.environ.get(name, default)
 
 
 class Settings(BaseSettings):
@@ -26,5 +48,15 @@ class Settings(BaseSettings):
     cors_methods: list[str] = ["*"]
     cors_headers: list[str] = ["*"]
 
+    # OAuth2 client credentials (machine-to-machine auth with downstream services)
+    oauth2_token_url: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
 
-settings = Settings()
+
+settings = Settings(
+    oauth2_client_secret=get_credential(
+        "OAUTH2_CLIENT_SECRET",
+        os.environ.get("OAUTH2_CLIENT_SECRET", ""),
+    ),
+)

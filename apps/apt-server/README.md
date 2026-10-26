@@ -7,16 +7,18 @@ access control.
 
 - Application foundation: settings from the environment, structured logging,
   `/health` endpoint, optional Swagger UI
+- OIDC bearer and personal access token authentication (`/me`)
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/docs` | public | Serve Swagger UI with custom static assets (only when `DOCS_ENABLED` is set) |
 | GET | `/docs/oauth2-redirect` | public | OAuth2 redirect page for Swagger UI (only when `DOCS_ENABLED` is set) |
 | GET | `/health` | public | Health check endpoint |
+| GET | `/me` | bearer token (any scope) | Return current user profile from OIDC UserInfo |
 
 The built web client and other static files are served publicly under `/static`.
 

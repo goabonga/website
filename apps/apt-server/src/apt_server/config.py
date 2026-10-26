@@ -3,7 +3,9 @@
 
 """Application configuration."""
 
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Any
 
 from pydantic import AnyUrl, BeforeValidator, computed_field
@@ -25,6 +27,27 @@ def parse_cors(v: Any) -> list[str] | str:
     raise ValueError(v)
 
 
+def get_credential(name: str, default: str = "") -> str:
+    """Read a secret from systemd credentials or environment.
+
+    Args:
+        name: Credential name (e.g., SECRET_KEY).
+        default: Default value if not found.
+
+    Returns:
+        The credential value.
+    """
+    # First check systemd credentials directory
+    creds_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    if creds_dir:
+        cred_file = Path(creds_dir) / name
+        if cred_file.exists():
+            return cred_file.read_text().strip()
+
+    # Fall back to environment variable
+    return os.environ.get(name, default)
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -37,6 +60,17 @@ class Settings(BaseSettings):
     app_name: str = "apt-server"
     log_level: str = "INFO"
     docs_enabled: bool = False
+
+    # OAuth2 / OIDC
+    oauth2_issuer: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+    oauth2_swagger_client_id: str = ""
+    oauth2_trusted_issuers: str = ""
+    oauth2_client_cache_ttl: int = 300
+    token_introspection_cache_ttl: int = 60
+    jwks_cache_ttl: int = 3600
+    userinfo_cache_ttl: int = 300
 
     # CORS
     # Allowed origins for CORS requests.
@@ -59,11 +93,26 @@ class Settings(BaseSettings):
             [self.frontend_host] if self.frontend_host else []
         )
 
+    # Redis (for auth cache)
+    redis_url: str = ""
+    redis_key_prefix: str = "apt_server"
+
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+    """Get cached settings instance.
+
+    Systemd credentials take priority over .env for secrets.
+    If no credential is found, Pydantic loads from .env as usual.
+    """
+    overrides = {}
+    for env_name, field_name in [
+        ("OAUTH2_CLIENT_SECRET", "oauth2_client_secret"),
+    ]:
+        cred = get_credential(env_name)
+        if cred:
+            overrides[field_name] = cred
+    return Settings(**overrides)
 
 
 settings = get_settings()

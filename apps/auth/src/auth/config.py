@@ -49,11 +49,20 @@ class Settings(BaseSettings):
     database_max_overflow: int = 10
     database_echo: bool = False
 
+    # OIDC / OAuth2
+    issuer: str | None = None  # Auto-detected from request if not set
+
     # JWKS
     jwks_encryption_key: str = ""  # Base64-encoded 32-byte key for AES-256-GCM
     jwks_key_size: int = 2048  # RSA key size in bits
     jwks_rotation_days: int = 90  # Rotate keys every N days
     jwks_grace_period_days: int = 30  # Keep revoked keys for validation
+
+    session_cookie_name: str = "session"  # Session cookie name
+
+    # Multi-tenancy
+    tenant_base_domain: str = ""  # Base domain for tenant subdomains (e.g., "auth.example.com")
+    tenant_custom_domain_lookup: bool = True  # Enable custom domain (CNAME) lookup
 
     model_config = SettingsConfigDict(env_file=".env")
 

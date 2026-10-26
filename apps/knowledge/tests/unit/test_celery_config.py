@@ -53,6 +53,11 @@ class TestBeatSchedule:
         assert deletions["schedule"] == interval
         assert reminders["schedule"] == interval
 
+    def test_custom_domains_are_reconciled_at_the_configured_interval(self):
+        entry = celery_app.conf.beat_schedule["reconcile-custom-domains"]
+        assert entry["task"] == "knowledge.tasks.custom_domain.reconcile_custom_domains"
+        assert entry["schedule"] == get_settings().custom_domain_reconcile_interval
+
     def test_every_scheduled_task_is_registered(self):
         celery_app.loader.import_default_modules()
         for entry in celery_app.conf.beat_schedule.values():

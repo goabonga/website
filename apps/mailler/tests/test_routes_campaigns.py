@@ -850,3 +850,38 @@ class TestCampaignOverridesFollowTheClientRecord:
             json={"name": "C", "from_email": "ops@platform.example", "provider": "sendgrid"},
         )
         assert response.status_code == 201
+
+
+class TestCampaignStartIsLimited:
+    async def test_the_whole_campaign_counts_against_the_daily_quota(
+        self, writer_client, mock_db_session, client_record
+    ):
+        client_record.daily_quota = 100
+        campaign = _make_campaign_mock(status="draft")
+        mock_db_session.get = AsyncMock(return_value=campaign)
+        recipients = MagicMock()
+        recipients.scalar.return_value = 60
+        used = MagicMock()
+        used.scalar.return_value = 50
+        mock_db_session.execute = AsyncMock(side_effect=[recipients, used])
+        response = await writer_client.post("/api/v1/campaigns/1/send")
+        assert response.status_code == 429
+        assert campaign.status == "draft"
+
+    async def test_a_campaign_within_the_quota_starts(
+        self, writer_client, mock_db_session, client_record
+    ):
+        client_record.daily_quota = 100
+        campaign = _make_campaign_mock(status="draft")
+        mock_db_session.get = AsyncMock(return_value=campaign)
+        recipients = MagicMock()
+        recipients.scalar.return_value = 60
+        used = MagicMock()
+        used.scalar.return_value = 40
+        reload_result = MagicMock()
+        reload_result.scalar_one_or_none.return_value = campaign
+        mock_db_session.execute = AsyncMock(side_effect=[recipients, used, reload_result])
+        with patch("mailler.routes.campaigns.send_campaign_task") as task:
+            task.delay.return_value = MagicMock(id="task-1")
+            response = await writer_client.post("/api/v1/campaigns/1/send")
+        assert response.status_code == 200

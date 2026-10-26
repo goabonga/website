@@ -3,7 +3,7 @@
 
 """Tests for POST /api/v1/send route."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -181,3 +181,51 @@ class TestSendUsesTheClientRecord:
         assert response.status_code == 200
         email = mock_db_session.add.call_args[0][0]
         assert (email.from_email, email.provider) == ("ops@platform.example", "sendgrid")
+
+
+class TestSendIsLimited:
+    """The rate limit and the daily quota of the client record are enforced."""
+
+    @staticmethod
+    def _counting(mock_db_session, *counts):
+        results = []
+        for count in counts:
+            result = MagicMock()
+            result.scalar.return_value = count
+            results.append(result)
+        mock_db_session.execute = AsyncMock(side_effect=results)
+
+    async def _send(self, client):
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-1")
+            return await client.post("/api/v1/send", json=_BODY)
+
+    async def test_under_the_limits(self, auth_client: AsyncClient, mock_db_session, client_record):
+        client_record.rate_limit_per_minute = 5
+        client_record.daily_quota = 100
+        self._counting(mock_db_session, 4, 99)
+        assert (await self._send(auth_client)).status_code == 200
+
+    async def test_rate_limit(self, auth_client: AsyncClient, mock_db_session, client_record):
+        client_record.rate_limit_per_minute = 5
+        self._counting(mock_db_session, 5)
+        response = await self._send(auth_client)
+        assert response.status_code == 429
+        assert response.headers["retry-after"] == "60"
+        mock_db_session.add.assert_not_called()
+
+    async def test_daily_quota(self, auth_client: AsyncClient, mock_db_session, client_record):
+        client_record.daily_quota = 100
+        self._counting(mock_db_session, 100)
+        response = await self._send(auth_client)
+        assert response.status_code == 429
+        assert "Daily quota" in response.json()["detail"]
+        mock_db_session.add.assert_not_called()
+
+    async def test_administrators_are_not_limited(
+        self, admin_client: AsyncClient, mock_db_session, client_record
+    ):
+        client_record.rate_limit_per_minute = 1
+        client_record.daily_quota = 1
+        self._counting(mock_db_session)
+        assert (await self._send(admin_client)).status_code == 200

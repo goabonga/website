@@ -3,6 +3,7 @@
 
 """Tests for the authorized clients service: the gate and the identity rules."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -306,3 +307,89 @@ class TestResolveIdentity:
         with patch.object(service.settings, "default_from", "platform@example.test"):
             identity = resolve_identity(_client(), is_admin=True)
         assert identity.from_email == "app@one.example"
+
+
+# ---------------------------------------------------------------------------
+# enforce_limits
+# ---------------------------------------------------------------------------
+
+
+def _counting_db(*counts):
+    db = AsyncMock()
+    results = []
+    for count in counts:
+        result = MagicMock()
+        result.scalar.return_value = count
+        results.append(result)
+    db.execute.side_effect = results
+    return db
+
+
+class TestEnforceLimits:
+    async def test_no_limits_no_query(self):
+        db = _counting_db()
+        await service.enforce_limits(db, _client(), is_admin=False)
+        db.execute.assert_not_called()
+
+    async def test_administrators_and_unknown_clients_are_not_limited(self):
+        db = _counting_db()
+        limited = _client(rate_limit_per_minute=1, daily_quota=1)
+        await service.enforce_limits(db, limited, is_admin=True)
+        await service.enforce_limits(db, None, is_admin=False)
+        db.execute.assert_not_called()
+
+    async def test_rate_limit_allows_up_to_the_limit(self):
+        db = _counting_db(2)
+        await service.enforce_limits(db, _client(rate_limit_per_minute=3), is_admin=False)
+
+    async def test_rate_limit_refuses_beyond_the_limit(self):
+        db = _counting_db(3)
+        with pytest.raises(HTTPException) as exc_info:
+            await service.enforce_limits(db, _client(rate_limit_per_minute=3), is_admin=False)
+        assert exc_info.value.status_code == 429
+        assert "3 emails per minute" in exc_info.value.detail
+        assert exc_info.value.headers == {"Retry-After": "60"}
+
+    async def test_rate_limit_counts_the_last_minute_of_the_client(self):
+        db = _counting_db(0)
+        await service.enforce_limits(db, _client(rate_limit_per_minute=3), is_admin=False)
+        params = db.execute.await_args.args[0].compile().params
+        assert params["client_id_1"] == "app-one"
+        age = datetime.now(UTC) - params["created_at_1"].replace(tzinfo=UTC)
+        assert timedelta(seconds=59) < age < timedelta(seconds=62)
+
+    async def test_several_emails_at_once(self):
+        db = _counting_db(1)
+        with pytest.raises(HTTPException) as exc_info:
+            await service.enforce_limits(
+                db, _client(rate_limit_per_minute=3), is_admin=False, count=3
+            )
+        assert exc_info.value.status_code == 429
+
+    async def test_quota_counts_the_current_utc_day(self):
+        db = _counting_db(0)
+        await service.enforce_limits(db, _client(daily_quota=10), is_admin=False)
+        since = db.execute.await_args.args[0].compile().params["created_at_1"].replace(tzinfo=UTC)
+        assert since == datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    async def test_quota_refuses_beyond_the_quota(self):
+        db = _counting_db(10)
+        with pytest.raises(HTTPException) as exc_info:
+            await service.enforce_limits(db, _client(daily_quota=10), is_admin=False)
+        assert exc_info.value.status_code == 429
+        assert "10 emails per day" in exc_info.value.detail
+        assert 1 <= int(exc_info.value.headers["Retry-After"]) <= 86400
+
+    async def test_campaigns_only_use_the_quota(self):
+        db = _counting_db(0)
+        limited = _client(rate_limit_per_minute=1, daily_quota=100)
+        await service.enforce_limits(db, limited, is_admin=False, count=50, rate=False)
+        assert db.execute.await_count == 1  # the quota only
+
+    async def test_both_limits_are_checked(self):
+        db = _counting_db(0, 100)
+        limited = _client(rate_limit_per_minute=5, daily_quota=100)
+        with pytest.raises(HTTPException) as exc_info:
+            await service.enforce_limits(db, limited, is_admin=False)
+        assert "Daily quota" in exc_info.value.detail
+        assert db.execute.await_count == 2

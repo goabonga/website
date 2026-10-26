@@ -309,3 +309,128 @@ class TestSendFromATemplate:
         response = await self._send(auth_client, from_email="ceo@bank.example")
         assert response.status_code == 403
         mock_db_session.add.assert_not_called()
+
+
+class TestSendIsIdempotent:
+    """A request repeated with the same Idempotency-Key returns the first email."""
+
+    _PAYLOAD = {
+        "to_email": "recipient@example.com",
+        "subject": "Hello",
+        "html_content": "<p>Hello</p>",
+    }
+
+    @staticmethod
+    def _existing(**fields):
+        email = MagicMock()
+        email.id = "6f1b53a8-1c83-4d44-9d7e-7f7b8a1d2c33"
+        email.to_email = "recipient@example.com"
+        email.scheduled_at = None
+        email.task_id = "task-9"
+        for key, value in fields.items():
+            setattr(email, key, value)
+        return email
+
+    @staticmethod
+    def _lookup(mock_db_session, existing):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = existing
+        mock_db_session.execute = AsyncMock(return_value=result)
+
+    async def test_the_key_is_stored_with_the_email(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        self._lookup(mock_db_session, None)
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-1")
+            response = await auth_client.post(
+                "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+            )
+        assert response.status_code == 200
+        assert mock_db_session.add.call_args[0][0].idempotency_key == "key-1"
+
+    async def test_a_repeated_request_returns_the_first_email(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        self._lookup(mock_db_session, self._existing())
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            response = await auth_client.post(
+                "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+            )
+        assert response.status_code == 200
+        assert response.json()["id"] == "6f1b53a8-1c83-4d44-9d7e-7f7b8a1d2c33"
+        assert response.json()["task_id"] == "task-9"
+        mock_db_session.add.assert_not_called()
+        mock_task.delay.assert_not_called()
+
+    async def test_a_repeated_request_is_not_limited_again(
+        self, auth_client: AsyncClient, mock_db_session, client_record
+    ):
+        client_record.rate_limit_per_minute = 1
+        self._lookup(mock_db_session, self._existing())
+        response = await auth_client.post(
+            "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+        )
+        assert response.status_code == 200
+        assert mock_db_session.execute.await_count == 1  # the lookup only
+
+    async def test_the_key_cannot_be_reused_for_another_recipient(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        self._lookup(mock_db_session, self._existing(to_email="someone@else.example"))
+        response = await auth_client.post(
+            "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+        )
+        assert response.status_code == 422
+        mock_db_session.add.assert_not_called()
+
+    async def test_a_concurrent_request_with_the_same_key(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        from sqlalchemy.exc import IntegrityError
+
+        first = MagicMock()
+        first.scalar_one_or_none.return_value = None
+        winner = MagicMock()
+        winner.scalar_one_or_none.return_value = self._existing()
+        mock_db_session.execute = AsyncMock(side_effect=[first, winner])
+        mock_db_session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            response = await auth_client.post(
+                "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+            )
+        assert response.status_code == 200
+        assert response.json()["id"] == "6f1b53a8-1c83-4d44-9d7e-7f7b8a1d2c33"
+        mock_db_session.rollback.assert_awaited_once()
+        mock_task.delay.assert_not_called()
+
+    async def test_an_unrelated_integrity_error_is_not_hidden(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        from sqlalchemy.exc import IntegrityError
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute = AsyncMock(return_value=result)
+        mock_db_session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+        with pytest.raises(IntegrityError):
+            await auth_client.post(
+                "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "key-1"}
+            )
+
+    async def test_the_key_has_a_maximum_length(self, auth_client: AsyncClient, mock_db_session):
+        response = await auth_client.post(
+            "/api/v1/send", json=self._PAYLOAD, headers={"Idempotency-Key": "k" * 256}
+        )
+        assert response.status_code == 422
+        mock_db_session.add.assert_not_called()
+
+    async def test_without_a_key_every_request_sends(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        with patch("mailler.routes.send.send_email_task") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-1")
+            await auth_client.post("/api/v1/send", json=self._PAYLOAD)
+            await auth_client.post("/api/v1/send", json=self._PAYLOAD)
+        assert mock_db_session.add.call_count == 2
+        assert mock_db_session.add.call_args[0][0].idempotency_key is None

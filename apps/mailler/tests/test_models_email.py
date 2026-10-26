@@ -37,3 +37,16 @@ class TestEmailTables:
     def test_provider_stats_is_unique_per_day_and_provider(self):
         constraints = [c for c in ProviderStats.__table__.constraints if c.columns.keys()]
         assert any(set(c.columns.keys()) == {"date", "provider"} for c in constraints)
+
+
+class TestIdempotencyKey:
+    def test_the_key_is_optional(self):
+        assert Email.__table__.columns["idempotency_key"].nullable is True
+
+    def test_it_is_unique_per_client(self):
+        constraints = {
+            c.name: [col.name for col in c.columns]
+            for c in Email.__table__.constraints
+            if c.__class__.__name__ == "UniqueConstraint"
+        }
+        assert constraints == {"uq_emails_client_idempotency": ["client_id", "idempotency_key"]}

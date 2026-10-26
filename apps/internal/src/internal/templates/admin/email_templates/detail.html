@@ -1,0 +1,202 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ template.name }} - Email Template{% endblock %}
+
+{% block head %}
+<style>
+    .template-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .template-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .meta-item {
+        background: #1a1a2e;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    .meta-item label {
+        display: block;
+        color: #a0a0a0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+    .meta-item .value {
+        color: #e0e0e0;
+        font-size: 1rem;
+    }
+    .preview-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    @media (max-width: 1024px) {
+        .preview-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    .preview-panel {
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+    }
+    .preview-panel h3 {
+        color: #e0e0e0;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .preview-frame {
+        background: white;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        width: 100%;
+        height: 400px;
+    }
+    .mjml-source {
+        background: #0d1117;
+        color: #c9d1d9;
+        padding: 1rem;
+        border-radius: 4px;
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .variables-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .variable-tag {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: #0f3460;
+        color: #74b9ff;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-family: monospace;
+    }
+    .actions-bar {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header template-header">
+    <div>
+        <h1>{{ template.name }}</h1>
+        <p class="text-muted" style="margin-top: 0.25rem;">{{ template.slug }}</p>
+    </div>
+    <div class="actions-bar">
+        <a href="/email-templates/{{ template.id }}/edit" class="btn btn-primary">Edit Template</a>
+        <form method="post" action="/email-templates/{{ template.id }}/duplicate" style="display: inline;">
+            <button type="submit" class="btn btn-secondary">Duplicate</button>
+        </form>
+        <a href="/email-templates" class="btn btn-secondary">&larr; Back to List</a>
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <div class="template-meta">
+        <div class="meta-item">
+            <label>Status</label>
+            <div class="value">
+                {% if template.status == 'active' %}
+                <span class="badge badge-success">Active</span>
+                {% elif template.status == 'draft' %}
+                <span class="badge badge-warning">Draft</span>
+                {% else %}
+                <span class="badge badge-secondary">Archived</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="meta-item">
+            <label>Subject</label>
+            <div class="value">{{ template.subject_template or '-' }}</div>
+        </div>
+        <div class="meta-item">
+            <label>Created</label>
+            <div class="value">{{ template.created_at.strftime('%Y-%m-%d %H:%M') if template.created_at else '-' }}</div>
+        </div>
+        <div class="meta-item">
+            <label>Updated</label>
+            <div class="value">{{ template.updated_at.strftime('%Y-%m-%d %H:%M') if template.updated_at else '-' }}</div>
+        </div>
+    </div>
+
+    {% if template.description %}
+    <div style="margin-bottom: 1.5rem;">
+        <label style="color: #a0a0a0; font-size: 0.8rem; text-transform: uppercase;">Description</label>
+        <p style="margin-top: 0.25rem;">{{ template.description }}</p>
+    </div>
+    {% endif %}
+
+    {% if template.variables %}
+    <div style="margin-bottom: 1.5rem;">
+        <label style="color: #a0a0a0; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Variables Used</label>
+        <div class="variables-list">
+            {% for var in template.variables %}
+            <span class="variable-tag">{{ '{{' }}{{ var }}{{ '}}' }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2 style="margin-bottom: 1rem;">Preview & Source</h2>
+
+    <div class="preview-container">
+        <div class="preview-panel">
+            <h3>&#128065; HTML Preview</h3>
+            <iframe id="preview-frame" class="preview-frame" srcdoc="{{ template.html_compiled | e }}"></iframe>
+        </div>
+
+        <div class="preview-panel">
+            <h3>&#128221; MJML Source</h3>
+            <pre class="mjml-source">{{ template.mjml_source }}</pre>
+        </div>
+    </div>
+</div>
+
+{% if template.plain_text %}
+<div class="admin-card">
+    <h2 style="margin-bottom: 1rem;">Plain Text Version</h2>
+    <pre class="mjml-source" style="white-space: pre-wrap;">{{ template.plain_text }}</pre>
+</div>
+{% endif %}
+
+<div class="admin-card" style="margin-top: 1rem;">
+    <h2 style="margin-bottom: 1rem; color: #ff6b6b;">Danger Zone</h2>
+    <form method="post" action="/email-templates/{{ template.id }}/delete"
+          onsubmit="return confirm('Are you sure you want to delete this template? This action cannot be undone.');">
+        <button type="submit" class="btn btn-danger">Delete Template</button>
+    </form>
+</div>
+{% endblock %}

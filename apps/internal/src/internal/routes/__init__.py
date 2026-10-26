@@ -9,6 +9,7 @@ from internal.routes.auth import router as auth_router
 from internal.routes.billing import router as billing_router
 from internal.routes.contact_groups import router as contact_groups_router
 from internal.routes.contacts import router as contacts_router
+from internal.routes.email_templates import router as email_templates_router
 from internal.routes.mailler import router as mailler_router
 from internal.routes.team import router as team_router
 from internal.routes.vpn import router as vpn_router
@@ -20,6 +21,7 @@ __all__ = [
     "billing_router",
     "contact_groups_router",
     "contacts_router",
+    "email_templates_router",
     "mailler_router",
     "team_router",
     "vpn_router",

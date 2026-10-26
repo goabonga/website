@@ -5,11 +5,13 @@
 
 from internal.models.contact import Contact, ContactGroup, ContactGroupMember
 from internal.models.conversation import Conversation, Message
+from internal.models.email_template import EmailTemplate
 
 __all__ = [
     "Contact",
     "ContactGroup",
     "ContactGroupMember",
     "Conversation",
+    "EmailTemplate",
     "Message",
 ]

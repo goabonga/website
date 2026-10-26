@@ -1,0 +1,309 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Looks for drift between what main describes and what is deployed to
+# production, and turns it into a pull request whose merge deploys it.
+#
+# THE CYCLE
+#
+#   ci finishes on main
+#     -> this workflow runs once, against the final state of main
+#     -> multicz reports whether deploy-production is pending: an application,
+#        the collection or a playbook changed since the last deployment
+#     -> deploy/production is reset to main and a topic branch gets
+#          1. the pins: the release tag of every enabled application,
+#          2. the bump of deploy-production (deploy.yml, changelog)
+#     -> every playbook of deploy.yml runs in check mode against the host
+#     -> drift (new pins or changes reported by check mode):
+#          PR deploy/production-<version> -> deploy/production, summary attached
+#        clean: the topic branch is dropped and nothing is proposed
+#     -> merging the PR runs deploy-apply.yml: apply, tag, release, then main
+#        is fast-forwarded onto the deployment (the deployment journal)
+#
+# WHY workflow_run: the plan must describe the final state of main, after the
+# release job of ci has pushed its commits and tags.
+#
+# WHY THE PR TARGETS deploy/production AND NOT main: `on.pull_request` can only
+# filter the base branch, so a PR into main would start every workflow that
+# listens for PRs into main. Protect deploy/production (one approving review
+# from a code owner) and the `production` environment (required reviewers).
+#
+# LIMITS OF CHECK MODE: tasks that run commands (command, shell, uv sync, ...)
+# are skipped in check mode, so a change they would make is invisible to it.
+# The pins close part of that gap: a new release of an application is drift
+# whatever check mode says.
+#
+# SECRETS, in the `production-plan` GitHub Environment (a read-only identity:
+# its own key and its own sudo rules, not the credentials of production-apply):
+#   DEPLOY_SSH_PRIVATE_KEY, DEPLOY_SSH_KNOWN_HOSTS, ANSIBLE_VAULT_PASSWORD
+# and the variables DEPLOY_HOST, DEPLOY_USER. Repository secrets: RELEASE_PAT
+# (a bypass actor of the deploy/* and main rulesets), GPG_PRIVATE_KEY and
+# GPG_PASSPHRASE (optional, to sign the deployment commit).
+#
+# The full plan can contain the content of rendered files. It is attached to
+# the run only when the variable DEPLOY_PLAN_ARTIFACT is "true" (private
+# repositories); the pull request carries the names of the changed tasks.
+
+name: deploy-plan
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-plan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: discover
+    # A failed ci has not finished writing to main. A deployment commit pushed
+    # by deploy-apply starts a ci run whose completion lands here: there is
+    # nothing to plan on it.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       !startsWith(github.event.workflow_run.head_commit.message, 'chore(release): bump deploy-production'))
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.pending.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0   # multicz compares against the last tag of each component
+      - uses: astral-sh/setup-uv@v7
+        with:
+          cache-suffix: ${{ github.job }}
+      - run: uv tool install multicz
+      - id: pending
+        run: |
+          set -euo pipefail
+          multicz changed --output json | tee /tmp/changed.json
+          if jq -e '.changed | index("deploy-production")' /tmp/changed.json >/dev/null; then
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  plan:
+    name: plan (production)
+    needs: [discover]
+    if: needs.discover.outputs.pending == 'true'
+    runs-on: ubuntu-latest
+    # Separate from the apply environment, so that protecting the apply one
+    # with required reviewers does not block this automatic plan.
+    environment: production-plan
+    permissions:
+      contents: write        # push the deploy branches
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+      ENVIRONMENT: production
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          # deploy/* is protected: the default token is refused on the push.
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+          persist-credentials: true
+      - uses: ./.github/actions/deploy-setup
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          vault-password: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      - run: uv tool install multicz
+
+      - name: Detect GPG availability
+        id: gpg
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Import and unlock the GPG key
+        if: steps.gpg.outputs.available == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback --sign > /dev/null
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          UID_LINE=$(gpg --list-keys --with-colons "$KEY_ID" | awk -F: '/^uid/{print $10; exit}')
+          git config user.name "${UID_LINE%% <*}"
+          git config user.email "$(printf '%s' "$UID_LINE" | sed -nE 's/.*<([^>]+)>.*/\1/p')"
+          git config user.signingkey "$KEY_ID"
+          git config commit.gpgsign true
+      - name: Configure the git identity without a GPG key
+        if: steps.gpg.outputs.available != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Pin the applications
+        id: pins
+        run: |
+          set -euo pipefail
+          git switch -c deploy-plan
+          uv run --no-sync scripts/deploy-pins.sh "$ENVIRONMENT"
+          PINS="deploy/${ENVIRONMENT}/inventory/group_vars/all/pins.yml"
+          if git diff --quiet -- "$PINS"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git add "$PINS"
+            git commit -m "chore(ansible): pin the applications of the ${ENVIRONMENT} deployment"
+          fi
+
+      - name: Bump deploy-production
+        id: bump
+        run: |
+          set -euo pipefail
+          # Committed locally only: nothing is pushed unless the plan finds
+          # drift. No --tag: the tag records a completed apply, deploy-apply
+          # creates it.
+          multicz bump --component "deploy-${ENVIRONMENT}" --commit --output json > /tmp/bump.json
+          VERSION=$(jq -s -r --arg c "deploy-${ENVIRONMENT}" \
+            '[.[] | .bumps // {}] | add | .[$c].next_version // empty' /tmp/bump.json)
+          if [ -z "$VERSION" ]; then
+            echo "::error::deploy-${ENVIRONMENT} was reported changed but bumps to nothing"
+            exit 1
+          fi
+          # The release commit message carries a skip-ci marker, which GitHub
+          # also applies to pull_request events: it would silence the `closed`
+          # event deploy-apply listens to. Rewrite the message without it.
+          git commit --amend --no-edit \
+            -m "chore(release): bump deploy-${ENVIRONMENT} to v${VERSION}" \
+            -m "Applied by deploy-apply once this deploy PR is merged and the ${ENVIRONMENT} environment reviewers approve."
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check every playbook
+        id: check
+        run: |
+          set +e
+          cd "deploy/${ENVIRONMENT}"
+          : > ../../plan.txt
+          rc=0
+          for playbook in $(uv run --no-sync python -c \
+              "import yaml;print(' '.join(yaml.safe_load(open('deploy.yml'))['playbooks']))"); do
+            echo "##### playbook ${playbook}" >> ../../plan.txt
+            # The output goes to a file, never to the log: a public run log
+            # would show what the diff contains.
+            if ! uv run --no-sync ansible-playbook "goabonga.website.${playbook}" \
+                --check --diff >> ../../plan.txt 2>&1; then
+              rc=1
+            fi
+          done
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Summarise the plan
+        id: plan
+        run: |
+          set -euo pipefail
+          sed -r 's/\x1B\[[0-9;]*[mK]//g' plan.txt > plan.clean
+          # PLAY RECAP lines: "host : ok=N changed=N unreachable=N failed=N ..."
+          CHANGED=$(grep -oE 'changed=[0-9]+' plan.clean | cut -d= -f2 | paste -sd+ - | bc || true)
+          FAILED=$(grep -oE '(failed|unreachable)=[0-9]+' plan.clean | cut -d= -f2 | paste -sd+ - | bc || true)
+          awk '/^TASK \[/{t=$0} /^changed: \[/{print t}' plan.clean | sort -u > tasks.txt
+          {
+            echo "changed=${CHANGED:-0}"
+            echo "failed=${FAILED:-0}"
+          } >> "$GITHUB_OUTPUT"
+          grep -E '^(production|[A-Za-z0-9_.-]+) +: +ok=' plan.clean || true
+
+      - name: Fail when the plan itself failed
+        if: steps.check.outputs.exit_code != '0' || steps.plan.outputs.failed != '0'
+        run: |
+          echo "::error::check mode failed (see the run artifact when DEPLOY_PLAN_ARTIFACT is true)"
+          exit 1
+
+      - name: Upload the full plan
+        if: always() && vars.DEPLOY_PLAN_ARTIFACT == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: plan-production-v${{ steps.bump.outputs.version }}
+          path: plan.txt
+          retention-days: 7
+
+      - name: Decide
+        id: drift
+        env:
+          PINS_CHANGED: ${{ steps.pins.outputs.changed }}
+          CHANGED: ${{ steps.plan.outputs.changed }}
+        run: |
+          if [ "$PINS_CHANGED" = "true" ] || [ "${CHANGED:-0}" != "0" ]; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+            echo "No drift: nothing to propose." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or update the deploy pull request
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+          PINS_CHANGED: ${{ steps.pins.outputs.changed }}
+          CHANGED: ${{ steps.plan.outputs.changed }}
+        run: |
+          set -euo pipefail
+          BASE="deploy/${ENVIRONMENT}"
+          TOPIC="deploy/${ENVIRONMENT}-${VERSION}"
+
+          # Level the base with main so the PR diff is the pins and the bump
+          # and nothing else. The base is machine-owned: it carries no history
+          # worth keeping.
+          git push --force origin "main:refs/heads/${BASE}"
+          git branch -m "$TOPIC"
+          git push --force origin "$TOPIC"
+
+          {
+            echo "## Deployment of ${ENVIRONMENT} v${VERSION}"
+            echo
+            echo "Merging this pull request runs \`deploy-apply\`: the playbooks of"
+            echo "\`deploy/${ENVIRONMENT}/deploy.yml\` are applied to the host, the"
+            echo "release \`deploy-${ENVIRONMENT}-v${VERSION}\` is tagged and \`main\`"
+            echo "records the deployment."
+            echo
+            echo "### Releases deployed"
+            echo '```diff'
+            git diff "main..${TOPIC}" -- "deploy/${ENVIRONMENT}/inventory/group_vars/all/pins.yml" | grep -E '^[+-] ' || echo "(no change of pins)"
+            echo '```'
+            echo
+            echo "### Check mode"
+            echo "${CHANGED:-0} change(s) predicted. Tasks that would change:"
+            echo
+            sed 's/^/- /' tasks.txt | head -100
+            [ -s tasks.txt ] || echo "- none"
+            echo
+            echo "_Check mode skips command tasks: a clean check is not proof that nothing changes._"
+            echo
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > pr-body.md
+
+          # Older proposals are superseded by this one.
+          for n in $(gh pr list --base "$BASE" --state open --json number,headRefName \
+              --jq ".[] | select(.headRefName != \"${TOPIC}\") | .number"); do
+            gh pr close "$n" --comment "Superseded by ${TOPIC}." --delete-branch || true
+          done
+          if gh pr list --base "$BASE" --head "$TOPIC" --state open --json number --jq 'length' | grep -qx 1; then
+            gh pr edit "$TOPIC" --body-file pr-body.md
+          else
+            gh pr create --base "$BASE" --head "$TOPIC" \
+              --title "deploy: ${ENVIRONMENT} v${VERSION}" --body-file pr-body.md
+          fi

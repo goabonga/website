@@ -16,3 +16,4 @@ GetDB = Annotated[AsyncSession, Depends(get_db)]
 
 # VPN scope dependencies using token exchange
 RequireVPNConnect = Annotated[AuthContext, Depends(require_scopes("vpn:connect"))]
+RequireVPNServer = Annotated[AuthContext, Depends(require_scopes("vpn:server"))]

@@ -3,6 +3,6 @@
 
 """Database models package."""
 
-from vpn_portal.db.models.certificate import VPNCertificate
+from vpn_portal.db.models.certificate import VPNCertificate, VPNConnection
 
-__all__ = ["VPNCertificate"]
+__all__ = ["VPNCertificate", "VPNConnection"]

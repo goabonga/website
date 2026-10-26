@@ -15,3 +15,4 @@ model and how it is tested (pytest and behave).
 - [Access control rules](02-access-control.md)
 - [Package catalog and ACL](03-package-catalog.md)
 - [APT indexes](04-apt-indexes.md)
+- [APT client endpoints](05-apt-endpoints.md)

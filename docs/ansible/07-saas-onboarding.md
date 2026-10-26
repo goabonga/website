@@ -91,6 +91,91 @@ ansible-playbook goabonga.website.apps -i inventory/hosts \
     -e '{"website_apps_limit": ["custom_domain", "mailler", "billing"]}'
 ```
 
+## Example: knowledge
+
+`knowledge` is a client of the three services. With its OAuth client
+(`website_oauth2_clients.knowledge.client_id`, the scopes of the table above:
+`mailler:send`; `custom-domain:read` and `custom-domain:write`;
+`billing:platform:read`, `billing:platform:write` and `billing:checkout:write`;
+no admin scope) the inventory holds:
+
+```yaml
+website_mailler_clients:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    name: Knowledge
+    from_email: no-reply@knowledge.example.invalid
+    from_name: Knowledge
+    allowed_providers: [brevo]
+    default_provider: brevo
+    daily_quota: 5000
+    rate_limit_per_minute: 60
+
+website_mailler_template_dirs:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    app: knowledge                       # deployed before mailler
+    module: knowledge.email_templates    # prints the directory of the templates
+
+website_custom_domain_clients:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    name: Knowledge
+    upstream: /run/knowledge/knowledge.sock
+    cname: apps.example.invalid
+    max_domains: 100
+    webhook_url: https://knowledge.example.invalid/webhooks/custom-domain
+    webhook_secret: "{{ vault_knowledge_custom_domain_webhook_secret }}"
+
+website_billing_saas_apps:
+  - slug: knowledge
+    name: Knowledge
+    checkout_urls: [https://knowledge.example.invalid/]
+    webhook_url: https://knowledge.example.invalid/webhooks/billing
+
+website_billing_client_bindings:
+  - saas: knowledge
+    client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+
+website_secrets:
+  knowledge:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    OAUTH2_CLIENT_SECRET: "{{ vault_knowledge_oauth2_client_secret }}"
+    CUSTOM_DOMAIN_WEBHOOK_SECRET: "{{ vault_knowledge_custom_domain_webhook_secret }}"   # same as the client above
+    BILLING_WEBHOOK_SECRET: "{{ vault_knowledge_billing_webhook_secret }}"
+
+website_knowledge_billing_app_slug: knowledge
+website_knowledge_billing_saas_id: "{{ vault_knowledge_billing_saas_id }}"   # from `billing-admin saas list`
+website_knowledge_billing_checkout_success_url: https://knowledge.example.invalid/checkout/success
+website_knowledge_billing_checkout_cancel_url: https://knowledge.example.invalid/checkout/cancel
+```
+
+What the other services need from the deployment of knowledge:
+
+- Enable `knowledge` before `mailler` in `website_apps_enabled` the first time:
+  the templates are imported with the Python of the knowledge virtualenv.
+- The status webhooks come back to `/webhooks/billing` and
+  `/webhooks/custom-domain` of the public host name; both stay reachable (POST
+  only) even when the host is restricted with `nginx.allowed_hosts`.
+- The custom-domain service writes the virtual host of each customer domain
+  and proxies it to the `upstream` socket: nginx can open it because the role
+  adds its user to the group of knowledge.
+- `billing-admin` cannot store the secret that signs the billing webhook: set
+  the `webhook_secret` of the SaaS application in the internal interface or with
+  `PATCH /platform/saas/<id>`, to the value of `BILLING_WEBHOOK_SECRET`. The
+  identifier of the application, which the first run discovers
+  (`billing-admin saas list`), goes in `website_knowledge_billing_saas_id` for the
+  second run: until then knowledge does not use billing.
+- The products of the plans (slugs `free`, `starter`, `pro`, `enterprise`, with
+  their limits and prices) are created in billing, not by the collection.
+- The settings of the application itself (operator identity, fallback quota
+  limits, Celery queue) are described in
+  [python_app](roles/python_app.md#knowledge).
+
+Moving an installation whose worker used to write the virtual hosts itself:
+give the custom-domain service another `website_custom_domain_config_prefix`
+than the old files (`custom-domain-` was the prefix of knowledge), let the first
+reconciliation register the existing domains in the service, then delete the old
+`custom-domain-*.conf` files and reload nginx. Two files for one host name would
+make nginx ignore one of them.
+
 ## What a run does and does not do
 
 | Variable | Created when missing | Existing entry |

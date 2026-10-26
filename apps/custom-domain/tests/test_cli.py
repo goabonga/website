@@ -1364,3 +1364,30 @@ class TestSudoersCommand:
         result = CliRunner().invoke(cli, ["sudoers", "--user", "worker"])
         assert result.exit_code == 1
         assert "PRIVILEGED_HELPER is not configured" in result.output
+
+
+class TestCreateClientUpstreamValidation:
+    """create-client refuses an upstream that is not a socket path or host:port."""
+
+    def test_invalid_upstream_is_rejected_before_the_database_is_used(self):
+        with patch("custom_domain.cli.get_session") as mock_session:
+            result = CliRunner().invoke(
+                cli,
+                ["create-client", "--client-id", "c", "--name", "C", "--upstream", "http://x:80"],
+            )
+        assert result.exit_code == 2
+        assert "--upstream" in result.output
+        mock_session.assert_not_called()
+
+    def test_tcp_upstream_is_accepted(self):
+        session = MagicMock()
+        session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
+        session.commit = AsyncMock()
+        session.close = AsyncMock()
+        with patch("custom_domain.cli.get_session", AsyncMock(return_value=session)):
+            result = CliRunner().invoke(
+                cli,
+                ["create-client", "--client-id", "c", "--name", "C", "--upstream", "10.0.0.5:8000"],
+            )
+        assert result.exit_code == 0, result.output
+        assert session.add.call_args.args[0].default_upstream_target == "10.0.0.5:8000"

@@ -174,3 +174,21 @@ class TestUpdateWhileDeprovisioning:
                 uuid4(), DomainUpdate(metadata={"a": 1}), db_returning(domain), auth_for()
             )
         assert exc.value.status_code == 409
+
+
+class TestInvalidClientDefault:
+    """A client default that is not a valid upstream is refused when it is used."""
+
+    @pytest.mark.asyncio
+    async def test_bad_default_is_a_client_error(self):
+        client = TestTargetResolution.client(upstream="http://legacy:8000")
+        with pytest.raises(HTTPException) as exc:
+            await TestTargetResolution().create(client)
+        assert exc.value.status_code == 400
+        assert "Invalid upstream target" in exc.value.detail
+
+    @pytest.mark.asyncio
+    async def test_tcp_default_is_accepted(self):
+        client = TestTargetResolution.client(upstream="10.0.0.5:8000")
+        _, domain = await TestTargetResolution().create(client)
+        assert domain.upstream_target == "10.0.0.5:8000"

@@ -6,6 +6,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from custom_domain.models.enums import DomainStatus
 from custom_domain.schemas import (
     ClientCreate,
@@ -24,6 +25,7 @@ from custom_domain.schemas import (
     TemplateResponse,
     TemplateUpdate,
 )
+from pydantic import ValidationError
 
 
 class TestClientSchemas:
@@ -222,3 +224,40 @@ class TestEventSchemas:
             error="Failed to provision",
         )
         assert data.domain == "test.example.com"
+
+
+class TestUpstreamValidation:
+    """Upstream targets are validated wherever a request carries one."""
+
+    @pytest.mark.parametrize("target", ["/run/app.sock", "unix:/run/app.sock", "app:8000"])
+    def test_domain_create_accepts(self, target):
+        from custom_domain.schemas.domain import DomainCreate
+
+        data = DomainCreate(domain="a.example.com", owner_id="o", upstream_target=target)
+        assert data.upstream_target == target
+
+    @pytest.mark.parametrize("target", ["http://app:8000", "app", "/run/a b.sock", "app:99999"])
+    def test_domain_create_rejects(self, target):
+        from custom_domain.schemas.domain import DomainCreate
+
+        with pytest.raises(ValidationError):
+            DomainCreate(domain="a.example.com", owner_id="o", upstream_target=target)
+
+    def test_domain_update_validates_and_allows_unset(self):
+        from custom_domain.schemas.domain import DomainUpdate
+
+        assert DomainUpdate().upstream_target is None
+        assert DomainUpdate(upstream_target=" 10.0.0.5:80 ").upstream_target == "10.0.0.5:80"
+        with pytest.raises(ValidationError):
+            DomainUpdate(upstream_target="nope")
+
+    def test_client_defaults_are_validated(self):
+        from custom_domain.schemas.client import ClientCreate, ClientUpdate
+
+        base = {"client_id": "c", "name": "C", "default_cname_target": "apps.example.com"}
+        assert ClientCreate(**base, default_upstream_target="app:8000")
+        with pytest.raises(ValidationError):
+            ClientCreate(**base, default_upstream_target="http://app")
+        with pytest.raises(ValidationError):
+            ClientUpdate(default_upstream_target="app")
+        assert ClientUpdate().default_upstream_target is None

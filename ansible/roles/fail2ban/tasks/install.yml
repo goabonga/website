@@ -1,0 +1,16 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The fail2ban role only supports Debian-family distributions.
+    quiet: true
+
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name: "{{ fail2ban_packages }}"
+    state: present
+    update_cache: "{{ fail2ban_apt_update_cache }}"
+    cache_valid_time: "{{ fail2ban_apt_cache_valid_time }}"

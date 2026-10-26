@@ -1,0 +1,31 @@
+{{ ansible_managed | comment }}
+
+[DEFAULT]
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+backend = {{ fail2ban_backend }}
+{% if fail2ban_banaction %}
+banaction = {{ fail2ban_banaction }}
+{% endif %}
+{% if fail2ban_banaction_allports %}
+banaction_allports = {{ fail2ban_banaction_allports }}
+{% endif %}
+{% if fail2ban_destemail %}
+destemail = {{ fail2ban_destemail }}
+{% endif %}
+
+[sshd]
+enabled = {{ 'true' if fail2ban_ssh_enabled | bool else 'false' }}
+{% if fail2ban_ssh_enabled | bool %}
+port = {{ fail2ban_ssh_port }}
+maxretry = {{ fail2ban_ssh_maxretry }}
+bantime = {{ fail2ban_ssh_bantime }}
+{% if fail2ban_ssh_findtime %}
+findtime = {{ fail2ban_ssh_findtime }}
+{% endif %}
+{% if fail2ban_ssh_logpath %}
+logpath = {{ fail2ban_ssh_logpath }}
+{% endif %}
+{% endif %}

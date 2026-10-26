@@ -1,0 +1,132 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Master toggle. When false the role does nothing.
+fail2ban_enabled: true
+
+# Refresh the apt cache before installing packages.
+fail2ban_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+fail2ban_apt_cache_valid_time: 3600
+
+# Packages to install.
+fail2ban_packages:
+- fail2ban
+
+# systemd unit name.
+fail2ban_service_name: fail2ban
+
+# State of the service after configuration.
+fail2ban_service_state: started
+
+# Enable the service at boot.
+fail2ban_service_enabled: true
+
+# Fail2ban configuration directory.
+fail2ban_config_dir: /etc/fail2ban
+
+# Run fail2ban-client --test after writing the configuration.
+fail2ban_test_config: true
+
+# Default ban duration.
+fail2ban_bantime: 1h
+
+# Default window in which failures are counted.
+fail2ban_findtime: 10m
+
+# Default number of failures before a ban.
+fail2ban_maxretry: 5
+
+# Addresses and networks that are never banned, for example a VPN network.
+fail2ban_ignoreip:
+- 127.0.0.1/8
+- ::1
+
+# Default log backend.
+fail2ban_backend: auto
+
+# Default ban action for single ports, for example iptables-multiport. The
+# distribution default is kept when empty.
+fail2ban_banaction: ''
+
+# Default ban action for all ports, for example iptables-allports. The
+# distribution default is kept when empty.
+fail2ban_banaction_allports: ''
+
+# Address that receives notifications. Not set when empty.
+fail2ban_destemail: ''
+
+# Enable the sshd jail.
+fail2ban_ssh_enabled: true
+
+# Port or service name protected by the sshd jail. Set it to your custom SSH
+# port.
+fail2ban_ssh_port: ssh
+
+# Failures before a ban in the sshd jail.
+fail2ban_ssh_maxretry: 3
+
+# Ban duration in the sshd jail.
+fail2ban_ssh_bantime: 1h
+
+# Failure window in the sshd jail. The default findtime is used when empty.
+fail2ban_ssh_findtime: ''
+
+# Log file of the sshd jail. The distribution default is used when empty.
+fail2ban_ssh_logpath: ''
+
+# Enable the nginx jails (nginx-http-auth, nginx-botsearch and nginx-badbots).
+fail2ban_nginx_enabled: false
+
+# Ports protected by the nginx jails.
+fail2ban_nginx_port: http,https
+
+# Failures before a ban in the nginx-http-auth and nginx-botsearch jails.
+fail2ban_nginx_maxretry: 5
+
+# Failures before a ban in the nginx-badbots jail.
+fail2ban_nginx_badbots_maxretry: 2
+
+# Ban duration of the nginx jails.
+fail2ban_nginx_bantime: 1h
+
+# Failure window of the nginx jails.
+fail2ban_nginx_findtime: 10m
+
+# Access log watched by the nginx-botsearch and nginx-badbots jails.
+fail2ban_nginx_access_log: /var/log/nginx/access.log
+
+# Error log watched by the nginx-http-auth jail.
+fail2ban_nginx_error_log: /var/log/nginx/error.log
+
+# Enable the Asterisk jail and install its filter.
+fail2ban_asterisk_enabled: false
+
+# Ports protected by the Asterisk jail.
+fail2ban_asterisk_port: 5060,5061
+
+# Protocol protected by the Asterisk jail.
+fail2ban_asterisk_protocol: udp
+
+# Failures before a ban in the Asterisk jail.
+fail2ban_asterisk_maxretry: 3
+
+# Ban duration of the Asterisk jail.
+fail2ban_asterisk_bantime: 24h
+
+# Failure window of the Asterisk jail.
+fail2ban_asterisk_findtime: 10m
+
+# Log file watched by the Asterisk jail.
+fail2ban_asterisk_logpath: /var/log/asterisk/messages.log
+
+# Additional jails, each written to its own file in jail.d.
+# Item keys: name, enabled, filter, port, protocol, logpath, backend,
+# maxretry, bantime, findtime, banaction, action, extra.
+fail2ban_jails: []
+
+# Custom filters, each written to its own file in filter.d.
+# Item keys: name, before, failregex, ignoreregex, datepattern, daemon, init.
+fail2ban_filters: []

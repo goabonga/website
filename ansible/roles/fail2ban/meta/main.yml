@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  author: Chris
+  description: Install fail2ban with an SSH jail, optional nginx and Asterisk jails, custom
+    jails and filters.
+  company: goabonga
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - fail2ban
+  - security
+  - intrusion
+dependencies: []

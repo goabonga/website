@@ -1,0 +1,323 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install fail2ban with an SSH jail, optional nginx and Asterisk jails,
+      custom jails and filters.
+    description:
+    - 'Installs fail2ban, writes the global defaults to jail.local and renders jails and filters
+      from variables: a configurable sshd jail, ready-made nginx and Asterisk jails and any
+      number of custom jails and filters, so other roles can protect their own logs without
+      editing templates.'
+    author: Chris
+    options:
+      fail2ban_enabled:
+        type: bool
+        description:
+        - Master toggle. When false the role does nothing.
+        default: true
+      fail2ban_apt_update_cache:
+        type: bool
+        description:
+        - Refresh the apt cache before installing packages.
+        default: true
+      fail2ban_apt_cache_valid_time:
+        type: int
+        description:
+        - Seconds the apt cache is considered fresh.
+        default: 3600
+      fail2ban_packages:
+        type: list
+        description:
+        - Packages to install.
+        default:
+        - fail2ban
+        elements: str
+      fail2ban_service_name:
+        type: str
+        description:
+        - systemd unit name.
+        default: fail2ban
+      fail2ban_service_state:
+        type: str
+        description:
+        - State of the service after configuration.
+        default: started
+        choices:
+        - started
+        - stopped
+      fail2ban_service_enabled:
+        type: bool
+        description:
+        - Enable the service at boot.
+        default: true
+      fail2ban_config_dir:
+        type: path
+        description:
+        - Fail2ban configuration directory.
+        default: /etc/fail2ban
+      fail2ban_test_config:
+        type: bool
+        description:
+        - Run fail2ban-client --test after writing the configuration.
+        default: true
+      fail2ban_bantime:
+        type: str
+        description:
+        - Default ban duration.
+        default: 1h
+      fail2ban_findtime:
+        type: str
+        description:
+        - Default window in which failures are counted.
+        default: 10m
+      fail2ban_maxretry:
+        type: int
+        description:
+        - Default number of failures before a ban.
+        default: 5
+      fail2ban_ignoreip:
+        type: list
+        description:
+        - Addresses and networks that are never banned, for example a VPN network.
+        default:
+        - 127.0.0.1/8
+        - ::1
+        elements: str
+      fail2ban_backend:
+        type: str
+        description:
+        - Default log backend.
+        default: auto
+        choices:
+        - auto
+        - pyinotify
+        - gamin
+        - polling
+        - systemd
+      fail2ban_banaction:
+        type: str
+        description:
+        - Default ban action for single ports, for example iptables-multiport. The distribution
+          default is kept when empty.
+        default: ''
+      fail2ban_banaction_allports:
+        type: str
+        description:
+        - Default ban action for all ports, for example iptables-allports. The distribution
+          default is kept when empty.
+        default: ''
+      fail2ban_destemail:
+        type: str
+        description:
+        - Address that receives notifications. Not set when empty.
+        default: ''
+      fail2ban_ssh_enabled:
+        type: bool
+        description:
+        - Enable the sshd jail.
+        default: true
+      fail2ban_ssh_port:
+        type: str
+        description:
+        - Port or service name protected by the sshd jail. Set it to your custom SSH port.
+        default: ssh
+      fail2ban_ssh_maxretry:
+        type: int
+        description:
+        - Failures before a ban in the sshd jail.
+        default: 3
+      fail2ban_ssh_bantime:
+        type: str
+        description:
+        - Ban duration in the sshd jail.
+        default: 1h
+      fail2ban_ssh_findtime:
+        type: str
+        description:
+        - Failure window in the sshd jail. The default findtime is used when empty.
+        default: ''
+      fail2ban_ssh_logpath:
+        type: str
+        description:
+        - Log file of the sshd jail. The distribution default is used when empty.
+        default: ''
+      fail2ban_nginx_enabled:
+        type: bool
+        description:
+        - Enable the nginx jails (nginx-http-auth, nginx-botsearch and nginx-badbots).
+        default: false
+      fail2ban_nginx_port:
+        type: str
+        description:
+        - Ports protected by the nginx jails.
+        default: http,https
+      fail2ban_nginx_maxretry:
+        type: int
+        description:
+        - Failures before a ban in the nginx-http-auth and nginx-botsearch jails.
+        default: 5
+      fail2ban_nginx_badbots_maxretry:
+        type: int
+        description:
+        - Failures before a ban in the nginx-badbots jail.
+        default: 2
+      fail2ban_nginx_bantime:
+        type: str
+        description:
+        - Ban duration of the nginx jails.
+        default: 1h
+      fail2ban_nginx_findtime:
+        type: str
+        description:
+        - Failure window of the nginx jails.
+        default: 10m
+      fail2ban_nginx_access_log:
+        type: path
+        description:
+        - Access log watched by the nginx-botsearch and nginx-badbots jails.
+        default: /var/log/nginx/access.log
+      fail2ban_nginx_error_log:
+        type: path
+        description:
+        - Error log watched by the nginx-http-auth jail.
+        default: /var/log/nginx/error.log
+      fail2ban_asterisk_enabled:
+        type: bool
+        description:
+        - Enable the Asterisk jail and install its filter.
+        default: false
+      fail2ban_asterisk_port:
+        type: str
+        description:
+        - Ports protected by the Asterisk jail.
+        default: 5060,5061
+      fail2ban_asterisk_protocol:
+        type: str
+        description:
+        - Protocol protected by the Asterisk jail.
+        default: udp
+        choices:
+        - tcp
+        - udp
+      fail2ban_asterisk_maxretry:
+        type: int
+        description:
+        - Failures before a ban in the Asterisk jail.
+        default: 3
+      fail2ban_asterisk_bantime:
+        type: str
+        description:
+        - Ban duration of the Asterisk jail.
+        default: 24h
+      fail2ban_asterisk_findtime:
+        type: str
+        description:
+        - Failure window of the Asterisk jail.
+        default: 10m
+      fail2ban_asterisk_logpath:
+        type: path
+        description:
+        - Log file watched by the Asterisk jail.
+        default: /var/log/asterisk/messages.log
+      fail2ban_jails:
+        type: list
+        description:
+        - Additional jails, each written to its own file in jail.d.
+        default: []
+        elements: dict
+        options:
+          name:
+            type: str
+            description:
+            - Jail name, also used for the file name.
+            required: true
+          enabled:
+            type: bool
+            description:
+            - Enable the jail (default true).
+          filter:
+            type: str
+            description:
+            - 'Filter name (default: the jail name).'
+          port:
+            type: str
+            description:
+            - Port, comma separated ports or service names.
+          protocol:
+            type: str
+            description:
+            - Protocol (tcp or udp).
+          logpath:
+            type: str
+            description:
+            - Log file to watch.
+          backend:
+            type: str
+            description:
+            - Log backend of this jail.
+          maxretry:
+            type: int
+            description:
+            - Failures before a ban.
+          bantime:
+            type: str
+            description:
+            - Ban duration.
+          findtime:
+            type: str
+            description:
+            - Failure window.
+          banaction:
+            type: str
+            description:
+            - Ban action.
+          action:
+            type: str
+            description:
+            - Full action string, overrides banaction.
+          extra:
+            type: list
+            description:
+            - Raw option lines appended to the jail, for example 'ignorecommand = ...'.
+            elements: str
+      fail2ban_filters:
+        type: list
+        description:
+        - Custom filters, each written to its own file in filter.d.
+        default: []
+        elements: dict
+        options:
+          name:
+            type: str
+            description:
+            - Filter name, also used for the file name.
+            required: true
+          before:
+            type: str
+            description:
+            - Filter file included first, for example common.conf.
+          failregex:
+            type: list
+            description:
+            - Regular expressions matching a failure.
+            required: true
+            elements: str
+          ignoreregex:
+            type: list
+            description:
+            - Regular expressions to ignore.
+            elements: str
+          datepattern:
+            type: str
+            description:
+            - Custom date pattern.
+          daemon:
+            type: str
+            description:
+            - Value of _daemon, used by common.conf to match the log prefix.
+          init:
+            type: dict
+            description:
+            - Options written in an [Init] section.

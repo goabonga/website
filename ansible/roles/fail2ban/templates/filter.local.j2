@@ -1,0 +1,25 @@
+{{ ansible_managed | comment }}
+
+{% if item.before is defined %}
+[INCLUDES]
+before = {{ item.before }}
+
+{% endif %}
+[Definition]
+{% if item.daemon is defined %}
+_daemon = {{ item.daemon }}
+{% endif %}
+failregex = {{ item.failregex | join('\n            ') }}
+{% if item.ignoreregex | default([]) | length > 0 %}
+ignoreregex = {{ item.ignoreregex | join('\n              ') }}
+{% endif %}
+{% if item.datepattern is defined %}
+datepattern = {{ item.datepattern }}
+{% endif %}
+{% if item.init | default({}) | length > 0 %}
+
+[Init]
+{% for key, value in item.init.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+{% endif %}

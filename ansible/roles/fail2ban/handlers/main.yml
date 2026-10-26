@@ -1,0 +1,17 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: "{{ fail2ban_service_name }}"
+    state: restarted
+  when: fail2ban_service_state == 'started'
+  listen: fail2ban | restart
+
+- name: Reload fail2ban
+  ansible.builtin.systemd:
+    name: "{{ fail2ban_service_name }}"
+    state: reloaded
+  when: fail2ban_service_state == 'started'
+  listen: fail2ban | reload

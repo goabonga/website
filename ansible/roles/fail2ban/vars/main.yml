@@ -1,0 +1,54 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Internal values of the fail2ban role. Not meant to be overridden.
+
+# Ready-made jails, enabled by their fail2ban_<name>_enabled toggle.
+fail2ban__builtin_jails:
+- name: nginx-http-auth
+  enabled: "{{ fail2ban_nginx_enabled | bool }}"
+  filter: nginx-http-auth
+  port: "{{ fail2ban_nginx_port }}"
+  logpath: "{{ fail2ban_nginx_error_log }}"
+  maxretry: "{{ fail2ban_nginx_maxretry }}"
+  bantime: "{{ fail2ban_nginx_bantime }}"
+  findtime: "{{ fail2ban_nginx_findtime }}"
+- name: nginx-botsearch
+  enabled: "{{ fail2ban_nginx_enabled | bool }}"
+  filter: nginx-botsearch
+  port: "{{ fail2ban_nginx_port }}"
+  logpath: "{{ fail2ban_nginx_access_log }}"
+  maxretry: "{{ fail2ban_nginx_maxretry }}"
+  bantime: "{{ fail2ban_nginx_bantime }}"
+  findtime: "{{ fail2ban_nginx_findtime }}"
+- name: nginx-badbots
+  enabled: "{{ fail2ban_nginx_enabled | bool }}"
+  filter: apache-badbots
+  port: "{{ fail2ban_nginx_port }}"
+  logpath: "{{ fail2ban_nginx_access_log }}"
+  maxretry: "{{ fail2ban_nginx_badbots_maxretry }}"
+  bantime: "{{ fail2ban_nginx_bantime }}"
+  findtime: "{{ fail2ban_nginx_findtime }}"
+- name: asterisk
+  enabled: "{{ fail2ban_asterisk_enabled | bool }}"
+  filter: asterisk
+  port: "{{ fail2ban_asterisk_port }}"
+  protocol: "{{ fail2ban_asterisk_protocol }}"
+  logpath: "{{ fail2ban_asterisk_logpath }}"
+  maxretry: "{{ fail2ban_asterisk_maxretry }}"
+  bantime: "{{ fail2ban_asterisk_bantime }}"
+  findtime: "{{ fail2ban_asterisk_findtime }}"
+
+# Filter matching Asterisk PJSIP and chan_sip authentication failures.
+fail2ban__asterisk_filter:
+- name: asterisk
+  before: common.conf
+  failregex:
+  - '^%(__prefix_line)s%(log_prefix)s?NOTICE\S*:? .*: Registration from ''[^'']*'' failed for ''<HOST>(:\d+)?'' - .*$'
+  - '^%(__prefix_line)s%(log_prefix)s?NOTICE\S*:? .*: <HOST> failed to authenticate as .*$'
+  - '^%(__prefix_line)s%(log_prefix)s?NOTICE\S*:? .*: No matching endpoint found for request from ''<HOST>(:\d+)?''.*$'
+  - '^%(__prefix_line)s%(log_prefix)s?SECURITY\S*:? .*: SecurityEvent="(FailedACL|InvalidAccountID|ChallengeResponseFailed|InvalidPassword)".*RemoteAddress="IPV[46]/[^/]*//?<HOST>/\d+".*$'
+  - '^%(__prefix_line)s%(log_prefix)s?WARNING\S*:? .*: Request .* from ''[^'']*'' failed for ''<HOST>(:\d+)?''.*$'
+  daemon: asterisk
+  init:
+    log_prefix: \[\]\s*

@@ -64,6 +64,7 @@ class Settings(BaseSettings):
 
     # OpenAI configuration
     openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
 
     # RAG configuration
     rag_embedding_model: str = "text-embedding-3-small"

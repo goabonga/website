@@ -9,6 +9,7 @@ access control.
   `/health` endpoint, optional Swagger UI
 - OIDC bearer and personal access token authentication (`/me`)
 - Component visibility and `apt:*` scope hierarchy
+- Package catalog and per-package ACL stored in PostgreSQL (Alembic)
 
 ## Routes and scopes
 

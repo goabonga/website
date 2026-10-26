@@ -197,3 +197,68 @@ Feature: System prompt management with versioning
     When I bulk delete the non-current prompt versions
     Then the response status code should be 303
     And I should be redirected to a URL containing "version(s)+deleted"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the prompts list
+    Given I am authenticated with only the scopes "prompts:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/prompts"
+    Then the response status code should be 200
+    And the active sidebar link should be "/prompts"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new prompt form
+    Given I am authenticated with only the scopes "prompts:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/prompts/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/prompts"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the generate prompt form
+    Given I am authenticated with only the scopes "prompts:* vpn:admin billing:read" granted by token exchange
+    And OpenAI is configured
+    When I send a GET request to "/prompts/generate"
+    Then the response status code should be 200
+    And the active sidebar link should be "/prompts"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the prompt detail
+    Given I am authenticated with only the scopes "prompts:* vpn:admin billing:read" granted by token exchange
+    And a prompt "support" with name "Support" exists
+    When I view the prompt detail
+    Then the response status code should be 200
+    And the active sidebar link should be "/prompts"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the prompt edit form
+    Given I am authenticated with only the scopes "prompts:* vpn:admin billing:read" granted by token exchange
+    And a prompt "support" with name "Support" exists
+    When I view the prompt edit form
+    Then the response status code should be 200
+    And the active sidebar link should be "/prompts"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the prompts list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    When I send a GET request to "/prompts"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                           | vpn     | billing |
+      | prompts:*                        | hidden  | hidden  |
+      | prompts:* vpn:admin              | visible | hidden  |
+      | prompts:* billing:read           | hidden  | visible |
+      | prompts:* vpn:admin billing:read | visible | visible |
+      | *                                | visible | visible |

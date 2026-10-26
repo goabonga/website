@@ -54,6 +54,8 @@ how it is tested with pytest and behave.
     scheduled deletion.
 22. [Workspace custom domain](21-workspace-domain.md): managing the custom
     domain from the browser.
+23. [Deployment](22-deployment.md): processes, database, Redis, configuration
+    and sockets.
 
 ## Running the tests
 

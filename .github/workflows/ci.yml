@@ -1,0 +1,396 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Continuous integration and release of the monorepo. Every gate runs on pull
+# requests and on pushes to main; the release job only runs on main once all
+# gates are green. Nothing is published to PyPI, Debian or Ansible Galaxy:
+# releases are GitHub Releases (one per bumped component) and the docs site.
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.11"
+      - run: uv sync --frozen --only-group dev
+      - run: uv run --no-sync ruff check --output-format=github .
+      - run: uv run --no-sync ruff format --check .
+
+  license-headers:
+    name: license-headers
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.11"
+      - name: Check SPDX headers
+        run: |
+          uv run --no-project python scripts/add_license_header.py --path apps --types py --check
+          uv run --no-project python scripts/add_license_header.py --path scripts --types py,sh --check
+          uv run --no-project python scripts/add_license_header.py --path .github --types yml --check
+          uv run --no-project python scripts/add_license_header.py --path . --types toml --check
+
+  multicz:
+    name: multicz
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      # NOTE: no python-version pin here - multicz needs Python >=3.12.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+      - run: uvx multicz validate --strict
+
+  docs:
+    name: docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.13"
+      - run: uv sync --frozen --only-group doc
+      - run: uv run --no-sync zensical build --clean
+
+  ansible:
+    name: ansible
+    runs-on: ubuntu-24.04
+    env:
+      ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.13"
+      - run: uv sync --frozen --only-group dev
+      - name: Install the collection from ./ansible
+        run: uv run --no-sync ansible-galaxy collection install ./ansible -p .collections
+      - name: Syntax-check the playbooks
+        run: |
+          for playbook in bootstrap site apps; do
+            uv run --no-sync ansible-playbook --syntax-check -i localhost, "goabonga.website.${playbook}"
+          done
+      - name: Argument-spec smoke test
+        run: |
+          for dir in ansible/roles/*/; do
+            role="$(basename "$dir")"
+            uv run --no-sync ansible-doc -t role --json "goabonga.website.${role}" 2>/dev/null \
+              | python3 -c "import json, sys; d = json.load(sys.stdin)['goabonga.website.${role}']; assert d['entry_points']['main']['options'] is not None" \
+              || { echo "::error::argument spec missing or invalid for role ${role}"; exit 1; }
+          done
+
+  apps:
+    name: apps
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: List the applications
+        id: list
+        run: |
+          matrix=$(find apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -sc '{app: .}')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "${matrix}"
+
+  test:
+    name: test (${{ matrix.app }})
+    needs: [apps]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.apps.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}-${{ matrix.app }}
+          python-version: "3.11"
+      - name: Run pytest with coverage
+        run: |
+          uv run --frozen --package "${{ matrix.app }}" --group dev pytest "apps/${{ matrix.app }}" \
+            --cov="apps/${{ matrix.app }}/src" \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --junitxml=junit.xml \
+            -o junit_family=legacy
+      - name: Run behave scenarios
+        run: uv run --frozen --package "${{ matrix.app }}" --group dev behave "apps/${{ matrix.app }}/features"
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          files: coverage.xml
+          flags: ${{ matrix.app }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          disable_search: true
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v6
+        with:
+          files: junit.xml
+          flags: ${{ matrix.app }}
+          report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          disable_search: true
+
+  bandit:
+    name: bandit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.11"
+      - run: uvx --from 'bandit[toml]' bandit -c pyproject.toml --recursive apps/*/src
+
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.11"
+      - run: uv sync --frozen --all-packages
+      # --path takes the site-packages directory, not the environment: given
+      # .venv it audits nothing and exits 0. The two ignored advisories have no
+      # fixed release; they are accepted, with their reasons and a review date,
+      # in osv-scanner.toml.
+      - run: |
+          uvx pip-audit --skip-editable \
+            --path "$(uv run --no-sync python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')" \
+            --ignore-vuln PYSEC-2026-1325 \
+            --ignore-vuln PYSEC-2026-4298
+
+  # The binary is pinned to a release and verified against its published
+  # checksum instead of downloading whatever `latest` points to.
+  osv-scanner:
+    name: osv-scanner
+    runs-on: ubuntu-24.04
+    env:
+      OSV_SCANNER_VERSION: v2.7.0
+      OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install OSV-Scanner
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+            -o "$HOME/.local/bin/osv-scanner"
+          echo "${OSV_SCANNER_SHA256}  $HOME/.local/bin/osv-scanner" | sha256sum --check
+          chmod +x "$HOME/.local/bin/osv-scanner"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: osv-scanner scan source --lockfile=uv.lock
+
+  release:
+    name: release
+    needs: [lint, license-headers, multicz, docs, ansible, test, bandit, pip-audit, osv-scanner]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      no_bumps: ${{ steps.bump.outputs.no_bumps }}
+      # Space-separated "<component>=<version>" pairs, one per bumped component.
+      bumped: ${{ steps.bump.outputs.bumped }}
+    steps:
+      # The bump commit and the tags are pushed with RELEASE_PAT: a push made
+      # with the default token starts no workflow and cannot pass the ruleset.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      # NOTE: no python-version pin here - multicz needs Python >=3.12 and
+      # `uv tool install multicz` fails under 3.11.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+      - name: Install multicz
+        run: uv tool install multicz
+      - name: Configure git author
+        env:
+          NAME: ${{ github.event.head_commit.author.name }}
+          EMAIL: ${{ github.event.head_commit.author.email }}
+        run: |
+          git config user.name  "${NAME:-github-actions[bot]}"
+          git config user.email "${EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+      - name: Detect GPG availability
+        id: gpg
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Import and unlock GPG key
+        if: steps.gpg.outputs.available == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback --sign > /dev/null
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          git config user.signingkey "$KEY_ID"
+      - name: Plan release
+        run: uv tool run multicz plan --summary "$GITHUB_STEP_SUMMARY"
+      - name: Bump, commit, tag, push (signed)
+        id: bump_signed
+        if: steps.gpg.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          PLAN=$(uv tool run multicz bump --commit --tag --push --sign --output json)
+          BUMPED=$(echo "$PLAN" | jq -r '.bumps | to_entries | map("\(.key)=\(.value.next_version)") | join(" ")')
+          echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
+      - name: Bump, commit, tag, push
+        id: bump_unsigned
+        if: steps.gpg.outputs.available != 'true'
+        run: |
+          set -euo pipefail
+          PLAN=$(uv tool run multicz bump --commit --tag --push --output json)
+          BUMPED=$(echo "$PLAN" | jq -r '.bumps | to_entries | map("\(.key)=\(.value.next_version)") | join(" ")')
+          echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
+      - name: Resolve release outputs
+        id: bump
+        env:
+          BUMPED: ${{ steps.bump_signed.outputs.bumped || steps.bump_unsigned.outputs.bumped }}
+        run: |
+          echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
+          if [ -z "${BUMPED}" ]; then
+            echo "no_bumps=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no_bumps=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  github-release:
+    name: github-release
+    needs: [release]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.release.result == 'success' && needs.release.outputs.no_bumps == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      # NOTE: no python-version pin here - multicz needs Python >=3.12.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+      - name: Install multicz
+        run: uv tool install multicz
+      - name: Create a GitHub release per bumped component
+        env:
+          # A release created with the default token starts no workflow.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+          BUMPED: ${{ needs.release.outputs.bumped }}
+        run: |
+          set -euo pipefail
+          for pair in ${BUMPED}; do
+            component="${pair%%=*}"
+            version="${pair#*=}"
+            # The SAME tag multicz created: every component uses
+            # "<component>-v{version}".
+            tag="${component}-v${version}"
+            if gh release view "$tag" > /dev/null 2>&1; then
+              echo "Release ${tag} already exists, skipping"
+              continue
+            fi
+            notes=$(uv tool run multicz release-notes --tag "$tag")
+            assets=()
+            if [ "$component" = "ansible" ]; then
+              # Attach the collection tarball built from the tagged sources.
+              git checkout --detach "$tag"
+              uvx --from ansible-core ansible-galaxy collection build ansible --output-path dist
+              git checkout --detach main
+              assets=(dist/*.tar.gz)
+            fi
+            gh release create "$tag" --title "$tag" --notes "$notes" --verify-tag "${assets[@]}"
+          done
+
+  docs-deploy:
+    name: docs-deploy
+    needs: [release, github-release]
+    if: >-
+      github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+      && needs.release.result == 'success'
+      && needs.github-release.result == 'success'
+      && needs.release.outputs.no_bumps == 'false'
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/configure-pages@v6
+        with:
+          enablement: true
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+      - name: Install Zensical (doc group)
+        run: uv sync --frozen --only-group doc
+      - name: Build site
+        run: uv run --no-sync zensical build --clean
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v5

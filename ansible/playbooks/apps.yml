@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Deploys the applications listed in website_apps_enabled from the monorepo:
+#
+#   ansible-playbook goabonga.website.apps -i inventory/hosts
+#   ansible-playbook goabonga.website.apps -i inventory/hosts -e '{"website_apps_limit": ["auth"]}'
+#
+# The base infrastructure (site.yml) must be in place: PostgreSQL, Redis,
+# nginx, certbot and fail2ban are used by the components that declare them.
+
+- name: Deploy the applications
+  hosts: "{{ website_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  vars:
+    website_playbook_version: "0.0.0"
+  roles:
+    - role: goabonga.website.python_app

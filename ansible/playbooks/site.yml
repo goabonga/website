@@ -1,0 +1,52 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Base infrastructure of the platform, as the deploy account:
+#
+#   ansible-playbook goabonga.website.site -i inventory/hosts
+#
+# Each role is gated by a site_<role> variable. The roles that every host
+# needs are on by default; the ones tied to a host role (internal CA, VPN,
+# telephony, mail bridge) are off until a group or host turns them on. users
+# and security belong to bootstrap.yml and are off here.
+
+- name: Provision the base infrastructure
+  hosts: "{{ website_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  vars:
+    website_playbook_version: "0.0.0"
+  roles:
+    - role: goabonga.website.common
+      when: site_common | default(true) | bool
+    - role: goabonga.website.users
+      when: site_users | default(false) | bool
+    - role: goabonga.website.security
+      when: site_security | default(false) | bool
+    - role: goabonga.website.dnsmasq
+      when: site_dnsmasq | default(false) | bool
+    - role: goabonga.website.redis
+      when: site_redis | default(true) | bool
+    - role: goabonga.website.postgres
+      when: site_postgres | default(true) | bool
+    - role: goabonga.website.step_ca
+      when: site_step_ca | default(false) | bool
+    - role: goabonga.website.step_ca_client
+      when: site_step_ca_client | default(false) | bool
+    - role: goabonga.website.geoip
+      when: site_geoip | default(false) | bool
+    - role: goabonga.website.certbot
+      when: site_certbot | default(true) | bool
+    - role: goabonga.website.nginx
+      when: site_nginx | default(true) | bool
+    - role: goabonga.website.fail2ban
+      when: site_fail2ban | default(true) | bool
+    - role: goabonga.website.openvpn
+      when: site_openvpn | default(false) | bool
+    - role: goabonga.website.openvpn_client
+      when: site_openvpn_client | default(false) | bool
+    - role: goabonga.website.asterisk
+      when: site_asterisk | default(false) | bool
+    - role: goabonga.website.protonmail_bridge
+      when: site_protonmail_bridge | default(false) | bool

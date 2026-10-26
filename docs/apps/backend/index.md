@@ -12,6 +12,7 @@ feature: what it does, how it is configured, how it is tested.
 
 1. [Application foundation](01-foundation.md): settings, logging, database
    base, FastAPI application and the `/health` probe.
+2. [security.txt endpoint](02-security-txt.md): RFC 9116 disclosure file built from settings.
 
 ## Running the tests
 

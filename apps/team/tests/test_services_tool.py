@@ -17,10 +17,29 @@ class TestToolRegistry:
         assert "create_task" in ToolService._registry
         assert "http_request" in ToolService._registry
         # New tools
+        assert "service_call" in ToolService._registry
         assert "team_status" in ToolService._registry
         assert "save_memory" in ToolService._registry
         assert "update_memory" in ToolService._registry
         assert "delete_memory" in ToolService._registry
+        # Billing tools
+        assert "billing_list_subscriptions" in ToolService._registry
+        assert "billing_get_customer" in ToolService._registry
+        assert "billing_report_usage" in ToolService._registry
+        assert "billing_get_subscription" in ToolService._registry
+        # Mailler tools
+        assert "mailler_send_email" in ToolService._registry
+        assert "mailler_get_stats" in ToolService._registry
+        assert "mailler_list_templates" in ToolService._registry
+        assert "mailler_start_campaign" in ToolService._registry
+        # Analytics tools
+        assert "analytics_overview" in ToolService._registry
+        assert "analytics_pages" in ToolService._registry
+        assert "analytics_campaigns" in ToolService._registry
+        # Auth tools
+        assert "auth_list_users" in ToolService._registry
+        assert "auth_list_clients" in ToolService._registry
+        assert "auth_list_roles" in ToolService._registry
 
     def test_get_tool_definitions_known(self):
         service = ToolService()

@@ -3,4 +3,9 @@
 
 """Application services."""
 
-__all__ = []
+from internal.services.analytics_client import AnalyticsClient, analytics_client
+
+__all__ = [
+    "AnalyticsClient",
+    "analytics_client",
+]

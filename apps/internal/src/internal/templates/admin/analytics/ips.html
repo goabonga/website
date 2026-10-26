@@ -1,0 +1,194 @@
+{% extends "admin/base.html" %}
+
+{% block title %}IP Address Statistics{% endblock %}
+
+{% block head %}
+<style>
+    .stats-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .stats-controls select {
+        padding: 0.5rem 1rem;
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        color: #e0e0e0;
+        cursor: pointer;
+    }
+    .ip-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .ip-table th,
+    .ip-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #0f3460;
+    }
+    .ip-table th {
+        background: #0f3460;
+        color: #e0e0e0;
+        font-weight: 600;
+    }
+    .ip-table tr:hover {
+        background: rgba(233, 69, 96, 0.1);
+    }
+    .ip-link {
+        color: #74b9ff;
+        text-decoration: none;
+        font-family: monospace;
+    }
+    .ip-link:hover {
+        text-decoration: underline;
+    }
+    .tag {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin: 0.1rem;
+        background: #0f3460;
+        color: #a0a0a0;
+    }
+    .tag-country {
+        background: #2d4a22;
+        color: #8bc34a;
+    }
+    .tag-browser {
+        background: #1a3a5c;
+        color: #64b5f6;
+    }
+    .tag-device {
+        background: #4a2c2a;
+        color: #ef9a9a;
+    }
+    .stat-value {
+        font-weight: 600;
+        color: #e94560;
+    }
+    .date-value {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    .admin-card {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>IP Address Statistics</h1>
+    <div class="stats-controls">
+        <div>
+            <label for="days">Period:</label>
+            <select id="days" onchange="updateFilters()">
+                <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+            </select>
+        </div>
+        <div>
+            <label for="limit">Show:</label>
+            <select id="limit" onchange="updateFilters()">
+                <option value="25" {% if limit == 25 %}selected{% endif %}>25 IPs</option>
+                <option value="50" {% if limit == 50 %}selected{% endif %}>50 IPs</option>
+                <option value="100" {% if limit == 100 %}selected{% endif %}>100 IPs</option>
+                <option value="200" {% if limit == 200 %}selected{% endif %}>200 IPs</option>
+            </select>
+        </div>
+        <a href="/analytics" class="btn btn-secondary">&larr; Back to Dashboard</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2 style="margin-bottom: 1rem;">Most Active IP Addresses</h2>
+    <p style="color: #a0a0a0; margin-bottom: 1.5rem;">
+        Showing top {{ ip_stats|length }} IP addresses by session count for the last {{ days }} days.
+    </p>
+
+    {% if ip_stats %}
+    <div style="overflow-x: auto;">
+        <table class="ip-table">
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>Sessions</th>
+                    <th>Pageviews</th>
+                    <th>Country</th>
+                    <th>Browser</th>
+                    <th>Device</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ip in ip_stats %}
+                <tr>
+                    <td>
+                        <a href="/analytics/ips/{{ ip.ip_address }}?days={{ days }}" class="ip-link">
+                            {{ ip.ip_address }}
+                        </a>
+                    </td>
+                    <td class="stat-value">{{ "{:,}".format(ip.sessions) }}</td>
+                    <td class="stat-value">{{ "{:,}".format(ip.pageviews) }}</td>
+                    <td>
+                        {% if ip.countries %}
+                        <span class="tag tag-country">{{ ip.countries[-1] }}</span>
+                        {% else %}
+                        <span class="tag">Unknown</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ip.browsers %}
+                        <span class="tag tag-browser">{{ ip.browsers[-1] }}</span>
+                        {% else %}
+                        <span class="tag">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ip.device_types %}
+                        <span class="tag tag-device">{{ ip.device_types[-1] }}</span>
+                        {% else %}
+                        <span class="tag">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="date-value">{{ ip.first_seen.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td class="date-value">{{ ip.last_seen.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-data">
+        <p>No IP address data available for the selected period.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function updateFilters() {
+    const days = document.getElementById('days').value;
+    const limit = document.getElementById('limit').value;
+    window.location.href = '/analytics/ips?days=' + days + '&limit=' + limit;
+}
+</script>
+{% endblock %}

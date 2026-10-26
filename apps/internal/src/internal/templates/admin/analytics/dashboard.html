@@ -1,0 +1,366 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block head %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.25rem;
+        text-align: center;
+    }
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #e94560;
+        margin-bottom: 0.25rem;
+    }
+    .stat-card .stat-label {
+        font-size: 0.85rem;
+        color: #a0a0a0;
+        text-transform: uppercase;
+    }
+    .chart-container {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .chart-title {
+        color: #e0e0e0;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+    .data-list {
+        list-style: none;
+    }
+    .data-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #0f3460;
+    }
+    .data-list li:last-child {
+        border-bottom: none;
+    }
+    .data-list .data-label {
+        color: #e0e0e0;
+    }
+    .data-list .data-value {
+        color: #a0a0a0;
+        font-family: monospace;
+    }
+    .data-list .data-bar {
+        height: 4px;
+        background: #0f3460;
+        border-radius: 2px;
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+    .data-list .data-bar-fill {
+        height: 100%;
+        background: #e94560;
+        border-radius: 2px;
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 1024px) {
+        .grid-2 {
+            grid-template-columns: 1fr;
+        }
+    }
+    .period-selector {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .period-selector select {
+        padding: 0.5rem 1rem;
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        color: #e0e0e0;
+        cursor: pointer;
+    }
+    .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Analytics Dashboard</h1>
+    <div class="period-selector">
+        <label for="days">Period:</label>
+        <select id="days" onchange="changePeriod(this.value)">
+            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+            <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+        </select>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if request.query_params.get('success') %}
+<div class="alert alert-success">{{ request.query_params.get('success') }}</div>
+{% endif %}
+
+{% if overview %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ "{:,}".format(overview.total_sessions) }}</div>
+        <div class="stat-label">Total Sessions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "{:,}".format(overview.unique_visitors) }}</div>
+        <div class="stat-label">Unique Visitors</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "{:,}".format(overview.total_pageviews) }}</div>
+        <div class="stat-label">Page Views</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "{:,}".format(overview.total_events) }}</div>
+        <div class="stat-label">Total Events</div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Unable to fetch analytics data. Check if the analytics service is running.</div>
+{% endif %}
+
+<div class="grid-2">
+    <!-- Countries -->
+    <div class="chart-container">
+        <h3 class="chart-title">Top Countries</h3>
+        {% if country_stats %}
+        <ul class="data-list">
+            {% for stat in country_stats %}
+            <li>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="data-label">{{ stat.country or 'Unknown' }}</span>
+                        <span class="data-value">{{ stat.sessions }} ({{ stat.percentage }}%)</span>
+                    </div>
+                    <div class="data-bar">
+                        <div class="data-bar-fill" style="width: {{ stat.percentage }}%"></div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="no-data">No data available</div>
+        {% endif %}
+    </div>
+
+    <!-- Devices -->
+    <div class="chart-container">
+        <h3 class="chart-title">Devices</h3>
+        {% if device_stats %}
+        <ul class="data-list">
+            {% for stat in device_stats %}
+            <li>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="data-label">{{ stat.device_type or 'Unknown' }}</span>
+                        <span class="data-value">{{ stat.sessions }} ({{ stat.percentage }}%)</span>
+                    </div>
+                    <div class="data-bar">
+                        <div class="data-bar-fill" style="width: {{ stat.percentage }}%"></div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="no-data">No data available</div>
+        {% endif %}
+    </div>
+
+    <!-- Browsers -->
+    <div class="chart-container">
+        <h3 class="chart-title">Browsers</h3>
+        {% if browser_stats %}
+        <ul class="data-list">
+            {% for stat in browser_stats %}
+            <li>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="data-label">{{ stat.browser or 'Unknown' }}</span>
+                        <span class="data-value">{{ stat.sessions }} ({{ stat.percentage }}%)</span>
+                    </div>
+                    <div class="data-bar">
+                        <div class="data-bar-fill" style="width: {{ stat.percentage }}%"></div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="no-data">No data available</div>
+        {% endif %}
+    </div>
+
+    <!-- Referrers -->
+    <div class="chart-container">
+        <h3 class="chart-title">Top Referrers</h3>
+        {% if referrer_stats %}
+        <ul class="data-list">
+            {% for stat in referrer_stats %}
+            <li>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="data-label" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ stat.referrer }}">{{ stat.referrer or 'Direct' }}</span>
+                        <span class="data-value">{{ stat.sessions }} ({{ stat.percentage }}%)</span>
+                    </div>
+                    <div class="data-bar">
+                        <div class="data-bar-fill" style="width: {{ stat.percentage }}%"></div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="no-data">No data available</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Top Pages -->
+<div class="chart-container">
+    <h3 class="chart-title">Top Pages</h3>
+    {% if page_stats %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Page URL</th>
+                <th>Page Views</th>
+                <th>Unique Sessions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in page_stats %}
+            <tr>
+                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ stat.page_url }}">{{ stat.page_url }}</td>
+                <td>{{ "{:,}".format(stat.pageviews) }}</td>
+                <td>{{ "{:,}".format(stat.unique_sessions) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">No data available</div>
+    {% endif %}
+</div>
+
+<!-- Event Types -->
+<div class="chart-container">
+    <h3 class="chart-title">Event Types</h3>
+    {% if event_stats %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Event Type</th>
+                <th>Count</th>
+                <th>Unique Sessions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in event_stats %}
+            <tr>
+                <td><span class="badge badge-info">{{ stat.event_type }}</span></td>
+                <td>{{ "{:,}".format(stat.count) }}</td>
+                <td>{{ "{:,}".format(stat.unique_sessions) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">No data available</div>
+    {% endif %}
+</div>
+
+<!-- Top IP Addresses -->
+<div class="chart-container">
+    <h3 class="chart-title">Top IP Addresses <a href="/analytics/ips?days={{ days }}" class="btn btn-secondary btn-sm" style="float: right;">View All &rarr;</a></h3>
+    {% if ip_stats %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>IP Address</th>
+                <th>Country</th>
+                <th>Sessions</th>
+                <th>Page Views</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ip in ip_stats %}
+            <tr>
+                <td>
+                    <a href="/analytics/ips/{{ ip.ip_address }}?days={{ days }}" class="mono">{{ ip.ip_address }}</a>
+                </td>
+                <td>{{ ip.countries[-1] if ip.countries else 'Unknown' }}</td>
+                <td>{{ "{:,}".format(ip.sessions) }}</td>
+                <td>{{ "{:,}".format(ip.pageviews) }}</td>
+                <td class="text-muted">{{ ip.last_seen.strftime('%Y-%m-%d %H:%M') if ip.last_seen else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">No IP data available</div>
+    {% endif %}
+</div>
+
+<!-- Quick Links -->
+<div class="admin-card">
+    <h2>More Analytics</h2>
+    <p style="color: #a0a0a0; margin-bottom: 1rem;">Explore additional analytics data.</p>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="/analytics/ips?days={{ days }}" class="btn btn-primary">All IP Addresses</a>
+        <a href="/analytics/campaigns" class="btn btn-secondary">Campaigns</a>
+    </div>
+</div>
+
+{% if user.has_scope('*') or user.has_scope('analytics:delete') %}
+<!-- Admin Actions (Super Admin only) -->
+<div class="admin-card" style="border-color: #e94560;">
+    <h2 style="color: #e94560;">Danger Zone</h2>
+    <p style="color: #a0a0a0; margin-bottom: 1rem;">These actions are irreversible and will permanently delete data.</p>
+    <form action="/analytics/reset" method="POST" onsubmit="return confirmReset()">
+        <button type="submit" class="btn btn-danger">Reset All Analytics Data (RAZ)</button>
+    </form>
+</div>
+{% endif %}
+
+<script>
+function changePeriod(days) {
+    window.location.href = '/analytics?days=' + days;
+}
+
+function confirmReset() {
+    return confirm('WARNING: This will permanently delete ALL analytics data including sessions, events, campaigns, and tracking pixels.\n\nThis action CANNOT be undone.\n\nAre you sure you want to proceed?');
+}
+</script>
+{% endblock %}

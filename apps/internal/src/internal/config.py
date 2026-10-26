@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Session signing key (read from systemd credentials in production)
     secret_key: str = "change-me-in-production"
 
+    # Analytics API
+    analytics_api_url: str = "https://ua.goabonga.com"
+
     # Web UI
     app_base_url: str = "https://admin.internal"  # Application URL (for OAuth2 redirect URI)
     cookie_secure: bool = True  # Set to False for local development without HTTPS

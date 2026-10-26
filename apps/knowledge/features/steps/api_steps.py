@@ -52,6 +52,14 @@ def step_json_value(context, field, value):
     assert str(data) == value, f"expected {field}={value!r}, got {data!r}"
 
 
+@then('the response JSON "{field}" should be empty')
+def step_json_empty(context, field):
+    data = context.response.json()
+    for part in field.split("."):
+        data = data[int(part)] if part.isdigit() else data[part]
+    assert data in ("", None, [], {}), f"expected {field} to be empty, got {data!r}"
+
+
 @then("the response should be a list of {count:d} items")
 def step_list_count(context, count):
     data = context.response.json()

@@ -8,6 +8,9 @@ serialization). Only the persistence layer is replaced by small in-memory
 stand-ins so that no database is needed.
 """
 
+import hashlib
+import math
+import re
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -16,6 +19,7 @@ from knowledge.auth.dependencies import AuthContext
 from knowledge.auth.models import User
 from knowledge.models import Collection, Document
 from knowledge.models.enums import OwnerType
+from knowledge.schemas.search import SearchResponse, SearchResult
 from knowledge.services.documents import DocumentService
 
 
@@ -156,21 +160,81 @@ class FakeTenantCollectionService:
             return collection
         return None
 
+    async def list(self, tenant_id, offset=0, limit=100):
+        return [c for c in self.store.collections.values() if c.organization_id == tenant_id]
+
 
 class FakeEmbeddingService:
     """Deterministic embedder that records what it was asked to embed."""
 
-    def __init__(self, dimension: int = 1536):
+    def __init__(self, dimension: int = 1536, vectorizer=None):
         self.dimension = dimension
+        self.vectorizer = vectorizer or (lambda text: [0.1] * self.dimension)
         self.calls: list[list[str]] = []
 
     async def embed_text(self, text):
         self.calls.append([text])
-        return [0.1] * self.dimension
+        return self.vectorizer(text)
 
     async def embed_texts(self, texts):
         self.calls.append(list(texts))
-        return [[0.1] * self.dimension for _ in texts]
+        return [self.vectorizer(text) for text in texts]
+
+
+def hashing_vectorizer(text: str, dimension: int = 1024) -> list[float]:
+    """Bag-of-words embedding: words are hashed into buckets, so shared words mean similarity."""
+    vector = [0.0] * dimension
+    for word in re.findall(r"[a-z0-9]+", text.lower()):
+        bucket = int(hashlib.sha256(word.encode()).hexdigest(), 16) % dimension
+        vector[bucket] += 1.0
+    norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+    return [v / norm for v in vector]
+
+
+def cosine(a, b) -> float:
+    return sum(x * y for x, y in zip(a, b, strict=True))
+
+
+class FakeSearchService:
+    """In-memory cosine search with the same contract as SearchService.search."""
+
+    def __init__(self, store: Store, embedder):
+        self.store = store
+        self.embedder = embedder
+        self.collections = FakeTenantCollectionService(store)
+
+    async def search(self, tenant_id, request):
+        query_embedding = await self.embedder.embed_text(request.query)
+        collection_ids = []
+        if request.collection_ids:
+            for id_or_slug in request.collection_ids:
+                collection = await self.collections.get_by_id_or_slug(tenant_id, id_or_slug)
+                if collection:
+                    collection_ids.append(collection.id)
+        else:
+            collection_ids = [c.id for c in await self.collections.list(tenant_id)]
+
+        scored = []
+        for document in self.store.documents.values():
+            if document.collection_id not in collection_ids:
+                continue
+            score = cosine(query_embedding, document.embedding)
+            if score >= request.threshold:
+                scored.append((score, document))
+        scored.sort(key=lambda item: item[0], reverse=True)
+
+        results = [
+            SearchResult(
+                document_id=document.id,
+                collection_id=document.collection_id,
+                collection_slug=self.store.collections[document.collection_id].slug,
+                content=document.content if request.include_content else "",
+                score=score,
+                metadata=document.doc_metadata,
+            )
+            for score, document in scored[: request.top_k]
+        ]
+        return SearchResponse(results=results, query=request.query, total_results=len(results))
 
 
 class FakeDocumentService(DocumentService):

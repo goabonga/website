@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  author: Chris
+  description: Harden the SSH daemon, optionally enable a ufw firewall and unattended upgrades.
+  company: goabonga
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - security
+  - ssh
+  - firewall
+  - hardening
+dependencies: []

@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Harden the SSH daemon
+  ansible.builtin.import_tasks: ssh.yml
+  when: security_ssh_enabled | bool
+  tags: [security, security_ssh]
+
+- name: Configure the firewall
+  ansible.builtin.import_tasks: firewall.yml
+  when: security_firewall_enabled | bool
+  tags: [security, security_firewall]
+
+- name: Configure unattended upgrades
+  ansible.builtin.import_tasks: unattended_upgrades.yml
+  when: security_unattended_upgrades_enabled | bool
+  tags: [security, security_unattended_upgrades]

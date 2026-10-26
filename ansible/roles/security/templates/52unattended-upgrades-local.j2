@@ -1,0 +1,7 @@
+{{ ansible_managed | comment('c') }}
+Unattended-Upgrade::Remove-Unused-Dependencies "{{ 'true' if security_unattended_upgrades_remove_unused | bool else 'false' }}";
+Unattended-Upgrade::Automatic-Reboot "{{ 'true' if security_unattended_upgrades_auto_reboot | bool else 'false' }}";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ security_unattended_upgrades_reboot_time }}";
+{% if security_unattended_upgrades_mail %}
+Unattended-Upgrade::Mail "{{ security_unattended_upgrades_mail }}";
+{% endif %}

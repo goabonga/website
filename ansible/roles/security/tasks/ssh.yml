@@ -1,0 +1,28 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Remove the cloud-init sshd drop-in
+  ansible.builtin.file:
+    path: "{{ security_ssh_config_dir }}/{{ security_ssh_cloud_init_file }}"
+    state: absent
+  when: security_ssh_remove_cloud_init | bool
+  notify: security | restart ssh
+
+- name: Ensure the sshd drop-in directory exists
+  ansible.builtin.file:
+    path: "{{ security_ssh_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the sshd hardening drop-in
+  ansible.builtin.template:
+    src: sshd_hardening.conf.j2
+    dest: "{{ security_ssh_config_dir }}/{{ security_ssh_config_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "{{ 'sshd -t -f %s' if security_ssh_validate | bool else omit }}"
+  notify: security | restart ssh

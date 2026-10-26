@@ -1,0 +1,23 @@
+{{ ansible_managed | comment }}
+
+Port {{ security_ssh_port }}
+PermitRootLogin {{ security_ssh_permit_root_login }}
+PasswordAuthentication {{ 'yes' if security_ssh_password_authentication | bool else 'no' }}
+KbdInteractiveAuthentication {{ 'yes' if security_ssh_kbd_interactive_authentication | bool else 'no' }}
+PubkeyAuthentication {{ 'yes' if security_ssh_pubkey_authentication | bool else 'no' }}
+X11Forwarding {{ 'yes' if security_ssh_x11_forwarding | bool else 'no' }}
+AllowTcpForwarding {{ 'yes' if security_ssh_allow_tcp_forwarding | bool else 'no' }}
+UseDNS {{ 'yes' if security_ssh_use_dns | bool else 'no' }}
+MaxAuthTries {{ security_ssh_max_auth_tries }}
+LoginGraceTime {{ security_ssh_login_grace_time }}
+ClientAliveInterval {{ security_ssh_client_alive_interval }}
+ClientAliveCountMax {{ security_ssh_client_alive_count_max }}
+{% if security_ssh_allow_users %}
+AllowUsers {{ security_ssh_allow_users | join(' ') }}
+{% endif %}
+{% if security_ssh_allow_groups %}
+AllowGroups {{ security_ssh_allow_groups | join(' ') }}
+{% endif %}
+{% for option in security_ssh_extra_options %}
+{{ option }}
+{% endfor %}

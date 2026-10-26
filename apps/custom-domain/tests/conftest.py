@@ -269,6 +269,14 @@ def mock_redis():
 
 
 @pytest.fixture
+def mock_dns_resolver():
+    """Mock DNS resolver."""
+    with patch("custom_domain.services.dns.dns") as mock:
+        mock.resolver.Resolver.return_value = MagicMock()
+        yield mock
+
+
+@pytest.fixture
 def mock_subprocess():
     """Mock asyncio subprocess for certbot/nginx."""
     with patch("asyncio.create_subprocess_exec") as mock:

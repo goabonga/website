@@ -95,3 +95,234 @@ class TestUserScopeHelpers:
     def test_admin_can_write_and_delete(self, mock_admin_user):
         assert mock_admin_user.can_write("anything") is True
         assert mock_admin_user.can_delete("anything") is True
+
+
+class TestContactProperties:
+    """Test Contact computed properties without database.
+
+    Uses SimpleNamespace + property.fget to avoid SQLAlchemy instrumentation.
+    """
+
+    def test_full_name_both_parts(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(first_name="John", last_name="Doe")
+        prop = Contact.full_name
+        assert prop.fget(ns) == "John Doe"
+
+    def test_full_name_first_only(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(first_name="John", last_name=None)
+        prop = Contact.full_name
+        assert prop.fget(ns) == "John"
+
+    def test_full_name_last_only(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(first_name=None, last_name="Doe")
+        prop = Contact.full_name
+        assert prop.fget(ns) == "Doe"
+
+    def test_full_name_both_none(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(first_name=None, last_name=None)
+        prop = Contact.full_name
+        assert prop.fget(ns) == ""
+
+    def test_full_name_empty_strings(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(first_name="", last_name="")
+        prop = Contact.full_name
+        assert prop.fget(ns) == ""
+
+    def test_groups_with_memberships(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        group_a = SimpleNamespace(name="Group A")
+        group_b = SimpleNamespace(name="Group B")
+        memberships = [
+            SimpleNamespace(group=group_a),
+            SimpleNamespace(group=group_b),
+        ]
+        ns = SimpleNamespace(group_memberships=memberships)
+        prop = Contact.groups
+        result = prop.fget(ns)
+        assert result == [group_a, group_b]
+
+    def test_groups_filters_none(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        group_a = SimpleNamespace(name="Group A")
+        memberships = [
+            SimpleNamespace(group=group_a),
+            SimpleNamespace(group=None),
+        ]
+        ns = SimpleNamespace(group_memberships=memberships)
+        prop = Contact.groups
+        result = prop.fget(ns)
+        assert result == [group_a]
+
+    def test_groups_empty_memberships(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(group_memberships=[])
+        prop = Contact.groups
+        assert prop.fget(ns) == []
+
+    def test_repr(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import Contact
+
+        ns = SimpleNamespace(
+            id="abc-123",
+            email="test@example.com",
+            status="active",
+        )
+        result = Contact.__repr__(ns)
+        assert result == "<Contact(id=abc-123, email='test@example.com', status='active')>"
+
+
+class TestContactGroupProperties:
+    """Test ContactGroup computed properties without database.
+
+    Uses SimpleNamespace + property.fget to avoid SQLAlchemy instrumentation.
+    """
+
+    def test_member_count(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        members = [SimpleNamespace(), SimpleNamespace(), SimpleNamespace()]
+        ns = SimpleNamespace(members=members)
+        prop = ContactGroup.member_count
+        assert prop.fget(ns) == 3
+
+    def test_member_count_empty(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        ns = SimpleNamespace(members=[])
+        prop = ContactGroup.member_count
+        assert prop.fget(ns) == 0
+
+    def test_contacts_with_members(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        contact_a = SimpleNamespace(email="a@test.com")
+        contact_b = SimpleNamespace(email="b@test.com")
+        members = [
+            SimpleNamespace(contact=contact_a),
+            SimpleNamespace(contact=contact_b),
+        ]
+        ns = SimpleNamespace(members=members)
+        prop = ContactGroup.contacts
+        result = prop.fget(ns)
+        assert result == [contact_a, contact_b]
+
+    def test_contacts_filters_none(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        contact_a = SimpleNamespace(email="a@test.com")
+        members = [
+            SimpleNamespace(contact=contact_a),
+            SimpleNamespace(contact=None),
+        ]
+        ns = SimpleNamespace(members=members)
+        prop = ContactGroup.contacts
+        result = prop.fget(ns)
+        assert result == [contact_a]
+
+    def test_contacts_empty_members(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        ns = SimpleNamespace(members=[])
+        prop = ContactGroup.contacts
+        assert prop.fget(ns) == []
+
+    def test_repr(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroup
+
+        members = [SimpleNamespace(), SimpleNamespace()]
+        ns = SimpleNamespace(id=1, slug="vip-contacts", members=members, member_count=2)
+        result = ContactGroup.__repr__(ns)
+        assert result == "<ContactGroup(id=1, slug='vip-contacts', members=2)>"
+
+
+class TestContactGroupMemberRepr:
+    """Test ContactGroupMember __repr__."""
+
+    def test_repr(self):
+        from types import SimpleNamespace
+
+        from internal.models.contact import ContactGroupMember
+
+        ns = SimpleNamespace(
+            contact_id="abc-123",
+            group_id=42,
+        )
+        result = ContactGroupMember.__repr__(ns)
+        assert result == "<ContactGroupMember(contact_id=abc-123, group_id=42)>"
+
+
+class TestContactStatusEnum:
+    """Test ContactStatus enum values."""
+
+    def test_active(self):
+        from internal.models.contact import ContactStatus
+
+        assert ContactStatus.ACTIVE == "active"
+        assert ContactStatus.ACTIVE.value == "active"
+
+    def test_unsubscribed(self):
+        from internal.models.contact import ContactStatus
+
+        assert ContactStatus.UNSUBSCRIBED == "unsubscribed"
+        assert ContactStatus.UNSUBSCRIBED.value == "unsubscribed"
+
+    def test_bounced(self):
+        from internal.models.contact import ContactStatus
+
+        assert ContactStatus.BOUNCED == "bounced"
+        assert ContactStatus.BOUNCED.value == "bounced"
+
+    def test_complained(self):
+        from internal.models.contact import ContactStatus
+
+        assert ContactStatus.COMPLAINED == "complained"
+        assert ContactStatus.COMPLAINED.value == "complained"
+
+    def test_all_values(self):
+        from internal.models.contact import ContactStatus
+
+        values = [s.value for s in ContactStatus]
+        assert sorted(values) == ["active", "bounced", "complained", "unsubscribed"]

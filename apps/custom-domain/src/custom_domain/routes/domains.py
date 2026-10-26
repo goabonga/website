@@ -26,6 +26,7 @@ from custom_domain.schemas import (
     DomainUpdate,
 )
 from custom_domain.services import domain_service
+from custom_domain.services.upstream import InvalidUpstreamError, parse_upstream
 
 logger = get_logger(__name__)
 
@@ -171,6 +172,13 @@ async def create_domain(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No upstream target: provide one or set a default for the client",
         )
+    try:
+        parse_upstream(upstream_target)
+    except InvalidUpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid upstream target: {error}",
+        ) from error
     cname_target = data.cname_target or client.default_cname_target or settings.default_cname_target
     if not cname_target:
         raise HTTPException(

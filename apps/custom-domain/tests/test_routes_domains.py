@@ -294,7 +294,7 @@ class TestUpdateDomain:
 
         response = await auth_client.put(
             f"/api/v1/domains/{mock_custom_domain.id}",
-            json={"upstream_target": "http://new-backend:8080"},
+            json={"upstream_target": "new-backend:8080"},
         )
         assert response.status_code == 200
 
@@ -307,7 +307,7 @@ class TestUpdateDomain:
 
         response = await auth_client.put(
             f"/api/v1/domains/{uuid4()}",
-            json={"upstream_target": "http://new-backend:8080"},
+            json={"upstream_target": "new-backend:8080"},
         )
         assert response.status_code == 404
 
@@ -325,7 +325,7 @@ class TestUpdateDomain:
 
         response = await auth_client.put(
             f"/api/v1/domains/{mock_custom_domain.id}",
-            json={"upstream_target": "http://new-backend:8080"},
+            json={"upstream_target": "new-backend:8080"},
         )
         assert response.status_code == 403
 

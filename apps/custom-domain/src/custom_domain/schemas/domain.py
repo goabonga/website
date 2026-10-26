@@ -6,9 +6,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from custom_domain.models.enums import DomainStatus
+from custom_domain.schemas.validators import validate_upstream
 
 
 class DomainCreate(BaseModel):
@@ -22,7 +23,7 @@ class DomainCreate(BaseModel):
     )
     upstream_target: str | None = Field(
         None,
-        description="Upstream socket or URL (defaults to client's default)",
+        description="Upstream: absolute socket path or host:port (defaults to client's default)",
     )
     cname_target: str | None = Field(
         None,
@@ -34,6 +35,8 @@ class DomainCreate(BaseModel):
     )
     metadata: dict | None = Field(None, description="Custom metadata")
 
+    _check_upstream = field_validator("upstream_target")(validate_upstream)
+
 
 class DomainUpdate(BaseModel):
     """Request schema for updating a domain."""
@@ -41,6 +44,8 @@ class DomainUpdate(BaseModel):
     upstream_target: str | None = None
     nginx_template_id: int | None = None
     metadata: dict | None = None
+
+    _check_upstream = field_validator("upstream_target")(validate_upstream)
 
 
 class DomainResponse(BaseModel):

@@ -1,5 +1,5 @@
 upstream {{ domain | replace('.', '_') }}_upstream {
-    server unix:{{ upstream_target }};
+    server {{ upstream_server }};
 }
 
 server {

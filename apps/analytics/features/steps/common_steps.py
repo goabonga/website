@@ -12,6 +12,8 @@ from httpx import ASGITransport, AsyncClient
 def send_request(context, method, path, **kwargs):
     """Send a request to the ASGI application and store the response."""
 
+    kwargs.setdefault("headers", dict(getattr(context, "request_headers", {})))
+
     async def make_request():
         async with AsyncClient(
             transport=ASGITransport(app=context.app),
@@ -64,3 +66,20 @@ def step_response_is_json(context):
 def step_json_key_equals(context, key, value):
     actual = str(response_json(context).get(key))
     assert actual == value, f"Expected {key}='{value}', got '{actual}'"
+
+
+@when('I send a POST request to "{path}" with JSON')
+def step_post_json(context, path):
+    send_request(context, "POST", path, json=json.loads(context.text))
+
+
+@then('the response header "{header}" should contain "{value}"')
+def step_check_response_header(context, header, value):
+    actual = context.response.headers.get(header.lower(), "")
+    assert value in actual, f"Expected '{value}' in header '{header}', got '{actual}'"
+
+
+@then("the response should be a GIF image")
+def step_response_is_gif(context):
+    assert context.response.headers.get("content-type") == "image/gif"
+    assert context.response.content[:3] == b"GIF"

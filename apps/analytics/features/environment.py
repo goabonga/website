@@ -67,6 +67,7 @@ def before_scenario(context, scenario):
     """Reset the per-scenario state."""
     context.response = None
     context.response_json = None
+    context.request_headers = {}
 
     from analytics.models import Base
 

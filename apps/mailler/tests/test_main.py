@@ -178,3 +178,13 @@ class TestSendRoute:
         from mailler.main import app
 
         assert app.url_path_for("send_email") == "/api/v1/send"
+
+
+class TestEmailsRoutes:
+    """Emails router registration."""
+
+    def test_emails_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("list_emails") == "/api/v1/emails"
+        assert app.url_path_for("get_email", email_id="x") == "/api/v1/emails/x"

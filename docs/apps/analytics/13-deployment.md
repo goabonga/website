@@ -75,13 +75,25 @@ environment.
 
 ## Ansible
 
-The `ansible/` collection of this repository provisions the hosts the service
-needs: users, security, PostgreSQL, Redis, nginx, certificates and the GeoIP
-database (roles `users`, `security`, `postgres`, `redis`, `nginx`, `certbot`
-and `geoip`, documented in the Ansible section). It does not yet contain a
-role that deploys this application, so the unit above, its environment file and
-its nginx virtual host are currently installed by the production inventory
-outside this repository.
+The [python_app](../../ansible/roles/python_app.md) role deploys the unit from
+the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable
+`analytics` in `website_apps_enabled` and it brings the single component
+`analytics`.
+
+- gunicorn listens on the socket `/run/analytics/analytics.sock`, with 2
+  workers, a `/health` probe, an nginx virtual host on the `analytics` entry
+  of `website_hostnames`, a `analytics` database and the Alembic migrations on
+  each release.
+- The environment file sets `REDIS_URL` (database 7), the session cookie
+  (`ua_sid`, secure, `SameSite=None`), `DATA_RETENTION_DAYS=395`,
+  `ANONYMIZE_IP=false`, `DOCS_ENABLED=false` and the cache lifetimes. It
+  enables GeoIP with `/usr/share/GeoIP/GeoLite2-City.mmdb`, the file installed
+  by the [geoip](../../ansible/roles/geoip.md) role. `CORS_ORIGINS` lists the
+  front end and the API hosts; add the other websites with `env_vars` in
+  `website_apps_overrides`, which is also where `SESSION_COOKIE_DOMAIN` is set.
+- `OAUTH2_CLIENT_SECRET` is the only secret and is optional: it is deployed
+  when set in `website_secrets` ([Secrets](../../ansible/03-secrets.md)).
 
 ## Verifying a deployment
 

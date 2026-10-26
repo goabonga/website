@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Chris", email = "goabonga@pm.me" }]
 dependencies = [
+    "numpy>=1.24.0",
     "python-dotenv>=1.0.0",
 ]
 

@@ -13,6 +13,7 @@ Scopes required:
 
 import json
 from typing import Any
+from urllib.parse import quote_plus, urlsplit
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -41,6 +42,55 @@ require_billing_write = require_resource_scopes_or_redirect(
 require_billing_admin = require_resource_scopes_or_redirect(
     "billing", required_scope="billing:admin", extra_scopes=["billing:admin"]
 )
+
+
+def parse_checkout_urls(text: str) -> list[str] | None:
+    """Read the checkout URL allow-list of a form: one URL prefix per line.
+
+    The billing service stays the authority on what it accepts; this only catches the usual
+    mistakes (no scheme, credentials, query string, fragment) before the round trip.
+
+    Raises:
+        ValueError: If a line is not an acceptable URL prefix.
+
+    Returns:
+        The prefixes without duplicates, or None when the text has none (the list is cleared).
+    """
+    urls: list[str] = []
+    for line in text.splitlines():
+        entry = line.strip()
+        if not entry:
+            continue
+        parts = urlsplit(entry)
+        if parts.scheme not in ("http", "https") or not parts.hostname:
+            raise ValueError(f"'{entry}' is not an absolute http(s) URL")
+        if parts.username or parts.password or parts.query or parts.fragment:
+            raise ValueError(f"'{entry}' must not contain credentials, a query or a fragment")
+        if entry not in urls:
+            urls.append(entry)
+    return urls or None
+
+
+def parse_branding(text: str) -> dict | None:
+    """Read the branding of a form: a JSON object, or nothing (the branding is cleared).
+
+    Raises:
+        ValueError: If the text is not a JSON object.
+    """
+    if not text.strip():
+        return None
+    try:
+        branding = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Branding is not valid JSON: {error.msg}") from error
+    if not isinstance(branding, dict):
+        raise ValueError("Branding must be a JSON object")
+    return branding
+
+
+def _error_redirect(url: str, message: str) -> RedirectResponse:
+    """Redirect to ``url`` with an ``error`` banner."""
+    return RedirectResponse(url=f"{url}?error={quote_plus(message)}", status_code=303)
 
 
 # =============================================================================
@@ -118,6 +168,8 @@ async def saas_app_create(
     description: str = Form(None),
     webhook_url: str = Form(None),
     webhook_secret: str = Form(None),
+    checkout_urls: str = Form(""),
+    branding_json: str = Form(""),
     auth_result: User | RedirectResponse = Depends(require_billing_write),
 ):
     """Create a new SaaS app."""
@@ -126,12 +178,20 @@ async def saas_app_create(
 
     user = auth_result
 
+    try:
+        allowlist = parse_checkout_urls(checkout_urls)
+        branding = parse_branding(branding_json)
+    except ValueError as error:
+        return _error_redirect("/billing/saas/new", str(error))
+
     saas_app = await billing_client.create_saas_app(
         name=name,
         slug=slug,
         description=description or None,
         webhook_url=webhook_url or None,
         webhook_secret=webhook_secret or None,
+        branding=branding,
+        checkout_url_allowlist=allowlist,
     )
 
     if saas_app:
@@ -308,14 +368,25 @@ async def saas_app_update(
     description: str = Form(None),
     webhook_url: str = Form(None),
     webhook_secret: str = Form(None),
+    checkout_urls: str = Form(""),
+    branding_json: str = Form(""),
     is_active: bool = Form(False),
     auth_result: User | RedirectResponse = Depends(require_billing_write),
 ):
-    """Update a SaaS app (an unchecked "Active" box is not submitted: it deactivates)."""
+    """Update a SaaS app (an unchecked "Active" box is not submitted: it deactivates).
+
+    The form always carries the checkout URL allow-list and the branding: empty fields clear them.
+    """
     if not isinstance(auth_result, User):
         return auth_result
 
     user = auth_result
+
+    try:
+        allowlist = parse_checkout_urls(checkout_urls)
+        branding = parse_branding(branding_json)
+    except ValueError as error:
+        return _error_redirect(f"/billing/saas/{saas_id}/edit", str(error))
 
     saas_app = await billing_client.update_saas_app(
         saas_id=saas_id,
@@ -324,6 +395,8 @@ async def saas_app_update(
         webhook_url=webhook_url or None,
         webhook_secret=webhook_secret or None,
         is_active=is_active,
+        branding=branding,
+        checkout_url_allowlist=allowlist,
     )
 
     if saas_app:

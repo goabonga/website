@@ -103,6 +103,28 @@
             </td>
         </tr>
         <tr>
+            <th>Checkout URLs</th>
+            <td>
+                {% if saas_app.checkout_url_allowlist %}
+                {% for url in saas_app.checkout_url_allowlist %}
+                <div><code class="mono" style="font-size: 0.8rem;">{{ url }}</code></div>
+                {% endfor %}
+                {% else %}
+                <span class="text-muted">None: checkout and portal redirects are refused</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Branding</th>
+            <td>
+                {% if saas_app.branding %}
+                <code class="mono" style="font-size: 0.8rem; white-space: pre-wrap;">{{ saas_app.branding | tojson(indent=2) }}</code>
+                {% else %}
+                <span class="text-muted">Not configured</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
             <th>Created</th>
             <td>{{ saas_app.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
         </tr>

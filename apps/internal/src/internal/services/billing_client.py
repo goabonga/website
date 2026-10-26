@@ -117,6 +117,9 @@ class CustomerPortal(BaseModel):
 # Billing Client
 # =============================================================================
 
+# Marks an update field that is left out of the request (``None`` clears the field instead).
+UNSET: Any = object()
+
 # What a call needs from the access token: the scope of the operation (read or write), always
 # together with the admin scope, or the admin scope alone (SaaS creation, client bindings).
 Access = Literal["read", "write", "admin"]
@@ -257,10 +260,17 @@ class BillingClient:
         description: str | None = None,
         webhook_url: str | None = None,
         webhook_secret: str | None = None,
+        branding: dict | None = None,
+        checkout_url_allowlist: list[str] | None = None,
     ) -> SaasApp | None:
-        """Create a new SaaS application."""
+        """Create a new SaaS application.
+
+        ``checkout_url_allowlist`` lists the URL prefixes the app accepts as checkout and
+        portal redirects; ``branding`` is free-form JSON the checkout reads (``locale``,
+        ``custom_text``).
+        """
         try:
-            json_data = {
+            json_data: dict[str, Any] = {
                 "name": name,
                 "slug": slug,
                 "description": description,
@@ -268,6 +278,10 @@ class BillingClient:
             }
             if webhook_secret:
                 json_data["webhook_secret"] = webhook_secret
+            if branding is not None:
+                json_data["branding"] = branding
+            if checkout_url_allowlist is not None:
+                json_data["checkout_url_allowlist"] = checkout_url_allowlist
 
             data = await self._request(
                 "POST",
@@ -288,8 +302,14 @@ class BillingClient:
         webhook_url: str | None = None,
         webhook_secret: str | None = None,
         is_active: bool | None = None,
+        branding: dict | None = UNSET,
+        checkout_url_allowlist: list[str] | None = UNSET,
     ) -> SaasApp | None:
-        """Update a SaaS application."""
+        """Update a SaaS application.
+
+        ``branding`` and ``checkout_url_allowlist`` are sent when given, ``None`` included:
+        it clears the field on the billing service.
+        """
         try:
             update_data: dict[str, Any] = {}
             if name is not None:
@@ -302,6 +322,10 @@ class BillingClient:
                 update_data["webhook_secret"] = webhook_secret
             if is_active is not None:
                 update_data["is_active"] = is_active
+            if branding is not UNSET:
+                update_data["branding"] = branding
+            if checkout_url_allowlist is not UNSET:
+                update_data["checkout_url_allowlist"] = checkout_url_allowlist
 
             data = await self._request(
                 "PATCH",

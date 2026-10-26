@@ -28,6 +28,8 @@ def _saas_app_page(context, saas_id):
     saas_app.description = None
     saas_app.is_active = True
     saas_app.webhook_url = ""
+    saas_app.branding = None
+    saas_app.checkout_url_allowlist = None
     saas_app.created_at = datetime(2024, 1, 1)
     mock = context.mock_billing
     mock.get_saas_app = AsyncMock(return_value=saas_app)

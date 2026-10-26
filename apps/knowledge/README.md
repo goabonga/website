@@ -40,6 +40,8 @@ applications. It is a member of the `website` uv workspace.
 - Workspace switching, plan upgrade through the billing service and
   workspace settings pages.
 - Workspace members, roles and email invitations.
+- Workspace deletion confirmed by email, scheduled at the end of the billing
+  period and cancellable.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -110,6 +112,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/organizations/upgrade`, `/tenants/upgrade` | session | Upgrade to a new plan with proration |
 | GET | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Organization settings page |
 | POST | `/organizations/settings`, `/tenants/settings` | session; organization admin or owner | Update organization settings |
+| POST | `/organizations/delete`, `/tenants/delete` | session; organization owner | Request workspace deletion - sends confirmation email |
+| GET | `/organizations/delete/confirm/{token}`, `/tenants/delete/confirm/{token}` | session | Show workspace deletion confirmation page (from email link) |
+| POST | `/organizations/delete/confirm/{token}`, `/tenants/delete/confirm/{token}` | session | Execute workspace deletion after email confirmation |
+| GET | `/organizations/delete/cancel/{cancel_token}`, `/tenants/delete/cancel/{cancel_token}` | session | Cancel a scheduled workspace deletion and reactivate subscription |
 | GET | `/organizations/members`, `/tenants/members` | session; organization admin or owner | Organization members page |
 | GET | `/organizations/invite`, `/tenants/invite` | session; organization admin or owner | Show invitation form |
 | POST | `/organizations/invite`, `/tenants/invite` | session; organization admin or owner | Create a new invitation |

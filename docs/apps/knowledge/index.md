@@ -50,6 +50,8 @@ how it is tested with pytest and behave.
     upgrading and renaming workspaces.
 20. [Workspace members](19-workspace-members.md): invitations, roles and
     removals.
+21. [Workspace deletion](20-workspace-deletion.md): email-confirmed and
+    scheduled deletion.
 
 ## Running the tests
 

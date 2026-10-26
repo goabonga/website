@@ -15,6 +15,8 @@ HTTP routes served by the application and what each one requires. `public` route
 
 No Swagger or OpenAPI documentation is exposed.
 
+The policy is served as `text/plain` with `Cache-Control: max-age=<MTA_STS_MAX_AGE>`.
+
 ## Configuration
 
 Read from the environment (a `.env` file is loaded when present).

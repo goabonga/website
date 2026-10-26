@@ -120,3 +120,7 @@
   ansible.builtin.include_tasks: nginx.yml
   when: python_app__c.nginx.enabled | bool
 
+- name: Configure the fail2ban jails of {{ python_app__unit }}
+  ansible.builtin.include_tasks: fail2ban.yml
+  when: python_app__c.fail2ban.enabled | bool
+

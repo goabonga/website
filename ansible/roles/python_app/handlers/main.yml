@@ -26,3 +26,9 @@
     state: restarted
   listen: python_app | restart dnsmasq-vpn
 
+- name: Reload fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: reloaded
+  listen: python_app | reload fail2ban
+

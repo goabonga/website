@@ -156,6 +156,10 @@ python_app_component_defaults:
   # Names of secrets that are deployed only when provided.
   optional_secret_names: []
 
+  fail2ban:
+    enabled: false
+    # Each route: {path, method, maxretry, findtime, bantime}.
+    routes: []
   hardening:
     enabled: true
     # Extra writable paths of the unit.

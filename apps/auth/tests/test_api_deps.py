@@ -102,12 +102,39 @@ class TestGetDb:
 # ---------------------------------------------------------------------------
 
 
+class TestGetEncryption:
+    @patch("auth.api.deps.settings")
+    @patch("auth.api.deps.AESEncryption")
+    def test_returns_encryption_instance(self, mock_aes, mock_settings):
+        from auth.api.deps import get_encryption
+
+        # Clear lru_cache
+        get_encryption.cache_clear()
+
+        mock_settings.jwks_encryption_key = "dGVzdGtleXRlc3RrZXkxMjM0NTY3ODkwMTI="
+        mock_aes.from_base64.return_value = MagicMock()
+
+        result = get_encryption()
+
+        mock_aes.from_base64.assert_called_once_with(mock_settings.jwks_encryption_key)
+        assert result is mock_aes.from_base64.return_value
+        get_encryption.cache_clear()
+
+
 # ---------------------------------------------------------------------------
 # Service factories
 # ---------------------------------------------------------------------------
 
 
 class TestServiceFactories:
+    @patch("auth.api.deps.get_encryption", return_value=MagicMock())
+    def test_get_jwks_service(self, mock_enc):
+        from auth.api.deps import get_jwks_service
+        from auth.services.jwks import JWKSService
+
+        result = get_jwks_service()
+        assert isinstance(result, JWKSService)
+
     def test_get_templates(self):
         from auth.api.deps import get_templates
 

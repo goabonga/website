@@ -92,6 +92,13 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
+| GET | `/mailler/clients` | session; scope `mailler:admin` | List the clients authorized to use the mailler service |
+| GET | `/mailler/clients/new` | session; scope `mailler:admin` | Form to register a client |
+| POST | `/mailler/clients/new` | session; scope `mailler:admin` | Register a client |
+| GET | `/mailler/clients/{client_id}/edit` | session; scope `mailler:admin` | Form to edit a client |
+| POST | `/mailler/clients/{client_id}/edit` | session; scope `mailler:admin` | Update a client: every field of the form is applied, an empty one removes the value |
+| POST | `/mailler/clients/{client_id}/deactivate` | session; scope `mailler:admin` | Deactivate a client: the mailler service refuses it from then on and stops its work |
+| POST | `/mailler/clients/{client_id}/activate` | session; scope `mailler:admin` | Activate a client again |
 | GET | `/namespaces` | session; scope `namespaces:read` | List all namespaces with pagination and search |
 | GET | `/namespaces/new` | session; scope `namespaces:write` | Show form to create a new namespace |
 | POST | `/namespaces/new` | session; scope `namespaces:write` | Create a new namespace |
@@ -202,6 +209,7 @@ The application defines no scope, it only checks the ones carried by the access 
 - `knowledge:write` - checked by 10 routes
 - `knowledge:delete` - checked by 2 routes
 - `mailler:read` - checked by 3 routes
+- `mailler:admin` - checked by 7 routes
 - `namespaces:read` - checked by 2 routes
 - `namespaces:write` - checked by 4 routes
 - `namespaces:delete` - checked by 2 routes

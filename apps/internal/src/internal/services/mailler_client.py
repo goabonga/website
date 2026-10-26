@@ -6,6 +6,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -688,6 +689,91 @@ class MaillerClient:
         except Exception as e:
             logger.exception("Failed to get campaign sends: %s", e)
             return {"items": [], "total": 0, "page": 1, "pages": 1}
+
+    # =========================================================================
+    # Client registry (administration scope)
+    # =========================================================================
+
+    @staticmethod
+    def _api_error(error: Exception, action: str) -> MaillerAPIError:
+        """Turn a failed call into a ``MaillerAPIError`` carrying the service's explanation."""
+        if isinstance(error, httpx.HTTPStatusError):
+            try:
+                detail = error.response.json().get("detail", str(error))
+            except Exception:
+                detail = str(error)
+            if isinstance(detail, list):
+                # Validation errors: one message per rejected field
+                detail = "; ".join(
+                    f"{'.'.join(str(part) for part in item.get('loc', [])[1:])}: {item.get('msg')}"
+                    if isinstance(item, dict)
+                    else str(item)
+                    for item in detail
+                )
+            logger.error("Failed to %s: %s", action, detail)
+            return MaillerAPIError(str(detail), error.response.status_code)
+        logger.exception("Failed to %s: %s", action, error)
+        return MaillerAPIError(str(error))
+
+    async def list_clients(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        is_active: bool | None = None,
+        search: str | None = None,
+    ) -> dict[str, Any]:
+        """List the registered clients (the registry only answers the administration scope)."""
+        empty = {"items": [], "total": 0, "page": 1, "page_size": page_size, "pages": 1}
+        try:
+            params: dict[str, Any] = {"page": page, "page_size": page_size}
+            if is_active is not None:
+                params["is_active"] = "true" if is_active else "false"
+            if search:
+                params["search"] = search
+            data = await self._request("GET", "/api/v1/clients", params=params, scope="")
+            return data if data else empty
+        except Exception as e:
+            logger.exception("Failed to list clients: %s", e)
+            return empty
+
+    async def get_client(self, client_id: str) -> dict[str, Any] | None:
+        """Get a registered client, or None when it is unknown."""
+        try:
+            return (
+                await self._request("GET", f"/api/v1/clients/{quote(client_id, safe='')}", scope="")
+                or None
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 404:
+                logger.exception("Failed to get client: %s", e)
+            return None
+        except Exception as e:
+            logger.exception("Failed to get client: %s", e)
+            return None
+
+    async def create_client(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Register a client.
+
+        Raises:
+            MaillerAPIError: If the service refuses it (already registered, invalid field...).
+        """
+        try:
+            return await self._request("POST", "/api/v1/clients", json_data=data, scope="")
+        except Exception as e:
+            raise self._api_error(e, "register client") from e
+
+    async def update_client(self, client_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        """Update a registered client (partial update; ``is_active`` false deactivates it).
+
+        Raises:
+            MaillerAPIError: If the service refuses it (unknown client, invalid field...).
+        """
+        try:
+            return await self._request(
+                "PUT", f"/api/v1/clients/{quote(client_id, safe='')}", json_data=data, scope=""
+            )
+        except Exception as e:
+            raise self._api_error(e, "update client") from e
 
 
 # Singleton instance

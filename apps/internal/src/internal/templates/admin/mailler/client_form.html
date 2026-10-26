@@ -1,0 +1,156 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit {{ client.client_id }}{% else %}Register Client{% endif %} - Mailler{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/mailler/clients" class="text-muted" style="text-decoration: none;">&larr; Back to Clients</a>
+        <h1 style="margin-top: 0.5rem;">{% if is_edit %}Edit {{ client.client_id }}{% else %}Register Client{% endif %}</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="{% if is_edit %}/mailler/clients/{{ client.client_id | urlencode }}/edit{% else %}/mailler/clients/new{% endif %}">
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Application</h3>
+
+        <div class="form-group">
+            <label for="client_id">OAuth client ID {% if not is_edit %}*{% endif %}</label>
+            {% if is_edit %}
+            <input type="text" id="client_id" class="form-control mono" value="{{ client.client_id }}" disabled>
+            <small class="text-muted">The identifier cannot be changed.</small>
+            {% else %}
+            <input type="text" id="client_id" name="client_id" class="form-control mono" maxlength="255" pattern="\S+" required>
+            <small class="text-muted">The <code>client_id</code> (or <code>azp</code>) claim of the tokens of the application. Every OAuth client an application sends with must be registered: its web client and its backend client are two clients.</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" class="form-control" maxlength="255" value="{{ client.name or '' if is_edit else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="is_active" value="true" {% if not is_edit or client.is_active %}checked{% endif %}>
+                Active
+            </label>
+            <small class="text-muted">An inactive client is refused by the mailler service, and its queued emails and campaigns are stopped.</small>
+        </div>
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Sender</h3>
+        <p class="text-muted">A client cannot choose an arbitrary sender: it sends with its default identity or one of the others below. It needs a default sender to send without naming one.</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="from_email">Default sender address</label>
+                <input type="email" id="from_email" name="from_email" class="form-control" value="{{ client.from_email or '' if is_edit else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="from_name">Default sender name</label>
+                <input type="text" id="from_name" name="from_name" class="form-control" maxlength="255" value="{{ client.from_name or '' if is_edit else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="reply_to">Reply-to address</label>
+            <input type="email" id="reply_to" name="reply_to" class="form-control" value="{{ client.reply_to or '' if is_edit else '' }}">
+            <small class="text-muted">When set, the emails of the client can only use this reply-to address.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="allowed_senders">Other sender identities</label>
+            <textarea id="allowed_senders" name="allowed_senders" class="form-control mono" rows="3">{% if is_edit %}{% for sender in client.allowed_senders %}{{ sender.email }}{% if sender.name %}, {{ sender.name }}{% endif %}
+{% endfor %}{% endif %}</textarea>
+            <small class="text-muted">One per line: an address, then an optional name after a comma.</small>
+        </div>
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Providers</h3>
+
+        {% set chosen = client.allowed_providers if is_edit else [] %}
+        <div class="form-group">
+            <label>Allowed providers</label>
+            <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                {% for provider in providers %}
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <input type="checkbox" name="allowed_providers" value="{{ provider }}" {% if provider in chosen %}checked{% endif %}>
+                    {{ provider }}
+                </label>
+                {% endfor %}
+                {% for provider in chosen if provider not in providers %}
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <input type="checkbox" name="allowed_providers" value="{{ provider }}" checked>
+                    {{ provider }} <span class="text-muted">(not configured on the service)</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% if not providers and not chosen %}
+            <small class="text-muted">The mailler service reports no configured provider.</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="default_provider">Default provider</label>
+            <select id="default_provider" name="default_provider" class="form-control">
+                <option value="">None</option>
+                {% set current = client.default_provider if is_edit else none %}
+                {% for provider in providers %}
+                <option value="{{ provider }}" {% if provider == current %}selected{% endif %}>{{ provider }}</option>
+                {% endfor %}
+                {% if current and current not in providers %}
+                <option value="{{ current }}" selected>{{ current }} (not configured on the service)</option>
+                {% endif %}
+            </select>
+            <small class="text-muted">Used when a request names none; always allowed. The service only accepts the providers it knows.</small>
+        </div>
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Limits</h3>
+        <p class="text-muted">Optional. Leave a field empty for no limit.</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="rate_limit_per_minute">Emails per minute</label>
+                <input type="number" id="rate_limit_per_minute" name="rate_limit_per_minute" class="form-control" min="1" step="1" value="{{ client.rate_limit_per_minute or '' if is_edit else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="daily_quota">Emails per day (UTC)</label>
+                <input type="number" id="daily_quota" name="daily_quota" class="form-control" min="1" step="1" value="{{ client.daily_quota or '' if is_edit else '' }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Status callback</h3>
+        <p class="text-muted">Optional. The service posts a signed notification to this URL when an email of the client is sent, delivered, bounced or fails.</p>
+
+        <div class="form-group">
+            <label for="callback_url">Callback URL</label>
+            <input type="url" id="callback_url" name="callback_url" class="form-control" value="{{ client.callback_url or '' if is_edit else '' }}">
+            <small class="text-muted">An <code>https</code> URL (the service can be configured to accept <code>http</code>), without credentials.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="callback_secret">Callback secret</label>
+            <input type="password" id="callback_secret" name="callback_secret" class="form-control" minlength="16" maxlength="255" autocomplete="new-password" placeholder="{% if is_edit and client.has_callback_secret %}A secret is set: leave empty to keep it{% endif %}">
+            <small class="text-muted">At least 16 characters, required with a callback URL. It is never shown again.{% if is_edit %} Emptying the callback URL removes the secret.{% endif %}</small>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Register Client{% endif %}</button>
+            <a href="/mailler/clients" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+{% endblock %}

@@ -587,6 +587,29 @@ async def configure_mailler(env: "Env") -> dict:
         "by_provider": {"ses": counters},
     }
     mailler.get_providers.return_value = ["ses", "smtp"]
+    client = {
+        "client_id": "client-001",
+        "name": "First application",
+        "is_active": True,
+        "from_email": "noreply@example.com",
+        "from_name": "Example",
+        "reply_to": None,
+        "allowed_senders": [{"email": "news@example.com", "name": "News"}],
+        "allowed_providers": ["ses"],
+        "default_provider": "ses",
+        "rate_limit_per_minute": 60,
+        "daily_quota": 5000,
+        "callback_url": "https://app.example.com/status",
+        "has_callback_secret": True,
+    }
+    mailler.list_clients.return_value = {
+        "items": [client],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "pages": 1,
+    }
+    mailler.get_client.return_value = client
     email = {
         "id": EMAIL_ID,
         "to_email": "user@example.com",
@@ -811,6 +834,9 @@ PAGES: dict[str, list[Page]] = {
     "mailler": [
         Page("/mailler", "mailler", configure_mailler),
         Page("/mailler/emails", "mailler", configure_mailler),
+        Page("/mailler/clients", "mailler", configure_mailler),
+        Page("/mailler/clients/new", "mailler", configure_mailler),
+        Page("/mailler/clients/client-001/edit", "mailler", configure_mailler),
         Page(f"/mailler/emails/{EMAIL_ID}", "mailler", configure_mailler),
     ],
     "contacts": [

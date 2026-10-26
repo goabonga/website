@@ -16,3 +16,4 @@ feature adds, its settings and how it is tested.
 | --- | --- |
 | [Application foundation](00-foundation.md) | Settings, logging, database session, health check |
 | [OAuth2 authentication](01-oauth2-authentication.md) | Bearer token validation and scope checks |
+| [Data model](02-data-model.md) | Models, status enum, initial alembic migration |

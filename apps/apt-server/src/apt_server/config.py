@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     redis_key_prefix: str = "apt_server"
 
     # APT repository
+    # Filesystem path where dists/ and pool/ live. Gunicorn needs read/write,
+    # nginx only needs read access when serving via X-Accel-Redirect.
+    apt_repo_root: str = "/var/lib/apt-server"
     apt_suites: str = "stable"
     apt_components: str = "main"
     apt_public_components: str = "main"

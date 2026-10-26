@@ -81,3 +81,24 @@ async def auth_client(test_user: User) -> AsyncGenerator[AsyncClient, None]:
             headers={"Authorization": "Bearer header.payload.signature"},
         ) as test_client:
             yield test_client
+
+
+@pytest.fixture
+def fake_db():
+    """An in-memory database session, see ``fake_session``."""
+    from fake_session import FakeSession
+
+    return FakeSession()
+
+
+@pytest.fixture
+def use_fake_db(fake_db):
+    """Route the application's ``get_db`` dependency to ``fake_db``."""
+    from vpn_portal.db.session import get_db
+
+    async def override():
+        yield fake_db
+
+    app.dependency_overrides[get_db] = override
+    yield fake_db
+    app.dependency_overrides.clear()

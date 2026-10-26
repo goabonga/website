@@ -137,3 +137,7 @@
     - python_app__c.type in ['audiosocket', 'fastagi']
     - python_app__c.asterisk.enabled | bool
 
+- name: Configure AWS SES for {{ python_app__unit }}
+  ansible.builtin.include_tasks: ses.yml
+  when: python_app__c.ses_webhook | length > 0
+

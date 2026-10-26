@@ -201,3 +201,7 @@ python_app_component_defaults:
     delay_compress: true
     missing_ok: true
     not_if_empty: true
+  # Create the SNS topics and SES notifications that feed a webhook:
+  # {region, identity, topic_prefix, endpoint, track_deliveries,
+  #  configuration_set, event_types}. The section is ignored when empty.
+  ses_webhook: {}

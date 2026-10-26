@@ -1,0 +1,187 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# AWS SES: SNS topics for bounces, complaints, deliveries and configuration set
+# events, subscribed to the webhook endpoint of the component. The AWS CLI is
+# not run in check mode because creating a topic changes AWS.
+
+- name: Configure SES and SNS for {{ python_app__unit }}
+  when: not ansible_check_mode
+  vars:
+    python_app__ses: "{{ python_app__c.ses_webhook }}"
+    python_app__aws_env: >-
+      {{ {'AWS_DEFAULT_REGION': python_app__c.ses_webhook.region}
+         | combine({'AWS_ACCESS_KEY_ID': website_aws_ses_access_key_id, 'AWS_SECRET_ACCESS_KEY': website_aws_ses_secret_access_key}
+                   if website_aws_ses_access_key_id | length > 0 else {}) }}
+  block:
+    - name: Check the SES webhook settings of {{ python_app__unit }}
+      ansible.builtin.assert:
+        that:
+          - python_app__ses.region is defined
+          - python_app__ses.topic_prefix is defined
+          - python_app__ses.endpoint is defined
+        fail_msg: "ses_webhook of {{ python_app__c.id }} needs region, topic_prefix and endpoint."
+        quiet: true
+
+    - name: Install the AWS CLI
+      ansible.builtin.apt:
+        name: awscli
+        state: present
+        cache_valid_time: 3600
+
+    - name: Prepare the SNS topics
+      ansible.builtin.set_fact:
+        python_app__topics: {}
+
+    - name: Create the SNS topics and subscribe the endpoint
+      ansible.builtin.include_tasks: ses_topic.yml
+      loop: >-
+        {{ ['bounces', 'complaints']
+           + (['deliveries'] if python_app__ses.track_deliveries | default(false) | bool else [])
+           + (['events'] if python_app__ses.configuration_set is defined else []) }}
+      loop_control:
+        loop_var: python_app__topic
+
+    - name: Read the notification settings of the identity
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ses
+          - get-identity-notification-attributes
+          - --identities
+          - "{{ python_app__ses.identity }}"
+          - --region
+          - "{{ python_app__ses.region }}"
+          - --output
+          - json
+      environment: "{{ python_app__aws_env }}"
+      register: python_app__identity
+      changed_when: false
+      when: python_app__ses.identity is defined
+
+    - name: Point the identity notifications to the topics
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ses
+          - set-identity-notification-topic
+          - --identity
+          - "{{ python_app__ses.identity }}"
+          - --notification-type
+          - "{{ item.type }}"
+          - --sns-topic
+          - "{{ python_app__topics[item.topic] }}"
+          - --region
+          - "{{ python_app__ses.region }}"
+      environment: "{{ python_app__aws_env }}"
+      loop:
+        - { type: Bounce, topic: bounces, key: BounceTopic }
+        - { type: Complaint, topic: complaints, key: ComplaintTopic }
+        - { type: Delivery, topic: deliveries, key: DeliveryTopic }
+      loop_control:
+        label: "{{ item.type }}"
+      when:
+        - python_app__ses.identity is defined
+        - item.topic in python_app__topics
+        - (python_app__identity.stdout | from_json).NotificationAttributes[python_app__ses.identity][item.key] | default('') != python_app__topics[item.topic]
+      changed_when: true
+
+    - name: Stop the identity from forwarding feedback by e-mail
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ses
+          - set-identity-feedback-forwarding-enabled
+          - --identity
+          - "{{ python_app__ses.identity }}"
+          - --no-forwarding-enabled
+          - --region
+          - "{{ python_app__ses.region }}"
+      environment: "{{ python_app__aws_env }}"
+      when:
+        - python_app__ses.identity is defined
+        - (python_app__identity.stdout | from_json).NotificationAttributes[python_app__ses.identity].ForwardingEnabled | default(true)
+      changed_when: true
+
+    - name: Configure the configuration set
+      when: python_app__ses.configuration_set is defined
+      vars:
+        python_app__event_types: >-
+          {{ python_app__ses.event_types | default(['SEND', 'REJECT', 'BOUNCE', 'COMPLAINT', 'DELIVERY', 'OPEN', 'CLICK', 'DELIVERY_DELAY', 'SUBSCRIPTION', 'RENDERING_FAILURE']) }}
+        python_app__destination: >-
+          {{ {'Enabled': true, 'MatchingEventTypes': python_app__event_types,
+              'SnsDestination': {'TopicArn': python_app__topics['events']}} | to_json }}
+      block:
+        - name: Look for the configuration set
+          ansible.builtin.command:
+            argv:
+              - aws
+              - sesv2
+              - get-configuration-set
+              - --configuration-set-name
+              - "{{ python_app__ses.configuration_set }}"
+              - --region
+              - "{{ python_app__ses.region }}"
+          environment: "{{ python_app__aws_env }}"
+          register: python_app__cset
+          changed_when: false
+          failed_when: false
+
+        - name: Create the configuration set
+          ansible.builtin.command:
+            argv:
+              - aws
+              - sesv2
+              - create-configuration-set
+              - --configuration-set-name
+              - "{{ python_app__ses.configuration_set }}"
+              - --region
+              - "{{ python_app__ses.region }}"
+          environment: "{{ python_app__aws_env }}"
+          when: python_app__cset.rc != 0
+          changed_when: true
+
+        - name: Read the event destinations
+          ansible.builtin.command:
+            argv:
+              - aws
+              - sesv2
+              - get-configuration-set-event-destinations
+              - --configuration-set-name
+              - "{{ python_app__ses.configuration_set }}"
+              - --region
+              - "{{ python_app__ses.region }}"
+              - --output
+              - json
+          environment: "{{ python_app__aws_env }}"
+          register: python_app__destinations
+          changed_when: false
+          failed_when: false
+
+        - name: Work out the current event destination
+          ansible.builtin.set_fact:
+            python_app__current_destination: >-
+              {{ ((python_app__destinations.stdout | default('{}', true) | from_json).EventDestinations | default([]))
+                 | selectattr('Name', 'equalto', 'sns-webhook') | list | first | default({}) }}
+
+        - name: Create or update the event destination
+          ansible.builtin.command:
+            argv:
+              - aws
+              - sesv2
+              - "{{ 'update' if python_app__current_destination | length > 0 else 'create' }}-configuration-set-event-destination"
+              - --configuration-set-name
+              - "{{ python_app__ses.configuration_set }}"
+              - --event-destination-name
+              - sns-webhook
+              - --event-destination
+              - "{{ python_app__destination }}"
+              - --region
+              - "{{ python_app__ses.region }}"
+          environment: "{{ python_app__aws_env }}"
+          when: >-
+            python_app__current_destination | length == 0
+            or (python_app__current_destination.MatchingEventTypes | default([]) | sort) != (python_app__event_types | sort)
+            or (python_app__current_destination.SnsDestination | default({})).TopicArn | default('') != python_app__topics['events']
+          changed_when: true

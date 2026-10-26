@@ -18,6 +18,7 @@ is tested with pytest and behave.
 | [Memory](06-memory.md) | team memory entries with embeddings |
 | [Skills](07-skills.md) | Agent Skills attached to agents |
 | [Workflows](08-workflows.md) | multi-step workflow definitions |
+| [Tasks](09-tasks.md) | tasks, agent state, execution log and cancellation |
 
 ## Running the tests
 

@@ -63,11 +63,72 @@ website_secrets:
 
 # Clients of the shared services (custom_domain, mailler, billing) are
 # registered after the migrations of each service. See the "Onboarding a SaaS
-# application" page; for example, once mailler is in website_apps_enabled:
+# application" page. For example, to add knowledge, which is a client of the
+# three services: add `knowledge` before `mailler` to website_apps_enabled (its
+# templates are imported with its own Python), register its OAuth client
+# and put its secrets in the vault:
+#
+# website_oauth2_clients:
+#   knowledge:
+#     client_id: "{{ vault_knowledge_oauth2_client_id }}"
+#
+# website_secrets:
+#   knowledge:
+#     OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+#     OAUTH2_CLIENT_SECRET: "{{ vault_knowledge_oauth2_client_secret }}"
+#     # Sign the webhooks of billing and custom_domain; the same values are
+#     # registered in the other services below.
+#     BILLING_WEBHOOK_SECRET: "{{ vault_knowledge_billing_webhook_secret }}"
+#     CUSTOM_DOMAIN_WEBHOOK_SECRET: "{{ vault_knowledge_custom_domain_webhook_secret }}"
 #
 # website_mailler_clients:
-#   - client_id: "{{ vault_my_app_oauth2_client_id }}"
-#     name: My application
-#     from_email: no-reply@my-app.example.com
+#   - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+#     name: Knowledge
+#     from_email: no-reply@knowledge.example.com
 #     allowed_providers: [brevo]
 #     default_provider: brevo
+#
+# website_mailler_template_dirs:
+#   - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+#     app: knowledge
+#     module: knowledge.email_templates
+#
+# website_custom_domain_clients:
+#   - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+#     name: Knowledge
+#     upstream: /run/knowledge/knowledge.sock
+#     cname: apps.example.com
+#     webhook_url: https://knowledge.example.com/webhooks/custom-domain
+#     webhook_secret: "{{ vault_knowledge_custom_domain_webhook_secret }}"
+#
+# website_billing_saas_apps:
+#   - slug: knowledge
+#     name: Knowledge
+#     checkout_urls: [https://knowledge.example.com/]
+#     webhook_url: https://knowledge.example.com/webhooks/billing
+#
+# website_billing_client_bindings:
+#   - saas: knowledge
+#     client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+#
+# Then the settings of knowledge itself. The identifier of the SaaS application
+# comes from `billing-admin saas list` once billing has created it (second run);
+# the webhook secret of the application is set in the internal interface.
+#
+# website_knowledge_billing_app_slug: knowledge
+# website_knowledge_billing_saas_id: "{{ vault_knowledge_billing_saas_id }}"
+# website_knowledge_billing_checkout_success_url: https://knowledge.example.com/checkout/success
+# website_knowledge_billing_checkout_cancel_url: https://knowledge.example.com/checkout/cancel
+# website_knowledge_quota_fallback_limits:
+#   free: {max_collections: 1}
+#   "*": {max_collections: 0}
+# website_knowledge_operator_name: Example Corp
+# website_knowledge_contact_email: contact@example.com
+# website_knowledge_legal_email: legal@example.com
+# website_knowledge_privacy_email: privacy@example.com
+# website_knowledge_support_url: https://example.com/support
+#
+# internal asks billing and mailler for their admin scopes, which follow
+# website_billing_partition_admin_scope and website_mailler_admin_scope. Its
+# OAuth client must hold them (and register it as a mailler client if it uses
+# campaigns); see the python_app page for the other settings.

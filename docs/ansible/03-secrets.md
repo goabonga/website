@@ -113,6 +113,7 @@ auth when the client is registered.
 | `vault_vpn_portal_oauth2_client_id` | `website_oauth2_clients.vpn_portal.client_id` | `vpn_portal` is enabled | Client identifier shown by auth when the client is registered |
 | `vault_webhooks_oauth2_client_id` | `website_oauth2_clients.webhooks.client_id` | `webhooks` is enabled and forwards events to mailler | Client identifier shown by auth when the client is registered |
 | `vault_vpn_portal_openvpn_oauth2_client_id` | `website_oauth2_clients.vpn_portal.openvpn_client_id` | `vpn_portal_openvpn` (OpenVPN hooks of vpn_portal) is enabled | Client identifier shown by auth when the client is registered |
+| `vault_knowledge_oauth2_client_id` | `website_oauth2_clients.knowledge.client_id` | `knowledge` is enabled | Client identifier shown by auth when the client is registered |
 | `vault_backend_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `backend` | `backend` is enabled (example inventory) | Client secret shown by auth when the client is registered |
 | `vault_analytics_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `analytics` | `analytics` is enabled (example inventory) | Client secret shown by auth when the client is registered |
 | `vault_apt_server_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `apt_server` | `apt_server` is enabled | Client secret shown by auth when the client is registered |
@@ -125,6 +126,7 @@ auth when the client is registered.
 | `vault_team_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `team` | Optional: `team` is enabled and calls protected services | Client secret shown by auth when the client is registered |
 | `vault_webhooks_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `webhooks` | Optional: `webhooks` forwards events to mailler | Client secret shown by auth when the client is registered |
 | `vault_vpn_portal_openvpn_oauth2_client_secret` | `OPENVPN_OAUTH2_CLIENT_SECRET` of `vpn_portal_openvpn` | `vpn_portal_openvpn` is enabled | Client secret shown by auth when the client is registered |
+| `vault_knowledge_oauth2_client_secret` | `OAUTH2_CLIENT_SECRET` in `website_secrets` of `knowledge` | `knowledge` is enabled | Client secret shown by auth when the client is registered |
 | `vault_auth_jwks_encryption_key` | `JWKS_ENCRYPTION_KEY` in `website_secrets` of `auth` | `auth` is enabled (example inventory) | `openssl rand -base64 32` (base64 of 32 bytes: AES-256-GCM key). Losing it makes the stored signing keys and MFA secrets unreadable |
 | `vault_smtp_password` | `SMTP_PASSWORD` in `website_secrets` of `auth` (optional) | Optional: mail goes through SMTP (example inventory) | Password of the SMTP account |
 | `vault_auth_mailler_client_secret` | `MAILLER_CLIENT_SECRET` in `website_secrets` of `auth` | `auth` sends its mail through mailler (the example sends it through SMTP instead) | Secret of the auth client registered in mailler |
@@ -144,6 +146,13 @@ auth when the client is registered.
 | `vault_team_anthropic_api_key` | `ANTHROPIC_API_KEY` in `website_secrets` of `team` (optional) | Optional: `team` uses Anthropic models | API key of the Anthropic account |
 | `vault_team_github_token` | `GITHUB_TOKEN` in `website_secrets` of `team` (optional) | Optional: `team` reads GitHub | Token of a GitHub account or app |
 | `vault_vpn_portal_stepca_password` | `STEPCA_PROVISIONER_PASSWORD` in `website_secrets` of `vpn_portal` and `step_ca_vpn_portal_password` | `vpn_portal` is enabled | `openssl rand -base64 32` (same value on both sides) |
+| `vault_knowledge_billing_webhook_secret` | `BILLING_WEBHOOK_SECRET` in `website_secrets` of `knowledge` | `knowledge` is enabled | `openssl rand -hex 32` (at least 32 characters, also set in billing) |
+| `vault_knowledge_custom_domain_webhook_secret` | `CUSTOM_DOMAIN_WEBHOOK_SECRET` in `website_secrets` of `knowledge` and `webhook_secret` of `website_custom_domain_clients` | `knowledge` is enabled | `openssl rand -hex 32` (at least 32 characters, same value in both places) |
+| `vault_knowledge_billing_saas_id` | `website_knowledge_billing_saas_id` | `knowledge` uses billing (known after the first onboarding run) | Identifier returned by `billing-admin saas list` |
+| `vault_knowledge_mailler_client_secret` | `MAILLER_CLIENT_SECRET` in `website_secrets` of `knowledge_worker` (optional) | Optional: knowledge has its own mailler client | Client secret shown by auth when the client is registered |
+| `vault_knowledge_custom_domain_client_secret` | `CUSTOM_DOMAIN_CLIENT_SECRET` in `website_secrets` of `knowledge` (optional) | Optional: knowledge has its own custom_domain client | Client secret shown by auth when the client is registered |
+| `vault_knowledge_billing_client_secret` | `BILLING_CLIENT_SECRET` in `website_secrets` of `knowledge` (optional) | Optional: knowledge has its own billing client | Client secret shown by auth when the client is registered |
+| `vault_knowledge_github_webhook_secret` | `GITHUB_WEBHOOK_SECRET` in `website_secrets` of `knowledge` (optional) | Optional: GitHub webhooks are used | `openssl rand -hex 32` (same value in the GitHub webhook) |
 | `vault_users_deploy_password_hash` | `users_deploy_password_hash` (users role) | Only with `users_deploy_sudo: password` | `mkpasswd --method=sha-512` (a crypt hash, not the password) |
 | `vault_redis_password` | `redis_password` (redis role) and `website_redis_password` | Optional: Redis listens on TCP or is shared with other hosts | `openssl rand -hex 32` |
 | `vault_geoip_account_id` | `geoip_account_id` (geoip role) | The geoip role is enabled | MaxMind account page |
@@ -162,6 +171,10 @@ The roles take their secrets from plain variables that are empty by default
 (`redis_password`, `geoip_license_key`, `step_ca_password`, ...). Set them from
 the vault, as for `website_repo_token` below, for instance
 `redis_password: "{{ vault_redis_password }}"`; no role has a secret built in.
+
+The names used in the other pages with a placeholder for your own application or
+user (`vault_my_app_*`, `vault_alice_password_hash`) are examples, not entries
+of the file: name yours the same way.
 
 ## Other secrets
 

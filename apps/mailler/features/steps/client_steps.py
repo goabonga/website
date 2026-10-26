@@ -55,7 +55,7 @@ def _senders(cell):
 @given("the following clients are registered")
 def step_register_clients(context):
     """Columns: client_id plus any of from_email, from_name, reply_to, allowed_senders,
-    allowed_providers, default_provider, is_active (yes/no)."""
+    allowed_providers, default_provider, is_active (yes/no), rate_limit_per_minute, daily_quota."""
     for row in context.table:
         fields = {}
         for heading in row.headings:
@@ -68,6 +68,8 @@ def step_register_clients(context):
                 fields[heading] = _senders(value)
             elif heading == "is_active":
                 fields[heading] = value.lower() in ("yes", "true")
+            elif heading in ("rate_limit_per_minute", "daily_quota"):
+                fields[heading] = int(value) if value else None
             else:
                 fields[heading] = value or None
         register_client(row["client_id"], replace=True, **fields)

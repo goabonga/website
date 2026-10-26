@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend import __version__
+from backend.auth import introspection_client, jwks_manager, token_exchange_client
 from backend.config import settings
 from backend.logging import setup_logging
 from backend.routes.security_txt import router as security_txt_router
@@ -19,7 +20,28 @@ from backend.routes.security_txt import router as security_txt_router
 async def lifespan(app: FastAPI):
     setup_logging(settings.log_level)
     yield
+    await jwks_manager.close()
+    await introspection_client.close()
+    await token_exchange_client.close()
 
+
+def get_swagger_ui_oauth2_config() -> dict:
+    """Build Swagger UI OAuth2 configuration if OAuth2 is configured."""
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
+swagger_config = get_swagger_ui_oauth2_config()
 
 app = FastAPI(
     title=settings.app_name,
@@ -29,6 +51,7 @@ app = FastAPI(
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
+    **swagger_config,
 )
 
 app.add_middleware(

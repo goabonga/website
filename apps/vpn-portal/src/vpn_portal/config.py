@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     database_max_overflow: int = 10
     database_echo: bool = False
 
+    # Step-CA configuration
+    stepca_url: str = "https://127.0.0.1:8443"
+    stepca_root_ca: str = "/etc/step-ca/certs/root_ca.crt"
+    stepca_provisioner: str = "vpn-portal"
+    stepca_provisioner_password: str = ""
+    stepca_provisioner_password_file: str = "/etc/step-ca/secrets/vpn-portal-password"
+
     # OAuth2 / OIDC configuration
     oauth2_issuer: str = ""  # OIDC issuer URL (e.g., https://auth.example.com)
     oauth2_swagger_client_id: str = ""  # OAuth2 PKCE client ID for Swagger UI
@@ -74,6 +81,10 @@ class Settings(BaseSettings):
 
 # Load settings with credential overrides for secrets
 settings = Settings(
+    stepca_provisioner_password=get_credential(
+        "STEPCA_PROVISIONER_PASSWORD",
+        os.environ.get("STEPCA_PROVISIONER_PASSWORD", ""),
+    ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",
         os.environ.get("OAUTH2_CLIENT_SECRET", ""),

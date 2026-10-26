@@ -58,11 +58,19 @@ app = FastAPI(
     description="""
 Zero-Trust VPN authentication and certificate issuance service.
 
+## Features
+
+- **Root CA distribution**: serve the Step-CA root certificate to clients
+
 ## Authentication
 
 This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
 only `openid`, `profile`, and `email` scopes. The server validates that
 the user has the required `vpn:*` scopes via token exchange.
+
+## Required Scopes
+
+- `vpn:connect` - Connect to VPN and obtain certificates
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,

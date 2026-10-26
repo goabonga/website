@@ -4,6 +4,7 @@
 """Application configuration."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,8 +37,21 @@ class Settings(BaseSettings):
     geoip_enabled: bool = True
     geoip_database_path: str = "/usr/share/GeoIP/GeoLite2-City.mmdb"
 
+    # Tracking configuration
+    session_cookie_name: str = "ua_sid"
+    session_cookie_max_age: int = 86400 * 365  # 1 year
+    session_cookie_secure: bool = True
+    session_cookie_samesite: Literal["lax", "strict", "none"] = "none"
+    session_cookie_domain: str = ""
+
+    # Pixel configuration
+    pixel_cache_control: str = "no-cache, no-store, must-revalidate"
+
     # Data retention (GDPR compliance)
     data_retention_days: int = 395  # ~13 months
+
+    # IP anonymization (GDPR compliance)
+    anonymize_ip: bool = False  # Set to True to mask last octet
 
     # security.txt (RFC 9116)
     security_contact: str = ""

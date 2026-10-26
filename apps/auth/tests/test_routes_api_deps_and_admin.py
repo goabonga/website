@@ -24,6 +24,17 @@ def _admin():
 # ---------------------------------------------------------------------------
 
 
+class TestRootRedirect:
+    @pytest.mark.asyncio
+    async def test_redirects_to_settings(self):
+        from auth.api.routes import root_redirect
+
+        result = await root_redirect()
+
+        assert result.status_code == 302
+        assert result.headers["location"] == "/auth/settings"
+
+
 # ---------------------------------------------------------------------------
 # auth.api.routes.api.deps.get_current_user_bearer
 # ---------------------------------------------------------------------------

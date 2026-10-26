@@ -26,6 +26,7 @@ applications. It is a member of the `website` uv workspace.
 - Transactional emails (MJML templates) sent through the mailler service.
 - MCP executable releases imported from GitHub and served through a public
   download API.
+- Celery worker and beat for email delivery and scheduled workspace deletion.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -94,6 +95,13 @@ Start PostgreSQL (pgvector) and apply the migrations:
 ```bash
 docker compose -f apps/knowledge/compose.yml up -d
 uv run --package knowledge alembic -c apps/knowledge/alembic.ini upgrade head
+```
+
+Run a Celery worker and the beat scheduler:
+
+```bash
+uv run --package knowledge celery -A knowledge.celery:celery_app worker -Q knowledge
+uv run --package knowledge celery -A knowledge.celery:celery_app beat
 ```
 
 Settings are read from environment variables or a `.env` file in the working

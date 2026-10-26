@@ -35,6 +35,8 @@ how it is tested with pytest and behave.
     mailler service.
 13. [MCP releases](11-releases.md): GitHub release webhook and public
     download API.
+13. [Background tasks](12-background-tasks.md): Celery worker, email tasks and
+    scheduled workspace deletion.
 
 ## Running the tests
 

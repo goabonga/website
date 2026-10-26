@@ -17,7 +17,9 @@ behind the `vpn:admin` scope.
   `admin_revoked`, through the same service as the user-initiated
   disconnection: the Step-CA revocation is attempted, a Step-CA failure is
   logged, and the record is revoked in the database in any case. A revoked
-  certificate is refused by `/api/v1/internal/validate` from then on.
+  certificate is refused by `/api/v1/internal/validate` from then on, and the
+  renegotiation hook of the [hook scripts](08-openvpn-hook-scripts.md) cuts the
+  client off at its next TLS renegotiation.
 
 ## Endpoints
 

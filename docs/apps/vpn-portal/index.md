@@ -32,6 +32,7 @@ each feature builds on the previous ones.
 5. [Certificate issuance and lifecycle](05-certificate-issuance.md): short-lived certificates, OpenVPN profile, RBAC routes, revocation and status.
 6. [Internal API and connection tracking](06-internal-api.md): certificate validation and connection records for the OpenVPN server.
 7. [Admin API](07-admin-api.md): list active sessions and revoke certificates.
+8. [OpenVPN hook scripts](08-openvpn-hook-scripts.md): the script that connects the OpenVPN server to the internal API.
 
 ## Testing
 

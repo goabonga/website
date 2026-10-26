@@ -102,3 +102,31 @@ class TestConfigurableApp:
 
         names = [m.cls.__name__ for m in app.user_middleware]
         assert "CORSMiddleware" not in names
+
+
+class TestLifespan:
+    """Tests for application lifespan context manager."""
+
+    async def test_lifespan_calls_setup_logging_and_logs(self):
+        from webhooks.main import app, lifespan
+
+        with (
+            patch("webhooks.main.setup_logging") as mock_setup,
+            patch("webhooks.main.logger") as mock_logger,
+        ):
+            async with lifespan(app):
+                mock_setup.assert_called_once()
+                mock_logger.info.assert_any_call("Webhooks service starting")
+            mock_logger.info.assert_any_call("Webhooks service shutting down")
+
+    async def test_lifespan_uses_configured_log_level(self):
+        from webhooks.main import app, lifespan
+
+        with (
+            patch("webhooks.main.setup_logging") as mock_setup,
+            patch("webhooks.main.settings") as mock_settings,
+        ):
+            mock_settings.log_level = "DEBUG"
+            async with lifespan(app):
+                pass
+        mock_setup.assert_called_once_with(level="DEBUG")

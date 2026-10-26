@@ -15,3 +15,5 @@ documents one feature as it exists in the code.
    application, CORS and health endpoint.
 2. [Dual-stream logging](02-logging.md) - informational logs on stdout,
    problems on stderr, request logging with context.
+3. [JWT authentication](03-jwt-auth.md) - bearer token validation against
+   the issuer JWKS and scope checks.

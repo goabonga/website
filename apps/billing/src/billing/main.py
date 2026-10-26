@@ -68,6 +68,7 @@ app = FastAPI(
     title=settings.app_name,
     description="""
 Multi-SaaS Stripe Billing Platform.
+- **Stripe integration**: Products, prices, customers, subscriptions
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication

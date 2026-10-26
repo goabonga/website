@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/10"
     redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+    default_recurring_interval: str = "month"  # Interval of a recurring price that gives none
+
     # OAuth2/OIDC (via auth service)
     oauth2_issuer: str = ""  # e.g., https://auth.example.invalid
     oauth2_trusted_issuers: str = ""  # Comma-separated additional trusted issuers
@@ -86,6 +92,14 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings(
+        stripe_secret_key=get_credential(
+            "STRIPE_SECRET_KEY",
+            os.environ.get("STRIPE_SECRET_KEY", ""),
+        ),
+        stripe_webhook_secret=get_credential(
+            "STRIPE_WEBHOOK_SECRET",
+            os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
+        ),
         oauth2_client_secret=get_credential(
             "OAUTH2_CLIENT_SECRET",
             os.environ.get("OAUTH2_CLIENT_SECRET", ""),

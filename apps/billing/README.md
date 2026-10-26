@@ -13,6 +13,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Health endpoint, environment-driven settings and dual-stream logging
 - OAuth2 / OIDC authentication with scope checks (`billing:*`)
 - PostgreSQL data model with Alembic migrations
+- Stripe service wrapper enforcing the `saas_id` metadata
 
 ## Routes and scopes
 

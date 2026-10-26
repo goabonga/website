@@ -18,8 +18,12 @@ package = false
 [tool.uv.workspace]
 members = ["apps/*", "libs/*"]
 
+[tool.uv.sources]
+e2e-support = { workspace = true }
+
 [dependency-groups]
 dev = [
+    "e2e-support",
     "playwright>=1.49",
     "ruff>=0.13",
     "mypy>=1.8",

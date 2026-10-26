@@ -1,0 +1,142 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Edit Template - {{ template_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 1000px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">Edit Template</h1>
+            <p style="color: var(--text-muted-color); margin: 0.25rem 0 0 0;">
+                <span style="font-family: monospace;">{{ template_name }}</span>
+            </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            {% if template %}
+            <span style="background: rgba(0, 255, 0, 0.15); color: var(--success-color); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500;">Custom</span>
+            {% else %}
+            <span style="background: var(--border-color); color: var(--text-muted-color); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500;">Default</span>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates" class="btn btn-secondary">
+                &larr; Back
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+</div>
+
+<form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates/{{ template_name }}/edit">
+    <div class="settings-card" style="max-width: 1000px; margin-top: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div class="section-title" style="margin-bottom: 0;">Template Content</div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="showDefaultTemplate()">View Default</button>
+                <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="resetToDefault()">Reset to Default</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Description (optional)</label>
+            <input type="text" name="description" value="{{ template.description if template else '' }}" placeholder="Brief description of customizations">
+        </div>
+
+        <div class="form-group">
+            {% if template_name.endswith('.mjml') %}
+            <label>MJML Email Template</label>
+            <textarea name="content" id="template-content" rows="25"
+                      style="font-family: monospace; font-size: 0.85rem; line-height: 1.5; resize: vertical;"
+                      placeholder="<mjml>
+  <mj-body>
+    ...
+  </mj-body>
+</mjml>">{{ template.content if template else default_content }}</textarea>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Write valid MJML syntax. Use <code style="font-size: 0.8rem;">%variable%</code> placeholders for dynamic content (e.g. <code style="font-size: 0.8rem;">%display_name%</code>, <code style="font-size: 0.8rem;">%reset_url%</code>).
+            </p>
+            {% else %}
+            <label>Jinja2 Template Content</label>
+            <textarea name="content" id="template-content" rows="25"
+                      style="font-family: monospace; font-size: 0.85rem; line-height: 1.5; resize: vertical;"
+                      placeholder="{% raw %}{% extends 'base.html' %}
+
+{% block content %}
+...
+{% endblock %}{% endraw %}">{{ template.content if template else default_content }}</textarea>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Write valid Jinja2 template syntax. The template will be validated before saving.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="is_active" value="true" {% if not template or template.is_active %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Template is active</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                When disabled, the default template will be used instead.
+            </p>
+        </div>
+    </div>
+
+    <div class="settings-card" style="max-width: 1000px; margin-top: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Template</button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/templates" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+
+<!-- Default Template Modal -->
+<div id="default-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 1000; padding: 2rem; overflow: auto;">
+    <div style="max-width: 1000px; margin: 0 auto; background: var(--surface-color); border-radius: 8px; padding: 1.5rem; border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0; color: var(--text-color);">Default Template: {{ template_name }}</h3>
+            <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="hideDefaultTemplate()">Close</button>
+        </div>
+        <pre style="background: var(--background-color); padding: 1rem; border-radius: 8px; overflow: auto; max-height: 70vh; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted-color); border: 1px solid var(--border-color);"><code id="default-content-display"></code></pre>
+    </div>
+</div>
+
+<script>
+var defaultContent = {{ default_content | tojson }};
+
+function showDefaultTemplate() {
+    document.getElementById('default-content-display').textContent = defaultContent;
+    document.getElementById('default-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function hideDefaultTemplate() {
+    document.getElementById('default-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function resetToDefault() {
+    if (confirm('Reset to default template content? Your changes will be lost.')) {
+        document.getElementById('template-content').value = defaultContent;
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideDefaultTemplate();
+    }
+});
+
+// Close modal on background click
+document.getElementById('default-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideDefaultTemplate();
+    }
+});
+</script>
+{% endblock %}

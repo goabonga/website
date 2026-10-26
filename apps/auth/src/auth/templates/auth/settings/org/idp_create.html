@@ -1,0 +1,215 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Add Identity Provider - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 700px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1>Add Identity Provider</h1>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+            &larr; Back
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <p style="color: var(--text-muted-color); margin-bottom: 1.5rem;">
+        Adding an IdP to <strong>{{ tenant.display_name }}</strong> will allow users to authenticate via this provider.
+    </p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/create">
+        <div class="form-group">
+            <label for="name">Name <span style="color: var(--error-color);">*</span></label>
+            <input type="text" id="name" name="name" required placeholder="Company SSO">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Display name for this identity provider.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="provider_type">Provider Type <span style="color: var(--error-color);">*</span></label>
+            <select id="provider_type" name="provider_type" required onchange="updateProviderFields()">
+                {% for idp_type in idp_types %}
+                <option value="{{ idp_type.value }}">{{ idp_type.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="client_id">Client ID <span style="color: var(--error-color);">*</span></label>
+            <input type="text" id="client_id" name="client_id" required placeholder="your-client-id">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                OAuth2/OIDC client ID from the identity provider.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="client_secret">Client Secret</label>
+            <input type="password" id="client_secret" name="client_secret" placeholder="your-client-secret">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                OAuth2/OIDC client secret. Required for confidential clients.
+            </p>
+        </div>
+
+        <div class="form-group" id="discovery_url_group">
+            <label for="discovery_url">Discovery URL (optional)</label>
+            <input type="url" id="discovery_url" name="discovery_url" placeholder="https://idp.example.com/.well-known/openid-configuration">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                OIDC discovery URL. If provided, endpoints will be auto-discovered.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="scopes">Scopes</label>
+            <input type="text" id="scopes" name="scopes" value="openid profile email">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Space-separated list of scopes to request from the IdP.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">Display Settings</div>
+
+        <div class="form-group">
+            <label for="button_text">Button Text (optional)</label>
+            <input type="text" id="button_text" name="button_text" placeholder="Sign in with Company SSO">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Custom text for the login button. Leave empty to use provider name.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="icon_url">Icon URL (optional)</label>
+            <input type="url" id="icon_url" name="icon_url" placeholder="https://example.com/icon.png">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                URL to an icon image (recommended: 32x32 or 64x64).
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">Behavior Settings</div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="is_active" value="true" checked style="width: auto;">
+                <span style="color: var(--text-color);">Active</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Inactive IdPs won't appear on the login page.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="is_default" value="true" style="width: auto;">
+                <span style="color: var(--text-color);">Default Provider</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Automatically redirect to this IdP if only one is configured.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="auto_provision" value="true" checked style="width: auto;">
+                <span style="color: var(--text-color);">Auto-Provision Users (JIT)</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Automatically create user accounts on first login.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="allow_linking" value="true" checked style="width: auto;">
+                <span style="color: var(--text-color);">Allow Account Linking</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Allow existing users to link their accounts with this IdP.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Create Identity Provider</button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="settings-card" style="max-width: 700px; margin-top: 1.5rem;">
+    <div class="section-title">Provider-Specific Setup</div>
+
+    <div id="setup-oidc">
+        <h3 style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.5rem;">Generic OIDC (Keycloak, Auth0, Okta)</h3>
+        <ol style="color: var(--text-muted-color); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9rem;">
+            <li>Create an application in your OIDC provider</li>
+            <li>Set the redirect URI to: <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">https://auth.example.com/federation/callback</code></li>
+            <li>Copy the Client ID and Client Secret</li>
+            <li>Enter the discovery URL (usually ends with <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">/.well-known/openid-configuration</code>)</li>
+        </ol>
+    </div>
+
+    <div id="setup-google" style="display: none; margin-top: 1rem;">
+        <h3 style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.5rem;">Google</h3>
+        <ol style="color: var(--text-muted-color); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9rem;">
+            <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--primary-color);">Google Cloud Console</a></li>
+            <li>Create OAuth 2.0 credentials</li>
+            <li>Add authorized redirect URI: <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">https://auth.example.com/federation/callback</code></li>
+            <li>Copy Client ID and Client Secret</li>
+        </ol>
+    </div>
+
+    <div id="setup-github" style="display: none; margin-top: 1rem;">
+        <h3 style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.5rem;">GitHub</h3>
+        <ol style="color: var(--text-muted-color); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9rem;">
+            <li>Go to <a href="https://github.com/settings/developers" target="_blank" style="color: var(--primary-color);">GitHub Developer Settings</a></li>
+            <li>Create a new OAuth App</li>
+            <li>Set the callback URL to: <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">https://auth.example.com/federation/callback</code></li>
+            <li>Copy Client ID and generate a Client Secret</li>
+        </ol>
+    </div>
+
+    <div id="setup-microsoft" style="display: none; margin-top: 1rem;">
+        <h3 style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.5rem;">Microsoft / Azure AD</h3>
+        <ol style="color: var(--text-muted-color); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9rem;">
+            <li>Go to <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" style="color: var(--primary-color);">Azure App Registrations</a></li>
+            <li>Register a new application</li>
+            <li>Add redirect URI: <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">https://auth.example.com/federation/callback</code></li>
+            <li>Create a client secret under "Certificates & secrets"</li>
+            <li>Use discovery URL: <code style="background: var(--background-color); padding: 0.1rem 0.4rem; border-radius: 3px;">https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration</code></li>
+        </ol>
+    </div>
+</div>
+
+<script>
+function updateProviderFields() {
+    const type = document.getElementById('provider_type').value;
+    const discoveryGroup = document.getElementById('discovery_url_group');
+
+    // Show/hide setup instructions
+    document.querySelectorAll('[id^="setup-"]').forEach(el => el.style.display = 'none');
+    const setupEl = document.getElementById('setup-' + type);
+    if (setupEl) setupEl.style.display = 'block';
+
+    // Update default scopes based on provider
+    const scopesInput = document.getElementById('scopes');
+    if (type === 'github') {
+        scopesInput.value = 'read:user user:email';
+    } else {
+        scopesInput.value = 'openid profile email';
+    }
+
+    // Show discovery URL for OIDC/Microsoft
+    discoveryGroup.style.display = (type === 'oidc' || type === 'microsoft') ? 'block' : 'none';
+}
+
+// Initialize on page load
+updateProviderFields();
+</script>
+{% endblock %}

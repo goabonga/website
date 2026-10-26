@@ -1,0 +1,182 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Edit IdP {{ idp.name }} - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 700px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1>Edit Identity Provider</h1>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+            &larr; Back
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <p style="color: var(--text-muted-color); margin-bottom: 1.5rem;">
+        Editing IdP <strong>{{ idp.name }}</strong> for <strong>{{ tenant.display_name }}</strong>.
+    </p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/idp/{{ idp.id }}/edit">
+        <div class="form-group">
+            <label for="name">Name <span style="color: var(--error-color);">*</span></label>
+            <input type="text" id="name" name="name" required value="{{ idp.name }}">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Display name for this identity provider.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label>Provider Type</label>
+            <input type="text" value="{{ idp.provider_type }}" disabled
+                   style="font-family: monospace; background: var(--background-color);">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Provider type cannot be changed after creation.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="client_id">Client ID <span style="color: var(--error-color);">*</span></label>
+            <input type="text" id="client_id" name="client_id" required value="{{ idp.client_id }}">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                OAuth2/OIDC client ID from the identity provider.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="client_secret">Client Secret</label>
+            <input type="password" id="client_secret" name="client_secret"
+                   placeholder="{% if idp.has_secret %}Leave blank to keep current secret{% else %}Enter client secret{% endif %}">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                {% if idp.has_secret %}
+                <span style="background: rgba(0, 255, 0, 0.15); color: var(--success-color); padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.7rem;">Secret configured</span>
+                Leave blank to keep the current secret, or enter a new value to replace it.
+                {% else %}
+                <span style="background: rgba(255, 152, 0, 0.15); color: #ff9800; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.7rem;">No secret</span>
+                Enter a client secret if required by this provider.
+                {% endif %}
+            </p>
+        </div>
+
+        {% if idp.provider_type in ['oidc', 'microsoft'] %}
+        <div class="form-group">
+            <label for="discovery_url">Discovery URL</label>
+            <input type="url" id="discovery_url" name="discovery_url" value="{{ idp.discovery_url or '' }}"
+                   placeholder="https://idp.example.com/.well-known/openid-configuration">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                OIDC discovery URL. If provided, endpoints will be auto-discovered.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="scopes">Scopes</label>
+            <input type="text" id="scopes" name="scopes" value="{{ idp.scopes|join(' ') }}">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Space-separated list of scopes to request from the IdP.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">Display Settings</div>
+
+        <div class="form-group">
+            <label for="button_text">Button Text (optional)</label>
+            <input type="text" id="button_text" name="button_text" value="{{ idp.button_text or '' }}"
+                   placeholder="Sign in with Company SSO">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Custom text for the login button. Leave empty to use provider name.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="icon_url">Icon URL (optional)</label>
+            <input type="url" id="icon_url" name="icon_url" value="{{ idp.icon_url or '' }}"
+                   placeholder="https://example.com/icon.png">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                URL to an icon image (recommended: 32x32 or 64x64).
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">Behavior Settings</div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="is_active" value="true" {% if idp.is_active %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Active</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Inactive IdPs won't appear on the login page.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="is_default" value="true" {% if idp.is_default %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Default Provider</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Automatically redirect to this IdP if only one is configured.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="auto_provision" value="true" {% if idp.auto_provision %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Auto-Provision Users (JIT)</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Automatically create user accounts on first login.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="allow_linking" value="true" {% if idp.allow_linking %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Allow Account Linking</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Allow existing users to link their accounts with this IdP.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="settings-card" style="max-width: 700px; margin-top: 1.5rem;">
+    <div class="section-title">Statistics</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="background: var(--background-color); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 2rem; color: var(--primary-color);">{{ idp.federated_count }}</div>
+            <div style="color: var(--text-muted-color); font-size: 0.85rem;">Linked Users</div>
+        </div>
+        <div style="background: var(--background-color); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 2rem; color: {% if idp.is_active %}var(--success-color){% else %}var(--error-color){% endif %};">
+                {% if idp.is_active %}&#10003;{% else %}&#10005;{% endif %}
+            </div>
+            <div style="color: var(--text-muted-color); font-size: 0.85rem;">{% if idp.is_active %}Active{% else %}Disabled{% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<div class="settings-card" style="max-width: 700px; margin-top: 1.5rem;">
+    <div class="section-title">Redirect URI</div>
+    <p style="color: var(--text-muted-color); margin-bottom: 0.5rem; font-size: 0.9rem;">
+        Configure this URI in your identity provider settings:
+    </p>
+    <code style="display: block; background: var(--background-color); padding: 1rem; border-radius: 8px; word-break: break-all; font-size: 0.9rem; border: 1px solid var(--border-color);">
+        https://auth.example.com/federation/callback
+    </code>
+</div>
+{% endblock %}

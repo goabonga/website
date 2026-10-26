@@ -1,0 +1,92 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Email Addresses{% endblock %}
+
+{% block content %}
+<div class="settings-card">
+    <h1>Email Addresses</h1>
+    <p class="section-description">Manage your email addresses. Your primary email is used for login and notifications.</p>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <div class="section-title">Your email addresses</div>
+
+    <div class="email-list">
+        {% for email in emails %}
+        <div class="email-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--background-color); border: 1px solid {% if email.is_primary %}var(--primary-color){% else %}var(--border-color){% endif %}; border-radius: 8px; margin-bottom: 0.75rem;">
+            <div>
+                <div style="font-weight: 500;">
+                    {{ email.email }}
+                    {% if email.is_primary %}
+                    <span class="status-badge status-enabled" style="margin-left: 0.5rem; font-size: 0.75rem;">Primary</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    {% if email.is_verified %}
+                    <span style="color: var(--success-color);">Verified</span>
+                    {% else %}
+                    <span style="color: var(--warning-color);">Not verified</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                {% if not email.is_verified %}
+                {% if email.has_valid_code %}
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/emails/{{ email.id }}/verify" style="margin: 0; display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" name="code" required maxlength="6" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" style="width: 80px; padding: 0.5rem; font-size: 0.85rem; text-align: center; letter-spacing: 2px;">
+                    <button type="submit" class="btn btn-success" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+                        Verify
+                    </button>
+                </form>
+                {% endif %}
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/emails/{{ email.id }}/resend-verification" style="margin: 0;">
+                    <button type="submit" class="btn btn-secondary" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;" title="{% if email.has_valid_code %}Resend verification code{% else %}Send verification code{% endif %}">
+                        {% if email.has_valid_code %}Resend{% else %}Send code{% endif %}
+                    </button>
+                </form>
+                {% elif not email.is_primary %}
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/emails/{{ email.id }}/set-primary" style="margin: 0;">
+                    <button type="submit" class="btn btn-success" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+                        Set as primary
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if not email.is_primary %}
+                <form method="post" action="{{ tenant_prefix }}/auth/settings/emails/{{ email.id }}/remove" style="margin: 0;" onsubmit="return confirm('Remove this email address?');">
+                    <button type="submit" class="btn btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+                        Remove
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Add new email</div>
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/emails/add" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" required placeholder="you@example.com">
+        </div>
+        <button type="submit" style="margin-bottom: 0;">Add email</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="info">
+        <strong>Note:</strong> Only verified emails can be set as primary. A verification code will be sent to any new email you add.
+    </div>
+</div>
+{% endblock %}

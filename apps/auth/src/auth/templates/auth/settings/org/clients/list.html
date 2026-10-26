@@ -1,0 +1,95 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}OAuth2 Clients - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h1 style="margin: 0;">OAuth2 Clients</h1>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">{{ tenant.display_name }}</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if can['clients:write'] %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/create" class="btn">+ Create Client</a>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Back</a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    {% if new_secret %}
+    <div class="warning" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--warning-color); border-radius: 8px;">
+        <strong>New Client Secret (copy now, won't be shown again):</strong><br>
+        <code style="background: var(--surface-color); padding: 0.25rem 0.5rem; border-radius: 4px; user-select: all; word-break: break-all;">{{ new_secret }}</code>
+    </div>
+    {% endif %}
+
+    {% if clients %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th style="text-align: left; padding: 0.75rem;">Name</th>
+                    <th style="text-align: left; padding: 0.75rem;">Client ID</th>
+                    <th style="text-align: left; padding: 0.75rem;">Type</th>
+                    <th style="text-align: left; padding: 0.75rem;">Status</th>
+                    <th style="text-align: left; padding: 0.75rem;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.75rem;">
+                        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}" style="color: var(--primary-color); text-decoration: none;">
+                            {{ client.name }}
+                        </a>
+                    </td>
+                    <td style="padding: 0.75rem; font-family: monospace; font-size: 0.85rem;">{{ client.client_id[:20] }}...</td>
+                    <td style="padding: 0.75rem;">
+                        {% if client.is_confidential %}
+                        <span class="badge badge-info">Confidential</span>
+                        {% else %}
+                        <span class="badge badge-warning">Public</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem;">
+                        {% if client.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-danger">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem;">
+                        <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}" class="btn btn-secondary btn-sm">View</a>
+                            {% if can['clients:write'] %}
+                            {% if client.is_active %}
+                            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/disable" style="display: inline;">
+                                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Disable this client?')">Disable</button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/enable" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted" style="margin-top: 1rem;">No OAuth2 clients configured for this organization.</p>
+    {% endif %}
+</div>
+{% endblock %}

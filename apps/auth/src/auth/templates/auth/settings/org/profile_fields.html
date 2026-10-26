@@ -1,0 +1,113 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Profile Fields - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h1 style="margin: 0;">Profile Fields</h1>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">{{ tenant.display_name }}</p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Back</a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        Configure which groups and fields are visible on the profile settings page.
+        Unchecked items will be hidden.
+    </p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/profile-fields">
+        <fieldset{% if not can['settings:write'] %} disabled{% endif %} style="border: 0; margin: 0; padding: 0; min-width: 0;">
+        <!-- Avatar & Identity -->
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Profile Sections</h3>
+
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.75rem;">
+                <input type="checkbox" name="avatar" value="true" {{ 'checked' if fields.get('avatar', true) }}>
+                <div><strong>Avatar Upload</strong><div class="text-muted" style="font-size: 0.8rem;">Profile picture upload and preview</div></div>
+            </label>
+
+            <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.75rem;">
+                <input type="checkbox" name="identity" value="true" {{ 'checked' if fields.get('identity', true) }}>
+                <div><strong>Identity section</strong><div class="text-muted" style="font-size: 0.8rem;">Name fields, nickname, username</div></div>
+            </label>
+
+            <div style="margin-left: 2rem; display: grid; gap: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="nickname" value="true" {{ 'checked' if fields.get('nickname', true) }}><strong>Display name</strong></label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="preferred_username" value="true" {{ 'checked' if fields.get('preferred_username', true) }}><strong>Preferred username</strong></label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="given_name" value="true" {{ 'checked' if fields.get('given_name', true) }}><strong>First name</strong></label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="middle_name" value="true" {{ 'checked' if fields.get('middle_name', true) }}><strong>Middle name</strong></label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="family_name" value="true" {{ 'checked' if fields.get('family_name', true) }}><strong>Last name</strong></label>
+            </div>
+        </div>
+
+        <!-- Optional Sections -->
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Optional Sections</h3>
+
+            <div style="display: grid; gap: 1.5rem;">
+                <!-- Personal Info -->
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.5rem;">
+                        <input type="checkbox" name="personal_info" value="true" {{ 'checked' if fields.get('personal_info', true) }}>
+                        <div><strong>Personal Information</strong><div class="text-muted" style="font-size: 0.8rem;">Gender, birthdate, locale, timezone</div></div>
+                    </label>
+                    <div style="margin-left: 2rem; display: grid; gap: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="gender" value="true" {{ 'checked' if fields.get('gender', true) }}><strong>Gender</strong></label>
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="birthdate" value="true" {{ 'checked' if fields.get('birthdate', true) }}><strong>Birthdate</strong></label>
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="locale" value="true" {{ 'checked' if fields.get('locale', true) }}><strong>Locale</strong></label>
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="zoneinfo" value="true" {{ 'checked' if fields.get('zoneinfo', true) }}><strong>Timezone</strong></label>
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer; margin-bottom: 0.5rem;">
+                        <input type="checkbox" name="contact" value="true" {{ 'checked' if fields.get('contact', true) }}>
+                        <div><strong>Contact</strong><div class="text-muted" style="font-size: 0.8rem;">Phone, website, profile URL</div></div>
+                    </label>
+                    <div style="margin-left: 2rem; display: grid; gap: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="phone_number" value="true" {{ 'checked' if fields.get('phone_number', true) }}><strong>Phone number</strong></label>
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="website" value="true" {{ 'checked' if fields.get('website', true) }}><strong>Website</strong></label>
+                        <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; cursor: pointer;"><input type="checkbox" name="profile_url" value="true" {{ 'checked' if fields.get('profile_url', true) }}><strong>Profile URL</strong></label>
+                    </div>
+                </div>
+
+                <!-- Standalone sections -->
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer;">
+                    <input type="checkbox" name="picture_url" value="true" {{ 'checked' if fields.get('picture_url', true) }}>
+                    <div><strong>Picture URL</strong><div class="text-muted" style="font-size: 0.8rem;">External picture URL field</div></div>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer;">
+                    <input type="checkbox" name="address" value="true" {{ 'checked' if fields.get('address', true) }}>
+                    <div><strong>Address</strong><div class="text-muted" style="font-size: 0.8rem;">Street, city, region, postal code, country</div></div>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; background: var(--background-color); cursor: pointer;">
+                    <input type="checkbox" name="roles_permissions" value="true" {{ 'checked' if fields.get('roles_permissions', true) }}>
+                    <div><strong>Roles & Permissions</strong><div class="text-muted" style="font-size: 0.8rem;">Show user's roles and scopes</div></div>
+                </label>
+            </div>
+        </div>
+
+        </fieldset>
+
+        <div style="display: flex; gap: 0.75rem;">
+            {% if can['settings:write'] %}
+            <button type="submit">Save Configuration</button>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">{% if can['settings:write'] %}Cancel{% else %}Back{% endif %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

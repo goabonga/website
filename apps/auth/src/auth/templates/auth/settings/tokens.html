@@ -1,0 +1,561 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Personal Access Tokens{% endblock %}
+
+{% block head %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .modal form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+    .modal-header {
+        padding: 2rem 2rem 1rem 2rem;
+        flex-shrink: 0;
+    }
+    .modal-header h2 {
+        margin: 0;
+        color: var(--text-color);
+    }
+    .modal-body {
+        padding: 0 2rem;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+    }
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1.5rem 2rem 2rem 2rem;
+        flex-shrink: 0;
+        border-top: 1px solid var(--border-color, #0f3460);
+    }
+    .scope-group {
+        margin-bottom: 1rem;
+    }
+    .scope-group-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+        text-transform: capitalize;
+    }
+    .scope-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        background: var(--background-color);
+        border-radius: 6px;
+    }
+    .scope-item input[type="checkbox"] {
+        margin-top: 0.25rem;
+    }
+    .scope-item label {
+        flex: 1;
+        margin: 0;
+        cursor: pointer;
+    }
+    .scope-item .scope-name {
+        display: block;
+        font-family: monospace;
+        font-size: 0.9rem;
+        color: var(--primary-color);
+    }
+    .scope-item .scope-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted-color);
+    }
+    .token-display {
+        background: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 1rem;
+        font-family: monospace;
+        word-break: break-all;
+        margin: 1rem 0;
+    }
+    .token-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--background-color);
+    }
+    .token-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+    .token-card-title {
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    .token-card-suffix {
+        font-family: monospace;
+        color: var(--text-muted-color);
+        font-size: 0.85rem;
+    }
+    .token-card-meta {
+        font-size: 0.85rem;
+        color: var(--text-muted-color);
+    }
+    .token-card-scopes {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .token-card-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <h1>Personal Access Tokens</h1>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <p class="section-description">
+        Personal access tokens (PATs) allow you to authenticate with the API without using your password.
+        Tokens are like passwords - keep them secret, and never share them.
+    </p>
+
+    <button type="button" class="btn" onclick="openCreateModal()">
+        Create new token
+    </button>
+
+    <div class="divider"></div>
+
+    {% if tokens %}
+    <div id="tokens-list">
+        {% for token in tokens %}
+        <div class="token-card" id="token-{{ token.id }}">
+            <div class="token-card-header">
+                <div>
+                    <span class="token-card-title">{{ token.name }}</span>
+                    <span class="token-card-suffix">****{{ token.token_suffix }}</span>
+                    {% if token.is_expired %}
+                    <span class="badge badge-danger" style="margin-left: 0.5rem;">Expired</span>
+                    {% elif token.is_revoked %}
+                    <span class="badge badge-danger" style="margin-left: 0.5rem;">Revoked</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if token.description %}
+            <div class="token-card-meta">{{ token.description }}</div>
+            {% endif %}
+            <div class="token-card-meta">
+                Created: {{ token.created_at.strftime('%Y-%m-%d') if token.created_at else 'Unknown' }}
+                {% if token.expires_at %}
+                | Expires: {{ token.expires_at.strftime('%Y-%m-%d') }}
+                {% else %}
+                | No expiration
+                {% endif %}
+                {% if token.last_used_at %}
+                | Last used: {{ token.last_used_at.strftime('%Y-%m-%d %H:%M') }} ({{ token.use_count }} times)
+                {% else %}
+                | Never used
+                {% endif %}
+            </div>
+            <div class="token-card-scopes">
+                {% for scope in token.scopes[:5] %}
+                <span class="badge badge-secondary">{{ scope }}</span>
+                {% endfor %}
+                {% if token.scopes|length > 5 %}
+                <span class="badge badge-info">+{{ token.scopes|length - 5 }} more</span>
+                {% endif %}
+            </div>
+            {% if not token.is_revoked %}
+            <div class="token-card-actions">
+                <button type="button" class="btn btn-sm btn-secondary"
+                        data-token-id="{{ token.id }}"
+                        data-token-name="{{ token.name }}"
+                        data-token-scopes='{{ token.scopes | tojson }}'
+                        onclick="openEditModal(this.dataset.tokenId, this.dataset.tokenName, JSON.parse(this.dataset.tokenScopes))">
+                    Edit scopes
+                </button>
+                <button type="button" class="btn btn-sm btn-warning" onclick="regenerateToken('{{ token.id }}', '{{ token.name }}')">
+                    Regenerate
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" onclick="revokeToken('{{ token.id }}', '{{ token.name }}')">
+                    Revoke
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted" style="margin-top: 1rem;">
+        You don't have any personal access tokens yet.
+    </p>
+    {% endif %}
+</div>
+
+<!-- Create Token Modal -->
+<div class="modal-overlay" id="create-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Create a new personal access token</h2>
+        </div>
+        <form id="create-token-form">
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="token-name">Token name *</label>
+                <input type="text" id="token-name" name="name" required maxlength="255" placeholder="e.g., CI/CD Pipeline">
+            </div>
+            <div class="form-group">
+                <label for="token-description">Description (optional)</label>
+                <textarea id="token-description" name="description" maxlength="1000" placeholder="What will this token be used for?"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="token-expiration">Expiration *</label>
+                <select id="token-expiration" name="expiration">
+                    {% for preset in expiration_presets %}
+                    <option value="{{ preset.value }}" {% if preset.value == '90_days' %}selected{% endif %}>{{ preset.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="custom-days-group" style="display: none;">
+                <label for="custom-days">Number of days</label>
+                <input type="number" id="custom-days" name="custom_expiration_days" min="1" max="3650" value="30">
+            </div>
+            <div class="form-group">
+                <label>Scopes *</label>
+                <p class="section-description" style="margin-bottom: 0.5rem;">Select the permissions this token should have.</p>
+                <div id="scopes-container">
+                    {% for category_name, resources in available_scopes.items() %}
+                    <div class="scope-group">
+                        <div class="scope-group-title" style="font-size: 1rem; border-bottom: 1px solid var(--border-color, #0f3460); padding-bottom: 0.4rem; margin-bottom: 0.75rem;">{{ category_name }}</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
+                            {% for resource_name, resource_scopes in resources.items() %}
+                            <div style="border: 1px solid var(--border-color, #0f3460); border-radius: 8px; padding: 0.75rem;">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">{{ resource_name }}</div>
+                                {% for scope_name, description in resource_scopes %}
+                                <div class="scope-item">
+                                    <input type="checkbox" id="scope-{{ scope_name }}" name="scopes" value="{{ scope_name }}">
+                                    <label for="scope-{{ scope_name }}">
+                                        <span class="scope-name">{{ scope_name }}</span>
+                                        {% if description %}
+                                        <span class="scope-desc">{{ description }}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn">Create token</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Token Display Modal -->
+<div class="modal-overlay" id="token-display-modal">
+    <div class="modal">
+        <h2>Your new personal access token</h2>
+        <div class="warning" style="margin-bottom: 1rem;">
+            <strong>Make sure to copy your token now.</strong> You won't be able to see it again!
+        </div>
+        <div class="token-display" id="new-token-value"></div>
+        <button type="button" class="btn" onclick="copyToken()">Copy token</button>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeTokenDisplayModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Token Scopes Modal -->
+<div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Edit scopes — <span id="edit-token-name"></span></h2>
+        </div>
+        <form id="edit-token-form">
+            <input type="hidden" id="edit-token-id">
+            <div class="modal-body">
+            <div class="form-group">
+                <label>Scopes *</label>
+                <p class="section-description" style="margin-bottom: 0.5rem;">Select the permissions this token should have.</p>
+                <div id="edit-scopes-container">
+                    {% for category_name, resources in available_scopes.items() %}
+                    <div class="scope-group">
+                        <div class="scope-group-title" style="font-size: 1rem; border-bottom: 1px solid var(--border-color, #0f3460); padding-bottom: 0.4rem; margin-bottom: 0.75rem;">{{ category_name }}</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
+                            {% for resource_name, resource_scopes in resources.items() %}
+                            <div style="border: 1px solid var(--border-color, #0f3460); border-radius: 8px; padding: 0.75rem;">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">{{ resource_name }}</div>
+                                {% for scope_name, description in resource_scopes %}
+                                <div class="scope-item">
+                                    <input type="checkbox" id="edit-scope-{{ scope_name }}" name="edit_scopes" value="{{ scope_name }}">
+                                    <label for="edit-scope-{{ scope_name }}">
+                                        <span class="scope-name">{{ scope_name }}</span>
+                                        {% if description %}
+                                        <span class="scope-desc">{{ description }}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn">Save scopes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function openCreateModal() {
+    document.getElementById('create-modal').classList.add('active');
+}
+
+function closeCreateModal() {
+    document.getElementById('create-modal').classList.remove('active');
+    document.getElementById('create-token-form').reset();
+}
+
+function openEditModal(tokenId, tokenName, currentScopes) {
+    document.getElementById('edit-token-id').value = tokenId;
+    document.getElementById('edit-token-name').textContent = tokenName;
+    // Uncheck all, then check current scopes
+    document.querySelectorAll('input[name="edit_scopes"]').forEach(cb => {
+        cb.checked = currentScopes.includes(cb.value);
+    });
+    document.getElementById('edit-modal').classList.add('active');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('active');
+}
+
+// Edit token form submission
+document.getElementById('edit-token-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const tokenId = document.getElementById('edit-token-id').value;
+    const scopes = Array.from(document.querySelectorAll('input[name="edit_scopes"]:checked')).map(el => el.value);
+
+    if (scopes.length === 0) {
+        alert('Please select at least one scope.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`{{ tenant_prefix }}/auth/settings/tokens/api/${tokenId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scopes: scopes })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to update token'));
+            return;
+        }
+
+        closeEditModal();
+        location.reload();
+    } catch (error) {
+        alert('Error updating token: ' + error.message);
+    }
+});
+
+function closeTokenDisplayModal() {
+    document.getElementById('token-display-modal').classList.remove('active');
+    location.reload();
+}
+
+function copyToken() {
+    const tokenValue = document.getElementById('new-token-value').textContent;
+    navigator.clipboard.writeText(tokenValue).then(() => {
+        alert('Token copied to clipboard!');
+    });
+}
+
+// Expiration select handler
+document.getElementById('token-expiration').addEventListener('change', function() {
+    const customGroup = document.getElementById('custom-days-group');
+    if (this.value === 'custom') {
+        customGroup.style.display = 'block';
+    } else {
+        customGroup.style.display = 'none';
+    }
+});
+
+// Create token form submission
+document.getElementById('create-token-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const scopes = Array.from(document.querySelectorAll('input[name="scopes"]:checked')).map(el => el.value);
+
+    if (scopes.length === 0) {
+        alert('Please select at least one scope.');
+        return;
+    }
+
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description') || null,
+        scopes: scopes,
+        expiration: formData.get('expiration'),
+        custom_expiration_days: formData.get('expiration') === 'custom' ? parseInt(formData.get('custom_expiration_days')) : null
+    };
+
+    try {
+        const response = await fetch('{{ tenant_prefix }}/auth/settings/tokens/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to create token'));
+            return;
+        }
+
+        const result = await response.json();
+        closeCreateModal();
+
+        // Show the token
+        document.getElementById('new-token-value').textContent = result.token;
+        document.getElementById('token-display-modal').classList.add('active');
+    } catch (error) {
+        alert('Error creating token: ' + error.message);
+    }
+});
+
+// Revoke token
+async function revokeToken(tokenId, tokenName) {
+    if (!confirm(`Are you sure you want to revoke "${tokenName}"? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`{{ tenant_prefix }}/auth/settings/tokens/api/${tokenId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to revoke token'));
+            return;
+        }
+
+        location.reload();
+    } catch (error) {
+        alert('Error revoking token: ' + error.message);
+    }
+}
+
+// Regenerate token
+async function regenerateToken(tokenId, tokenName) {
+    if (!confirm(`Are you sure you want to regenerate "${tokenName}"? The old token will stop working immediately.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`{{ tenant_prefix }}/auth/settings/tokens/api/${tokenId}/regenerate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to regenerate token'));
+            return;
+        }
+
+        const result = await response.json();
+
+        // Show the new token
+        document.getElementById('new-token-value').textContent = result.token;
+        document.getElementById('token-display-modal').classList.add('active');
+    } catch (error) {
+        alert('Error regenerating token: ' + error.message);
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeCreateModal();
+        closeEditModal();
+    }
+});
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+        }
+    });
+});
+</script>
+{% endblock %}

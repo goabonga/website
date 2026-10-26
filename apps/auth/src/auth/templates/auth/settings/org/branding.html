@@ -1,0 +1,450 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Branding - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 800px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">Branding</h1>
+            <p style="color: var(--text-muted-color); margin: 0.25rem 0 0 0;">Customize colors, logos, fonts, and CSS</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if has_branding and can['branding:write'] %}
+            <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/branding/reset" style="display: inline;">
+                <button type="submit" class="btn btn-secondary" onclick="return confirm('Reset all branding to defaults?')">
+                    Reset to Defaults
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+                &larr; Back
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+</div>
+
+<form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/branding">
+    <fieldset{% if not can['branding:write'] %} disabled{% endif %} style="border: 0; margin: 0; padding: 0; min-width: 0;">
+    <!-- Colors Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Colors</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            These colors will be used as CSS variables throughout the UI.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Primary Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="primary_color" value="{{ tenant_branding.primary_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.primary_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Buttons, links, primary actions</p>
+            </div>
+
+            <div class="form-group">
+                <label>Secondary Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="secondary_color" value="{{ tenant_branding.secondary_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.secondary_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Secondary buttons, badges</p>
+            </div>
+
+            <div class="form-group">
+                <label>Accent Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="accent_color" value="{{ tenant_branding.accent_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.accent_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Highlights, accents</p>
+            </div>
+
+            <div class="form-group">
+                <label>Background Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="background_color" value="{{ tenant_branding.background_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.background_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Page background</p>
+            </div>
+
+            <div class="form-group">
+                <label>Surface Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="surface_color" value="{{ tenant_branding.surface_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.surface_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Cards, modals, overlays</p>
+            </div>
+
+            <div class="form-group">
+                <label>Text Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="text_color" value="{{ tenant_branding.text_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.text_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Main text color</p>
+            </div>
+
+            <div class="form-group">
+                <label>Muted Text Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="text_muted_color" value="{{ tenant_branding.text_muted_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.text_muted_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Secondary text, labels</p>
+            </div>
+
+            <div class="form-group">
+                <label>Error Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="error_color" value="{{ tenant_branding.error_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.error_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Error messages, alerts</p>
+            </div>
+
+            <div class="form-group">
+                <label>Success Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="success_color" value="{{ tenant_branding.success_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.success_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Success messages</p>
+            </div>
+
+            <div class="form-group">
+                <label>Border Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="border_color" value="{{ tenant_branding.border_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.border_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Borders, dividers</p>
+            </div>
+
+            <div class="form-group">
+                <label>Warning Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="warning_color" value="{{ tenant_branding.warning_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.warning_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Warning messages, cautions</p>
+            </div>
+
+            <div class="form-group">
+                <label>Info Color</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="info_color" value="{{ tenant_branding.info_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.info_color }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value"
+                           onchange="this.previousElementSibling.value = this.value">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Informational messages, hints</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Colors Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Input Colors</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            Override colors for form inputs. Leave empty to use the default general colors.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Input Background</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_background_color" value="{{ tenant_branding.input_background_color or tenant_branding.background_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.input_background_color or '' }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value || '{{ tenant_branding.background_color }}'"
+                           onchange="this.previousElementSibling.value = this.value || '{{ tenant_branding.background_color }}'"
+                           placeholder="{{ tenant_branding.background_color }}">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Background color for text fields</p>
+            </div>
+
+            <div class="form-group">
+                <label>Input Focus Background</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_focus_background_color" value="{{ tenant_branding.input_focus_background_color or tenant_branding.input_background_color or tenant_branding.background_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.input_focus_background_color or '' }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value || '{{ tenant_branding.background_color }}'"
+                           onchange="this.previousElementSibling.value = this.value || '{{ tenant_branding.background_color }}'"
+                           placeholder="{{ tenant_branding.input_background_color or tenant_branding.background_color }}">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Background when input is focused</p>
+            </div>
+
+            <div class="form-group">
+                <label>Input Border</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_border_color" value="{{ tenant_branding.input_border_color or tenant_branding.border_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.input_border_color or '' }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value || '{{ tenant_branding.border_color }}'"
+                           onchange="this.previousElementSibling.value = this.value || '{{ tenant_branding.border_color }}'"
+                           placeholder="{{ tenant_branding.border_color }}">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Border color for text fields</p>
+            </div>
+
+            <div class="form-group">
+                <label>Input Focus Border</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_focus_border_color" value="{{ tenant_branding.input_focus_border_color or tenant_branding.primary_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.input_focus_border_color or '' }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value || '{{ tenant_branding.primary_color }}'"
+                           onchange="this.previousElementSibling.value = this.value || '{{ tenant_branding.primary_color }}'"
+                           placeholder="{{ tenant_branding.primary_color }}">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Border color when input is focused</p>
+            </div>
+
+            <div class="form-group">
+                <label>Input Text</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="color" name="input_text_color" value="{{ tenant_branding.input_text_color or tenant_branding.text_color }}"
+                           style="width: 50px; height: 38px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background: var(--surface-color);">
+                    <input type="text" value="{{ tenant_branding.input_text_color or '' }}" style="flex: 1; font-family: monospace;"
+                           oninput="this.previousElementSibling.value = this.value || '{{ tenant_branding.text_color }}'"
+                           onchange="this.previousElementSibling.value = this.value || '{{ tenant_branding.text_color }}'"
+                           placeholder="{{ tenant_branding.text_color }}">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">Text color inside inputs</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logo Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Logo & Favicon</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            Provide URLs to your logo and favicon images.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Logo URL</label>
+                <input type="url" name="logo_url" value="{{ tenant_branding.logo_url or '' }}" placeholder="https://example.com/logo.png">
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    Light mode logo (recommended: SVG or PNG with transparency)
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label>Logo URL (Dark Mode)</label>
+                <input type="url" name="logo_dark_url" value="{{ tenant_branding.logo_dark_url or '' }}" placeholder="https://example.com/logo-dark.png">
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    Optional: Logo for dark backgrounds
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label>Favicon URL</label>
+                <input type="url" name="favicon_url" value="{{ tenant_branding.favicon_url or '' }}" placeholder="https://example.com/favicon.ico">
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    Browser tab icon (recommended: .ico or .png)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Typography Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Typography</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            Customize fonts used in the UI.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Font Family</label>
+                <input type="text" name="font_family" value="{{ tenant_branding.font_family }}"
+                       placeholder="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    CSS font-family value
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label>Custom Font URL</label>
+                <input type="url" name="font_url" value="{{ tenant_branding.font_url or '' }}"
+                       placeholder="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+                <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                    Google Fonts or other font CSS URL
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom CSS/JS Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Custom CSS & JavaScript</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            Add custom styles or scripts (use with caution).
+        </p>
+
+        <div class="form-group">
+            <label>Custom CSS</label>
+            <textarea name="custom_css" rows="8"
+                      style="font-family: monospace; font-size: 0.85rem;"
+                      placeholder="/* Add custom CSS here */
+.login-form {
+    border-radius: 12px;
+}">{{ tenant_branding.custom_css or '' }}</textarea>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                CSS that will be appended after theme styles
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label>Custom JavaScript</label>
+            <textarea name="custom_js" rows="8"
+                      style="font-family: monospace; font-size: 0.85rem;"
+                      placeholder="// Add custom JavaScript here
+// e.g., analytics tracking code">{{ tenant_branding.custom_js or '' }}</textarea>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                JavaScript that will be executed on page load (e.g., analytics)
+            </p>
+        </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Settings</div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none;">
+                <input type="checkbox" name="show_powered_by" value="true" {% if tenant_branding.show_powered_by %}checked{% endif %} style="width: auto;">
+                <span style="color: var(--text-color);">Show "Powered by" badge</span>
+            </label>
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-left: 1.5rem;">
+                Display branding attribution in the footer
+            </p>
+        </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div class="section-title">Preview</div>
+        <p style="color: var(--text-muted-color); margin-bottom: 1rem; font-size: 0.9rem;">
+            Preview how the branding will look.
+        </p>
+
+        <div id="preview-container" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div id="preview-content" style="padding: 2rem; transition: all 0.3s;">
+                <div style="max-width: 400px; margin: 0 auto; padding: 2rem; border-radius: 8px; transition: all 0.3s;" id="preview-card">
+                    <h2 style="margin: 0 0 1rem 0; transition: color 0.3s;" id="preview-title">Sign In</h2>
+                    <p style="margin-bottom: 1.5rem; transition: color 0.3s;" id="preview-text">Welcome to <strong id="preview-tenant">{{ tenant.display_name }}</strong></p>
+                    <div style="margin-bottom: 1rem;">
+                        <input type="text" placeholder="Email" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;" id="preview-input">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <input type="password" placeholder="Password" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">
+                    </div>
+                    <button type="button" style="width: 100%; padding: 0.75rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s;" id="preview-button">Sign In</button>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; transition: color 0.3s;" id="preview-muted">Don't have an account? <a href="#" style="transition: color 0.3s;" id="preview-link">Register</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </fieldset>
+
+    <!-- Submit -->
+    <div class="settings-card" style="max-width: 800px; margin-top: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem;">
+            {% if can['branding:write'] %}
+            <button type="submit" class="btn btn-primary">Save Branding</button>
+            {% endif %}
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">{% if can['branding:write'] %}Cancel{% else %}Back{% endif %}</a>
+        </div>
+    </div>
+</form>
+
+<script>
+// Sync color picker with text input
+document.querySelectorAll('input[type="color"]').forEach(function(colorInput) {
+    var textInput = colorInput.nextElementSibling;
+    colorInput.addEventListener('input', function() {
+        textInput.value = colorInput.value;
+        updatePreview();
+    });
+});
+
+// Update preview
+function updatePreview() {
+    var primary = document.querySelector('input[name="primary_color"]').value;
+    var background = document.querySelector('input[name="background_color"]').value;
+    var surface = document.querySelector('input[name="surface_color"]').value;
+    var text = document.querySelector('input[name="text_color"]').value;
+    var muted = document.querySelector('input[name="text_muted_color"]').value;
+
+    document.getElementById('preview-content').style.backgroundColor = background;
+    document.getElementById('preview-card').style.backgroundColor = surface;
+    document.getElementById('preview-title').style.color = text;
+    document.getElementById('preview-text').style.color = text;
+    document.getElementById('preview-muted').style.color = muted;
+    document.getElementById('preview-button').style.backgroundColor = primary;
+    document.getElementById('preview-button').style.color = '#fff';
+    document.getElementById('preview-link').style.color = primary;
+}
+
+// Initial preview
+updatePreview();
+
+// Update on any color change
+document.querySelectorAll('input[name$="_color"]').forEach(function(input) {
+    input.addEventListener('input', updatePreview);
+    input.addEventListener('change', updatePreview);
+});
+</script>
+{% endblock %}

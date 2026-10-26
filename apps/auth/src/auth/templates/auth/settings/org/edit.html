@@ -1,0 +1,407 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}Edit {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card" style="max-width: 900px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1>Edit Organization</h1>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">
+            &larr; Back
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success" style="background: var(--success-color); color: white; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem;">
+        {{ success }}
+    </div>
+    {% endif %}
+
+    {% if can['settings:write'] %}
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/edit">
+        <div class="form-group">
+            <label for="display_name">Organization Name</label>
+            <input type="text" id="display_name" name="display_name"
+                   value="{{ tenant.display_name }}" required minlength="1" maxlength="255"
+                   placeholder="My Company">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                The display name shown to users.
+            </p>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <label>Slug (read-only)</label>
+            <input type="text" value="{{ tenant.slug }}" disabled
+                   style="font-family: monospace; background: var(--background-color);">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                The URL-friendly identifier. This cannot be changed.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+    {% else %}
+    <div class="form-group">
+        <label>Organization Name</label>
+        <p>{{ tenant.display_name }}</p>
+    </div>
+
+    <div class="form-group">
+        <label>Slug</label>
+        <p class="mono">{{ tenant.slug }}</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if can['domain:read'] or can['domain:write'] %}
+<!-- Custom Domain Section -->
+<div class="settings-card" style="max-width: 900px;">
+    <h2>Custom Domain</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">A custom domain for your organization's authentication pages.</p>
+
+    {% if can['domain:write'] %}
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/domain">
+        <div class="form-group">
+            <label for="custom_domain">Custom Domain (optional)</label>
+            <input type="text" id="custom_domain" name="custom_domain"
+                   value="{{ tenant.custom_domain or '' }}"
+                   placeholder="auth.example.com">
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+                Leave empty to remove the custom domain.
+            </p>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Domain</button>
+    </form>
+    {% else %}
+    <div class="form-group">
+        <label>Custom Domain</label>
+        <p class="mono">{{ tenant.custom_domain or '-' }}</p>
+    </div>
+    {% endif %}
+
+    {% if tenant.custom_domain %}
+    {% if can['domain:read'] %}
+        <!-- Custom Domain Status Section -->
+        <div id="domain-status-section" class="form-group" style="background: var(--background-color); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+            <h3 style="margin: 0 0 0.75rem 0; font-size: 0.875rem; font-weight: 600;">Domain Status</h3>
+            <div id="domain-status-content">
+            {% if tenant.custom_domain_status == 'active' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--success-color);">
+                <span style="font-size: 1.25rem;">✓</span>
+                <span><strong>Active</strong> - Your custom domain is fully configured and working.</span>
+            </div>
+            {% if tenant.custom_domain_ssl_at %}
+            <p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">
+                SSL certificate provisioned on {{ tenant.custom_domain_ssl_at }}
+            </p>
+            {% endif %}
+
+            {% elif tenant.custom_domain_status == 'ssl_provisioning' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-color);">
+                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid var(--primary-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                <span><strong>Provisioning SSL</strong> - Setting up HTTPS certificate...</span>
+            </div>
+
+            {% elif tenant.custom_domain_status == 'dns_verified' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-color);">
+                <span style="font-size: 1.25rem;">✓</span>
+                <span><strong>DNS Verified</strong> - Preparing SSL certificate...</span>
+            </div>
+
+            {% elif tenant.custom_domain_status == 'dns_verifying' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted-color);">
+                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid var(--text-muted-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                <span><strong>Verifying DNS</strong> - Checking your domain configuration...</span>
+            </div>
+
+            {% elif tenant.custom_domain_status == 'failed' %}
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--error-color);">
+                <span style="font-size: 1.25rem;">✗</span>
+                <div>
+                    <strong>Failed</strong>
+                    {% if tenant.custom_domain_error %}
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">{{ tenant.custom_domain_error }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% else %}
+            <!-- Pending or not yet started -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted-color);">
+                <span style="font-size: 1.25rem;">○</span>
+                <span><strong>Pending</strong> - Waiting for DNS configuration</span>
+            </div>
+            {% endif %}
+
+            {% if tenant.custom_domain_checked_at and tenant.custom_domain_status not in ['active'] %}
+            <p id="domain-last-checked" style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">
+                Last checked: {{ tenant.custom_domain_checked_at }}
+            </p>
+            {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if can['domain:write'] %}
+        <!-- DNS Configuration Instructions -->
+        <div id="dns-instructions" class="form-group" style="background: #fff8e1; border: 1px solid #ffcc02; padding: 1rem; border-radius: 8px; margin-top: 1rem; {% if tenant.custom_domain_status in ['active', 'ssl_provisioning', 'dns_verified'] %}display: none;{% endif %}">
+            <h3 style="margin: 0 0 0.75rem 0; font-size: 0.875rem; font-weight: 600; color: #856404;">
+                ⚠️ DNS Configuration Required
+            </h3>
+            <p style="margin: 0 0 0.75rem 0; font-size: 0.875rem; color: #856404;">
+                To use your custom domain, add the following CNAME record in your DNS provider:
+            </p>
+            <div style="background: white; padding: 0.75rem; border-radius: 4px; font-family: monospace; font-size: 0.875rem; border: 1px solid #ddd;">
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem;">
+                    <span style="color: #666;">Type:</span>
+                    <span><strong>CNAME</strong></span>
+                    <span style="color: #666;">Name:</span>
+                    <span><strong>{{ tenant.custom_domain.split('.')[0] if '.' in tenant.custom_domain else '@' }}</strong></span>
+                    <span style="color: #666;">Target:</span>
+                    <span><strong>{{ cname_target or '(not configured)' }}</strong></span>
+                </div>
+            </div>
+            <p style="margin: 0.75rem 0 0 0; font-size: 0.75rem; color: #856404;">
+                DNS changes can take up to 48 hours to propagate. We'll automatically check and provision your domain once the DNS is configured correctly.
+            </p>
+        </div>
+    {% endif %}
+
+    {% if can['domain:write'] %}
+        <!-- Manual Verification Button -->
+        <div id="verify-button-section" style="margin-top: 1rem; {% if tenant.custom_domain_status not in ['pending', 'failed', None] %}display: none;{% endif %}">
+            <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/verify-domain"
+               class="btn btn-secondary" style="font-size: 0.875rem;">
+                🔄 Verify DNS Now
+            </a>
+        </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+
+{% if can['settings:write'] %}
+<!-- Email Sender Section -->
+<div class="settings-card" style="max-width: 900px;">
+    <h2>Email Sender</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">Configure the sender address and name used for emails sent by this tenant.</p>
+
+    {% set sender_address = tenant.settings.email_sender_address if tenant.settings else None %}
+    {% set sender_name = tenant.settings.email_sender_name if tenant.settings else None %}
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/email-sender">
+        <div class="form-group">
+            <label for="email_sender_address">Sender Email Address</label>
+            <input type="email" id="email_sender_address" name="email_sender_address"
+                   value="{{ sender_address or '' }}" placeholder="noreply@yourdomain.com"
+                   class="form-control">
+            <small class="text-muted">Leave empty to use the global default</small>
+        </div>
+
+        <div class="form-group">
+            <label for="email_sender_name">Sender Display Name</label>
+            <input type="text" id="email_sender_name" name="email_sender_name"
+                   value="{{ sender_name or '' }}" placeholder="My App"
+                   class="form-control">
+            <small class="text-muted">The name shown in the "From" field</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">Save Sender</button>
+    </form>
+</div>
+
+<!-- Allowed Scopes Section -->
+<div class="settings-card" style="max-width: 900px;">
+    <h2>Tenant Scopes</h2>
+    <p class="text-muted" style="margin-bottom: 1rem;">
+        Configure which scopes this tenant can use when creating custom roles.
+        Unchecked scopes will not be available in the role editor. The wildcard scope (*) is always available for owners.
+    </p>
+
+    <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/allowed-scopes">
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 1rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllScopes(true)">Select All</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllScopes(false)">Deselect All</button>
+        </div>
+
+        {% for category_name, resources in scope_groups.items() %}
+        <div style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.75rem 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color, #0f3460); padding-bottom: 0.5rem;">{{ category_name }}</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                {% for resource_name, resource_scopes in resources.items() %}
+                <div style="border: 1px solid var(--border-color, #0f3460); border-radius: 8px; padding: 1rem;">
+                    <h4 style="margin: 0 0 0.75rem 0;">{{ resource_name }}</h4>
+                    <div style="display: grid; gap: 0.4rem;">
+                        {% for scope, description in resource_scopes %}
+                        <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.35rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="checkbox" name="allowed_scopes" value="{{ scope }}"
+                                   {{ 'checked' if scope in current_allowed }}>
+                            <div>
+                                <code style="color: var(--primary-color);">{{ scope }}</code>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ description }}</div>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+            <button type="submit" class="btn btn-primary">Save Configuration</button>
+        </div>
+    </form>
+</div>
+
+{% endif %}
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+function toggleAllScopes(checked) {
+    document.querySelectorAll('input[name="allowed_scopes"]').forEach(cb => cb.checked = checked);
+}
+</script>
+
+{% if tenant.custom_domain and can['domain:read'] %}
+<script>
+(function() {
+    const tenantId = "{{ tenant.id }}";
+    const tenantPrefix = "{{ tenant_prefix }}";
+    const pollInterval = 5000; // 5 seconds
+    let currentStatus = "{{ tenant.custom_domain_status or '' }}";
+    let pollTimer = null;
+
+    // Status states that require polling
+    const pollingStatuses = ['pending', 'dns_verifying', 'dns_verified', 'ssl_provisioning'];
+
+    function renderStatus(data) {
+        const container = document.getElementById('domain-status-content');
+        const dnsInstructions = document.getElementById('dns-instructions');
+        const verifyButton = document.getElementById('verify-button-section');
+
+        if (!container) return;
+
+        let html = '';
+        const status = data.status;
+
+        if (status === 'active') {
+            html = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--success-color);">
+                    <span style="font-size: 1.25rem;">✓</span>
+                    <span><strong>Active</strong> - Your custom domain is fully configured and working.</span>
+                </div>
+                ${data.ssl_at ? `<p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">SSL certificate provisioned on ${data.ssl_at}</p>` : ''}
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'none';
+            if (verifyButton) verifyButton.style.display = 'none';
+        } else if (status === 'ssl_provisioning') {
+            html = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-color);">
+                    <span class="spinner" style="width: 16px; height: 16px; border: 2px solid var(--primary-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                    <span><strong>Provisioning SSL</strong> - Setting up HTTPS certificate...</span>
+                </div>
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'none';
+            if (verifyButton) verifyButton.style.display = 'none';
+        } else if (status === 'dns_verified') {
+            html = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-color);">
+                    <span style="font-size: 1.25rem;">✓</span>
+                    <span><strong>DNS Verified</strong> - Preparing SSL certificate...</span>
+                </div>
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'none';
+            if (verifyButton) verifyButton.style.display = 'none';
+        } else if (status === 'dns_verifying') {
+            html = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted-color);">
+                    <span class="spinner" style="width: 16px; height: 16px; border: 2px solid var(--text-muted-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                    <span><strong>Verifying DNS</strong> - Checking your domain configuration...</span>
+                </div>
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'block';
+            if (verifyButton) verifyButton.style.display = 'none';
+        } else if (status === 'failed') {
+            html = `
+                <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--error-color);">
+                    <span style="font-size: 1.25rem;">✗</span>
+                    <div>
+                        <strong>Failed</strong>
+                        ${data.error ? `<p style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">${data.error}</p>` : ''}
+                    </div>
+                </div>
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'block';
+            if (verifyButton) verifyButton.style.display = 'block';
+        } else {
+            html = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted-color);">
+                    <span style="font-size: 1.25rem;">○</span>
+                    <span><strong>Pending</strong> - Waiting for DNS configuration</span>
+                </div>
+            `;
+            if (dnsInstructions) dnsInstructions.style.display = 'block';
+            if (verifyButton) verifyButton.style.display = 'block';
+        }
+
+        // Add last checked time for non-active statuses
+        if (status !== 'active' && data.checked_at) {
+            html += `<p style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.5rem;">Last checked: ${data.checked_at}</p>`;
+        }
+
+        container.innerHTML = html;
+        currentStatus = status;
+    }
+
+    async function pollStatus() {
+        try {
+            const response = await fetch(`${tenantPrefix}/auth/settings/org/${tenantId}/domain-status`);
+            if (response.ok) {
+                const data = await response.json();
+                renderStatus(data);
+
+                // Continue polling only for in-progress statuses
+                if (pollingStatuses.includes(data.status)) {
+                    pollTimer = setTimeout(pollStatus, pollInterval);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to poll domain status:', error);
+            // Retry after interval even on error
+            if (pollingStatuses.includes(currentStatus)) {
+                pollTimer = setTimeout(pollStatus, pollInterval);
+            }
+        }
+    }
+
+    // Start polling if current status requires it
+    if (pollingStatuses.includes(currentStatus)) {
+        pollTimer = setTimeout(pollStatus, pollInterval);
+    }
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (pollTimer) clearTimeout(pollTimer);
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

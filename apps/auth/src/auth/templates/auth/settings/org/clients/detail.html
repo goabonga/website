@@ -1,0 +1,166 @@
+{% extends "auth/settings/base.html" %}
+
+{% block title %}{{ client.name }} - {{ tenant.display_name }}{% endblock %}
+
+{% block content %}
+<div class="settings-card settings-card-wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="margin: 0;">{{ client.name }}</h1>
+            <p class="text-muted" style="margin: 0.25rem 0 0 0;">{{ tenant.display_name }}</p>
+        </div>
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients" class="btn btn-secondary">Back to Clients</a>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    {% if new_secret %}
+    <div class="warning" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid var(--warning-color); border-radius: 8px;">
+        <strong>Client Secret (copy now, won't be shown again):</strong><br>
+        <code style="background: var(--surface-color); padding: 0.25rem 0.5rem; border-radius: 4px; user-select: all; word-break: break-all; display: inline-block; margin-top: 0.5rem;">{{ new_secret }}</code>
+    </div>
+    {% endif %}
+
+    <!-- Client Info Grid -->
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 2rem; margin-bottom: 2rem;">
+        <div class="text-muted">Client ID</div>
+        <div style="font-family: monospace; word-break: break-all;">{{ client.client_id }}</div>
+
+        <div class="text-muted">Name</div>
+        <div>{{ client.name }}</div>
+
+        {% if client.description %}
+        <div class="text-muted">Description</div>
+        <div>{{ client.description }}</div>
+        {% endif %}
+
+        <div class="text-muted">Type</div>
+        <div>
+            {% if client.is_confidential %}
+            <span class="badge badge-info">Confidential</span>
+            {% else %}
+            <span class="badge badge-warning">Public</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Status</div>
+        <div>
+            {% if client.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% else %}
+            <span class="badge badge-danger">Disabled</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Auth Method</div>
+        <div style="font-family: monospace;">{{ client.token_endpoint_auth_method }}</div>
+
+        <div class="text-muted">Created</div>
+        <div>{{ client.created_at[:19] if client.created_at else 'N/A' }}</div>
+    </div>
+
+    <!-- Configuration -->
+    <h2 style="margin-bottom: 1rem;">Configuration</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 2rem; margin-bottom: 2rem;">
+        <div class="text-muted">Redirect URIs</div>
+        <div>
+            {% if client.redirect_uris %}
+            {% for uri in client.redirect_uris %}
+            <div style="font-family: monospace; font-size: 0.85rem; margin-bottom: 0.25rem;">{{ uri }}</div>
+            {% endfor %}
+            {% else %}
+            <span class="text-muted">None</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Allowed Scopes</div>
+        <div>
+            {% if client.allowed_scopes %}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                {% for scope in client.allowed_scopes %}
+                <span class="badge badge-secondary">{{ scope }}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-muted">None</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">Grant Types</div>
+        <div>
+            {% if client.allowed_grant_types %}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                {% for grant in client.allowed_grant_types %}
+                <span class="badge badge-secondary">{{ grant }}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-muted">None</span>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">PKCE Required</div>
+        <div>{{ 'Yes' if client.require_pkce else 'No' }}</div>
+
+        <div class="text-muted">Consent Required</div>
+        <div>{{ 'Yes' if client.require_consent else 'No' }}</div>
+
+        {% if client.allowed_origins %}
+        <div class="text-muted">CORS Origins</div>
+        <div>
+            {% for origin in client.allowed_origins %}
+            <div style="font-family: monospace; font-size: 0.85rem;">{{ origin }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if client.access_token_expiry_seconds %}
+        <div class="text-muted">Access Token Expiry</div>
+        <div>{{ client.access_token_expiry_seconds }}s</div>
+        {% endif %}
+
+        {% if client.refresh_token_expiry_seconds %}
+        <div class="text-muted">Refresh Token Expiry</div>
+        <div>{{ client.refresh_token_expiry_seconds }}s</div>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    {% if can['clients:write'] or can['clients:rotate'] or can['clients:delete'] %}
+    <h2 style="margin-bottom: 1rem;">Actions</h2>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        {% if can['clients:write'] %}
+        <a href="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/edit" class="btn">Edit Client</a>
+
+        {% if client.is_active %}
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/disable" style="display: inline;">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Disable this client?')">Disable</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/enable" style="display: inline;">
+            <button type="submit" class="btn btn-success">Enable</button>
+        </form>
+        {% endif %}
+        {% endif %}
+
+        {% if can['clients:rotate'] and client.is_confidential %}
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/rotate-secret" style="display: inline;">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Rotate the client secret? The old secret will stop working immediately.')">Rotate Secret</button>
+        </form>
+        {% endif %}
+
+        {% if can['clients:delete'] %}
+        <form method="post" action="{{ tenant_prefix }}/auth/settings/org/{{ tenant.id }}/clients/{{ client.id }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this client permanently? This cannot be undone.')">Delete Client</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

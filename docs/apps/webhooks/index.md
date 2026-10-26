@@ -19,3 +19,5 @@ documents one feature as it exists in the code.
    internal services.
 4. [Brevo webhook proxy](04-brevo.md) - raw proxy for Brevo events with
    optional HMAC verification.
+5. [Amazon SES webhook proxy](05-ses.md) - raw proxy for SES notifications
+   delivered through SNS.

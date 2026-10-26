@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     ses_internal_api_socket: str = ""  # Unix socket (overrides URL)
     ses_internal_api_token: str = ""  # Bearer token for internal API
 
+    # Stripe (proxy, billing service handles signature verification) -> Internal API
+    stripe_enabled: bool = False
+    stripe_internal_api_url: str = ""
+    stripe_internal_api_socket: str = ""  # Unix socket (overrides URL)
+    stripe_internal_api_token: str = ""  # Bearer token for internal API
+
 
 settings = Settings(
     brevo_webhook_secret=get_credential(
@@ -79,6 +85,10 @@ settings = Settings(
     ses_internal_api_token=get_credential(
         "SES_INTERNAL_API_TOKEN",
         os.environ.get("SES_INTERNAL_API_TOKEN", ""),
+    ),
+    stripe_internal_api_token=get_credential(
+        "STRIPE_INTERNAL_API_TOKEN",
+        os.environ.get("STRIPE_INTERNAL_API_TOKEN", ""),
     ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",

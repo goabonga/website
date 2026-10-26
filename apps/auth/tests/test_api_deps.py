@@ -3,9 +3,15 @@
 
 """Tests for auth.api.deps — FastAPI dependency injection."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from tests.conftest import (
+    make_session,
+    make_user,
+)
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -153,6 +159,18 @@ class TestServiceFactories:
 
         assert isinstance(get_password_service(), PasswordService)
 
+    def test_get_auth_service(self):
+        from auth.api.deps import get_auth_service
+        from auth.services.auth import AuthService
+
+        assert isinstance(get_auth_service(), AuthService)
+
+    def test_get_session_service(self):
+        from auth.api.deps import get_session_service
+        from auth.services.session import SessionService
+
+        assert isinstance(get_session_service(), SessionService)
+
     def test_get_profile_service(self):
         from auth.api.deps import get_profile_service
         from auth.services.profile import ProfileService
@@ -191,6 +209,77 @@ class TestServiceFactories:
 # ---------------------------------------------------------------------------
 # get_current_user
 # ---------------------------------------------------------------------------
+
+
+class TestGetCurrentUser:
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_session_cookie_name", return_value="session_id")
+    async def test_no_cookie_returns_none(self, mock_cookie_name):
+        from auth.api.deps import get_current_user
+
+        request = MagicMock()
+        request.cookies = {}
+        db = AsyncMock()
+
+        result = await get_current_user(request, db)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_session_cookie_name", return_value="session_id")
+    async def test_no_session_found_returns_none(self, mock_cookie_name):
+        from auth.api.deps import get_current_user
+
+        request = MagicMock()
+        request.cookies = {"session_id": "raw_token"}
+        db = AsyncMock()
+
+        with patch("auth.api.deps.get_session_service") as mock_get_svc:
+            svc = MagicMock()
+            svc.get_session_with_user_by_token = AsyncMock(return_value=None)
+            mock_get_svc.return_value = svc
+            result = await get_current_user(request, db)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_session_cookie_name", return_value="session_id")
+    async def test_expired_session_returns_none(self, mock_cookie_name):
+        from auth.api.deps import get_current_user
+
+        session_obj = make_session(
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
+        )
+        request = MagicMock()
+        request.cookies = {"session_id": "raw_token"}
+        db = AsyncMock()
+
+        with patch("auth.api.deps.get_session_service") as mock_get_svc:
+            svc = MagicMock()
+            svc.get_session_with_user_by_token = AsyncMock(return_value=session_obj)
+            mock_get_svc.return_value = svc
+            result = await get_current_user(request, db)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_session_cookie_name", return_value="session_id")
+    async def test_valid_session_returns_user(self, mock_cookie_name):
+        from auth.api.deps import get_current_user
+
+        user = make_user()
+        session_obj = make_session(
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+        session_obj.user = user
+
+        request = MagicMock()
+        request.cookies = {"session_id": "raw_token"}
+        db = AsyncMock()
+
+        with patch("auth.api.deps.get_session_service") as mock_get_svc:
+            svc = MagicMock()
+            svc.get_session_with_user_by_token = AsyncMock(return_value=session_obj)
+            mock_get_svc.return_value = svc
+            result = await get_current_user(request, db)
+        assert result is user
 
 
 # ---------------------------------------------------------------------------

@@ -29,9 +29,11 @@ how it is tested with pytest and behave.
    subdomain or custom domain.
 10. [Billing integration](09-billing.md): plans, subscriptions and the
     subscription webhook.
-11. [Email delivery](10-email.md): MJML templates sent through the
+11. [Plan limits from billing](09a-plan-limits.md): quota limits read from the
+    billing plans, with a configured fail-safe.
+12. [Email delivery](10-email.md): MJML templates sent through the
     mailler service.
-12. [MCP releases](11-releases.md): GitHub release webhook and public
+13. [MCP releases](11-releases.md): GitHub release webhook and public
     download API.
 
 ## Running the tests

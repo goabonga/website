@@ -35,10 +35,12 @@ how it is tested with pytest and behave.
     mailler service.
 13. [MCP releases](11-releases.md): GitHub release webhook and public
     download API.
-13. [Background tasks](12-background-tasks.md): Celery worker, email tasks and
+14. [Background tasks](12-background-tasks.md): Celery worker, email tasks and
     scheduled workspace deletion.
-14. [Custom domains](13-custom-domains.md): domains of Enterprise organizations
+15. [Custom domains](13-custom-domains.md): domains of Enterprise organizations
     registered in the custom-domain service, status webhooks and reconciliation.
+16. [Web authentication](14-web-authentication.md): browser signin, signup and
+    account pages.
 
 ## Running the tests
 
@@ -49,5 +51,21 @@ uv run --package knowledge --group dev pytest apps/knowledge
 uv run --package knowledge --group dev behave apps/knowledge/features
 ```
 
-Both suites are in-process: they use mocks and fakes and never need a
-database, Redis or any external service.
+The pytest suite and the in-process behave scenarios use mocks and fakes and never
+need a database, Redis or any external service.
+
+The behave scenarios tagged `@browser` drive the web pages in a real Chromium through
+Playwright, with the fake OpenID provider of `e2e-support` for the sign-in. They serve
+the application on a local port, with a SQLite file instead of PostgreSQL and fakes for
+the platform services. They are part of the command above and can be selected or left out
+on their own:
+
+```bash
+uv run --package knowledge --group dev behave apps/knowledge/features -t @browser
+uv run --package knowledge --group dev behave apps/knowledge/features -t ~@browser
+```
+
+A `@browser` scenario is skipped, not failed, when `E2E_SKIP_BROWSER=1` is set or when
+the browser is not installed (`python -m playwright install chromium`). `E2E_HEADLESS=false`
+shows the browser, and a failed scenario leaves a screenshot, a trace and the page in
+`artifacts/`; see [Browser testing](../../testing/index.md) for the other settings.

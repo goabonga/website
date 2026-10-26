@@ -1,0 +1,243 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Harden the SSH daemon, optionally enable a ufw firewall and unattended
+      upgrades.
+    description:
+    - Writes an sshd drop-in with configurable hardening options, can configure a ufw firewall
+      and can enable unattended security upgrades. Every feature has its own toggle.
+    author: Chris
+    options:
+      security_ssh_enabled:
+        type: bool
+        description:
+        - Manage the sshd hardening drop-in.
+        default: true
+      security_ssh_config_dir:
+        type: path
+        description:
+        - Directory of sshd drop-in files.
+        default: /etc/ssh/sshd_config.d
+      security_ssh_config_name:
+        type: str
+        description:
+        - File name of the drop-in written by this role.
+        default: 99-hardening.conf
+      security_ssh_service:
+        type: str
+        description:
+        - Name of the systemd unit of the SSH daemon (ssh on Debian and Ubuntu).
+        default: ssh
+      security_ssh_validate:
+        type: bool
+        description:
+        - Validate the drop-in with sshd -t before installing it.
+        default: true
+      security_ssh_remove_cloud_init:
+        type: bool
+        description:
+        - Remove the cloud-init sshd drop-in that may override the hardening.
+        default: true
+      security_ssh_cloud_init_file:
+        type: str
+        description:
+        - Name of the cloud-init drop-in removed when security_ssh_remove_cloud_init is true.
+        default: 50-cloud-init.conf
+      security_ssh_port:
+        type: int
+        description:
+        - TCP port sshd listens on.
+        default: 22
+      security_ssh_permit_root_login:
+        type: str
+        description:
+        - Value of PermitRootLogin.
+        default: prohibit-password
+        choices:
+        - 'yes'
+        - 'no'
+        - prohibit-password
+        - forced-commands-only
+      security_ssh_password_authentication:
+        type: bool
+        description:
+        - Allow password authentication.
+        default: false
+      security_ssh_kbd_interactive_authentication:
+        type: bool
+        description:
+        - Allow keyboard-interactive authentication.
+        default: false
+      security_ssh_pubkey_authentication:
+        type: bool
+        description:
+        - Allow public key authentication.
+        default: true
+      security_ssh_x11_forwarding:
+        type: bool
+        description:
+        - Allow X11 forwarding.
+        default: false
+      security_ssh_allow_tcp_forwarding:
+        type: bool
+        description:
+        - Allow TCP forwarding.
+        default: true
+      security_ssh_use_dns:
+        type: bool
+        description:
+        - Resolve client host names (UseDNS).
+        default: false
+      security_ssh_max_auth_tries:
+        type: int
+        description:
+        - Maximum authentication attempts per connection.
+        default: 3
+      security_ssh_login_grace_time:
+        type: int
+        description:
+        - Seconds allowed to authenticate before the connection is dropped.
+        default: 30
+      security_ssh_client_alive_interval:
+        type: int
+        description:
+        - Seconds between keep-alive probes (0 disables).
+        default: 300
+      security_ssh_client_alive_count_max:
+        type: int
+        description:
+        - Unanswered keep-alive probes before disconnecting.
+        default: 2
+      security_ssh_allow_users:
+        type: list
+        description:
+        - AllowUsers patterns. Nothing is emitted when empty.
+        default: []
+        elements: str
+      security_ssh_allow_groups:
+        type: list
+        description:
+        - AllowGroups patterns. Nothing is emitted when empty.
+        default: []
+        elements: str
+      security_ssh_extra_options:
+        type: list
+        description:
+        - Extra raw sshd options, one per item, for example 'LogLevel VERBOSE'.
+        default: []
+        elements: str
+      security_firewall_enabled:
+        type: bool
+        description:
+        - Install and configure the ufw firewall.
+        default: false
+      security_firewall_default_incoming:
+        type: str
+        description:
+        - Default policy for incoming traffic.
+        default: deny
+        choices:
+        - allow
+        - deny
+        - reject
+      security_firewall_default_outgoing:
+        type: str
+        description:
+        - Default policy for outgoing traffic.
+        default: allow
+        choices:
+        - allow
+        - deny
+        - reject
+      security_firewall_allow_ssh:
+        type: bool
+        description:
+        - Allow the SSH port (security_ssh_port) so enabling the firewall cannot lock you
+          out.
+        default: true
+      security_firewall_logging:
+        type: str
+        description:
+        - ufw logging level.
+        default: low
+        choices:
+        - 'on'
+        - 'off'
+        - low
+        - medium
+        - high
+        - full
+      security_firewall_rules:
+        type: list
+        description:
+        - Additional ufw rules.
+        default: []
+        elements: dict
+        options:
+          port:
+            type: str
+            description:
+            - Port or port range (for example 443 or 10000:20000).
+            required: true
+          proto:
+            type: str
+            description:
+            - Protocol (default tcp).
+            choices:
+            - tcp
+            - udp
+            - any
+          rule:
+            type: str
+            description:
+            - Action (default allow).
+            choices:
+            - allow
+            - deny
+            - reject
+            - limit
+          from_ip:
+            type: str
+            description:
+            - Source address or network (default any).
+          comment:
+            type: str
+            description:
+            - Rule comment.
+      security_unattended_upgrades_enabled:
+        type: bool
+        description:
+        - Install and enable unattended-upgrades.
+        default: false
+      security_unattended_upgrades_auto_reboot:
+        type: bool
+        description:
+        - Reboot automatically when an upgrade requires it.
+        default: false
+      security_unattended_upgrades_reboot_time:
+        type: str
+        description:
+        - Time of the automatic reboot (HH:MM).
+        default: 03:00
+      security_unattended_upgrades_remove_unused:
+        type: bool
+        description:
+        - Remove unused dependencies after upgrading.
+        default: true
+      security_unattended_upgrades_mail:
+        type: str
+        description:
+        - Address that receives upgrade reports. Disabled when empty.
+        default: ''
+      security_unattended_upgrades_update_interval:
+        type: int
+        description:
+        - Days between package list updates.
+        default: 1
+      security_unattended_upgrades_upgrade_interval:
+        type: int
+        description:
+        - Days between unattended upgrades.
+        default: 1

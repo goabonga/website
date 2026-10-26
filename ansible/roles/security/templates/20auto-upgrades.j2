@@ -1,0 +1,3 @@
+{{ ansible_managed | comment('c') }}
+APT::Periodic::Update-Package-Lists "{{ security_unattended_upgrades_update_interval }}";
+APT::Periodic::Unattended-Upgrade "{{ security_unattended_upgrades_upgrade_interval }}";

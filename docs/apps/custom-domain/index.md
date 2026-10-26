@@ -25,3 +25,4 @@ feature adds, its settings and how it is tested.
 | [Domain API](08-domain-api.md) | Register, inspect, update, delete, verify and provision domains |
 | [Provisioning status and events](09-provisioning-events.md) | Status snapshot, SSE stream and event history |
 | [Domain maintenance](10-domain-maintenance.md) | Certificate renewal, health checks, cleanup and purge |
+| [Administration statistics](11-admin-stats.md) | Overview, top clients, recent activity and dashboard |

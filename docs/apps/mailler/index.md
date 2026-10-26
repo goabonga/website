@@ -17,6 +17,7 @@ documented on its own page.
 | [OAuth2 authentication](02-authentication.md) | Bearer token validation and scope checks |
 | [Email providers](03-providers.md) | Brevo, SendGrid, AWS SES and Protonmail adapters, signatures |
 | [Sending emails](04-send.md) | `POST /send`, Celery worker, first migration |
+| [Listing and reading emails](05-emails.md) | Paginated list and detail of stored emails |
 
 ## Running the tests
 

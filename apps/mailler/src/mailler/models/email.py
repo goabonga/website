@@ -30,7 +30,11 @@ class Email(Base):
 
     __tablename__ = "emails"
     # The limits of the clients count their recent emails
-    __table_args__ = (Index("ix_emails_client_id_created_at", "client_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_emails_client_id_created_at", "client_id", "created_at"),
+        # One email per idempotency key and client (emails without a key are not constrained)
+        UniqueConstraint("client_id", "idempotency_key", name="uq_emails_client_idempotency"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -78,6 +82,9 @@ class Email(Base):
     # Request context
     client_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+
+    # Key sent by the client to make a request safe to repeat
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Celery task tracking
     task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

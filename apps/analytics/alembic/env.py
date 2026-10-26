@@ -9,7 +9,10 @@ from logging.config import fileConfig
 
 from alembic import context
 from analytics.models import (  # noqa: F401
+    Campaign,
     Event,
+    Pixel,
+    PixelOpen,
     Session,
 )
 from analytics.models.base import Base

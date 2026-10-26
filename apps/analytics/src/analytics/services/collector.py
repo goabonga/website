@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from analytics.config import settings
 from analytics.logging import get_logger
-from analytics.models import Event, Session
+from analytics.models import Campaign, Event, Pixel, PixelOpen, Session
 from analytics.services.geoip import geoip_service
 from analytics.services.useragent import useragent_service
 
@@ -172,6 +172,125 @@ class CollectorService:
 
         logger.debug(f"Event tracked: {event_type} for session {session.session_id}")
         return event
+
+    async def track_pixel_open(
+        self,
+        db: AsyncSession,
+        pixel_key: str,
+        request: Request,
+    ) -> Pixel | None:
+        """Track a pixel open event.
+
+        Args:
+            db: Database session.
+            pixel_key: Unique pixel identifier.
+            request: FastAPI request.
+
+        Returns:
+            Pixel if found, None otherwise.
+        """
+        result = await db.execute(select(Pixel).where(Pixel.pixel_key == pixel_key))
+        pixel = result.scalar_one_or_none()
+
+        if not pixel:
+            logger.warning(f"Pixel not found: {pixel_key}")
+            return None
+
+        client_ip = get_client_ip(request)
+        user_agent = request.headers.get("user-agent")
+        geo = geoip_service.lookup(client_ip)
+
+        # Create open record
+        pixel_open = PixelOpen(
+            pixel_id=pixel.id,
+            ip_address=client_ip if client_ip != "unknown" else None,
+            user_agent=user_agent,
+            country=geo.country,
+            city=geo.city,
+        )
+        db.add(pixel_open)
+
+        # Update pixel stats
+        now = datetime.now(UTC)
+        if not pixel.first_opened_at:
+            pixel.first_opened_at = now
+        pixel.last_opened_at = now
+        pixel.open_count += 1
+
+        await db.commit()
+
+        logger.info(f"Pixel opened: {pixel_key} (count: {pixel.open_count})")
+        return pixel
+
+    async def create_campaign(
+        self,
+        db: AsyncSession,
+        name: str,
+        description: str | None = None,
+        destination_url: str | None = None,
+        extra_data: dict | None = None,
+    ) -> Campaign:
+        """Create a new campaign.
+
+        Args:
+            db: Database session.
+            name: Campaign name.
+            description: Campaign description.
+            destination_url: URL to redirect to.
+            extra_data: Additional data.
+
+        Returns:
+            Created campaign.
+        """
+        campaign = Campaign(
+            name=name,
+            description=description,
+            tracking_key=generate_tracking_key(),
+            destination_url=destination_url,
+            extra_data=extra_data,
+        )
+
+        db.add(campaign)
+        await db.commit()
+        await db.refresh(campaign)
+
+        logger.info(f"Campaign created: {name} ({campaign.tracking_key})")
+        return campaign
+
+    async def create_pixel(
+        self,
+        db: AsyncSession,
+        campaign_id: uuid.UUID,
+        recipient_email: str | None = None,
+        recipient_id: str | None = None,
+        extra_data: dict | None = None,
+    ) -> Pixel:
+        """Create a tracking pixel for a campaign.
+
+        Args:
+            db: Database session.
+            campaign_id: Parent campaign ID.
+            recipient_email: Recipient email address.
+            recipient_id: Custom recipient identifier.
+            extra_data: Additional data.
+
+        Returns:
+            Created pixel.
+        """
+        pixel = Pixel(
+            campaign_id=campaign_id,
+            pixel_key=generate_tracking_key(),
+            recipient_email=recipient_email,
+            recipient_id=recipient_id,
+            extra_data=extra_data,
+        )
+
+        db.add(pixel)
+        await db.commit()
+        await db.refresh(pixel)
+
+        logger.info(f"Pixel created: {pixel.pixel_key} for campaign {campaign_id}")
+        return pixel
 
 
 # Singleton instance

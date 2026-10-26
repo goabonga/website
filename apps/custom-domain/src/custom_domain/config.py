@@ -129,6 +129,18 @@ class Settings(BaseSettings):
     # Domain defaults (used when neither the request nor the client provides a value)
     default_cname_target: str = ""
 
+    # Domain lifecycle
+    certificate_renewal_days: int = 30
+    domain_activation_timeout_hours: int = 48
+    domain_health_check_interval_hours: int = 24
+    domain_health_check_minute: int = 30
+    soft_delete_purge_days: int = 30
+
+    # Periodic tasks (five-field cron expressions: minute hour day-of-month month day-of-week)
+    certificate_expiry_check_cron: str = "0 2 * * *"
+    stale_cleanup_cron: str = "0 4 * * *"
+    purge_deleted_cron: str = "0 5 * * 0"
+
     # Templates
     templates_dir: str = "custom_domain/templates"
 

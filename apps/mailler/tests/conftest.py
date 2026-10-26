@@ -27,6 +27,13 @@ def _allowed_cors_origin():
     settings.cors_origins.append("https://frontend.example")
 
 
+@pytest.fixture(autouse=True)
+def default_sender(monkeypatch):
+    """Configure the optional platform sender, which is empty by default."""
+    monkeypatch.setattr(settings, "default_from", "sender@example.test")
+    monkeypatch.setattr(settings, "default_from_name", "Test Sender")
+
+
 @pytest.fixture
 def mock_db_session():
     """Create a mock async database session."""

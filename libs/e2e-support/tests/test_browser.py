@@ -129,3 +129,72 @@ def test_a_browser_that_cannot_launch_is_reported_with_the_install_command(
     assert expected in str(raised.value)
     assert driver.stopped
     assert not session.is_started
+
+
+@pytest.mark.browser
+def test_a_passed_scenario_keeps_a_screenshot_when_screenshots_are_on(
+    browser_session, site, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        browser_session,
+        "settings",
+        replace(browser_session.settings, screenshots="scenario", artifacts_dir=tmp_path),
+    )
+    scenario = browser_session.new_scenario("shot", base_url=site.url)
+    scenario.page.goto("/hello")
+    saved = scenario.finish(failed=False)
+    assert [path.name for path in saved] == ["screenshot.png"]
+    assert saved[0].read_bytes().startswith(b"\x89PNG")
+
+
+@pytest.mark.browser
+def test_a_passed_scenario_keeps_nothing_by_default(browser_session, site):
+    scenario = browser_session.new_scenario("no-shot", base_url=site.url)
+    scenario.page.goto("/hello")
+    assert scenario.finish(failed=False) == []
+
+
+@pytest.mark.browser
+def test_a_step_screenshot_is_numbered_and_named_after_the_step(browser_session, site):
+    scenario = browser_session.new_scenario("steps", base_url=site.url)
+    try:
+        scenario.page.goto("/hello")
+        first = scenario.capture_step("When I open /hello")
+        scenario.page.goto("/other")
+        second = scenario.capture_step("Then I see Page")
+    finally:
+        scenario.close()
+    assert first.parent.name == "steps"
+    assert [first.name, second.name] == ["01-When-I-open-hello.png", "02-Then-I-see-Page.png"]
+    assert first.read_bytes().startswith(b"\x89PNG")
+
+
+@pytest.mark.browser
+def test_no_step_screenshot_is_kept_while_the_page_is_blank(browser_session, site):
+    scenario = browser_session.new_scenario("blank", base_url=site.url)
+    try:
+        assert scenario.capture_step("Given nothing is open yet") is None
+        scenario.page.goto("/hello")
+        kept = scenario.capture_step("When I open /hello")
+    finally:
+        scenario.close()
+    assert kept.name == "02-When-I-open-hello.png"  # the blank step still used number 1
+
+
+@pytest.mark.browser
+def test_a_step_that_changes_nothing_keeps_no_new_screenshot(browser_session, site):
+    scenario = browser_session.new_scenario("unchanged-page", base_url=site.url)
+    try:
+        scenario.page.goto("/hello")
+        assert scenario.capture_step("When I open /hello") is not None
+        assert scenario.capture_step("Then I see Page") is None
+    finally:
+        scenario.close()
+
+
+@pytest.mark.browser
+def test_a_step_screenshot_of_a_closed_page_is_skipped(browser_session, site):
+    scenario = browser_session.new_scenario("closed", base_url=site.url)
+    scenario.page.close()
+    assert scenario.capture_step("Then nothing") is None
+    scenario.close()

@@ -25,6 +25,10 @@ async def _site(scope, receive, send):
         headers.append((b"set-cookie", b"visited=yes; Path=/"))
     cookie = dict(scope["headers"]).get(b"cookie", b"").decode()
     body = f"<title>Page {path}</title><h1>Hello {path}</h1><p id='cookie'>{cookie}</p>"
+    if path == "/console":
+        body += "<script>console.log('fine'); console.error('boom from console')</script>"
+    if path == "/crash":
+        body += "<script>setTimeout(() => { throw new Error('kaput') }, 0)</script>"
     await send({"type": "http.response.start", "status": 200, "headers": headers})
     await send({"type": "http.response.body", "body": body.encode()})
 

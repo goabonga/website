@@ -17,6 +17,7 @@ def test_defaults():
     assert settings.artifacts_dir == Path("artifacts")
     assert settings.skip_browser is False
     assert settings.trace is True
+    assert settings.screenshots == "off"
     assert settings.timeout == 10_000
 
 
@@ -30,6 +31,7 @@ def test_every_variable_is_read():
             "E2E_SKIP_BROWSER": "1",
             "E2E_TIMEOUT": "2000",
             "E2E_TRACE": "off",
+            "E2E_SCREENSHOTS": "yes",
         }
     )
     assert settings.browser == "firefox"
@@ -39,6 +41,7 @@ def test_every_variable_is_read():
     assert settings.skip_browser is True
     assert settings.timeout == 2000
     assert settings.trace is False
+    assert settings.screenshots == "scenario"
 
 
 def test_the_process_environment_is_the_default_source(monkeypatch):
@@ -73,3 +76,16 @@ def test_a_blank_artifacts_dir_falls_back_to_the_default():
 def test_invalid_values_are_rejected_with_the_variable_name(name, value):
     with pytest.raises(SettingsError, match=name):
         E2ESettings.from_env({name: value})
+
+
+@pytest.mark.parametrize(
+    ("value", "mode"),
+    [("0", "off"), ("off", "off"), ("1", "scenario"), ("on", "scenario"), ("Steps", "steps")],
+)
+def test_screenshot_modes(value, mode):
+    assert E2ESettings.from_env({"E2E_SCREENSHOTS": value}).screenshots == mode
+
+
+def test_an_unknown_screenshot_mode_is_rejected():
+    with pytest.raises(SettingsError, match="E2E_SCREENSHOTS"):
+        E2ESettings.from_env({"E2E_SCREENSHOTS": "always"})

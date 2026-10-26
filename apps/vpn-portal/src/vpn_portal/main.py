@@ -60,6 +60,9 @@ Zero-Trust VPN authentication and certificate issuance service.
 
 ## Features
 
+- **Certificate issuance**: Short-lived VPN certificates via Step-CA
+- **RBAC routing**: Route assignment based on user scopes
+- **OpenVPN integration**: Generate ready-to-use OVPN configurations
 - **Root CA distribution**: serve the Step-CA root certificate to clients
 
 ## Authentication

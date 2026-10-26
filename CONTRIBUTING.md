@@ -18,7 +18,8 @@ its terms.
 - `ansible/` - the Ansible collection that provisions hosts and deploys the
   applications.
 - `docs/` - the Zensical documentation site, configured by `zensical.toml`.
-- `scripts/` - repository tooling (SPDX header check).
+- `scripts/` - repository tooling: the SPDX header check and the scripts of
+  the pull request automation (with their tests in `scripts/tests/`).
 
 ## Development setup
 
@@ -42,6 +43,7 @@ Workspace-wide:
 ```bash
 uv run ruff check .
 uv run ruff format --check .
+uv run pytest scripts/tests
 python scripts/add_license_header.py --path . --types toml --check
 uvx multicz validate --strict
 uv sync --only-group doc && uv run zensical build --clean   # documentation
@@ -162,6 +164,21 @@ that justifies them.
 - History is rebased, not patched: fix your branch by amending or rewriting
   the commit that introduced the problem and force-push the branch, instead
   of adding `fix` commits on top of your own unmerged work.
+
+## Merging
+
+Pull requests into `main` are not merged with GitHub's buttons. A maintainer
+with write access adds the `auto-merge` label once the pull request is ready:
+it then waits its turn in a queue, its commits are replayed on `main` and
+signed with the maintainer key, and `main` is fast-forwarded to them. Commits
+pushed unsigned to a pull request branch are signed again in place. Dependabot
+pull requests are rewritten as Conventional Commits, and labelled
+automatically unless they contain a major update. Deployment pull requests
+(`deploy/production...`) are not part of this: they are approved through the
+`production` environment. The signing removes `BREAKING CHANGE` footers and
+the `!` marker from the messages, so a breaking change is not merged this
+way. See the
+[pull request automation](docs/automation/index.md) documentation.
 
 ## Releasing
 

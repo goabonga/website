@@ -275,3 +275,18 @@ bump_files = [
 ]
 changelog = "apps/knowledge/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.auth]
+tag_format = "auth-v{version}"
+paths = [
+    "apps/auth/src/**",
+    "apps/auth/features/**",
+    "apps/auth/tests/**",
+    "apps/auth/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/auth/pyproject.toml", key = "project.version" },
+    { file = "apps/auth/src/auth/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/auth/CHANGELOG.md"
+post_bump = ["uv lock"]

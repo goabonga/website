@@ -130,3 +130,19 @@ bump_files = [
 ]
 changelog = "apps/reachy-mini-api/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.billing]
+tag_format = "billing-v{version}"
+paths = [
+    "apps/billing/src/**",
+    "apps/billing/features/**",
+    "apps/billing/tests/**",
+    "apps/billing/alembic/**",
+    "apps/billing/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/billing/pyproject.toml", key = "project.version" },
+    { file = "apps/billing/src/billing/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/billing/CHANGELOG.md"
+post_bump = ["uv lock"]

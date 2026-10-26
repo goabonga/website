@@ -209,3 +209,51 @@ Feature: Authorized clients of the mailler service
     When I send a POST request to "/mailler/clients/app-one/deactivate"
     Then the response status code should be 403
     And no client should have been updated
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the clients list
+    Given I am authenticated with only the scopes "mailler:* vpn:admin billing:read" granted by token exchange
+    And the mailler service has the clients "app-one"
+    When I send a GET request to "/mailler/clients"
+    Then the response status code should be 200
+    And the active sidebar link should be "/mailler"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the registration form
+    Given I am authenticated with only the scopes "mailler:* vpn:admin billing:read" granted by token exchange
+    And the mailler service has the clients "app-one"
+    When I send a GET request to "/mailler/clients/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/mailler"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the edit form of a client
+    Given I am authenticated with only the scopes "mailler:* vpn:admin billing:read" granted by token exchange
+    And the mailler service has the clients "app-one"
+    When I send a GET request to "/mailler/clients/app-one/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/mailler"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the clients list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the mailler service has the clients "app-one"
+    When I send a GET request to "/mailler/clients"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                           | vpn     | billing |
+      | mailler:*                        | hidden  | hidden  |
+      | mailler:* vpn:admin              | visible | hidden  |
+      | mailler:* billing:read           | hidden  | visible |
+      | mailler:* vpn:admin billing:read | visible | visible |
+      | *                                | visible | visible |

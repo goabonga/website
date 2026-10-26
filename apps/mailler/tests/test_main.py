@@ -224,3 +224,12 @@ class TestContactsRoutes:
         from mailler.main import app
 
         assert app.url_path_for("list_contacts") == "/api/v1/contacts"
+
+
+class TestContactGroupsRoutes:
+    """Contact groups router registration."""
+
+    def test_contact_groups_routes_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("list_contact_groups") == "/api/v1/contact-groups"

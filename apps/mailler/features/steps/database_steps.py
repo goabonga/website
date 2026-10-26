@@ -112,3 +112,18 @@ def step_provider_stats(context, provider, count, counter):
         ).scalar_one_or_none()
         assert stats is not None, f"No statistics for {provider}"
         assert getattr(stats, f"{counter}_count") == count, getattr(stats, f"{counter}_count")
+
+
+@given("the following emails are stored")
+def step_seed_emails(context):
+    """Seed emails from a table; optional columns: subject, provider, status, client_id."""
+    for row in context.table:
+        fields = {
+            key: row[key]
+            for key in ("subject", "provider", "status", "client_id")
+            if key in row.headings
+        }
+        alias = row["alias"] if "alias" in row.headings else None
+        email_id = seed_email(context, row["to_email"], **fields)
+        if alias:
+            context.created_ids[alias] = email_id

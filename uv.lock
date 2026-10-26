@@ -1327,6 +1327,7 @@ dev = [
     { name = "ansible-core", version = "2.19.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ansible-core", version = "2.21.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "behave" },
+    { name = "e2e-support" },
     { name = "httpx" },
     { name = "mypy" },
     { name = "playwright" },
@@ -1345,6 +1346,7 @@ doc = [
 dev = [
     { name = "ansible-core", specifier = ">=2.16" },
     { name = "behave", specifier = ">=1.2.6" },
+    { name = "e2e-support", editable = "libs/e2e-support" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", specifier = ">=1.8" },
     { name = "playwright", specifier = ">=1.49" },

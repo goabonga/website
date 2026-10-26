@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Products - {{ saas_app.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}" class="text-muted" style="text-decoration: none;">&larr; Back to {{ saas_app.name }}</a>
+        <h1 style="margin-top: 0.5rem;">Products</h1>
+    </div>
+    {% if user.has_scope('billing:write') %}
+    <a href="/billing/saas/{{ saas_app.id }}/products/new" class="btn btn-primary">+ New Product</a>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    {% if products %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Stripe Product ID</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}" style="color: #e94560;">
+                        {{ product.name }}
+                    </a>
+                    {% if product.description %}
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ product.description[:50] }}{% if product.description | length > 50 %}...{% endif %}</div>
+                    {% endif %}
+                </td>
+                <td><code class="mono" style="font-size: 0.8rem;">{{ product.stripe_product_id }}</code></td>
+                <td>
+                    {% if product.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-warning">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ product.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}" class="btn btn-secondary btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128230;</p>
+        <p>No products configured.</p>
+        <p class="text-muted">
+            Products will be created in Stripe and synced here.
+        </p>
+        {% if user.has_scope('billing:write') %}
+        <a href="/billing/saas/{{ saas_app.id }}/products/new" class="btn btn-primary" style="margin-top: 1rem;">Create Product</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

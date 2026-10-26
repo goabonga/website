@@ -1,0 +1,262 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_edit %}Edit {{ product.name }}{% else %}New Product{% endif %} - {{ saas_app.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}/products{% if is_edit %}/{{ product.id }}{% endif %}" class="text-muted" style="text-decoration: none;">&larr; Back</a>
+        <h1 style="margin-top: 0.5rem;">{% if is_edit %}Edit {{ product.name }}{% else %}New Product{% endif %}</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/billing/saas/{{ saas_app.id }}/products{% if is_edit %}/{{ product.id }}/edit{% else %}/new{% endif %}" id="productForm">
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Basic Information</h3>
+        <p class="text-muted" style="margin-bottom: 1.5rem;">
+            {% if is_edit %}
+            Update product details and plan metadata for <strong>{{ saas_app.name }}</strong>.
+            {% else %}
+            Create a new product in Stripe for <strong>{{ saas_app.name }}</strong> with plan configuration.
+            {% endif %}
+        </p>
+
+        <div class="form-group">
+            <label for="name">Product Name *</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="form-control"
+                   placeholder="Pro Plan"
+                   value="{{ product.name if is_edit else '' }}"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Access to all premium features...">{{ product.description if is_edit and product.description else '' }}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="slug">Plan Slug</label>
+                <input type="text"
+                       id="slug"
+                       name="slug"
+                       class="form-control"
+                       placeholder="pro"
+                       value="{{ product.extra_data.slug if is_edit and product.extra_data and product.extra_data.slug else '' }}">
+                <small class="text-muted">Identifier used in API (e.g., free, starter, pro)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="sort_order">Sort Order</label>
+                <input type="number"
+                       id="sort_order"
+                       name="sort_order"
+                       class="form-control"
+                       value="{{ product.extra_data.sort_order if is_edit and product.extra_data and product.extra_data.sort_order is defined else 0 }}">
+                <small class="text-muted">Display order in pricing page (lower = first)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="default_trial_days">Default Trial Period</label>
+                <input type="number"
+                       id="default_trial_days"
+                       name="default_trial_days"
+                       class="form-control"
+                       min="0"
+                       max="730"
+                       placeholder="0"
+                       value="{{ product.extra_data.default_trial_days if is_edit and product.extra_data and product.extra_data.default_trial_days else '' }}">
+                <small class="text-muted">Trial days for new subscriptions (0 = no trial)</small>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 2rem; margin-top: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox"
+                           name="is_recommended"
+                           value="true"
+                           {% if is_edit and product.extra_data and product.extra_data.is_recommended %}checked{% endif %}>
+                    Recommended Plan
+                </label>
+                <small class="text-muted">Highlight this plan on pricing page</small>
+            </div>
+
+            {% if is_edit %}
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox"
+                           name="is_active"
+                           value="true"
+                           {% if product.is_active %}checked{% endif %}>
+                    Active
+                </label>
+                <small class="text-muted">Product is available for purchase</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Features</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">
+            List of features to display on the pricing page. Use highlight for key features and disabled for unavailable ones.
+        </p>
+
+        <div id="features-container">
+            {% set features = product.extra_data.features if is_edit and product.extra_data and product.extra_data.features else [] %}
+            {% for feature in features %}
+            <div class="feature-row" style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                <input type="text" class="form-control feature-label" value="{{ feature.label }}" placeholder="Feature description">
+                <label style="display: flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                    <input type="checkbox" class="feature-highlight" {% if feature.highlight %}checked{% endif %}>
+                    Highlight
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                    <input type="checkbox" class="feature-disabled" {% if feature.disabled %}checked{% endif %}>
+                    Disabled
+                </label>
+                <button type="button" class="btn btn-sm btn-danger remove-feature" title="Remove">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" id="add-feature" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">+ Add Feature</button>
+        <input type="hidden" name="features_json" id="features_json" value="">
+    </div>
+
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+        <h3>Limits</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">
+            Named limits of this plan. The names and their meaning are those the SaaS app reads
+            from its plan; values are whole numbers.
+        </p>
+
+        <div id="limits-container">
+            {% set limits = product.extra_data.limits if is_edit and product.extra_data and product.extra_data.limits else {} %}
+            {% for key, value in limits.items() %}
+            <div class="limit-row" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                <input type="text" class="form-control limit-key" value="{{ key }}" placeholder="Limit name">
+                <input type="number" class="form-control limit-value" value="{{ value }}" step="1" placeholder="Value">
+                <button type="button" class="btn btn-sm btn-danger remove-limit" title="Remove">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+            <button type="button" id="add-limit" class="btn btn-secondary btn-sm">+ Add Limit</button>
+        </div>
+        <input type="hidden" name="limits_json" id="limits_json" value="">
+    </div>
+
+    <div class="admin-card">
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create in Stripe{% endif %}</button>
+            <a href="/billing/saas/{{ saas_app.id }}/products{% if is_edit %}/{{ product.id }}{% endif %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+
+<script>
+(function() {
+    const featuresContainer = document.getElementById('features-container');
+    const addFeatureBtn = document.getElementById('add-feature');
+    const limitsContainer = document.getElementById('limits-container');
+    const addLimitBtn = document.getElementById('add-limit');
+    const featuresJsonInput = document.getElementById('features_json');
+    const limitsJsonInput = document.getElementById('limits_json');
+    const form = document.getElementById('productForm');
+
+    // Add new feature row
+    addFeatureBtn.addEventListener('click', function() {
+        const row = document.createElement('div');
+        row.className = 'feature-row';
+        row.style.cssText = 'display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;';
+        row.innerHTML = `
+            <input type="text" class="form-control feature-label" value="" placeholder="Feature description">
+            <label style="display: flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <input type="checkbox" class="feature-highlight">
+                Highlight
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <input type="checkbox" class="feature-disabled">
+                Disabled
+            </label>
+            <button type="button" class="btn btn-sm btn-danger remove-feature" title="Remove">&times;</button>
+        `;
+        featuresContainer.appendChild(row);
+    });
+
+    // Remove feature row
+    featuresContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-feature')) {
+            e.target.closest('.feature-row').remove();
+        }
+    });
+
+    // Add new limit row
+    function addLimitRow(key, value) {
+        const row = document.createElement('div');
+        row.className = 'limit-row';
+        row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;';
+        row.innerHTML = `
+            <input type="text" class="form-control limit-key" value="${key || ''}" placeholder="Limit name">
+            <input type="number" class="form-control limit-value" value="${value || ''}" step="1" placeholder="Value">
+            <button type="button" class="btn btn-sm btn-danger remove-limit" title="Remove">&times;</button>
+        `;
+        limitsContainer.appendChild(row);
+        return row;
+    }
+
+    addLimitBtn.addEventListener('click', function() {
+        addLimitRow('', '');
+    });
+
+    // Remove limit row
+    limitsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-limit')) {
+            e.target.closest('.limit-row').remove();
+        }
+    });
+
+    // Serialize features and limits before form submission
+    form.addEventListener('submit', function(e) {
+        // Collect features
+        const features = [];
+        document.querySelectorAll('.feature-row').forEach(function(row) {
+            const label = row.querySelector('.feature-label').value.trim();
+            if (label) {
+                features.push({
+                    label: label,
+                    highlight: row.querySelector('.feature-highlight').checked,
+                    disabled: row.querySelector('.feature-disabled').checked
+                });
+            }
+        });
+        featuresJsonInput.value = JSON.stringify(features);
+
+        // Collect limits
+        const limits = {};
+        document.querySelectorAll('.limit-row').forEach(function(row) {
+            const key = row.querySelector('.limit-key').value.trim();
+            const value = row.querySelector('.limit-value').value.trim();
+            if (key && value !== '') {
+                limits[key] = parseInt(value, 10);
+            }
+        });
+        limitsJsonInput.value = JSON.stringify(limits);
+    });
+})();
+</script>
+{% endblock %}

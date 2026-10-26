@@ -1,0 +1,180 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Subscription - Billing{% endblock %}
+
+{% block head %}
+<style>
+    .confirm-cancel {
+        background-color: #1a1a2e;
+        border: 1px solid #d63031;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+        display: none;
+    }
+    .confirm-cancel.visible {
+        display: block;
+    }
+    .confirm-cancel p {
+        margin-bottom: 0.75rem;
+        color: #ff6b6b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}/subscriptions" class="text-muted" style="text-decoration: none;">&larr; Back to Subscriptions</a>
+        <h1 style="margin-top: 0.5rem;">Subscription Details</h1>
+    </div>
+    {% if user.has_scope('billing:write') %}
+    <form method="post" action="/billing/saas/{{ saas_app.id }}/subscriptions/{{ subscription.id }}/sync" style="display: inline;">
+        <button type="submit" class="btn btn-secondary" title="Fetch latest data from Stripe">Sync from Stripe</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <h3>Subscription Info</h3>
+    <table class="table" style="margin-top: 1rem;">
+        <tr>
+            <th style="width: 200px;">Stripe Subscription ID</th>
+            <td>
+                <code class="mono">{{ subscription.stripe_subscription_id }}</code>
+                <a href="https://dashboard.stripe.com/subscriptions/{{ subscription.stripe_subscription_id }}"
+                   target="_blank"
+                   class="btn btn-secondary btn-sm"
+                   style="margin-left: 0.5rem;">
+                    View in Stripe
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <th>Status</th>
+            <td>
+                {% if subscription.status == 'active' %}
+                <span class="badge badge-success">Active</span>
+                {% elif subscription.status == 'trialing' %}
+                <span class="badge badge-info">Trial</span>
+                {% elif subscription.status == 'past_due' %}
+                <span class="badge badge-warning">Past Due</span>
+                {% elif subscription.status == 'canceled' %}
+                <span class="badge badge-danger">Canceled</span>
+                {% else %}
+                <span class="badge badge-secondary">{{ subscription.status }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Current Period</th>
+            <td>
+                {{ subscription.current_period_start.strftime('%Y-%m-%d') if subscription.current_period_start else '-' }}
+                &rarr;
+                {{ subscription.current_period_end.strftime('%Y-%m-%d') if subscription.current_period_end else '-' }}
+            </td>
+        </tr>
+        <tr>
+            <th>Cancel at Period End</th>
+            <td>
+                {% if subscription.cancel_at_period_end %}
+                <span class="badge badge-warning">Yes - Will cancel on {{ subscription.current_period_end.strftime('%Y-%m-%d') if subscription.current_period_end else 'period end' }}</span>
+                {% else %}
+                <span class="text-muted">No</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% if subscription.canceled_at %}
+        <tr>
+            <th>Canceled At</th>
+            <td>{{ subscription.canceled_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endif %}
+        {% if subscription.stripe_subscription_item_id %}
+        <tr>
+            <th>Subscription Item ID</th>
+            <td><code class="mono" style="font-size: 0.85rem;">{{ subscription.stripe_subscription_item_id }}</code></td>
+        </tr>
+        {% endif %}
+        <tr>
+            <th>Created</th>
+            <td>{{ subscription.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+    </table>
+</div>
+
+{% if customer %}
+<div class="admin-card" style="margin-bottom: 1.5rem;">
+    <h3>Customer</h3>
+    <table class="table" style="margin-top: 1rem;">
+        <tr>
+            <th style="width: 200px;">Email</th>
+            <td><a href="/billing/saas/{{ saas_app.id }}/customers/{{ customer.id }}" style="color: #e94560;">{{ customer.email }}</a></td>
+        </tr>
+        <tr>
+            <th>Name</th>
+            <td>{{ customer.name or '-' }}</td>
+        </tr>
+        <tr>
+            <th>External ID</th>
+            <td><code class="mono">{{ customer.external_id }}</code></td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+{% if subscription.status in ['active', 'trialing', 'past_due'] and user.has_scope('billing:write') %}
+<div class="admin-card">
+    <h3>Actions</h3>
+
+    {% if subscription.cancel_at_period_end %}
+    <p class="text-muted">
+        This subscription is scheduled to cancel at the end of the current billing period.
+    </p>
+    <form method="post" action="/billing/saas/{{ saas_app.id }}/subscriptions/{{ subscription.id }}/reactivate">
+        <button type="submit" class="btn btn-primary">Reactivate Subscription</button>
+    </form>
+    {% else %}
+    <button type="button" class="btn btn-danger" onclick="showCancelConfirm()">
+        Cancel Subscription
+    </button>
+
+    <div id="confirm-cancel" class="confirm-cancel">
+        <p><strong>Cancel this subscription?</strong></p>
+        <form method="post" action="/billing/saas/{{ saas_app.id }}/subscriptions/{{ subscription.id }}/cancel">
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>
+                    <input type="checkbox" name="cancel_immediately" value="true">
+                    Cancel immediately (no refund)
+                </label>
+                <small class="text-muted" style="display: block;">
+                    If unchecked, subscription will remain active until the end of the current billing period.
+                </small>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+                <button type="button" class="btn btn-secondary" onclick="hideCancelConfirm()">Back</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+function showCancelConfirm() {
+    document.getElementById('confirm-cancel').classList.add('visible');
+}
+function hideCancelConfirm() {
+    document.getElementById('confirm-cancel').classList.remove('visible');
+}
+</script>
+{% endblock %}

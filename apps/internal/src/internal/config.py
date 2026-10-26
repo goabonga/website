@@ -57,6 +57,19 @@ class Settings(BaseSettings):
     # VPN Portal API
     vpn_portal_api_url: str = "https://vpn-portal.internal"
 
+    # Billing API
+    billing_api_url: str = ""  # Billing service URL (empty: billing pages report an error)
+    # Scopes requested by the client-credentials grant. The admin scope must be the one the
+    # billing service names in PARTITION_ADMIN_SCOPE: it is what lets this application act on
+    # every SaaS app and manage the OAuth client bindings.
+    billing_read_scope: str = "billing:platform:read"
+    billing_write_scope: str = "billing:platform:write"
+    billing_admin_scope: str = "billing:admin"
+    billing_timeout: float = 30.0  # seconds, per request to the billing service
+    billing_page_size: int = 20  # Rows per page of the customer and subscription lists
+    billing_recent_limit: int = 10  # Rows of the "recent" tables of a SaaS app page
+    billing_socket_path: str = ""  # Unix socket path (e.g., /run/billing/billing.sock)
+
     # Web UI
     app_base_url: str = "https://admin.internal"  # Application URL (for OAuth2 redirect URI)
     cookie_secure: bool = True  # Set to False for local development without HTTPS

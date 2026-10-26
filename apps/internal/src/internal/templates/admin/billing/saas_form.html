@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit' if is_edit else 'New' }} SaaS App - Billing{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing" class="text-muted" style="text-decoration: none;">&larr; Back to Dashboard</a>
+        <h1 style="margin-top: 0.5rem;">{{ 'Edit' if is_edit else 'New' }} SaaS App</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="{{ '/billing/saas/' ~ saas_app.id ~ '/edit' if is_edit else '/billing/saas/new' }}">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="form-control"
+                   value="{{ saas_app.name if saas_app else '' }}"
+                   placeholder="My SaaS App"
+                   required>
+        </div>
+
+        {% if not is_edit %}
+        <div class="form-group">
+            <label for="slug">Slug *</label>
+            <input type="text"
+                   id="slug"
+                   name="slug"
+                   class="form-control"
+                   value="{{ saas_app.slug if saas_app else '' }}"
+                   placeholder="my-saas-app"
+                   pattern="[a-z0-9\-]+"
+                   required>
+            <small class="text-muted">Lowercase letters, numbers, and hyphens only. Cannot be changed later.</small>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Describe this SaaS application...">{{ saas_app.description if saas_app else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="webhook_url">Webhook URL</label>
+            <input type="url"
+                   id="webhook_url"
+                   name="webhook_url"
+                   class="form-control"
+                   value="{{ saas_app.webhook_url if saas_app else '' }}"
+                   placeholder="https://api.example.com/webhooks/billing">
+            <small class="text-muted">URL to receive billing event notifications.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="webhook_secret">Webhook Secret</label>
+            <input type="password"
+                   id="webhook_secret"
+                   name="webhook_secret"
+                   class="form-control"
+                   placeholder="{{ 'Leave empty to keep current value' if is_edit else 'Enter a secret key for webhook signature' }}">
+            <small class="text-muted">Secret key used to sign webhook payloads (HMAC-SHA256).{% if is_edit %} Leave empty to keep current value.{% endif %}</small>
+        </div>
+
+        {% if is_edit %}
+        <div class="form-group">
+            <label>
+                <input type="checkbox"
+                       name="is_active"
+                       value="true"
+                       {% if saas_app.is_active %}checked{% endif %}>
+                Active
+            </label>
+            <small class="text-muted" style="display: block;">Inactive apps cannot process new subscriptions.</small>
+        </div>
+        {% endif %}
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">{{ 'Update' if is_edit else 'Create' }} SaaS App</button>
+            <a href="{{ '/billing/saas/' ~ saas_app.id if is_edit else '/billing' }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

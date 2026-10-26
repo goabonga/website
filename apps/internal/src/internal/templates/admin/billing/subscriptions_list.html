@@ -1,0 +1,109 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Subscriptions - {{ saas_app.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}" class="text-muted" style="text-decoration: none;">&larr; Back to {{ saas_app.name }}</a>
+        <h1 style="margin-top: 0.5rem;">Subscriptions</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <!-- Filters -->
+    <form method="get" action="/billing/saas/{{ saas_app.id }}/subscriptions" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+        <select name="status" class="form-control" style="width: auto;">
+            <option value="">All Statuses</option>
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s | capitalize }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        {% if status_filter %}
+        <a href="/billing/saas/{{ saas_app.id }}/subscriptions" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if subscriptions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Stripe Subscription ID</th>
+                <th>Status</th>
+                <th>Period Start</th>
+                <th>Period End</th>
+                <th>Cancel at End</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/subscriptions/{{ sub.id }}" style="color: #e94560;">
+                        <code class="mono" style="font-size: 0.8rem;">{{ sub.stripe_subscription_id }}</code>
+                    </a>
+                </td>
+                <td>
+                    {% if sub.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif sub.status == 'trialing' %}
+                    <span class="badge badge-info">Trial</span>
+                    {% elif sub.status == 'past_due' %}
+                    <span class="badge badge-warning">Past Due</span>
+                    {% elif sub.status == 'canceled' %}
+                    <span class="badge badge-danger">Canceled</span>
+                    {% elif sub.status == 'incomplete' %}
+                    <span class="badge badge-warning">Incomplete</span>
+                    {% elif sub.status == 'paused' %}
+                    <span class="badge badge-secondary">Paused</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ sub.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ sub.current_period_start.strftime('%Y-%m-%d') if sub.current_period_start else '-' }}</td>
+                <td>{{ sub.current_period_end.strftime('%Y-%m-%d') if sub.current_period_end else '-' }}</td>
+                <td>
+                    {% if sub.cancel_at_period_end %}
+                    <span class="badge badge-warning">Yes</span>
+                    {% else %}
+                    <span class="text-muted">No</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/billing/saas/{{ saas_app.id }}/subscriptions/{{ sub.id }}" class="btn btn-secondary btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/billing/saas/{{ saas_app.id }}/subscriptions?page={{ page - 1 }}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">Page {{ page }}</span>
+        {% if subscriptions | length == per_page %}
+        <a href="/billing/saas/{{ saas_app.id }}/subscriptions?page={{ page + 1 }}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p style="font-size: 2rem;">&#128203;</p>
+        <p>No subscriptions found.</p>
+        <p class="text-muted">
+            Subscriptions are created when customers complete checkout.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

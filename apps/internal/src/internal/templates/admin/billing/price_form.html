@@ -1,0 +1,103 @@
+{% extends "admin/base.html" %}
+
+{% block title %}New Price - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}" class="text-muted" style="text-decoration: none;">&larr; Back to {{ product.name }}</a>
+        <h1 style="margin-top: 0.5rem;">New Price</h1>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        Create a new price for <strong>{{ product.name }}</strong> in Stripe.
+    </p>
+
+    <form method="post" action="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}/prices/new">
+        <div class="form-group">
+            <label for="nickname">Nickname</label>
+            <input type="text"
+                   id="nickname"
+                   name="nickname"
+                   class="form-control"
+                   placeholder="Monthly, Yearly, etc.">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="unit_amount">Amount (in cents) *</label>
+                <input type="number"
+                       id="unit_amount"
+                       name="unit_amount"
+                       class="form-control"
+                       placeholder="1999"
+                       min="0"
+                       required>
+                <small class="text-muted">In the smallest unit of the currency (1999 = 19.99 in a two-decimal currency).</small>
+            </div>
+
+            <div class="form-group">
+                <label for="currency">Currency</label>
+                <input type="text"
+                       id="currency"
+                       name="currency"
+                       class="form-control"
+                       placeholder="Billing service default"
+                       minlength="3"
+                       maxlength="3"
+                       pattern="[A-Za-z]{3}">
+                <small class="text-muted">ISO 4217 code; empty uses the billing service default.</small>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="billing_type">Billing Type</label>
+                <select id="billing_type" name="billing_type" class="form-control" onchange="toggleRecurring()">
+                    <option value="recurring" selected>Recurring</option>
+                    <option value="one_time">One-time</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="interval-group">
+                <label for="recurring_interval">Billing Interval</label>
+                <select id="recurring_interval" name="recurring_interval" class="form-control">
+                    <option value="" selected>Billing service default</option>
+                    <option value="month">Monthly</option>
+                    <option value="year">Yearly</option>
+                    <option value="week">Weekly</option>
+                    <option value="day">Daily</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="usage_type">Usage Type</label>
+            <select id="usage_type" name="usage_type" class="form-control">
+                <option value="licensed" selected>Licensed (fixed quantity)</option>
+                <option value="metered">Metered (usage-based)</option>
+            </select>
+            <small class="text-muted">Metered pricing charges based on usage reported via the API.</small>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">Create in Stripe</button>
+            <a href="/billing/saas/{{ saas_app.id }}/products/{{ product.id }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleRecurring() {
+    const billingType = document.getElementById('billing_type').value;
+    const intervalGroup = document.getElementById('interval-group');
+    intervalGroup.style.display = billingType === 'recurring' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     # Templates
     templates_dir: str = "custom_domain/templates"
 
+    # SSE
+    sse_heartbeat_interval: int = 30
+    sse_poll_interval_seconds: float = 1.0
+
     # OAuth2 / OIDC
     oauth2_issuer: str = ""
     admin_scope: str = "custom-domain:admin"

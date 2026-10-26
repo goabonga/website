@@ -18,6 +18,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/api/v1/domains/{domain_id}` | scope `custom-domain:write`; client registered and active | Delete a domain |
 | POST | `/api/v1/domains/{domain_id}/verify` | scope `custom-domain:write`; client registered and active | Trigger DNS verification for a domain |
 | POST | `/api/v1/domains/{domain_id}/provision` | scope `custom-domain:write`; client registered and active | Trigger SSL provisioning for a domain |
+| GET | `/api/v1/domains/{domain_id}/status` | scope `custom-domain:read`; client registered and active | Get current domain status for polling |
+| GET | `/api/v1/domains/{domain_id}/events` | scope `custom-domain:read`; client registered and active | Stream domain provisioning events via SSE |
+| GET | `/api/v1/domains/{domain_id}/events/history` | scope `custom-domain:read`; client registered and active | Get event history for a domain |
 | GET | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | List all authorized clients |
 | POST | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Create a new authorized client |
 | GET | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Get client details |
@@ -42,7 +45,7 @@ Client-scoped routes also require the caller's client to be registered and activ
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `custom-domain:read` - checked by 2 routes
+- `custom-domain:read` - checked by 5 routes
 - `custom-domain:write` - checked by 5 routes
 - `custom-domain:lookup` - checked by 1 route
 - `custom-domain:admin` - checked by 15 routes

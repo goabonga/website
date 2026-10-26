@@ -18,3 +18,12 @@ class DomainStatus(StrEnum):
     SUSPENDED = "suspended"
     EXPIRED = "expired"
     DEPROVISIONING = "deprovisioning"
+
+
+class ProvisioningStep(StrEnum):
+    """Steps in the provisioning process."""
+
+    DNS_CHECK = "dns_check"
+    NGINX_HTTP = "nginx_http"
+    CERTBOT = "certbot"
+    NGINX_HTTPS = "nginx_https"

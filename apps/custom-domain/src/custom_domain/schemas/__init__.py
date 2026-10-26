@@ -18,7 +18,11 @@ from custom_domain.schemas.domain import (
     DomainListResponse,
     DomainLookupResponse,
     DomainResponse,
+    DomainStatusResponse,
     DomainUpdate,
+    EventHistoryItem,
+    EventHistoryResponse,
+    ProgressStep,
 )
 from custom_domain.schemas.template import (
     ReprovisionError,
@@ -46,7 +50,11 @@ __all__ = [
     "DomainListResponse",
     "DomainLookupResponse",
     "DomainResponse",
+    "DomainStatusResponse",
     "DomainUpdate",
+    "EventHistoryItem",
+    "EventHistoryResponse",
+    "ProgressStep",
     "ReprovisionError",
     "TemplateCreate",
     "TemplateListItem",

@@ -25,3 +25,5 @@ documents one feature as it exists in the code.
    the billing service.
 7. [SendGrid webhook proxy](07-sendgrid.md) - raw proxy with optional ECDSA
    verification.
+8. [GitHub webhook proxy](08-github.md) - raw proxy with optional HMAC
+   verification.

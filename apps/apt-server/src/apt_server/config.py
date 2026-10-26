@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     def apt_architectures_list(self) -> list[str]:
         return [s.strip() for s in self.apt_architectures.split(",") if s.strip()]
 
+    # Chunked upload settings
+    upload_chunk_size: int = 5 * 1024 * 1024  # 5 MB per chunk
+    upload_max_size: int = 500 * 1024 * 1024  # 500 MB total
+    upload_ttl: int = 3600  # 1 hour before orphaned uploads are cleaned
+
     apt_origin: str = "apt-server"
     apt_label: str = "apt-server"
     # GPG key ID (or fingerprint) used to sign Release. Empty disables signing.

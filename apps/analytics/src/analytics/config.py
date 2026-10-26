@@ -21,12 +21,19 @@ class Settings(BaseSettings):
     app_name: str = "Analytics"
     log_level: str = "INFO"
     docs_enabled: bool = False
+    database_echo: bool = False
 
     # CORS
     cors_origins: list[str] = ["*"]
     cors_credentials: bool = True
     cors_methods: list[str] = ["GET", "POST", "OPTIONS"]
     cors_headers: list[str] = ["*"]
+
+    # Database
+    database_url: str = "postgresql://localhost:5432/analytics"
+
+    # Data retention (GDPR compliance)
+    data_retention_days: int = 395  # ~13 months
 
     # security.txt (RFC 9116)
     security_contact: str = ""

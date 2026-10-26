@@ -1,0 +1,239 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Contacts{% endblock %}
+
+{% block head %}
+<style>
+    .bulk-actions {
+        display: none;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        align-items: center;
+        gap: 1rem;
+    }
+    .bulk-actions.active {
+        display: flex;
+    }
+    .checkbox-cell {
+        width: 40px;
+        text-align: center;
+    }
+    .contact-email {
+        font-weight: 500;
+    }
+    .contact-name {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Contacts</h1>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="/contacts/import" class="btn btn-secondary">Import CSV</a>
+        <a href="/contacts/export{% if group_filter %}?group={{ group_filter | urlencode }}{% endif %}" class="btn btn-secondary">Export CSV</a>
+        <a href="/contacts/new" class="btn btn-primary">
+            <span>+</span> New Contact
+        </a>
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="get" action="/contacts" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <input type="text" name="search" class="form-control" placeholder="Search by email or name..." value="{{ search or '' }}">
+        </div>
+        <div style="min-width: 150px;">
+            <select name="status" class="form-control">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s | capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="min-width: 150px;">
+            <select name="group" class="form-control">
+                <option value="">All Groups</option>
+                {% for g in groups %}
+                <option value="{{ g.id }}" {% if group_filter == g.id %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        {% if search or status_filter or group_filter %}
+        <a href="/contacts" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    <div class="bulk-actions" id="bulk-actions">
+        <span id="selected-count">0</span> selected
+        <select id="bulk-group" class="form-control" style="width: auto;">
+            <option value="">Add to group...</option>
+            {% for g in groups %}
+            <option value="{{ g.id }}">{{ g.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="bulkAddToGroup()">Add to Group</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
+    </div>
+
+    {% if contacts %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th class="checkbox-cell">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                </th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Groups</th>
+                <th>Source</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+            <tr>
+                <td class="checkbox-cell">
+                    <input type="checkbox" class="contact-checkbox" value="{{ contact.id }}" onchange="updateBulkActions()">
+                </td>
+                <td>
+                    <a href="/contacts/{{ contact.id }}" style="color: #e94560; text-decoration: none;">
+                        <span class="contact-email">{{ contact.email }}</span>
+                    </a>
+                    {% if contact.full_name %}
+                    <div class="contact-name">{{ contact.full_name }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if contact.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif contact.status == 'unsubscribed' %}
+                    <span class="badge badge-warning">Unsubscribed</span>
+                    {% elif contact.status == 'bounced' %}
+                    <span class="badge badge-danger">Bounced</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ contact.status | capitalize }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if contact.groups %}
+                    <span class="text-muted" style="font-size: 0.85rem;">
+                        {{ contact.groups | length }} group(s)
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">{{ contact.source or '-' }}</td>
+                <td class="text-muted" style="font-size: 0.85rem;">
+                    {{ contact.created_at.strftime('%Y-%m-%d') if contact.created_at else '-' }}
+                </td>
+                <td>
+                    <a href="/contacts/{{ contact.id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/contacts?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}{% if group_filter %}&group={{ group_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} total)
+        </span>
+        {% if page < total_pages %}
+        <a href="/contacts?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}{% if group_filter %}&group={{ group_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem;">&#128101;</div>
+        <p>No contacts found</p>
+        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem;">
+            <a href="/contacts/new" class="btn btn-primary">Add Contact</a>
+            <a href="/contacts/import" class="btn btn-secondary">Import CSV</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Hidden forms for bulk actions -->
+<form id="bulk-delete-form" method="post" action="/contacts/bulk-delete" style="display: none;">
+    <input type="hidden" name="contact_ids" id="bulk-delete-ids">
+</form>
+
+<form id="bulk-add-group-form" method="post" action="/contacts/bulk-add-to-group" style="display: none;">
+    <input type="hidden" name="contact_ids" id="bulk-add-ids">
+    <input type="hidden" name="group_id" id="bulk-add-group-id">
+</form>
+
+<script>
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.contact-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.contact-checkbox:checked');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+
+    if (checkboxes.length > 0) {
+        bulkActions.classList.add('active');
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkActions.classList.remove('active');
+    }
+}
+
+function getSelectedIds() {
+    const checkboxes = document.querySelectorAll('.contact-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value).join(',');
+}
+
+function bulkDelete() {
+    const ids = getSelectedIds();
+    if (!ids) return;
+
+    if (confirm('Are you sure you want to delete ' + ids.split(',').length + ' contact(s)?')) {
+        document.getElementById('bulk-delete-ids').value = ids;
+        document.getElementById('bulk-delete-form').submit();
+    }
+}
+
+function bulkAddToGroup() {
+    const ids = getSelectedIds();
+    const groupId = document.getElementById('bulk-group').value;
+
+    if (!ids || !groupId) {
+        alert('Please select contacts and a group');
+        return;
+    }
+
+    document.getElementById('bulk-add-ids').value = ids;
+    document.getElementById('bulk-add-group-id').value = groupId;
+    document.getElementById('bulk-add-group-form').submit();
+}
+</script>
+{% endblock %}

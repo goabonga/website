@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Import Contacts{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Import Contacts</h1>
+    <a href="/contacts" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <h2 style="margin-bottom: 1rem;">Upload CSV File</h2>
+
+    <form method="post" action="/contacts/import" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="file">CSV File *</label>
+            <input type="file" id="file" name="file" class="form-control" accept=".csv" required
+                   style="padding: 0.75rem;">
+        </div>
+
+        <div class="form-group">
+            <label for="source">Import Source</label>
+            <input type="text" id="source" name="source" class="form-control"
+                   value="csv_import" placeholder="e.g., newsletter_signup, event_2024">
+            <small style="color: #a0a0a0;">Used to track where contacts came from</small>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="update_existing" value="true">
+                Update existing contacts
+            </label>
+            <small style="color: #a0a0a0;">If checked, contacts with matching emails will be updated</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+            Import Contacts
+        </button>
+    </form>
+</div>
+
+<div class="admin-card">
+    <h2 style="margin-bottom: 1rem;">CSV Format</h2>
+
+    <p style="margin-bottom: 1rem;">Your CSV file should include a header row. The following columns are recognized:</p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Accepted Names</th>
+                <th>Required</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Email</td>
+                <td><code>email</code>, <code>e-mail</code>, <code>email_address</code>, <code>mail</code></td>
+                <td><span class="badge badge-danger">Required</span></td>
+            </tr>
+            <tr>
+                <td>First Name</td>
+                <td><code>first_name</code>, <code>firstname</code>, <code>first</code>, <code>prenom</code></td>
+                <td><span class="badge badge-secondary">Optional</span></td>
+            </tr>
+            <tr>
+                <td>Last Name</td>
+                <td><code>last_name</code>, <code>lastname</code>, <code>last</code>, <code>nom</code></td>
+                <td><span class="badge badge-secondary">Optional</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p style="margin-top: 1rem; color: #a0a0a0;">
+        Any additional columns will be stored as custom fields.
+    </p>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">Example CSV</h3>
+    <pre style="background: #1a1a2e; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem;">email,first_name,last_name,company
+john@example.com,John,Doe,Acme Inc
+jane@example.com,Jane,Smith,Tech Corp
+bob@example.com,Bob,Johnson,Startup LLC</pre>
+</div>
+{% endblock %}

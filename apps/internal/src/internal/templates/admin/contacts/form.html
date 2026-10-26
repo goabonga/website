@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit' if is_edit else 'New' }} Contact{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ 'Edit' if is_edit else 'New' }} Contact</h1>
+    <a href="/contacts" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/contacts{% if is_edit %}/{{ contact.id }}/edit{% else %}/new{% endif %}">
+    <div class="admin-card">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" class="form-control" required
+                       value="{{ contact.email if contact else '' }}"
+                       placeholder="contact@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="first_name">First Name</label>
+                <input type="text" id="first_name" name="first_name" class="form-control"
+                       value="{{ contact.first_name if contact and contact.first_name else '' }}"
+                       placeholder="John">
+            </div>
+
+            <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <input type="text" id="last_name" name="last_name" class="form-control"
+                       value="{{ contact.last_name if contact and contact.last_name else '' }}"
+                       placeholder="Doe">
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" class="form-control">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if contact and contact.status == s %}selected{% elif not contact and s == 'active' %}selected{% endif %}>
+                        {{ s | capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="source">Source</label>
+                <input type="text" id="source" name="source" class="form-control"
+                       value="{{ contact.source if contact and contact.source else '' }}"
+                       placeholder="e.g., website, import, manual">
+            </div>
+        </div>
+
+        {% if groups %}
+        <div class="form-group" style="margin-top: 1rem;">
+            <label>Groups</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                {% for group in groups %}
+                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #1a1a2e; border-radius: 4px; cursor: pointer;">
+                    <input type="checkbox" name="group_ids" value="{{ group.id }}"
+                           {% if current_group_ids and group.id in current_group_ids %}checked{% endif %}>
+                    {{ group.name }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">
+            {{ 'Update Contact' if is_edit else 'Create Contact' }}
+        </button>
+        <a href="/contacts" class="btn btn-secondary">Cancel</a>
+        {% if is_edit %}
+        {# formaction: a form cannot be nested in this one, the button posts to the delete route #}
+        <button type="submit" class="btn btn-danger" style="margin-left: auto;"
+                formaction="/contacts/{{ contact.id }}/delete" formnovalidate
+                onclick="return confirm('Are you sure you want to delete this contact?');">Delete</button>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}

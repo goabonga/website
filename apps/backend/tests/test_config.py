@@ -124,6 +124,14 @@ class TestSettingsDefaults:
         assert s.rag_similarity_threshold == 0.7
         assert s.rag_max_results == 5
 
+    def test_prompt_cache_defaults(self, monkeypatch):
+        """Prompts are cached for five minutes in their own Redis database."""
+        for name in ("PROMPT_CACHE_REDIS_URL", "PROMPT_CACHE_TTL"):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.prompt_cache_redis_url == "redis://localhost:6379/4"
+        assert s.prompt_cache_ttl == 300
+
 
 class TestGetCredential:
     """Tests for get_credential."""

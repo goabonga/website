@@ -13,6 +13,7 @@ import math
 import operator
 import re
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -81,6 +82,11 @@ class Store:
             if isinstance(obj, cls):
                 return bucket
         return None
+
+
+def _attribute_name(obj, column) -> str:
+    """Mapped attribute holding a column (a column key can differ from its attribute)."""
+    return inspect(type(obj)).get_property_by_column(column).key
 
 
 def apply_flush_defaults(obj):
@@ -179,12 +185,12 @@ class FakeSession:
         if column.table.name == table_name:
 
             def current(row):
-                return getattr(row, column.key)
+                return getattr(row, _attribute_name(row, column))
         elif table_name == "documents" and column.table.name == "collections":
 
             def current(row):
                 collection = self.store.collections.get(row.collection_id)
-                return getattr(collection, column.key, None)
+                return getattr(collection, _attribute_name(collection, column), None)
         else:
             return None
         if op is operator.eq:
@@ -477,3 +483,57 @@ class FakeDocumentService(DocumentService):
     async def list(self, collection_id, offset=0, limit=100):
         items = [d for d in self.db.store.documents.values() if d.collection_id == collection_id]
         return items[offset : offset + limit]
+
+
+class FakeBillingClient:
+    """Configurable stand-in for BillingClient used by the workspace pages."""
+
+    def __init__(self):
+        self.is_configured = True
+        self.socket_path = ""
+        self.api_url = "http://billing.test"
+        self.plans = []
+        self.subscription = None
+        self.preview = None
+        self.upgrade_result = None
+        self.error = None
+        self.checkout_calls = []
+        self.upgrade_calls = []
+        self.cancel_calls = []
+        self.reactivate_calls = []
+
+    def _raise(self):
+        if self.error is not None:
+            raise self.error
+
+    async def get_plans(self):
+        self._raise()
+        return self.plans
+
+    async def get_tenant_subscription(self, tenant_id):
+        self._raise()
+        return self.subscription
+
+    async def create_checkout_session(self, **kwargs):
+        self._raise()
+        self.checkout_calls.append(kwargs)
+        return SimpleNamespace(session_id="cs_1", url="https://checkout.example.test/session")
+
+    async def preview_upgrade(self, **kwargs):
+        self._raise()
+        return self.preview
+
+    async def upgrade_subscription(self, **kwargs):
+        self._raise()
+        self.upgrade_calls.append(kwargs)
+        return self.upgrade_result
+
+    async def cancel_subscription(self, *args, **kwargs):
+        self._raise()
+        self.cancel_calls.append((args, kwargs))
+        return SimpleNamespace(success=True, cancel_at=None)
+
+    async def reactivate_subscription(self, *args, **kwargs):
+        self._raise()
+        self.reactivate_calls.append((args, kwargs))
+        return SimpleNamespace(success=True)

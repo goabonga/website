@@ -3,9 +3,11 @@
 
 """Tests for backend.main module."""
 
+from unittest.mock import patch
+
 from backend import __version__
 from backend.config import settings
-from backend.main import app
+from backend.main import app, get_swagger_ui_oauth2_config
 from httpx import ASGITransport, AsyncClient
 
 
@@ -41,3 +43,32 @@ class TestAppConfiguration:
         assert app.docs_url is None
         assert app.redoc_url is None
         assert app.openapi_url is None
+
+
+class TestSwaggerOAuth2Config:
+    """Tests for get_swagger_ui_oauth2_config."""
+
+    def test_returns_oauth2_config_when_configured(self) -> None:
+        """PKCE settings are returned when issuer and client id are set."""
+        with patch("backend.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = "swagger-client-id"
+            result = get_swagger_ui_oauth2_config()
+
+        assert result["swagger_ui_init_oauth"]["clientId"] == "swagger-client-id"
+        assert result["swagger_ui_init_oauth"]["usePkceWithAuthorizationCodeGrant"] is True
+        assert result["swagger_ui_parameters"]["persistAuthorization"] is True
+
+    def test_returns_empty_without_client_id(self) -> None:
+        """Nothing is returned when the Swagger client id is missing."""
+        with patch("backend.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = "https://auth.example.com"
+            mock_settings.oauth2_swagger_client_id = ""
+            assert get_swagger_ui_oauth2_config() == {}
+
+    def test_returns_empty_without_issuer(self) -> None:
+        """Nothing is returned when no issuer is configured."""
+        with patch("backend.main.settings") as mock_settings:
+            mock_settings.oauth2_issuer = ""
+            mock_settings.oauth2_swagger_client_id = "swagger-client-id"
+            assert get_swagger_ui_oauth2_config() == {}

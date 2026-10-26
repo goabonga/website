@@ -83,3 +83,8 @@ def step_check_response_header(context, header, value):
 def step_response_is_gif(context):
     assert context.response.headers.get("content-type") == "image/gif"
     assert context.response.content[:3] == b"GIF"
+
+
+@when('I send a DELETE request to "{path}"')
+def step_send_delete_request(context, path):
+    send_request(context, "DELETE", path)

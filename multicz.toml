@@ -303,3 +303,30 @@ bump_files = [
     { file = "ansible/galaxy.yml", key = "version" },
 ]
 changelog = "ansible/CHANGELOG.md"
+
+[components.playbook-bootstrap]
+tag_format = "playbook-bootstrap-v{version}"
+paths = ["ansible/playbooks/bootstrap.yml"]
+bump_files = [
+    { file = "ansible/playbooks/bootstrap.yml", key = 'regex:website_playbook_version:\s*"([^"]+)"' },
+]
+changelog = "ansible/playbooks/bootstrap.CHANGELOG.md"
+depends_on = ["ansible"]
+
+[components.playbook-site]
+tag_format = "playbook-site-v{version}"
+paths = ["ansible/playbooks/site.yml"]
+bump_files = [
+    { file = "ansible/playbooks/site.yml", key = 'regex:website_playbook_version:\s*"([^"]+)"' },
+]
+changelog = "ansible/playbooks/site.CHANGELOG.md"
+depends_on = ["ansible"]
+
+[components.playbook-apps]
+tag_format = "playbook-apps-v{version}"
+paths = ["ansible/playbooks/apps.yml"]
+bump_files = [
+    { file = "ansible/playbooks/apps.yml", key = 'regex:website_playbook_version:\s*"([^"]+)"' },
+]
+changelog = "ansible/playbooks/apps.CHANGELOG.md"
+depends_on = ["ansible"]

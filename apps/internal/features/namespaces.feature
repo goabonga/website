@@ -111,3 +111,58 @@ Feature: Knowledge namespace management
     When I bulk delete the created namespaces
     Then the response status code should be 303
     And I should be redirected to a URL containing "namespace(s)+deleted+successfully"
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the namespaces list
+    Given I am authenticated with only the scopes "namespaces:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/namespaces"
+    Then the response status code should be 200
+    And the active sidebar link should be "/namespaces"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new namespace form
+    Given I am authenticated with only the scopes "namespaces:* vpn:admin billing:read" granted by token exchange
+    When I send a GET request to "/namespaces/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/namespaces"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the namespace detail
+    Given I am authenticated with only the scopes "namespaces:* vpn:admin billing:read" granted by token exchange
+    And a namespace "docs" with name "Docs" exists for namespaces
+    When I view the namespace detail
+    Then the response status code should be 200
+    And the active sidebar link should be "/namespaces"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the namespace edit form
+    Given I am authenticated with only the scopes "namespaces:* vpn:admin billing:read" granted by token exchange
+    And a namespace "docs" with name "Docs" exists for namespaces
+    When I view the namespace edit form
+    Then the response status code should be 200
+    And the active sidebar link should be "/namespaces"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the namespaces list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    When I send a GET request to "/namespaces"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                              | vpn     | billing |
+      | namespaces:*                        | hidden  | hidden  |
+      | namespaces:* vpn:admin              | visible | hidden  |
+      | namespaces:* billing:read           | hidden  | visible |
+      | namespaces:* vpn:admin billing:read | visible | visible |
+      | *                                   | visible | visible |

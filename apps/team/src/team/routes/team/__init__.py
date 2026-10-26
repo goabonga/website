@@ -3,8 +3,9 @@
 
 """Team API routes."""
 
-from team.routes.team import teams
+from team.routes.team import agents, teams
 
 __all__ = [
+    "agents",
     "teams",
 ]

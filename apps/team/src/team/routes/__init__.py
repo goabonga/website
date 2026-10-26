@@ -4,9 +4,10 @@
 """API routes."""
 
 from team.routes import health
-from team.routes.team import teams
+from team.routes.team import agents, teams
 
 __all__ = [
     "health",
+    "agents",
     "teams",
 ]

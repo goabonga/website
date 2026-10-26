@@ -3,9 +3,13 @@
 
 """Pydantic schemas for request/response validation."""
 
+from team.schemas.agent import AgentCreate, AgentResponse, AgentUpdate
 from team.schemas.team import TeamCreate, TeamResponse, TeamUpdate
 
 __all__ = [
+    "AgentCreate",
+    "AgentResponse",
+    "AgentUpdate",
     "TeamCreate",
     "TeamResponse",
     "TeamUpdate",

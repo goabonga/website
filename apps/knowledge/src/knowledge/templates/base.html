@@ -682,6 +682,14 @@
 
             <nav class="sidebar-nav">
                 <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="/dashboard" class="nav-item {% if active_section == 'dashboard' %}active{% endif %}">
+                        <span class="nav-item-icon">&#128200;</span>
+                        Dashboard
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">Account</div>
                     <a href="/auth/account" class="nav-item {% if active_section == 'account_profile' %}active{% endif %}">
                         <span class="nav-item-icon">&#128100;</span>

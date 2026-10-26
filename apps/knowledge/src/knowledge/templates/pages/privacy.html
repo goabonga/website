@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Knowledge</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header .container {
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        .header-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 0.875rem;
+        }
+
+        .header-nav a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        /* Content */
+        .content {
+            padding: 60px 0;
+        }
+
+        .content h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .content .last-updated {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 40px;
+        }
+
+        .content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--accent-blue);
+        }
+
+        .content h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .content p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .content ul {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        .content li {
+            margin-bottom: 8px;
+        }
+
+        .content a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .content a:hover {
+            text-decoration: underline;
+        }
+
+        .info-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .info-card.highlight {
+            border-color: var(--accent-blue);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table th {
+            background-color: var(--bg-card);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .data-table td {
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer .container {
+            max-width: 1200px;
+        }
+
+        .footer-links {
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin: 0 12px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">Knowledge<span>.</span></a>
+            <nav class="header-nav">
+                {% if docs_enabled %}
+                <a href="/docs">API Docs</a>
+                {% endif %}
+                <a href="/mcp">MCP Server</a>
+                {% if request and request.cookies.get('access_token') %}
+                <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+                {% else %}
+                <a href="/auth/signin">Sign In</a>
+                <a href="/auth/signup" class="btn btn-primary">Get Started</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="content">
+        <div class="container">
+            <h1>Privacy Policy</h1>
+            <p class="last-updated">Last updated: February 2025</p>
+
+            <div class="info-card highlight">
+                <p>
+                    <strong>Summary:</strong> We collect minimal data necessary to provide the service.
+                    Your content belongs to you. We do not sell your data to third parties.
+                </p>
+            </div>
+
+            <h2>1. Data We Collect</h2>
+
+            <h3>Account Information</h3>
+            <p>When you create an account, we collect:</p>
+            <ul>
+                <li>Email address</li>
+                <li>Display name (optional)</li>
+                <li>Authentication tokens (managed by our OAuth2 provider)</li>
+            </ul>
+
+            <h3>Content Data</h3>
+            <p>When you use the service, we store:</p>
+            <ul>
+                <li>Documents and text content you upload</li>
+                <li>Vector embeddings generated from your content</li>
+                <li>Metadata associated with your collections and documents</li>
+            </ul>
+
+            <h3>Usage Data</h3>
+            <p>We automatically collect:</p>
+            <ul>
+                <li>API request logs (endpoints accessed, timestamps)</li>
+                <li>Error logs for debugging purposes</li>
+                <li>Quota usage statistics</li>
+            </ul>
+
+            <h2>2. How We Use Your Data</h2>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Data Type</th>
+                        <th>Purpose</th>
+                        <th>Retention</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Account info</td>
+                        <td>Authentication, communication</td>
+                        <td>Until account deletion</td>
+                    </tr>
+                    <tr>
+                        <td>Content data</td>
+                        <td>Provide search functionality</td>
+                        <td>Until you delete it</td>
+                    </tr>
+                    <tr>
+                        <td>Usage logs</td>
+                        <td>Service improvement, debugging</td>
+                        <td>90 days</td>
+                    </tr>
+                    <tr>
+                        <td>Quota stats</td>
+                        <td>Billing, plan enforcement</td>
+                        <td>Until account deletion</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>3. Data Sharing</h2>
+            <p>We do not sell your personal data. We may share data with:</p>
+            <ul>
+                <li><strong>Infrastructure providers:</strong> For hosting and storage (data processing agreements in place)</li>
+                <li><strong>Authentication provider:</strong> Our OAuth2 server for identity management</li>
+                <li><strong>Legal requirements:</strong> When required by law or to protect our rights</li>
+            </ul>
+
+            <h2>4. Data Security</h2>
+            <p>We implement industry-standard security measures:</p>
+            <ul>
+                <li>TLS encryption for all data in transit</li>
+                <li>Encrypted storage for sensitive data</li>
+                <li>Multi-tenant isolation at the database level</li>
+                <li>OAuth2 with PKCE for authentication</li>
+                <li>Regular security audits</li>
+            </ul>
+
+            <h2>5. Your Rights</h2>
+            <p>You have the right to:</p>
+            <ul>
+                <li><strong>Access:</strong> Request a copy of your data</li>
+                <li><strong>Rectification:</strong> Correct inaccurate data</li>
+                <li><strong>Erasure:</strong> Delete your account and data</li>
+                <li><strong>Portability:</strong> Export your data in a standard format</li>
+                <li><strong>Objection:</strong> Object to certain data processing</li>
+            </ul>
+            <p>To exercise these rights, contact us{% if site().privacy_email %} at <a href="mailto:{{ site().privacy_email }}">{{ site().privacy_email }}</a>{% endif %}.</p>
+
+            <h2>6. Cookies</h2>
+            <p>We use essential cookies for:</p>
+            <ul>
+                <li>Authentication session management</li>
+                <li>Active tenant/organization selection</li>
+                <li>CSRF protection</li>
+            </ul>
+            <p>We do not use tracking or advertising cookies.</p>
+
+            <h2>7. International Transfers</h2>
+            <p>
+                Your data may be processed in countries where our infrastructure is located.
+                We ensure appropriate safeguards are in place for any international data transfers.
+            </p>
+
+            <h2>8. Changes to This Policy</h2>
+            <p>
+                We may update this policy from time to time. We will notify you of significant changes
+                via email or through the service interface.
+            </p>
+
+            <h2>9. Contact Us</h2>
+            <p>
+                For privacy-related questions or concerns:{% if site().privacy_email %}<br>
+                Email: <a href="mailto:{{ site().privacy_email }}">{{ site().privacy_email }}</a>{% endif %}
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="/legal">Legal Notice</a>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+                <a href="/pricing">Pricing</a>
+                <a href="/mcp">MCP Server</a>
+            </div>
+            <p>Knowledge API</p>
+        </div>
+    </footer>
+</body>
+</html>

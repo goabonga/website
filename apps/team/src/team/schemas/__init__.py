@@ -9,6 +9,7 @@ from team.schemas.memory import MemoryEntryCreate, MemoryEntryResponse, MemoryEn
 from team.schemas.message import MessageCreate, MessageResponse
 from team.schemas.skill import SkillCreate, SkillResponse, SkillSummaryResponse, SkillUpdate
 from team.schemas.team import TeamCreate, TeamResponse, TeamUpdate
+from team.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowUpdate
 
 __all__ = [
     "AgentCreate",
@@ -29,4 +30,7 @@ __all__ = [
     "TeamCreate",
     "TeamResponse",
     "TeamUpdate",
+    "WorkflowCreate",
+    "WorkflowResponse",
+    "WorkflowUpdate",
 ]

@@ -11,6 +11,7 @@ from team.models.message import Message
 from team.models.participants import ConversationParticipant
 from team.models.skill import Skill
 from team.models.team import Team
+from team.models.workflow import Workflow
 
 __all__ = [
     "Agent",
@@ -21,4 +22,5 @@ __all__ = [
     "ConversationParticipant",
     "Skill",
     "Team",
+    "Workflow",
 ]

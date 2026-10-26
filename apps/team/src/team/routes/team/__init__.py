@@ -3,7 +3,7 @@
 
 """Team API routes."""
 
-from team.routes.team import agents, conversations, memory, messages, skills, teams
+from team.routes.team import agents, conversations, memory, messages, skills, teams, workflows
 
 __all__ = [
     "agents",
@@ -12,4 +12,5 @@ __all__ = [
     "messages",
     "skills",
     "teams",
+    "workflows",
 ]

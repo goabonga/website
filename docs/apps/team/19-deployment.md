@@ -91,13 +91,31 @@ delivered with systemd credentials, which the application reads from
 
 ## Ansible
 
-The `ansible/` collection of this repository provisions hosts (users, security,
-PostgreSQL, Redis, nginx, certificates). It does not yet contain a role that
-deploys this application, so the three units above are currently installed by
-the production inventory outside this repository. Gunicorn and Celery are
-declared as dependencies of the package so that the deployment can run them from
-the application environment, and the `git` executable must be installed on the
-host for the git tools.
+The [python_app](../../ansible/roles/python_app.md) role deploys the three
+units from the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable `team`
+in `website_apps_enabled` and it brings the components `team`, `team_worker`
+and `team_beat`.
+
+- `team` runs gunicorn on the socket `/run/team/team.sock`, with a `/health`
+  probe, a `team` database with the `pgvector` extension migrated with Alembic
+  on each release, and an nginx virtual host on the internal listen address
+  with a certificate from the internal certificate authority.
+- `team_worker` consumes the queue `team`. The worker and the beat have
+  `/usr/bin` and `/usr/local/bin` in their `PATH`, so that the `git` tools
+  find the executable.
+- The API and the worker join the groups `mailler`, `analytics` and `auth`
+  and get `MAILLER_BASE_URL`, `ANALYTICS_BASE_URL` and `AUTH_BASE_URL` as
+  `unix://` URLs of their sockets. Enable those applications first: a missing
+  group is reported and the run must be repeated once it exists.
+- Secrets ([Secrets](../../ansible/03-secrets.md)): `OPENAI_API_KEY` is
+  required; `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` and, on the API,
+  `OAUTH2_CLIENT_SECRET` are deployed only when set.
+- The catalog sets none of `BILLING_BASE_URL`, `SERVICES_BASE_URL`,
+  `GITHUB_OWNER` and `WORKSPACE_DIR`. Add them with `env_vars` in
+  `website_apps_overrides` when the agents need them. Without `WORKSPACE_DIR`
+  the workspace is under the private `/tmp` of the unit, which systemd
+  empties when the unit restarts.
 
 ## Verifying a deployment
 

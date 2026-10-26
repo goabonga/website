@@ -27,7 +27,7 @@ import httpx
 from internal.auth.models import User
 from internal.database import Base, get_db
 from internal.models.conversation import Conversation, Message
-from internal.models.knowledge import KnowledgeNamespace
+from internal.models.knowledge import KnowledgeEntry, KnowledgeNamespace
 from internal.models.prompt import SystemPrompt, SystemPromptVersion
 from internal.services.token_exchange import TokenExchangeClient, TokenExchangeError
 from internal.services.vpn_portal_client import VPNSession, VPNSessionsResponse
@@ -72,6 +72,7 @@ class Section:
 SECTIONS: dict[str, Section] = {
     "dashboard": Section("/", "conversations:*"),
     "conversations": Section("/conversations", "conversations:*"),
+    "knowledge": Section("/knowledge", "knowledge:*"),
     "namespaces": Section("/namespaces", "namespaces:*"),
     "prompts": Section("/prompts", "prompts:*"),
     "analytics": Section("/analytics", "analytics:*"),
@@ -290,6 +291,13 @@ async def seed_prompt(env: "Env") -> dict:
         )
     )
     return {"prompt": prompt.id}
+
+
+async def seed_entry(env: "Env") -> dict:
+    """Create a knowledge entry."""
+    entry = KnowledgeEntry(question="Why?", answer="Because.", metadata_={})
+    await env.add(entry)
+    return {"entry": entry.id}
 
 
 CAMPAIGN_ID = "11111111-1111-1111-1111-111111111111"
@@ -843,6 +851,14 @@ PAGES: dict[str, list[Page]] = {
         Page("/prompts/generate", "prompts", enable_openai),
         Page("/prompts/{prompt}", "prompts", seed_prompt),
         Page("/prompts/{prompt}/edit", "prompts", seed_prompt),
+    ],
+    "knowledge": [
+        Page("/knowledge", "knowledge"),
+        Page("/knowledge/new", "knowledge"),
+        Page("/knowledge/generate", "knowledge", enable_openai),
+        Page("/knowledge/{entry}", "knowledge", seed_entry),
+        Page("/knowledge/{entry}/edit", "knowledge", seed_entry),
+        Page("/knowledge/{entry}/validation", "knowledge", seed_entry),
     ],
 }
 

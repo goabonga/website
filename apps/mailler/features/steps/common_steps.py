@@ -154,3 +154,21 @@ def step_cors_preflight(context, path, origin):
             headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
         ),
     )
+
+
+@then('the response JSON "{key}" should have {count:d} entries')
+def step_check_json_entries(context, key, count):
+    value = context.response.json()[key]
+    assert len(value) == count, f"Expected {count} entries in {key}, got {len(value)}"
+
+
+@then('the response JSON "{key}" should include an entry with "{field}" equal to "{value}"')
+def step_check_json_entry_includes(context, key, field, value):
+    entries = context.response.json()[key]
+    assert any(str(entry.get(field)) == value for entry in entries), entries
+
+
+@then('the response JSON "{key}" should not include an entry with "{field}" equal to "{value}"')
+def step_check_json_entry_excludes(context, key, field, value):
+    entries = context.response.json()[key]
+    assert not any(str(entry.get(field)) == value for entry in entries), entries

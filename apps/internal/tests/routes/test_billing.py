@@ -1878,3 +1878,216 @@ class TestBillingSettings:
 
         assert settings.billing_admin_scope == "billing:root"
         assert settings.billing_read_scope == "billing:r"
+
+
+# ---------------------------------------------------------------------------
+# OAuth client bindings
+# ---------------------------------------------------------------------------
+
+
+class TestSaasClientBindings:
+    @patch("internal.routes.billing.billing_client")
+    @patch("internal.routes.billing.templates")
+    async def test_detail_lists_the_bindings_for_an_administrator(
+        self, mock_templates, mock_client
+    ):
+        from internal.routes.billing import saas_app_detail
+
+        binding = MagicMock(client_id="client-a")
+        mock_client.get_saas_app = AsyncMock(return_value=MagicMock(id="s1"))
+        mock_client.list_products = AsyncMock(return_value=[])
+        mock_client.list_customers = AsyncMock(return_value=[])
+        mock_client.list_subscriptions = AsyncMock(return_value=[])
+        mock_client.list_saas_clients = AsyncMock(return_value=[binding])
+
+        await saas_app_detail(
+            _make_request(), saas_id="s1", auth_result=_make_user(scopes=["billing:admin"])
+        )
+
+        mock_client.list_saas_clients.assert_awaited_once_with("s1")
+        ctx = mock_templates.TemplateResponse.call_args[1]["context"]
+        assert ctx["bindings"] == [binding]
+
+    @patch("internal.routes.billing.billing_client")
+    @patch("internal.routes.billing.templates")
+    async def test_detail_does_not_fetch_the_bindings_without_the_admin_scope(
+        self, mock_templates, mock_client
+    ):
+        from internal.routes.billing import saas_app_detail
+
+        mock_client.get_saas_app = AsyncMock(return_value=MagicMock(id="s1"))
+        mock_client.list_products = AsyncMock(return_value=[])
+        mock_client.list_customers = AsyncMock(return_value=[])
+        mock_client.list_subscriptions = AsyncMock(return_value=[])
+        mock_client.list_saas_clients = AsyncMock()
+
+        await saas_app_detail(
+            _make_request(), saas_id="s1", auth_result=_make_user(scopes=["billing:read"])
+        )
+
+        mock_client.list_saas_clients.assert_not_awaited()
+        ctx = mock_templates.TemplateResponse.call_args[1]["context"]
+        assert ctx["bindings"] == []
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_bind_success(self, mock_client):
+        from internal.routes.billing import saas_client_bind
+
+        mock_client.bind_client = AsyncMock(return_value=MagicMock())
+
+        result = await saas_client_bind(
+            _make_request(), saas_id="s1", client_id=" client-a ", auth_result=_make_user()
+        )
+
+        assert isinstance(result, RedirectResponse)
+        assert result.headers["location"] == "/billing/saas/s1?success=Client+bound"
+        mock_client.bind_client.assert_awaited_once_with("s1", "client-a")
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_bind_failure(self, mock_client):
+        from internal.routes.billing import saas_client_bind
+
+        mock_client.bind_client = AsyncMock(return_value=None)
+
+        result = await saas_client_bind(
+            _make_request(), saas_id="s1", client_id="client-a", auth_result=_make_user()
+        )
+
+        assert "error=Failed+to+bind+client" in result.headers["location"]
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_bind_rejects_a_blank_or_spaced_client_id(self, mock_client):
+        from internal.routes.billing import saas_client_bind
+
+        mock_client.bind_client = AsyncMock()
+
+        for client_id in ("", "   ", "two words"):
+            result = await saas_client_bind(
+                _make_request(), saas_id="s1", client_id=client_id, auth_result=_make_user()
+            )
+            assert "error=" in result.headers["location"]
+
+        mock_client.bind_client.assert_not_awaited()
+
+    async def test_bind_redirect_auth(self):
+        from internal.routes.billing import saas_client_bind
+
+        redirect = RedirectResponse(url="/login")
+        result = await saas_client_bind(
+            MagicMock(), saas_id="s1", client_id="x", auth_result=redirect
+        )
+        assert result is redirect
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_unbind_success(self, mock_client):
+        from internal.routes.billing import saas_client_unbind
+
+        mock_client.unbind_client = AsyncMock(return_value=True)
+
+        result = await saas_client_unbind(
+            _make_request(), saas_id="s1", client_id="client-a", auth_result=_make_user()
+        )
+
+        assert result.headers["location"] == "/billing/saas/s1?success=Client+unbound"
+        mock_client.unbind_client.assert_awaited_once_with("s1", "client-a")
+
+    @patch("internal.routes.billing.billing_client")
+    async def test_unbind_failure(self, mock_client):
+        from internal.routes.billing import saas_client_unbind
+
+        mock_client.unbind_client = AsyncMock(return_value=False)
+
+        result = await saas_client_unbind(
+            _make_request(), saas_id="s1", client_id="client-a", auth_result=_make_user()
+        )
+
+        assert "error=Failed+to+unbind+client" in result.headers["location"]
+
+    async def test_unbind_redirect_auth(self):
+        from internal.routes.billing import saas_client_unbind
+
+        redirect = RedirectResponse(url="/login")
+        result = await saas_client_unbind(
+            MagicMock(), saas_id="s1", client_id="x", auth_result=redirect
+        )
+        assert result is redirect
+
+    async def test_binding_through_the_application_with_the_admin_scope(self, tmp_path):
+        from ..sidebar import running_app
+
+        async with running_app(tmp_path) as env:
+            billing = env.client("billing.billing_client")
+            billing.bind_client.return_value = MagicMock()
+            billing.unbind_client.return_value = True
+
+            bound = await env.post(
+                "/billing/saas/saas-1/clients", ["billing:*"], {"client_id": "client-a"}
+            )
+            unbound = await env.post(
+                "/billing/saas/saas-1/clients/unbind", ["billing:*"], {"client_id": "client-a"}
+            )
+
+        assert bound.status_code == 303
+        assert bound.headers["location"] == "/billing/saas/saas-1?success=Client+bound"
+        assert unbound.status_code == 303
+        assert unbound.headers["location"] == "/billing/saas/saas-1?success=Client+unbound"
+        billing.bind_client.assert_awaited_once_with("saas-1", "client-a")
+
+    async def test_binding_through_the_application_needs_the_admin_scope(self, tmp_path):
+        from ..sidebar import running_app
+
+        async with running_app(tmp_path) as env:
+            billing = env.client("billing.billing_client")
+            scopes = ["billing:read", "billing:write", "billing:delete"]
+
+            bound = await env.post(
+                "/billing/saas/saas-1/clients", scopes, {"client_id": "client-a"}
+            )
+            unbound = await env.post(
+                "/billing/saas/saas-1/clients/unbind", scopes, {"client_id": "client-a"}
+            )
+
+        assert bound.status_code == 403
+        assert unbound.status_code == 403
+        billing.bind_client.assert_not_awaited()
+        billing.unbind_client.assert_not_awaited()
+
+    def test_the_forms_are_reserved_to_billing_admin(self):
+        from internal.routes.billing import router
+
+        for path in ("/billing/saas/{saas_id}/clients", "/billing/saas/{saas_id}/clients/unbind"):
+            route = next(route for route in router.routes if route.path == path)
+            assert route.methods == {"POST"}
+
+    def _render_detail(self, user, bindings):
+        app = MagicMock(id="s1", is_active=True, description=None, webhook_url=None)
+        app.name = _APP_NAME
+        app.created_at = datetime(2024, 1, 1)
+        return _render(
+            "saas_detail.html",
+            user=user,
+            saas_app=app,
+            products=[],
+            customers=[],
+            subscriptions=[],
+            bindings=bindings,
+            success=None,
+            error=None,
+        )
+
+    def test_detail_template_shows_the_bindings_to_an_administrator(self):
+        binding = MagicMock(client_id="client-a", created_at=datetime(2024, 1, 2, 3, 4))
+        html = self._render_detail(_make_user(scopes=["billing:admin"]), [binding])
+        assert "OAuth clients" in html
+        assert "client-a" in html
+        assert 'action="/billing/saas/s1/clients/unbind"' in html
+        assert 'action="/billing/saas/s1/clients"' in html
+
+    def test_detail_template_says_when_no_client_is_bound(self):
+        html = self._render_detail(_make_user(scopes=["billing:admin"]), [])
+        assert "No client bound yet." in html
+
+    def test_detail_template_hides_the_bindings_without_the_admin_scope(self):
+        html = self._render_detail(_make_user(scopes=["billing:read"]), [])
+        assert "OAuth clients" not in html
+        assert "/clients" not in html

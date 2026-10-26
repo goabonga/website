@@ -12,6 +12,7 @@ from internal.services.billing_client import (
     BillingClient,
     BillingPrice,
     BillingProduct,
+    ClientBinding,
     Customer,
     CustomerPortal,
     SaasApp,
@@ -113,6 +114,15 @@ def _price_data(price_id="price1", product_id="prod1"):
         "is_active": True,
         "created_at": NOW,
         "updated_at": NOW2,
+    }
+
+
+def _binding_data(client_id="client-a", saas_id="app1"):
+    return {
+        "id": "bind1",
+        "saas_app_id": saas_id,
+        "client_id": client_id,
+        "created_at": NOW,
     }
 
 
@@ -1224,6 +1234,78 @@ class TestSyncSubscription:
         with patch.object(client, "_request", side_effect=Exception("fail")):
             result = await client.sync_subscription("app1", "sub1")
             assert result is None
+
+
+# =========================================================================
+# OAuth client bindings
+# =========================================================================
+
+
+class TestListSaasClients:
+    @pytest.mark.asyncio
+    async def test_success(self, client):
+        with patch.object(
+            client,
+            "_request",
+            new_callable=AsyncMock,
+            return_value=[_binding_data("client-a"), _binding_data("client-b")],
+        ) as mock_req:
+            result = await client.list_saas_clients("app1")
+            assert [binding.client_id for binding in result] == ["client-a", "client-b"]
+            assert isinstance(result[0], ClientBinding)
+            mock_req.assert_called_once_with("GET", "/platform/saas/app1/clients", access="admin")
+
+    @pytest.mark.asyncio
+    async def test_error_returns_empty(self, client):
+        with patch.object(client, "_request", side_effect=Exception("fail")):
+            assert await client.list_saas_clients("app1") == []
+
+
+class TestBindClient:
+    @pytest.mark.asyncio
+    async def test_success(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_binding_data("client-a")
+        ) as mock_req:
+            result = await client.bind_client("app1", "client-a")
+            assert isinstance(result, ClientBinding)
+            assert result.saas_app_id == "app1"
+            mock_req.assert_called_once_with(
+                "PUT", "/platform/saas/app1/clients/client-a", access="admin"
+            )
+
+    @pytest.mark.asyncio
+    async def test_client_id_is_escaped_in_the_path(self, client):
+        with patch.object(
+            client, "_request", new_callable=AsyncMock, return_value=_binding_data("a?b#c")
+        ) as mock_req:
+            await client.bind_client("app1", "a?b#c")
+            assert mock_req.call_args[0][1] == "/platform/saas/app1/clients/a%3Fb%23c"
+
+    @pytest.mark.asyncio
+    async def test_error_returns_none(self, client):
+        with patch.object(client, "_request", side_effect=Exception("fail")):
+            assert await client.bind_client("app1", "client-a") is None
+
+
+class TestUnbindClient:
+    @pytest.mark.asyncio
+    async def test_success(self, client):
+        with patch.object(client, "_request", new_callable=AsyncMock, return_value={}) as mock_req:
+            assert await client.unbind_client("app1", "client-a") is True
+            mock_req.assert_called_once_with(
+                "DELETE", "/platform/saas/app1/clients/client-a", access="admin"
+            )
+
+    @pytest.mark.asyncio
+    async def test_not_bound_returns_false(self, client):
+        error = httpx.HTTPStatusError(
+            "404",
+            request=httpx.Request("DELETE", "https://billing.example.com/x"),
+            response=httpx.Response(404),
+        )
+        with patch.object(client, "_request", side_effect=error):
+            assert await client.unbind_client("app1", "client-a") is False
 
 
 # =========================================================================

@@ -214,6 +214,16 @@ class Env:
 
     async def get(self, path: str, scopes: list[str]) -> httpx.Response:
         """GET ``path`` as a user whose RBAC scopes are ``scopes``."""
+        return await self.request("GET", path, scopes)
+
+    async def post(self, path: str, scopes: list[str], data: dict | None = None) -> httpx.Response:
+        """POST the form ``data`` to ``path`` as a user whose RBAC scopes are ``scopes``."""
+        return await self.request("POST", path, scopes, data=data)
+
+    async def request(
+        self, method: str, path: str, scopes: list[str], data: dict | None = None
+    ) -> httpx.Response:
+        """Send a request as a user whose RBAC scopes are ``scopes``, without following redirects."""
         self.rbac_scopes = scopes
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(
@@ -222,7 +232,7 @@ class Env:
             cookies={"access_token": "test-token"},
             follow_redirects=False,
         ) as http:
-            return await http.get(path)
+            return await http.request(method, path, data=data)
 
 
 async def seed_conversation(env: "Env") -> dict:
@@ -410,6 +420,9 @@ async def configure_billing(env: "Env") -> dict:
     )
     billing = env.client("billing.billing_client")
     billing.list_saas_apps.return_value = [saas]
+    billing.list_saas_clients.return_value = [
+        SimpleNamespace(client_id="client-a", saas_app_id="saas-1", created_at=created)
+    ]
     billing.get_saas_app.return_value = saas
     billing.list_products.return_value = [product]
     billing.get_product.return_value = product

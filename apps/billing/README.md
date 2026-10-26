@@ -19,6 +19,7 @@ Full documentation lives in `docs/apps/billing/`.
 - One-time, recurring and metered prices
 - Customers synchronized with Stripe
 - Subscription lifecycle (create, update, cancel, upgrade with proration preview)
+- Cancel and reactivate actions for subscriptions
 
 ## Routes and scopes
 
@@ -55,6 +56,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/sync` | scope `billing:platform:write` | Sync subscription data from Stripe |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade/preview` | scope `billing:platform:read` | Preview proration costs for upgrading a subscription |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/upgrade` | scope `billing:platform:write` | Upgrade a subscription to a new plan with proration |
+| POST | `/platform/{saas_id}/subscriptions/{subscription_id}/cancel` | scope `billing:platform:write` | Cancel a subscription, at the end of the paid period by default |
+| POST | `/platform/{saas_id}/subscriptions/{subscription_id}/reactivate` | scope `billing:platform:write` | Undo a cancellation scheduled for the end of the period |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -62,7 +65,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `billing:platform:write` - checked by 14 routes
+- `billing:platform:write` - checked by 16 routes
 - `billing:platform:read` - checked by 14 routes
 
 ## Usage

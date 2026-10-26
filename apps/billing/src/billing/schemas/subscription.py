@@ -46,6 +46,16 @@ class SubscriptionUpgradeRequest(BaseModel):
     )
 
 
+class SubscriptionCancelRequest(BaseModel):
+    """Body of the cancel action (optional: the default is to cancel at period end)."""
+
+    cancel_at_period_end: bool = Field(
+        default=True,
+        description="true: keep the subscription until the end of the paid period and stop "
+        "renewing it; false: cancel immediately",
+    )
+
+
 class ProrationLineItem(BaseModel):
     """A single line item in the proration preview."""
 

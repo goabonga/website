@@ -14,6 +14,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Multi-factor authentication: TOTP, email codes and backup codes.
 - Login and password reset: Login form and API, password recovery.
 - OAuth2 and OIDC authorization server: Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
+- Device authorization and pushed authorization requests: RFC 8628 device flow and RFC 9126 pushed authorization requests.
 
 ## Routes and scopes
 
@@ -38,6 +39,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/oauth2/authorize` | session (redirects to the login page otherwise) | Initiate the OAuth2 authorization code flow |
 | POST | `/oauth2/authorize` | session (401 otherwise) | Submit the OAuth2 consent decision and obtain an authorization code |
 | POST | `/oauth2/token` | client credentials (HTTP Basic or form); public clients use PKCE with `client_id` only | Issue OAuth2 access tokens for all supported grant types |
+| POST | `/oauth2/device` | client authentication (public clients send `client_id` only) | Issue a device code and user code to begin the Device Authorization Grant |
+| GET | `/oauth2/device/verify` | session (redirects to the login page otherwise) | Render the user-facing device verification page (RFC 8628 §3.3) |
+| POST | `/oauth2/device/verify` | session (redirects to the login page otherwise) | Validate a submitted user code and present the consent screen |
+| POST | `/oauth2/device/complete` | session (redirects to the login page otherwise) | Record the user's consent decision and finalize device authorization |
+| POST | `/oauth2/par` | client credentials (HTTP Basic or form) | Push an authorization request to the server and receive a request_uri |
 | POST | `/oauth2/revoke` | client credentials (HTTP Basic or form) | Revoke an OAuth2 access token or refresh token (RFC 7009) |
 | POST | `/oauth2/introspect` | client credentials (HTTP Basic or form), confidential client allowed the `introspect` scope | Validate a token and return its active state and metadata |
 

@@ -17,6 +17,9 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 from sqlalchemy import inspect
+from sqlalchemy.sql import functions as sql_functions
+from sqlalchemy.sql.elements import False_, True_
+from sqlalchemy.sql.operators import in_op
 
 from knowledge.auth.dependencies import AuthContext
 from knowledge.auth.models import User
@@ -49,6 +52,19 @@ class Store:
         self.release_assets: dict[UUID, McpReleaseAsset] = {}
         self.organizations: dict[UUID, Organization] = {}
         self.members: dict[UUID, OrganizationMember] = {}
+
+    def tables(self):
+        """In-memory tables by SQL table name."""
+        return {
+            "collections": self.collections,
+            "documents": self.documents,
+            "collection_collaborators": self.collaborators,
+            "collection_invitations": self.invitations,
+            "mcp_releases": self.releases,
+            "mcp_release_assets": self.release_assets,
+            "tenants": self.organizations,
+            "tenant_members": self.members,
+        }
 
     def bucket_for(self, obj):
         """Return the in-memory table holding objects of this type, if any."""
@@ -103,43 +119,87 @@ class FakeSession:
                 self.store.releases[obj.release_id].assets.append(obj)
 
     async def execute(self, statement):
-        """Evaluate the simple SELECTs on releases and assets; anything else is empty."""
-        rows = self._select(statement)
+        """Evaluate simple SELECTs (and COUNTs) over the in-memory tables.
+
+        Supported: equality, inequality and IN filters on columns of the queried table,
+        filters on the owning collection for documents, descending ordering, offset and
+        limit. A statement that needs anything else (other joins) answers no row.
+        """
+        rows, count = self._evaluate(statement)
         result = MagicMock()
         result.scalar_one_or_none.return_value = rows[0] if rows else None
+        result.scalar.return_value = count
         result.scalars.return_value.all.return_value = rows
         result.all.return_value = []
         return result
 
-    def _select(self, statement):
+    def _evaluate(self, statement):
         if not hasattr(statement, "column_descriptions"):
-            return []
-        entity = statement.column_descriptions[0].get("entity")
-        bucket = {
-            McpRelease: self.store.releases,
-            McpReleaseAsset: self.store.release_assets,
-        }.get(entity)
+            return [], 0
+        expr = statement.column_descriptions[0].get("expr")
+        is_count = isinstance(expr, sql_functions.count)
+        if is_count:
+            table_name = list(expr.clauses)[0].table.name
+        else:
+            entity = statement.column_descriptions[0].get("entity")
+            if entity is None or not hasattr(entity, "__table__"):
+                return [], 0
+            table_name = entity.__table__.name
+        bucket = self.store.tables().get(table_name)
         if bucket is None:
-            return []
+            return [], 0
         rows = list(bucket.values())
         for criterion in statement._where_criteria:
-            attribute, expected, op = criterion.left.key, criterion.right.value, criterion.operator
-            if op is operator.eq:
-                rows = [r for r in rows if getattr(r, attribute) == expected]
-            elif op is operator.ne:
-                rows = [r for r in rows if getattr(r, attribute) != expected]
-            else:
-                raise NotImplementedError(f"unsupported operator {op}")
+            rows = self._filter(rows, table_name, criterion)
+            if rows is None:
+                return [], 0
+        if is_count:
+            return rows, len(rows)
         for clause in statement._order_by_clauses[:1]:
-            rows.sort(key=lambda r: getattr(r, clause.element.key), reverse=True)
+            key = clause.element.key
+            rows.sort(key=lambda r: (getattr(r, key) is not None, getattr(r, key)), reverse=True)
+        if statement._offset_clause is not None:
+            rows = rows[statement._offset_clause.value :]
         if statement._limit_clause is not None:
             rows = rows[: statement._limit_clause.value]
-        return rows
+        return rows, 0
+
+    def _filter(self, rows, table_name, criterion):
+        column, op = criterion.left, criterion.operator
+        right = criterion.right
+        if isinstance(right, True_):
+            expected = True
+        elif isinstance(right, False_):
+            expected = False
+        else:
+            expected = right.value
+        if column.table.name == table_name:
+
+            def current(row):
+                return getattr(row, column.key)
+        elif table_name == "documents" and column.table.name == "collections":
+
+            def current(row):
+                collection = self.store.collections.get(row.collection_id)
+                return getattr(collection, column.key, None)
+        else:
+            return None
+        if op is operator.eq:
+            return [r for r in rows if current(r) == expected]
+        if op is operator.ne:
+            return [r for r in rows if current(r) != expected]
+        if op is in_op:
+            return [r for r in rows if current(r) in expected]
+        raise NotImplementedError(f"unsupported operator {op}")
 
     async def delete(self, obj):
         bucket = self.store.bucket_for(obj)
         if bucket is not None:
             bucket.pop(obj.id, None)
+        if isinstance(obj, Collection):
+            for table in (self.store.documents, self.store.collaborators, self.store.invitations):
+                for key in [k for k, v in table.items() if v.collection_id == obj.id]:
+                    del table[key]
 
 
 def make_auth_context(user_id: str, scopes: str, tenant_id: str | None = None) -> AuthContext:

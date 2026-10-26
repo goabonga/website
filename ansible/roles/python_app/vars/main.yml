@@ -85,3 +85,54 @@ python_app__listen_addrs: >-
            + (['[' ~ website_listen_ipv6 ~ ']'] if website_listen_ipv6 | length > 0 else [])) }}
 python_app__server_names: >-
   {{ [python_app__domain] + (python_app__c.nginx.ssl_wildcard_domains if python_app__wildcard else []) }}
+
+# Privileged helper of custom_domain. The command table mirrors
+# custom_domain.privileged_helper.COMMANDS: each command takes the options
+# listed, in this order, then optionally one argument (a domain or a token).
+python_app__helper_commands:
+  - {name: write-config, options: [sites-dir, config-prefix, staging-dir], argument: true}
+  - {name: remove-config, options: [sites-dir, config-prefix], argument: true}
+  - {name: test-nginx, options: [nginx-bin], argument: false}
+  - {name: reload-nginx, options: [systemctl-bin, nginx-service], argument: false}
+  - {name: check-snippet, options: [nginx-bin, staging-dir], argument: true}
+  - {name: certbot-issue, options: [certbot-bin, webroot, email], argument: true}
+  - {name: certbot-renew, options: [certbot-bin], argument: true}
+  - {name: certbot-revoke, options: [certbot-bin, letsencrypt-dir], argument: true}
+  - {name: cert-dates, options: [openssl-bin, letsencrypt-dir], argument: true}
+
+# Contact address of the certificate requests.
+python_app__custom_domain_email: "{{ website_custom_domain_certbot_email | default('', true) or website_certbot_email }}"
+
+# Value of each option of the helper (the settings of the service).
+python_app__helper_options:
+  sites-dir: "{{ website_custom_domain_sites_dir }}"
+  config-prefix: "{{ website_custom_domain_config_prefix }}"
+  staging-dir: "{{ website_custom_domain_staging_dir }}"
+  nginx-bin: "{{ website_custom_domain_nginx_bin }}"
+  nginx-service: "{{ website_custom_domain_nginx_service }}"
+  systemctl-bin: "{{ website_custom_domain_systemctl_bin }}"
+  certbot-bin: "{{ website_custom_domain_certbot_bin }}"
+  openssl-bin: "{{ website_custom_domain_openssl_bin }}"
+  webroot: "{{ website_custom_domain_webroot }}"
+  letsencrypt-dir: "{{ website_custom_domain_letsencrypt_dir }}"
+  email: "{{ python_app__custom_domain_email }}"
+
+# Sudoers rules of the helper, without the user and the run-as part. This is
+# the output of `custom-domain sudoers`: the helper and every option are part
+# of the rule (sudo compares them literally) and only the trailing * varies.
+# Characters that sudoers treats specially are escaped with a backslash.
+python_app__helper_rules: >-
+  {%- set ns = namespace(rules=[]) -%}
+  {%- for command in python_app__helper_commands -%}
+  {%- set words = namespace(list=[website_custom_domain_helper]) -%}
+  {%- for option in command.options -%}
+  {%- set words.list = words.list + ['--' ~ option, python_app__helper_options[option]] -%}
+  {%- endfor -%}
+  {%- set words.list = words.list + [command.name] -%}
+  {%- set rule = words.list | map('regex_replace', '([ ,:=\\\\"#])', '\\\\\\1') | join(' ') -%}
+  {%- set ns.rules = ns.rules + [rule ~ (' *' if command.argument else '')] -%}
+  {%- endfor -%}
+  {{ ns.rules }}
+
+# Components that run with sudo: plain sudoers entries or the helper.
+python_app__sudo: "{{ python_app__c.sudoers | length > 0 or python_app__c.custom_domain_helper.enabled | bool }}"

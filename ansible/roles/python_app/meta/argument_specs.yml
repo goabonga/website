@@ -41,6 +41,8 @@ argument_specs:
           extra_path: []
           sudoers: []
           stepca_group_member: false
+          custom_domain_helper:
+            enabled: false
           healthcheck:
             enabled: false
             path: /health
@@ -547,3 +549,72 @@ argument_specs:
         - Celery queue of the three custom_domain processes (CELERY_QUEUE); the worker consumes it
           (--queues), the API and beat publish to it.
         default: custom-domain
+      website_custom_domain_cname_target:
+        type: str
+        description:
+        - Default CNAME target handed to the customers (DEFAULT_CNAME_TARGET of the API). Empty
+          means every authorized client must carry its own.
+        default: ''
+      website_custom_domain_helper:
+        type: str
+        description:
+        - Where the privileged helper is installed (PRIVILEGED_HELPER). Owned by root and not
+          writable by anyone else.
+        default: /usr/local/sbin/custom-domain-privileged
+      website_custom_domain_staging_dir:
+        type: str
+        description:
+        - Directory the worker stages the rendered virtual hosts in, read back by the helper
+          (PRIVILEGED_STAGING_DIR).
+        default: /var/lib/custom-domain/staging
+      website_custom_domain_sites_dir:
+        type: str
+        description:
+        - nginx directory receiving the virtual hosts of the customers (NGINX_SITES_DIR).
+        default: /etc/nginx/sites-enabled
+      website_custom_domain_config_prefix:
+        type: str
+        description:
+        - Prefix of the file names written in that directory (NGINX_CONFIG_PREFIX).
+        default: custom-domain-
+      website_custom_domain_nginx_bin:
+        type: str
+        description:
+        - nginx binary (NGINX_BIN), owned by root and not writable by others.
+        default: /usr/sbin/nginx
+      website_custom_domain_systemctl_bin:
+        type: str
+        description:
+        - systemctl binary (SYSTEMCTL_BIN), owned by root and not writable by others.
+        default: /usr/bin/systemctl
+      website_custom_domain_certbot_bin:
+        type: str
+        description:
+        - certbot binary (CERTBOT_BIN), owned by root and not writable by others.
+        default: /usr/bin/certbot
+      website_custom_domain_openssl_bin:
+        type: str
+        description:
+        - openssl binary (OPENSSL_BIN), owned by root and not writable by others.
+        default: /usr/bin/openssl
+      website_custom_domain_nginx_service:
+        type: str
+        description:
+        - systemd unit reloaded after a change (NGINX_SERVICE).
+        default: nginx
+      website_custom_domain_webroot:
+        type: str
+        description:
+        - Webroot of the HTTP-01 challenge (CERTBOT_WEBROOT). nginx must serve it on /.well-
+          known/acme-challenge/ for the customer domains; it is created when missing.
+        default: /var/www/certbot
+      website_custom_domain_letsencrypt_dir:
+        type: str
+        description:
+        - Directory of the certificates (LETSENCRYPT_DIR); website_letsencrypt_dir by default.
+      website_custom_domain_certbot_email:
+        type: str
+        description:
+        - Contact address of the certificate requests (CERTBOT_EMAIL); website_certbot_email when
+          empty. One of the two is required by the worker.
+        default: ''

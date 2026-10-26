@@ -1,0 +1,32 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Privileged helper of the custom_domain worker. The sudoers rules that allow
+# it are written by access.yml from the same settings.
+
+- name: Install the privileged helper of {{ python_app__unit }}
+  ansible.builtin.copy:
+    src: "{{ python_app__current }}/apps/{{ python_app__package }}/src/{{ python_app__module }}/privileged_helper.py"
+    dest: "{{ website_custom_domain_helper }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Create the staging directory of {{ python_app__unit }}
+  ansible.builtin.file:
+    path: "{{ website_custom_domain_staging_dir }}"
+    state: directory
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0750"
+
+- name: Create the ACME webroot of {{ python_app__unit }}
+  ansible.builtin.file:
+    path: "{{ website_custom_domain_webroot }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"

@@ -46,3 +46,25 @@
       - website_node_install_method in ['apt', 'nodesource', 'none']
     fail_msg: website_uv_install_method must be pip or none and website_node_install_method apt, nodesource or none.
     quiet: true
+
+- name: Check the settings of the custom-domain privileged helper
+  ansible.builtin.assert:
+    that:
+      - python_app__helper_empty | length == 0
+      - website_custom_domain_helper | length > 0
+      - python_app__helper_relative | length == 0
+      - "'@' in python_app__helper_options.email"
+    fail_msg: >-
+      The privileged helper of custom_domain needs these settings:
+      {{ (python_app__helper_empty + (['website_custom_domain_helper'] if website_custom_domain_helper | length == 0 else [])) | join(', ') }}
+      must not be empty (the e-mail comes from website_custom_domain_certbot_email or
+      website_certbot_email) and the paths must be absolute
+      ({{ python_app__helper_relative | join(', ') }}).
+    quiet: true
+  vars:
+    python_app__helper_empty: >-
+      {{ python_app__helper_options | dict2items | selectattr('value', 'equalto', '') | map(attribute='key') | list }}
+    python_app__helper_relative: >-
+      {{ python_app__helper_options | dict2items | rejectattr('key', 'in', ['config-prefix', 'nginx-service', 'email'])
+         | rejectattr('value', 'match', '^/') | map(attribute='key') | list }}
+  when: python_app__all | selectattr('enabled') | selectattr('app', 'in', python_app__apps) | selectattr('custom_domain_helper.enabled') | list | length > 0

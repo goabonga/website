@@ -94,3 +94,23 @@ class TestSettings:
             s = Settings(_env_file=None)
         assert s.geoip_enabled is False
         assert s.geoip_database_path == "/tmp/city.mmdb"
+
+    def test_session_cookie_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.session_cookie_name == "ua_sid"
+        assert s.session_cookie_max_age == 86400 * 365
+        assert s.session_cookie_secure is True
+        assert s.session_cookie_samesite == "none"
+        assert s.session_cookie_domain == ""
+
+    def test_pixel_and_privacy_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.pixel_cache_control == "no-cache, no-store, must-revalidate"
+        assert s.anonymize_ip is False
+
+    def test_anonymize_ip_env_override(self):
+        with patch.dict("os.environ", {"ANONYMIZE_IP": "true"}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.anonymize_ip is True

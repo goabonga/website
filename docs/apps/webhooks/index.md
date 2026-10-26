@@ -23,3 +23,5 @@ documents one feature as it exists in the code.
    delivered through SNS.
 6. [Stripe webhook proxy](06-stripe.md) - raw proxy; signature checked by
    the billing service.
+7. [SendGrid webhook proxy](07-sendgrid.md) - raw proxy with optional ECDSA
+   verification.

@@ -1,0 +1,195 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Email Templates{% endblock %}
+
+{% block head %}
+<style>
+    .bulk-actions {
+        display: none;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 1rem;
+        background: #0f3460;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .bulk-actions.visible {
+        display: flex;
+    }
+    .entry-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Email Templates</h1>
+    <a href="/email-templates/new" class="btn btn-primary">
+        <span>+</span> New Template
+    </a>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="get" action="/email-templates" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <input type="text" name="search" class="form-control" placeholder="Search templates..." value="{{ search or '' }}">
+        </div>
+        <div style="min-width: 150px;">
+            <select name="status" class="form-control">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s | capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        {% if search or status_filter %}
+        <a href="/email-templates" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if user.can_delete('email_templates') %}
+    <div class="bulk-actions" id="bulkActions">
+        <span><span id="selectedCount">0</span> selected</span>
+        <form method="post" action="/email-templates/bulk-delete" id="bulkDeleteForm" style="display: inline;">
+            <input type="hidden" name="template_ids" id="templateIds">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected templates?')">
+                Delete Selected
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if templates %}
+    <table class="table">
+        <thead>
+            <tr>
+                {% if user.can_delete('email_templates') %}<th width="40"><input type="checkbox" id="selectAll" class="entry-checkbox" title="Select all"></th>{% endif %}
+                <th>Name</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Variables</th>
+                <th>Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for template in templates %}
+            <tr>
+                {% if user.can_delete('email_templates') %}
+                <td>
+                    <input type="checkbox" class="entry-checkbox row-checkbox" data-id="{{ template.id }}">
+                </td>
+                {% endif %}
+                <td>
+                    <a href="/email-templates/{{ template.id }}" style="color: #e94560; text-decoration: none;">
+                        {{ template.name }}
+                    </a>
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ template.slug }}</div>
+                </td>
+                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ template.subject_template or '-' }}
+                </td>
+                <td>
+                    {% if template.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                    {% elif template.status == 'draft' %}
+                    <span class="badge badge-warning">Draft</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Archived</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if template.variables %}
+                    <span class="text-muted" style="font-size: 0.85rem;">
+                        {{ template.variables | length }} var(s)
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size: 0.85rem;">
+                    {{ template.updated_at.strftime('%Y-%m-%d %H:%M') if template.updated_at else '-' }}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="/email-templates/{{ template.id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                        <form method="post" action="/email-templates/{{ template.id }}/duplicate" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-secondary">Duplicate</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/email-templates?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} total)
+        </span>
+        {% if page < total_pages %}
+        <a href="/email-templates?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem;">&#128231;</div>
+        <p>No email templates found</p>
+        <a href="/email-templates/new" class="btn btn-primary" style="margin-top: 1rem;">Create your first template</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.can_delete('email_templates') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const templateIds = document.getElementById('templateIds');
+
+    if (!selectAll || rowCheckboxes.length === 0) return;
+
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const count = checked.length;
+        selectedCount.textContent = count;
+        bulkActions.classList.toggle('visible', count > 0);
+        templateIds.value = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    }
+
+    selectAll.addEventListener('change', function() {
+        rowCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkActions();
+    });
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const allChecked = document.querySelectorAll('.row-checkbox:checked').length === rowCheckboxes.length;
+            selectAll.checked = allChecked;
+            updateBulkActions();
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

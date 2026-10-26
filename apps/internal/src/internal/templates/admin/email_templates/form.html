@@ -1,0 +1,1698 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit' if is_edit else 'New' }} Email Template{% endblock %}
+
+{% block head %}
+<style>
+    .editor-container {
+        display: flex;
+        gap: 1rem;
+        min-height: 600px;
+    }
+    .editor-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .editor-sidebar {
+        width: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* Block Editor Styles */
+    .block-editor {
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+        min-height: 400px;
+    }
+    .block-editor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #0f3460;
+    }
+    .block-editor-header h3 {
+        color: #e0e0e0;
+        font-size: 1rem;
+        margin: 0;
+    }
+    .view-toggle {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .view-toggle button {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8rem;
+        border: 1px solid #0f3460;
+        background: #1a1a2e;
+        color: #a0a0a0;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .view-toggle button.active {
+        background: #0f3460;
+        color: #e94560;
+    }
+
+    .blocks-container {
+        min-height: 300px;
+        padding: 1rem;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    .blocks-container.code-view {
+        display: none;
+    }
+
+    /* Body Settings */
+    .body-settings {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem 0.75rem;
+        background: #0d1a2d;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+    }
+    .body-settings label {
+        font-size: 0.75rem;
+        color: #74b9ff;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+    .body-settings input[type="color"] {
+        width: 32px;
+        height: 24px;
+        border: 1px solid #0f3460;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+    .body-settings .body-color-preview {
+        font-family: 'Fira Code', monospace;
+        font-size: 0.7rem;
+        color: #a0a0a0;
+        padding: 0.2rem 0.4rem;
+        background: #1a1a2e;
+        border-radius: 3px;
+    }
+    .code-editor-container {
+        display: none;
+        height: 400px;
+    }
+    .code-editor-container.active {
+        display: block;
+    }
+    .code-editor-container textarea {
+        width: 100%;
+        height: 100%;
+        background: #0d1117;
+        color: #c9d1d9;
+        border: none;
+        padding: 1rem;
+        font-family: 'Fira Code', 'Monaco', monospace;
+        font-size: 13px;
+        resize: none;
+        border-radius: 4px;
+    }
+
+    /* Section Block (container with columns) */
+    .section-block {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+    }
+    .section-block:hover {
+        border-color: #e94560;
+    }
+    .section-block.dragging {
+        opacity: 0.5;
+        border-style: dashed;
+    }
+    .section-block-header {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background: #0a2540;
+        border-radius: 3px 3px 0 0;
+        cursor: move;
+    }
+    .section-block-header .drag-handle {
+        color: #666;
+        margin-right: 0.5rem;
+        cursor: grab;
+    }
+    .section-block-header .section-info {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .section-block-header .section-type {
+        font-size: 0.75rem;
+        color: #74b9ff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .section-block-header .column-selector {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .section-block-header .column-selector button {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        color: #a0a0a0;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.7rem;
+        cursor: pointer;
+        border-radius: 2px;
+    }
+    .section-block-header .column-selector button.active {
+        background: #0f3460;
+        color: #e94560;
+        border-color: #e94560;
+    }
+    .section-block-header .section-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .section-block-header .section-actions button {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1rem;
+        line-height: 1;
+    }
+    .section-block-header .section-actions button:hover {
+        color: #e94560;
+    }
+    .section-settings {
+        display: none;
+        padding: 0.5rem 0.75rem;
+        background: #0d1a2d;
+        border-bottom: 1px solid #0f3460;
+    }
+    .section-settings.active {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .section-settings label {
+        font-size: 0.75rem;
+        color: #a0a0a0;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .section-settings input[type="color"] {
+        width: 28px;
+        height: 22px;
+        border: 1px solid #0f3460;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+    .section-settings input[type="text"] {
+        width: 60px;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        color: #e0e0e0;
+        border-radius: 3px;
+    }
+    .section-columns {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+    .section-column {
+        flex: 1;
+        min-height: 60px;
+        background: #1a1a2e;
+        border: 1px dashed #0f3460;
+        border-radius: 4px;
+        padding: 0.5rem;
+    }
+    .section-column.drop-target {
+        border-color: #e94560;
+        background: rgba(233, 69, 96, 0.1);
+    }
+
+    /* Email Block */
+    .email-block {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    .email-block:hover {
+        border-color: #e94560;
+    }
+    .email-block.dragging {
+        opacity: 0.5;
+        border-style: dashed;
+    }
+    .email-block.collapsed .email-block-content {
+        display: none;
+    }
+    .email-block-header {
+        display: flex;
+        align-items: center;
+        padding: 0.4rem 0.6rem;
+        background: #0f3460;
+        border-radius: 3px 3px 0 0;
+        cursor: move;
+    }
+    .email-block.collapsed .email-block-header {
+        border-radius: 3px;
+    }
+    .email-block-header .drag-handle {
+        color: #666;
+        margin-right: 0.5rem;
+        cursor: grab;
+        font-size: 0.9rem;
+    }
+    .email-block-header .block-type {
+        flex: 1;
+        font-size: 0.7rem;
+        color: #a0a0a0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .email-block-header .block-actions {
+        display: flex;
+        gap: 0.15rem;
+    }
+    .email-block-header .block-actions button {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        padding: 0.2rem;
+        font-size: 0.9rem;
+        line-height: 1;
+    }
+    .email-block-header .block-actions button:hover {
+        color: #e94560;
+    }
+    .email-block-header .block-actions button.edit-toggle {
+        color: #74b9ff;
+    }
+    .email-block-content {
+        padding: 0.6rem;
+    }
+    .email-block-content input,
+    .email-block-content textarea {
+        width: 100%;
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        color: #e0e0e0;
+        padding: 0.4rem;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 0.85rem;
+    }
+    .email-block-content textarea {
+        min-height: 60px;
+        resize: vertical;
+    }
+    .email-block-content input:focus,
+    .email-block-content textarea:focus {
+        outline: none;
+        border-color: #e94560;
+    }
+    .email-block-content label {
+        display: block;
+        font-size: 0.7rem;
+        color: #a0a0a0;
+        margin-bottom: 0.2rem;
+    }
+    .email-block-content .field-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+    }
+    .email-block-content .field-row > div {
+        flex: 1;
+    }
+    .email-block-content .field-row:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Block Preview (collapsed state) */
+    .block-preview {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.8rem;
+        color: #a0a0a0;
+        background: #12203a;
+        border-radius: 0 0 3px 3px;
+    }
+    .block-preview-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .block-preview-visual {
+        padding: 0.3rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+    }
+    .block-preview-visual.text-preview {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .block-preview-visual.button-preview {
+        color: white;
+        text-align: center;
+    }
+    .block-preview-visual.image-preview {
+        background: #1a1a2e;
+        color: #74b9ff;
+    }
+    .block-preview-visual.divider-preview {
+        width: 100%;
+        height: 2px;
+    }
+    .block-preview-visual.spacer-preview {
+        background: repeating-linear-gradient(
+            45deg,
+            #1a1a2e,
+            #1a1a2e 5px,
+            #0f3460 5px,
+            #0f3460 10px
+        );
+        width: 100%;
+    }
+
+    /* Add Block Button */
+    .add-block-area {
+        border: 2px dashed #0f3460;
+        border-radius: 4px;
+        padding: 0.75rem;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+    .add-block-area p {
+        color: #666;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+    }
+    .block-types {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        justify-content: center;
+    }
+    .block-type-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        padding: 0.4rem 0.6rem;
+        background: #0f3460;
+        border: 1px solid #1a4a7a;
+        border-radius: 4px;
+        color: #e0e0e0;
+        cursor: pointer;
+        font-size: 0.7rem;
+        transition: all 0.2s;
+    }
+    .block-type-btn:hover {
+        background: #1a4a7a;
+        border-color: #e94560;
+    }
+    .block-type-btn .icon {
+        font-size: 1.1rem;
+    }
+    .block-type-btn.section-btn {
+        background: #0a2540;
+        border-color: #1a5a8a;
+    }
+    .block-type-btn.section-btn:hover {
+        background: #1a5a8a;
+    }
+
+    /* Preview Panel */
+    .preview-panel {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .preview-panel h3 {
+        margin-bottom: 0.75rem;
+        color: #e0e0e0;
+        font-size: 1rem;
+    }
+    .preview-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .preview-toggle button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        border: 1px solid #0f3460;
+        background: #1a1a2e;
+        color: #a0a0a0;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .preview-toggle button.active {
+        background: #0f3460;
+        color: #e0e0e0;
+    }
+    .compile-status {
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    .compile-status.success {
+        background: rgba(0, 184, 148, 0.2);
+        color: #00b894;
+    }
+    .compile-status.error {
+        background: rgba(214, 48, 49, 0.2);
+        color: #ff6b6b;
+    }
+    .preview-frame {
+        background: white;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        width: 100%;
+        flex: 1;
+        min-height: 300px;
+    }
+
+    /* Variables Panel */
+    .variables-panel {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+    }
+    .variables-panel h3 {
+        margin-bottom: 0.5rem;
+        color: #e0e0e0;
+        font-size: 1rem;
+    }
+    .variables-panel p {
+        font-size: 0.75rem;
+        color: #a0a0a0;
+        margin-bottom: 0.75rem;
+    }
+    #variables-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .variable-tag {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.4rem 0.6rem;
+        background: #0f3460;
+        color: #74b9ff;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        font-family: 'Fira Code', 'Monaco', monospace;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+    .variable-tag:hover {
+        background: #1a4a7a;
+        border-color: #74b9ff;
+    }
+    .variable-tag::after {
+        content: '📋';
+        font-size: 0.7rem;
+        opacity: 0.5;
+    }
+    .variable-tag:hover::after {
+        opacity: 1;
+    }
+    .variable-tag.copied {
+        background: #00b894;
+        color: white;
+    }
+    .variable-tag.copied::after {
+        content: '✓';
+    }
+
+    /* Form Header */
+    .form-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 1200px) {
+        .editor-container {
+            flex-direction: column;
+        }
+        .editor-sidebar {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ 'Edit' if is_edit else 'New' }} Email Template</h1>
+    <a href="/email-templates" class="btn btn-secondary">&larr; Back to List</a>
+</div>
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger" style="background: #e74c3c; color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+    <strong>Error:</strong> {{ request.query_params.get('error') }}
+</div>
+{% endif %}
+
+{% if request.query_params.get('success') %}
+<div class="alert alert-success" style="background: #27ae60; color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+    {{ request.query_params.get('success') }}
+</div>
+{% endif %}
+
+<form method="post" action="/email-templates{% if is_edit %}/{{ template.id }}/edit{% else %}/new{% endif %}" id="template-form">
+    <div class="admin-card">
+        <div class="form-header">
+            <div class="form-group">
+                <label for="name">Template Name *</label>
+                <input type="text" id="name" name="name" class="form-control" required
+                       value="{{ template.name if template else '' }}"
+                       placeholder="e.g., Welcome Email">
+            </div>
+            <div class="form-group">
+                <label for="slug">Slug</label>
+                <input type="text" id="slug" name="slug" class="form-control"
+                       value="{{ template.slug if template else '' }}"
+                       placeholder="auto-generated from name">
+            </div>
+        </div>
+        <div class="form-header">
+            <div class="form-group">
+                <label for="subject_template">Email Subject *</label>
+                <input type="text" id="subject_template" name="subject_template" class="form-control" required
+                       value="{{ template.subject_template if template else '' }}"
+                       placeholder="e.g., Welcome %first_name%!">
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" class="form-control">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if template and template.status == s %}selected{% elif not template and s == 'draft' %}selected{% endif %}>
+                        {{ s | capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control" rows="2"
+                      placeholder="Brief description of this template">{{ template.description if template else '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="admin-card" style="padding: 1rem;">
+        <div class="editor-container">
+            <div class="editor-main">
+                <div class="block-editor">
+                    <div class="block-editor-header">
+                        <h3>Email Content</h3>
+                        <div class="view-toggle">
+                            <button type="button" class="active" data-view="blocks">Blocks</button>
+                            <button type="button" data-view="code">Code</button>
+                        </div>
+                    </div>
+
+                    <div class="body-settings" id="body-settings">
+                        <label>
+                            &#127912; Body Background
+                            <input type="color" id="body-bg-color" value="#f4f4f4">
+                            <span class="body-color-preview" id="body-color-preview">#f4f4f4</span>
+                        </label>
+                    </div>
+
+                    <div class="blocks-container" id="blocks-container">
+                        <!-- Sections will be inserted here -->
+                    </div>
+
+                    <div class="code-editor-container" id="code-editor-container">
+                        <textarea id="mjml-code" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="add-block-area" id="add-block-area">
+                        <p>Add content</p>
+                        <div class="block-types">
+                            <button type="button" class="block-type-btn section-btn" data-type="section">
+                                <span class="icon">&#9638;</span>
+                                <span>Section</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="text">
+                                <span class="icon">&#128221;</span>
+                                <span>Text</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="heading">
+                                <span class="icon">&#128288;</span>
+                                <span>Heading</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="button">
+                                <span class="icon">&#128280;</span>
+                                <span>Button</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="image">
+                                <span class="icon">&#128247;</span>
+                                <span>Image</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="divider">
+                                <span class="icon">&#9135;</span>
+                                <span>Divider</span>
+                            </button>
+                            <button type="button" class="block-type-btn" data-type="spacer">
+                                <span class="icon">&#8597;</span>
+                                <span>Spacer</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-sidebar">
+                <div class="variables-panel">
+                    <h3>&#128279; Variables</h3>
+                    <p>Click to copy, then paste in your content</p>
+                    <div id="variables-list">
+                        <span class="variable-tag" data-var="first_name">%first_name%</span>
+                        <span class="variable-tag" data-var="last_name">%last_name%</span>
+                        <span class="variable-tag" data-var="email">%email%</span>
+                        <span class="variable-tag" data-var="company">%company%</span>
+                        <span class="variable-tag" data-var="subject">%subject%</span>
+                    </div>
+                </div>
+
+                <div class="preview-panel">
+                    <h3>&#128065; Live Preview</h3>
+                    <div class="preview-toggle">
+                        <button type="button" class="active" data-view="desktop">Desktop</button>
+                        <button type="button" data-view="mobile">Mobile</button>
+                    </div>
+                    <div id="compile-status" class="compile-status" style="display: none;"></div>
+                    <iframe id="preview-frame" class="preview-frame"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" name="mjml_source" id="mjml_source_input" value="">
+    </div>
+
+    <!-- Plain Text Fallback Template -->
+    <div class="admin-card" style="margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="togglePlainText()">
+            <h3 style="margin: 0;">&#128196; Plain Text Fallback (Optional)</h3>
+            <span id="plain-text-toggle" style="color: #a0a0a0; transition: transform 0.2s;">&#9660;</span>
+        </div>
+        <p style="color: #a0a0a0; font-size: 0.85rem; margin: 0.5rem 0 0 0;">
+            Text-only version for email clients that don't support HTML
+        </p>
+        <div id="plain-text-section" style="display: none; margin-top: 1rem;">
+            <div class="form-group">
+                <label for="plain_text">Plain Text Content</label>
+                <textarea id="plain_text" name="plain_text" class="form-control" rows="10"
+                          style="font-family: 'Fira Code', 'Monaco', monospace; font-size: 13px; background: #0d1117; color: #c9d1d9;"
+                          placeholder="Hello %first_name%,
+
+Your plain text email content goes here.
+
+Use %variable% syntax for personalization.
+
+Best regards,
+The Team">{{ template.plain_text if template and template.plain_text else '' }}</textarea>
+            </div>
+            <p style="color: #666; font-size: 0.8rem; margin-top: 0.5rem;">
+                Tip: Use variables like %first_name%, %last_name%, %email% for personalization.
+            </p>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">
+            {{ 'Update Template' if is_edit else 'Create Template' }}
+        </button>
+        <a href="/email-templates" class="btn btn-secondary">Cancel</a>
+        {% if is_edit %}
+        {# formaction: a form cannot be nested in this one, the button posts to the delete route #}
+        <button type="submit" class="btn btn-danger" style="margin-left: auto;"
+                formaction="/email-templates/{{ template.id }}/delete" formnovalidate
+                onclick="return confirm('Are you sure you want to delete this template?');">Delete</button>
+        {% endif %}
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const initialMjml = {{ (template.mjml_source if template else default_mjml) | tojson }};
+
+    // Data structure: sections contain columns, columns contain blocks
+    let sections = [];
+    let bodyBgColor = '#f4f4f4';
+    let currentView = 'blocks';
+    let idCounter = 0;
+
+    const blocksContainer = document.getElementById('blocks-container');
+    const codeContainer = document.getElementById('code-editor-container');
+    const codeTextarea = document.getElementById('mjml-code');
+    const addBlockArea = document.getElementById('add-block-area');
+    const previewFrame = document.getElementById('preview-frame');
+    const compileStatus = document.getElementById('compile-status');
+    const bodyBgInput = document.getElementById('body-bg-color');
+    const bodyColorPreview = document.getElementById('body-color-preview');
+
+    // Block templates
+    const blockTemplates = {
+        text: {
+            type: 'text',
+            content: 'Enter your text here...',
+            fontSize: '14px',
+            color: '#333333',
+            bgColor: '',
+            collapsed: false
+        },
+        heading: {
+            type: 'heading',
+            content: 'Your Heading',
+            fontSize: '24px',
+            color: '#1a1a2e',
+            bgColor: '',
+            collapsed: false
+        },
+        button: {
+            type: 'button',
+            text: 'Click Here',
+            href: 'https://example.com',
+            bgColor: '#e94560',
+            collapsed: false
+        },
+        image: {
+            type: 'image',
+            src: 'https://via.placeholder.com/600x200',
+            alt: 'Image description',
+            width: '100%',
+            collapsed: false
+        },
+        divider: {
+            type: 'divider',
+            color: '#e0e0e0',
+            width: '100%',
+            collapsed: true
+        },
+        spacer: {
+            type: 'spacer',
+            height: '20px',
+            collapsed: true
+        }
+    };
+
+    // Section template
+    function createSection(columnCount = 1) {
+        const columns = [];
+        for (let i = 0; i < columnCount; i++) {
+            columns.push({ id: ++idCounter, blocks: [] });
+        }
+        return {
+            id: ++idCounter,
+            type: 'section',
+            bgColor: '#ffffff',
+            padding: '20px',
+            columns: columns,
+            showSettings: false
+        };
+    }
+
+    // Parse initial MJML to sections
+    function parseMjmlToSections(mjml) {
+        sections = [];
+
+        // Convert {{var}} and [[var]] to %var% for backward compatibility with existing templates
+        mjml = mjml.replace(/\{\{(\w+)\}\}/g, '%$1%');
+        mjml = mjml.replace(/\[\[(\w+)\]\]/g, '%$1%');
+
+        // Extract body background color
+        const bodyMatch = mjml.match(/<mj-body([^>]*)>/i);
+        if (bodyMatch) {
+            const bodyBgMatch = bodyMatch[1].match(/background-color="([^"]+)"/);
+            if (bodyBgMatch) {
+                bodyBgColor = bodyBgMatch[1];
+                updateBodyBgUI();
+            }
+        }
+
+        // Find all mj-section elements
+        const sectionRegex = /<mj-section([^>]*)>([\s\S]*?)<\/mj-section>/gi;
+        let sectionMatch;
+
+        while ((sectionMatch = sectionRegex.exec(mjml)) !== null) {
+            const sectionAttrs = sectionMatch[1];
+            const sectionContent = sectionMatch[2];
+
+            // Parse section attributes
+            const bgColorMatch = sectionAttrs.match(/background-color="([^"]+)"/);
+            const paddingMatch = sectionAttrs.match(/padding="([^"]+)"/);
+
+            // Find columns
+            const columnRegex = /<mj-column([^>]*)>([\s\S]*?)<\/mj-column>/gi;
+            const columns = [];
+            let columnMatch;
+
+            while ((columnMatch = columnRegex.exec(sectionContent)) !== null) {
+                const columnContent = columnMatch[2];
+                const blocks = parseBlocksFromContent(columnContent);
+                columns.push({
+                    id: ++idCounter,
+                    blocks: blocks
+                });
+            }
+
+            // If no columns found, create one with all content
+            if (columns.length === 0) {
+                const blocks = parseBlocksFromContent(sectionContent);
+                columns.push({
+                    id: ++idCounter,
+                    blocks: blocks
+                });
+            }
+
+            sections.push({
+                id: ++idCounter,
+                type: 'section',
+                bgColor: bgColorMatch ? bgColorMatch[1] : '#ffffff',
+                padding: paddingMatch ? paddingMatch[1] : '20px',
+                columns: columns,
+                showSettings: false
+            });
+        }
+
+        // If no sections found, create a default one
+        if (sections.length === 0) {
+            const section = createSection(1);
+            section.columns[0].blocks = [{
+                id: ++idCounter,
+                type: 'text',
+                content: 'Start writing your email content here...',
+                fontSize: '14px',
+                color: '#333333',
+                bgColor: '',
+                collapsed: false
+            }];
+            sections.push(section);
+        }
+    }
+
+    // Parse blocks from column content
+    function parseBlocksFromContent(content) {
+        const blocks = [];
+        const regex = /<mj-(text|button|image|divider|spacer)([^>]*)(?:>([\s\S]*?)<\/mj-\1>|\/>)/gi;
+        let match;
+
+        while ((match = regex.exec(content)) !== null) {
+            const type = match[1];
+            const attrs = match[2];
+            const innerContent = match[3] || '';
+
+            const block = { id: ++idCounter, type: type, collapsed: true };
+
+            if (type === 'text') {
+                const fontSize = attrs.match(/font-size="([^"]+)"/);
+                const color = attrs.match(/color="([^"]+)"/);
+                const fontWeight = attrs.match(/font-weight="([^"]+)"/);
+                const containerBgColor = attrs.match(/container-background-color="([^"]+)"/);
+
+                block.content = innerContent.trim();
+                block.fontSize = fontSize ? fontSize[1] : '14px';
+                block.color = color ? color[1] : '#333333';
+                block.bgColor = containerBgColor ? containerBgColor[1] : '';
+
+                if ((fontSize && parseInt(fontSize[1]) >= 20) || (fontWeight && fontWeight[1] === 'bold')) {
+                    block.type = 'heading';
+                    block.fontSize = fontSize ? fontSize[1] : '24px';
+                }
+            } else if (type === 'button') {
+                const href = attrs.match(/href="([^"]+)"/);
+                const bgColor = attrs.match(/background-color="([^"]+)"/);
+                block.text = innerContent.trim();
+                block.href = href ? href[1] : 'https://example.com';
+                block.bgColor = bgColor ? bgColor[1] : '#e94560';
+            } else if (type === 'image') {
+                const src = attrs.match(/src="([^"]+)"/);
+                const alt = attrs.match(/alt="([^"]+)"/);
+                const width = attrs.match(/width="([^"]+)"/);
+                block.src = src ? src[1] : '';
+                block.alt = alt ? alt[1] : '';
+                block.width = width ? width[1] : '100%';
+            } else if (type === 'divider') {
+                const borderColor = attrs.match(/border-color="([^"]+)"/);
+                const width = attrs.match(/width="([^"]+)"/);
+                block.color = borderColor ? borderColor[1] : '#e0e0e0';
+                block.width = width ? width[1] : '100%';
+            } else if (type === 'spacer') {
+                const height = attrs.match(/height="([^"]+)"/);
+                block.height = height ? height[1] : '20px';
+            }
+
+            blocks.push(block);
+        }
+
+        return blocks;
+    }
+
+    // Generate MJML from sections
+    function generateMjml() {
+        let bodyContent = '';
+
+        sections.forEach(section => {
+            let columnsContent = '';
+
+            section.columns.forEach(column => {
+                let blocksContent = '';
+
+                column.blocks.forEach(block => {
+                    let blockMjml = '';
+
+                    switch (block.type) {
+                        case 'text':
+                            const textBgAttr = block.bgColor ? ` container-background-color="${block.bgColor}"` : '';
+                            blockMjml = `<mj-text font-size="${block.fontSize}" color="${block.color}"${textBgAttr} font-family="Arial, sans-serif">${block.content}</mj-text>`;
+                            break;
+                        case 'heading':
+                            const headingBgAttr = block.bgColor ? ` container-background-color="${block.bgColor}"` : '';
+                            blockMjml = `<mj-text font-size="${block.fontSize}" font-weight="bold" color="${block.color}"${headingBgAttr} font-family="Arial, sans-serif">${block.content}</mj-text>`;
+                            break;
+                        case 'button':
+                            blockMjml = `<mj-button href="${block.href}" background-color="${block.bgColor}" border-radius="4px" font-family="Arial, sans-serif">${block.text}</mj-button>`;
+                            break;
+                        case 'image':
+                            blockMjml = `<mj-image src="${block.src}" alt="${block.alt}" width="${block.width}" />`;
+                            break;
+                        case 'divider':
+                            blockMjml = `<mj-divider border-color="${block.color}" border-width="1px" width="${block.width}" />`;
+                            break;
+                        case 'spacer':
+                            blockMjml = `<mj-spacer height="${block.height}" />`;
+                            break;
+                    }
+
+                    blocksContent += `          ${blockMjml}\n`;
+                });
+
+                columnsContent += `      <mj-column>\n${blocksContent}      </mj-column>\n`;
+            });
+
+            bodyContent += `    <mj-section background-color="${section.bgColor}" padding="${section.padding}">\n${columnsContent}    </mj-section>\n`;
+        });
+
+        const subject = document.getElementById('subject_template').value || 'Email Subject';
+
+        return `<mjml>
+  <mj-head>
+    <mj-title>${subject}</mj-title>
+    <mj-preview>Preview text</mj-preview>
+  </mj-head>
+  <mj-body background-color="${bodyBgColor}">
+${bodyContent}  </mj-body>
+</mjml>`;
+    }
+
+    // Update body background color UI
+    function updateBodyBgUI() {
+        bodyBgInput.value = bodyBgColor;
+        bodyColorPreview.textContent = bodyBgColor;
+        blocksContainer.style.backgroundColor = bodyBgColor;
+    }
+
+    // Render block preview (collapsed state)
+    function renderBlockPreview(block) {
+        switch (block.type) {
+            case 'text':
+            case 'heading':
+                const textStyle = `color: ${block.color}; font-weight: ${block.type === 'heading' ? 'bold' : 'normal'}`;
+                return `<div class="block-preview-visual text-preview" style="${textStyle}">${block.content.substring(0, 60)}${block.content.length > 60 ? '...' : ''}</div>`;
+            case 'button':
+                return `<div class="block-preview-visual button-preview" style="background-color: ${block.bgColor}">${block.text}</div>`;
+            case 'image':
+                return `<div class="block-preview-visual image-preview">&#128247; ${block.alt || block.src.substring(0, 30)}</div>`;
+            case 'divider':
+                return `<div class="block-preview-visual divider-preview" style="background-color: ${block.color}"></div>`;
+            case 'spacer':
+                return `<div class="block-preview-visual spacer-preview" style="height: ${block.height}"></div>`;
+            default:
+                return '';
+        }
+    }
+
+    // Render all sections
+    function renderSections() {
+        blocksContainer.innerHTML = '';
+
+        sections.forEach((section, sectionIndex) => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'section-block';
+            sectionEl.dataset.id = section.id;
+            sectionEl.draggable = true;
+
+            // Section header
+            let columnBtns = '';
+            for (let i = 1; i <= 3; i++) {
+                columnBtns += `<button type="button" data-cols="${i}" class="${section.columns.length === i ? 'active' : ''}">${i}col</button>`;
+            }
+
+            sectionEl.innerHTML = `
+                <div class="section-block-header">
+                    <span class="drag-handle">&#9776;</span>
+                    <div class="section-info">
+                        <span class="section-type">Section</span>
+                        <div class="column-selector">${columnBtns}</div>
+                    </div>
+                    <div class="section-actions">
+                        <button type="button" class="settings-toggle" title="Settings">&#9881;</button>
+                        <button type="button" class="move-up" title="Move up">&#9650;</button>
+                        <button type="button" class="move-down" title="Move down">&#9660;</button>
+                        <button type="button" class="delete" title="Delete">&#10005;</button>
+                    </div>
+                </div>
+                <div class="section-settings ${section.showSettings ? 'active' : ''}">
+                    <label>
+                        Background
+                        <input type="color" data-field="bgColor" value="${section.bgColor}">
+                    </label>
+                    <label>
+                        Padding
+                        <input type="text" data-field="padding" value="${section.padding}">
+                    </label>
+                </div>
+                <div class="section-columns">
+                    ${section.columns.map((col, colIndex) => `
+                        <div class="section-column" data-column-id="${col.id}" data-column-index="${colIndex}">
+                            ${col.blocks.map((block, blockIndex) => renderBlockElement(block, sectionIndex, colIndex, blockIndex, section.bgColor)).join('')}
+                            <div class="add-block-inline" data-section="${sectionIndex}" data-column="${colIndex}">
+                                <button type="button" class="block-type-btn" data-type="text" style="width: 100%; margin-top: 0.25rem;">+ Add Block</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            blocksContainer.appendChild(sectionEl);
+        });
+
+        attachSectionEvents();
+    }
+
+    // Render a single block element
+    function renderBlockElement(block, sectionIndex, columnIndex, blockIndex, sectionBgColor) {
+        // Use section background, fallback to body background
+        const previewBgColor = sectionBgColor || bodyBgColor || '#ffffff';
+        let contentHtml = '';
+
+        switch (block.type) {
+            case 'text':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Content</label>
+                            <textarea data-field="content">${escapeHtml(block.content)}</textarea>
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Font Size</label>
+                            <input type="text" data-field="fontSize" value="${block.fontSize}">
+                        </div>
+                        <div>
+                            <label>Text Color</label>
+                            <input type="color" data-field="color" value="${block.color}" style="height: 28px;">
+                        </div>
+                        <div>
+                            <label>Background</label>
+                            <input type="color" data-field="bgColor" value="${block.bgColor || '#ffffff'}" style="height: 28px;">
+                        </div>
+                    </div>`;
+                break;
+            case 'heading':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Heading Text</label>
+                            <input type="text" data-field="content" value="${escapeHtml(block.content)}">
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Font Size</label>
+                            <input type="text" data-field="fontSize" value="${block.fontSize}">
+                        </div>
+                        <div>
+                            <label>Text Color</label>
+                            <input type="color" data-field="color" value="${block.color}" style="height: 28px;">
+                        </div>
+                        <div>
+                            <label>Background</label>
+                            <input type="color" data-field="bgColor" value="${block.bgColor || '#ffffff'}" style="height: 28px;">
+                        </div>
+                    </div>`;
+                break;
+            case 'button':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Button Text</label>
+                            <input type="text" data-field="text" value="${escapeHtml(block.text)}">
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Link URL</label>
+                            <input type="text" data-field="href" value="${block.href}">
+                        </div>
+                        <div>
+                            <label>Color</label>
+                            <input type="color" data-field="bgColor" value="${block.bgColor}" style="height: 28px;">
+                        </div>
+                    </div>`;
+                break;
+            case 'image':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Image URL</label>
+                            <input type="text" data-field="src" value="${block.src}">
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Alt Text</label>
+                            <input type="text" data-field="alt" value="${escapeHtml(block.alt)}">
+                        </div>
+                        <div>
+                            <label>Width</label>
+                            <input type="text" data-field="width" value="${block.width}">
+                        </div>
+                    </div>`;
+                break;
+            case 'divider':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Color</label>
+                            <input type="color" data-field="color" value="${block.color}" style="height: 28px;">
+                        </div>
+                        <div>
+                            <label>Width</label>
+                            <input type="text" data-field="width" value="${block.width}">
+                        </div>
+                    </div>`;
+                break;
+            case 'spacer':
+                contentHtml = `
+                    <div class="field-row">
+                        <div>
+                            <label>Height</label>
+                            <input type="text" data-field="height" value="${block.height}">
+                        </div>
+                    </div>`;
+                break;
+        }
+
+        return `
+            <div class="email-block ${block.collapsed ? 'collapsed' : ''}"
+                 data-block-id="${block.id}"
+                 data-section="${sectionIndex}"
+                 data-column="${columnIndex}"
+                 data-index="${blockIndex}"
+                 draggable="true">
+                <div class="email-block-header">
+                    <span class="drag-handle">&#9776;</span>
+                    <span class="block-type">${block.type}</span>
+                    <div class="block-actions">
+                        <button type="button" class="edit-toggle" title="${block.collapsed ? 'Edit' : 'Collapse'}">
+                            ${block.collapsed ? '&#9998;' : '&#9660;'}
+                        </button>
+                        <button type="button" class="move-up" title="Move up">&#9650;</button>
+                        <button type="button" class="move-down" title="Move down">&#9660;</button>
+                        <button type="button" class="delete" title="Delete">&#10005;</button>
+                    </div>
+                </div>
+                ${block.collapsed ? `
+                    <div class="block-preview" style="background-color: ${previewBgColor};">
+                        <div class="block-preview-content">
+                            ${renderBlockPreview(block)}
+                        </div>
+                    </div>
+                ` : `
+                    <div class="email-block-content">
+                        ${contentHtml}
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    // Escape HTML
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;');
+    }
+
+    // Attach events to sections
+    function attachSectionEvents() {
+        document.querySelectorAll('.section-block').forEach(sectionEl => {
+            const sectionId = parseInt(sectionEl.dataset.id);
+            const section = sections.find(s => s.id === sectionId);
+            const sectionIndex = sections.indexOf(section);
+
+            // Column selector
+            sectionEl.querySelectorAll('.column-selector button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cols = parseInt(btn.dataset.cols);
+                    adjustColumns(section, cols);
+                    renderSections();
+                    schedulePreviewUpdate();
+                });
+            });
+
+            // Settings toggle
+            sectionEl.querySelector('.settings-toggle').addEventListener('click', () => {
+                section.showSettings = !section.showSettings;
+                const settings = sectionEl.querySelector('.section-settings');
+                settings.classList.toggle('active', section.showSettings);
+            });
+
+            // Settings inputs
+            sectionEl.querySelectorAll('.section-settings input').forEach(input => {
+                input.addEventListener('input', () => {
+                    section[input.dataset.field] = input.value;
+                    schedulePreviewUpdate();
+                });
+            });
+
+            // Move up
+            sectionEl.querySelector('.section-block-header .move-up').addEventListener('click', () => {
+                if (sectionIndex > 0) {
+                    [sections[sectionIndex - 1], sections[sectionIndex]] = [sections[sectionIndex], sections[sectionIndex - 1]];
+                    renderSections();
+                    schedulePreviewUpdate();
+                }
+            });
+
+            // Move down
+            sectionEl.querySelector('.section-block-header .move-down').addEventListener('click', () => {
+                if (sectionIndex < sections.length - 1) {
+                    [sections[sectionIndex], sections[sectionIndex + 1]] = [sections[sectionIndex + 1], sections[sectionIndex]];
+                    renderSections();
+                    schedulePreviewUpdate();
+                }
+            });
+
+            // Delete section
+            sectionEl.querySelector('.section-block-header .delete').addEventListener('click', () => {
+                sections = sections.filter(s => s.id !== sectionId);
+                renderSections();
+                schedulePreviewUpdate();
+            });
+
+            // Block events within columns
+            sectionEl.querySelectorAll('.email-block').forEach(blockEl => {
+                attachBlockEvents(blockEl, sectionIndex);
+            });
+
+            // Add block inline buttons
+            sectionEl.querySelectorAll('.add-block-inline button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const container = btn.closest('.add-block-inline');
+                    const si = parseInt(container.dataset.section);
+                    const ci = parseInt(container.dataset.column);
+                    showBlockPicker(si, ci);
+                });
+            });
+
+            // Drag and drop for sections
+            sectionEl.addEventListener('dragstart', (e) => {
+                if (e.target === sectionEl) {
+                    sectionEl.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'section', id: sectionId }));
+                }
+            });
+
+            sectionEl.addEventListener('dragend', () => {
+                sectionEl.classList.remove('dragging');
+            });
+        });
+
+        // Column drop zones
+        document.querySelectorAll('.section-column').forEach(col => {
+            col.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                col.classList.add('drop-target');
+            });
+
+            col.addEventListener('dragleave', () => {
+                col.classList.remove('drop-target');
+            });
+
+            col.addEventListener('drop', (e) => {
+                e.preventDefault();
+                col.classList.remove('drop-target');
+
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    if (data.type === 'block') {
+                        const targetSectionIndex = parseInt(col.closest('.section-block').dataset.id);
+                        const targetSection = sections.find(s => s.id === targetSectionIndex) || sections[sections.indexOf(sections.find(s => s.id === parseInt(col.closest('.section-block').dataset.id)))];
+                        const targetColumnIndex = parseInt(col.dataset.columnIndex);
+
+                        // Find and remove the block from its original position
+                        for (let s of sections) {
+                            for (let c of s.columns) {
+                                const blockIndex = c.blocks.findIndex(b => b.id === data.id);
+                                if (blockIndex !== -1) {
+                                    const [block] = c.blocks.splice(blockIndex, 1);
+                                    // Add to new position
+                                    const realSectionIndex = sections.findIndex(sec => sec.id === parseInt(col.closest('.section-block').dataset.id));
+                                    sections[realSectionIndex].columns[targetColumnIndex].blocks.push(block);
+                                    renderSections();
+                                    schedulePreviewUpdate();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    // Not a valid drop
+                }
+            });
+        });
+    }
+
+    // Attach events to a block element
+    function attachBlockEvents(blockEl, sectionIndex) {
+        const blockId = parseInt(blockEl.dataset.blockId);
+        const columnIndex = parseInt(blockEl.dataset.column);
+        const section = sections[sectionIndex];
+        const column = section.columns[columnIndex];
+        const block = column.blocks.find(b => b.id === blockId);
+        const blockIndex = column.blocks.indexOf(block);
+
+        // Edit toggle
+        blockEl.querySelector('.edit-toggle').addEventListener('click', () => {
+            block.collapsed = !block.collapsed;
+            renderSections();
+        });
+
+        // Input changes (only when not collapsed)
+        blockEl.querySelectorAll('.email-block-content input, .email-block-content textarea').forEach(input => {
+            input.addEventListener('input', () => {
+                block[input.dataset.field] = input.value;
+                schedulePreviewUpdate();
+            });
+        });
+
+        // Move up
+        blockEl.querySelector('.move-up').addEventListener('click', () => {
+            if (blockIndex > 0) {
+                [column.blocks[blockIndex - 1], column.blocks[blockIndex]] = [column.blocks[blockIndex], column.blocks[blockIndex - 1]];
+                renderSections();
+                schedulePreviewUpdate();
+            }
+        });
+
+        // Move down
+        blockEl.querySelector('.move-down').addEventListener('click', () => {
+            if (blockIndex < column.blocks.length - 1) {
+                [column.blocks[blockIndex], column.blocks[blockIndex + 1]] = [column.blocks[blockIndex + 1], column.blocks[blockIndex]];
+                renderSections();
+                schedulePreviewUpdate();
+            }
+        });
+
+        // Delete
+        blockEl.querySelector('.delete').addEventListener('click', () => {
+            column.blocks = column.blocks.filter(b => b.id !== blockId);
+            renderSections();
+            schedulePreviewUpdate();
+        });
+
+        // Drag
+        blockEl.addEventListener('dragstart', (e) => {
+            e.stopPropagation();
+            blockEl.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'block', id: blockId }));
+        });
+
+        blockEl.addEventListener('dragend', () => {
+            blockEl.classList.remove('dragging');
+        });
+    }
+
+    // Adjust columns in a section
+    function adjustColumns(section, newCount) {
+        const current = section.columns.length;
+
+        if (newCount > current) {
+            // Add columns
+            for (let i = current; i < newCount; i++) {
+                section.columns.push({ id: ++idCounter, blocks: [] });
+            }
+        } else if (newCount < current) {
+            // Remove columns, move blocks to first column
+            for (let i = newCount; i < current; i++) {
+                const blocks = section.columns[i].blocks;
+                section.columns[0].blocks.push(...blocks);
+            }
+            section.columns = section.columns.slice(0, newCount);
+        }
+    }
+
+    // Show block picker modal
+    function showBlockPicker(sectionIndex, columnIndex) {
+        const types = ['text', 'heading', 'button', 'image', 'divider', 'spacer'];
+        const type = prompt('Enter block type:\n' + types.join(', '), 'text');
+
+        if (type && types.includes(type)) {
+            const newBlock = { ...blockTemplates[type], id: ++idCounter };
+            sections[sectionIndex].columns[columnIndex].blocks.push(newBlock);
+            renderSections();
+            schedulePreviewUpdate();
+        }
+    }
+
+    // Add block/section button handlers
+    document.querySelectorAll('.add-block-area .block-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.type;
+
+            if (type === 'section') {
+                sections.push(createSection(1));
+            } else {
+                // Add to last section's first column, or create section
+                if (sections.length === 0) {
+                    sections.push(createSection(1));
+                }
+                const newBlock = { ...blockTemplates[type], id: ++idCounter };
+                sections[sections.length - 1].columns[0].blocks.push(newBlock);
+            }
+
+            renderSections();
+            schedulePreviewUpdate();
+        });
+    });
+
+    // View toggle (blocks/code)
+    document.querySelectorAll('.view-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            currentView = btn.dataset.view;
+
+            if (currentView === 'code') {
+                codeTextarea.value = generateMjml();
+                blocksContainer.style.display = 'none';
+                addBlockArea.style.display = 'none';
+                codeContainer.classList.add('active');
+            } else {
+                parseMjmlToSections(codeTextarea.value);
+                renderSections();
+                blocksContainer.style.display = 'block';
+                addBlockArea.style.display = 'block';
+                codeContainer.classList.remove('active');
+            }
+
+            schedulePreviewUpdate();
+        });
+    });
+
+    // Preview toggle (desktop/mobile)
+    document.querySelectorAll('.preview-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.preview-toggle button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (btn.dataset.view === 'mobile') {
+                previewFrame.style.width = '320px';
+            } else {
+                previewFrame.style.width = '100%';
+            }
+        });
+    });
+
+    // Body background color change
+    bodyBgInput.addEventListener('input', () => {
+        bodyBgColor = bodyBgInput.value;
+        updateBodyBgUI();
+        schedulePreviewUpdate();
+    });
+
+    // Variable click to copy (uses %var% syntax for MJML compatibility)
+    document.querySelectorAll('.variable-tag').forEach(tag => {
+        tag.addEventListener('click', async () => {
+            const text = '%' + tag.dataset.var + '%';
+            await navigator.clipboard.writeText(text);
+
+            tag.classList.add('copied');
+            setTimeout(() => { tag.classList.remove('copied'); }, 1000);
+        });
+    });
+
+    // Auto-generate slug
+    document.getElementById('name').addEventListener('blur', function() {
+        const slugInput = document.getElementById('slug');
+        if (!slugInput.value) {
+            slugInput.value = this.value.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/[-\s]+/g, '-')
+                .substring(0, 100);
+        }
+    });
+
+    // Preview update
+    let previewTimeout;
+    function schedulePreviewUpdate() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(updatePreview, 500);
+    }
+
+    async function updatePreview() {
+        const mjml = currentView === 'code' ? codeTextarea.value : generateMjml();
+        const subject = document.getElementById('subject_template').value;
+
+        try {
+            const response = await fetch('/email-templates/compile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mjml_source: mjml,
+                    subject: subject,
+                    sample_data: {
+                        first_name: 'John',
+                        last_name: 'Doe',
+                        email: 'john@example.com',
+                        company: 'Acme Inc'
+                    }
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                compileStatus.textContent = 'Compiled successfully';
+                compileStatus.className = 'compile-status success';
+                compileStatus.style.display = 'block';
+
+                const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                doc.open();
+                doc.write(data.html);
+                doc.close();
+            } else {
+                compileStatus.textContent = 'Error: ' + (data.errors[0] || 'Compilation failed');
+                compileStatus.className = 'compile-status error';
+                compileStatus.style.display = 'block';
+            }
+        } catch (e) {
+            compileStatus.textContent = 'Error: ' + e.message;
+            compileStatus.className = 'compile-status error';
+            compileStatus.style.display = 'block';
+        }
+    }
+
+    // Form submission
+    document.getElementById('template-form').addEventListener('submit', function(e) {
+        const mjml = currentView === 'code' ? codeTextarea.value : generateMjml();
+        document.getElementById('mjml_source_input').value = mjml;
+
+        // Debug: log the MJML being submitted
+        console.log('Submitting MJML:');
+        console.log(mjml);
+
+        // Basic validation
+        if (!mjml.includes('<mjml>') || !mjml.includes('</mjml>')) {
+            e.preventDefault();
+            alert('Invalid MJML: missing <mjml> tags');
+            return false;
+        }
+    });
+
+    // Subject change triggers preview
+    document.getElementById('subject_template').addEventListener('input', schedulePreviewUpdate);
+
+    // Code textarea changes
+    codeTextarea.addEventListener('input', schedulePreviewUpdate);
+
+    // Initialize
+    parseMjmlToSections(initialMjml);
+    updateBodyBgUI();
+    renderSections();
+    setTimeout(updatePreview, 300);
+});
+
+// Plain text fallback toggle
+function togglePlainText() {
+    const section = document.getElementById('plain-text-section');
+    const toggle = document.getElementById('plain-text-toggle');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        toggle.style.transform = 'rotate(180deg)';
+    } else {
+        section.style.display = 'none';
+        toggle.style.transform = 'rotate(0deg)';
+    }
+}
+</script>
+{% endblock %}

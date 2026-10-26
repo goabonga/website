@@ -50,6 +50,17 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/contact-groups/{group_id}/remove-contacts` | session; scope `contacts:write` | Remove contacts from a group |
 | POST | `/contact-groups/bulk-delete` | session; scope `contacts:delete` | Delete multiple contact groups |
 | POST | `/contact-groups/{group_id}/delete` | session; scope `contacts:delete` | Delete a contact group |
+| GET | `/email-templates` | session; scope `email_templates:read` | List all email templates with pagination and filtering |
+| GET | `/email-templates/new` | session; scope `email_templates:write` | Show form to create a new email template |
+| POST | `/email-templates/new` | session; scope `email_templates:write` | Create a new email template |
+| GET | `/email-templates/{template_id}` | session; scope `email_templates:read` | View email template detail with preview |
+| GET | `/email-templates/{template_id}/edit` | session; scope `email_templates:write` | Show form to edit an email template |
+| POST | `/email-templates/{template_id}/edit` | session; scope `email_templates:write` | Update an email template |
+| POST | `/email-templates/compile` | session; scope `email_templates:read` | AJAX endpoint to compile MJML and return HTML preview |
+| POST | `/email-templates/{template_id}/preview` | session; scope `email_templates:read` | Preview email template with sample data |
+| POST | `/email-templates/{template_id}/duplicate` | session; scope `email_templates:write` | Duplicate an email template |
+| POST | `/email-templates/bulk-delete` | session; scope `email_templates:delete` | Delete multiple email templates |
+| POST | `/email-templates/{template_id}/delete` | session; scope `email_templates:delete` | Delete an email template |
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
@@ -131,6 +142,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `contacts:read` - checked by 5 routes
 - `contacts:write` - checked by 15 routes
 - `contacts:delete` - checked by 4 routes
+- `email_templates:read` - checked by 4 routes
+- `email_templates:write` - checked by 5 routes
+- `email_templates:delete` - checked by 2 routes
 - `mailler:read` - checked by 3 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes

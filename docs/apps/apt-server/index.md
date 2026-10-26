@@ -42,3 +42,4 @@ The browser itself is installed once with `uv run playwright install chromium`.
 - [Web login sessions](09-web-sessions.md)
 - [Public web pages](10-web-ui.md)
 - [Package dashboard](11-dashboard.md)
+- [Share notification emails](12-share-notifications.md)

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://localhost:5432/analytics"
 
+    # GeoIP configuration
+    geoip_enabled: bool = True
+    geoip_database_path: str = "/usr/share/GeoIP/GeoLite2-City.mmdb"
+
     # Data retention (GDPR compliance)
     data_retention_days: int = 395  # ~13 months
 

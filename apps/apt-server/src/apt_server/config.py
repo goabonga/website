@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     docs_enabled: bool = False
 
+    # Database
+    database_url: str = "postgresql://localhost:5432/apt_server"
+    database_echo: bool = False
+
     # OAuth2 / OIDC
     oauth2_issuer: str = ""
     oauth2_client_id: str = ""

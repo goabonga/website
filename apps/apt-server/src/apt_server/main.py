@@ -25,6 +25,7 @@ from apt_server.auth import (
 )
 from apt_server.auth.dependencies import oauth2_scheme
 from apt_server.config import settings
+from apt_server.database import engine
 from apt_server.logging import get_logger, setup_logging
 
 setup_logging(settings.log_level)
@@ -60,6 +61,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     await introspection_client.close()
     await token_exchange_client.close()
     await userinfo_client.close()
+    await engine.dispose()
 
 
 swagger_config = get_swagger_oauth2_config()

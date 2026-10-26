@@ -63,6 +63,15 @@ def registry(monkeypatch, client_record):
     return get_client
 
 
+@pytest.fixture(autouse=True)
+def status_callbacks(monkeypatch):
+    """Never queue a real status callback: the workers have their own tests."""
+    notify = MagicMock(return_value=False)
+    monkeypatch.setattr("mailler.tasks.send.notify_status_change", notify)
+    monkeypatch.setattr("mailler.routes.webhooks.notify_status_change", notify)
+    return notify
+
+
 @pytest.fixture
 def mock_db_session():
     """Create a mock async database session."""

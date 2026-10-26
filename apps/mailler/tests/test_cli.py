@@ -367,3 +367,108 @@ class TestRealCompilation:
         assert run("templates", "import", "--client-id", "app-one", str(tmp_path))[0] == 0
         compiled = _template(database, "conditional").html_compiled
         assert "{% if name %}" in compiled
+
+
+class TestCallbacks:
+    def test_a_callback_is_registered_from_a_secret_file(self, run, database, tmp_path):
+        secret = tmp_path / "secret"
+        secret.write_text("0123456789abcdef-secret\n")
+        code, _, _ = run(
+            "clients",
+            "register",
+            "app-one",
+            "--callback-url",
+            "https://app-one.example/hook",
+            "--callback-secret-file",
+            str(secret),
+        )
+        assert code == 0
+        record = _record(database)
+        assert record.callback_url == "https://app-one.example/hook"
+        assert record.callback_secret == "0123456789abcdef-secret"
+
+    def test_show_never_prints_the_secret(self, run, tmp_path):
+        secret = tmp_path / "secret"
+        secret.write_text("0123456789abcdef-secret")
+        run(
+            "clients",
+            "register",
+            "app-one",
+            "--callback-url",
+            "https://app-one.example/hook",
+            "--callback-secret-file",
+            str(secret),
+        )
+        _, out, _ = run("clients", "show", "app-one")
+        data = json.loads(out)
+        assert data["callback_url"] == "https://app-one.example/hook"
+        assert data["has_callback_secret"] is True
+        assert "0123456789abcdef-secret" not in out
+
+    def test_a_url_needs_a_secret(self, run, database):
+        code, _, err = run(
+            "clients", "register", "app-one", "--callback-url", "https://a.example/h"
+        )
+        assert code == 2
+        assert "callback_secret" in err
+        assert _record(database) is None
+
+    def test_http_urls_are_refused(self, run, tmp_path):
+        secret = tmp_path / "secret"
+        secret.write_text("0123456789abcdef-secret")
+        code, _, err = run(
+            "clients",
+            "register",
+            "app-one",
+            "--callback-url",
+            "http://a.example/h",
+            "--callback-secret-file",
+            str(secret),
+        )
+        assert code == 2
+        assert "https" in err
+
+    def test_an_unreadable_secret_file(self, run, tmp_path):
+        code, _, err = run(
+            "clients",
+            "register",
+            "app-one",
+            "--callback-secret-file",
+            str(tmp_path / "missing"),
+        )
+        assert code == 2
+        assert "Cannot read" in err
+
+    def test_update_checks_the_pair(self, run, database, tmp_path):
+        run("clients", "register", "app-one")
+        code, _, err = run("clients", "update", "app-one", "--callback-url", "https://a.example/h")
+        assert code == 2
+        assert "callback_secret" in err
+        assert _record(database).callback_url is None
+
+    def test_the_callback_can_be_removed(self, run, database, tmp_path):
+        secret = tmp_path / "secret"
+        secret.write_text("0123456789abcdef-secret")
+        empty = tmp_path / "empty"
+        empty.write_text("")
+        run(
+            "clients",
+            "register",
+            "app-one",
+            "--callback-url",
+            "https://a.example/h",
+            "--callback-secret-file",
+            str(secret),
+        )
+        code, _, _ = run(
+            "clients",
+            "update",
+            "app-one",
+            "--callback-url",
+            "",
+            "--callback-secret-file",
+            str(empty),
+        )
+        assert code == 0
+        record = _record(database)
+        assert (record.callback_url, record.callback_secret) == (None, None)

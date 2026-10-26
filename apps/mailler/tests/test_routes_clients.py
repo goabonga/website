@@ -26,6 +26,8 @@ def _record(**fields) -> AuthorizedClient:
         "default_provider": "brevo",
         "rate_limit_per_minute": None,
         "daily_quota": None,
+        "callback_url": None,
+        "callback_secret": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -241,3 +243,104 @@ class TestClientLimits:
         assert response.status_code == 200
         assert record.rate_limit_per_minute == 20
         assert record.daily_quota is None
+
+
+SECRET = "0123456789abcdef-secret"
+
+
+class TestClientCallbacks:
+    async def test_a_callback_is_registered_with_its_secret(
+        self, admin_client: AsyncClient, mock_db_session
+    ):
+        mock_db_session.refresh = AsyncMock(side_effect=_refresh)
+        response = await admin_client.post(
+            "/api/v1/clients",
+            json={
+                "client_id": "app-one",
+                "callback_url": "https://app-one.example/mailler/status",
+                "callback_secret": SECRET,
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["callback_url"] == "https://app-one.example/mailler/status"
+        assert data["has_callback_secret"] is True
+        assert SECRET not in response.text
+        assert mock_db_session.add.call_args[0][0].callback_secret == SECRET
+
+    async def test_without_a_callback(self, admin_client: AsyncClient, mock_db_session):
+        mock_db_session.refresh = AsyncMock(side_effect=_refresh)
+        response = await admin_client.post("/api/v1/clients", json={"client_id": "app-one"})
+        assert response.json()["callback_url"] is None
+        assert response.json()["has_callback_secret"] is False
+
+    async def test_invalid_callbacks_are_refused(self, admin_client: AsyncClient, mock_db_session):
+        for extra in (
+            {"callback_url": "http://app.example/hook", "callback_secret": SECRET},
+            {"callback_url": "ftp://app.example/hook", "callback_secret": SECRET},
+            {"callback_url": "https://user:pw@app.example/hook", "callback_secret": SECRET},
+            {"callback_url": "not a url", "callback_secret": SECRET},
+            {"callback_url": "https://app.example/hook"},
+            {"callback_secret": SECRET},
+            {"callback_url": "https://app.example/hook", "callback_secret": "short"},
+        ):
+            response = await admin_client.post(
+                "/api/v1/clients", json={"client_id": "app-one", **extra}
+            )
+            assert response.status_code == 422, extra
+        mock_db_session.add.assert_not_called()
+
+    async def test_plain_http_can_be_allowed(self, admin_client: AsyncClient, mock_db_session):
+        from unittest.mock import patch
+
+        mock_db_session.refresh = AsyncMock(side_effect=_refresh)
+        with patch("mailler.schemas.client.settings") as mock_settings:
+            mock_settings.callback_allow_http = True
+            response = await admin_client.post(
+                "/api/v1/clients",
+                json={
+                    "client_id": "app-one",
+                    "callback_url": "http://internal.example/hook",
+                    "callback_secret": SECRET,
+                },
+            )
+        assert response.status_code == 201
+
+    async def test_the_callback_can_be_changed_and_removed(
+        self, admin_client: AsyncClient, registry
+    ):
+        record = _record(callback_url="https://old.example/hook", callback_secret=SECRET)
+        registry.return_value = record
+        response = await admin_client.put(
+            "/api/v1/clients/app-one", json={"callback_url": "https://new.example/hook"}
+        )
+        assert response.status_code == 200
+        assert record.callback_url == "https://new.example/hook"
+        assert record.callback_secret == SECRET
+
+        response = await admin_client.put(
+            "/api/v1/clients/app-one", json={"callback_url": None, "callback_secret": None}
+        )
+        assert response.status_code == 200
+        assert (record.callback_url, record.callback_secret) == (None, None)
+
+    async def test_an_update_cannot_leave_a_url_without_a_secret(
+        self, admin_client: AsyncClient, mock_db_session, registry
+    ):
+        registry.return_value = _record()
+        response = await admin_client.put(
+            "/api/v1/clients/app-one", json={"callback_url": "https://app.example/hook"}
+        )
+        assert response.status_code == 422
+        assert "callback_secret" in response.json()["detail"]
+        mock_db_session.rollback.assert_awaited_once()
+        mock_db_session.commit.assert_not_awaited()
+
+    async def test_an_update_cannot_leave_a_secret_without_a_url(
+        self, admin_client: AsyncClient, registry
+    ):
+        registry.return_value = _record()
+        response = await admin_client.put(
+            "/api/v1/clients/app-one", json={"callback_secret": SECRET}
+        )
+        assert response.status_code == 422

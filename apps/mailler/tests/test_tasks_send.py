@@ -3,6 +3,7 @@
 
 """Tests for send tasks."""
 
+import contextlib
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -1477,3 +1478,73 @@ class TestRegistryInTasks:
         assert result == {"error": "Client is deactivated"}
         assert campaign.status == CampaignStatus.FAILED.value
         assert emails == []
+
+
+class TestSendTaskStatusCallbacks:
+    """The client is notified when its email is sent or fails for good."""
+
+    @staticmethod
+    def _run(result_success, retry_count=0, provider_error=None):
+        email = MagicMock()
+        email.status = EmailStatus.PENDING.value
+        email.provider = "brevo"
+        email.client_id = "app-one"
+        email.metadata_ = None
+        email.retry_count = retry_count
+        provider = MagicMock()
+        if provider_error:
+            provider.send_email.side_effect = provider_error
+        else:
+            provider.send_email.return_value = MagicMock(
+                success=result_success, provider_message_id="m-1", error_message="boom"
+            )
+        session = MagicMock()
+        session.get.return_value = email
+        with (
+            patch("mailler.tasks.send.get_sync_db", return_value=_make_sync_db_ctx(session)),
+            patch("mailler.tasks.send._load_client", return_value=None),
+            patch("mailler.tasks.send.get_provider", return_value=provider),
+            patch("mailler.tasks.send._update_provider_stats"),
+            patch("mailler.tasks.send._update_email_send_status"),
+            patch("mailler.tasks.send.notify_status_change") as notify,
+            contextlib.suppress(Exception),
+        ):
+            send_email_task(str(uuid.uuid4()))
+        return notify, session, email
+
+    def test_a_sent_email_is_notified(self):
+        notify, session, email = self._run(True)
+        notify.assert_called_once_with(session, email)
+        assert email.status == EmailStatus.SENT.value
+
+    def test_an_email_that_fails_for_good_is_notified(self):
+        notify, session, email = self._run(False, retry_count=2)
+        notify.assert_called_once_with(session, email)
+        assert email.status == EmailStatus.FAILED.value
+
+    def test_an_email_that_will_be_retried_is_not(self):
+        notify, _, _ = self._run(False, retry_count=0)
+        notify.assert_not_called()
+
+    def test_a_provider_error_is_notified(self):
+        notify, session, email = self._run(True, provider_error=ValueError("not configured"))
+        notify.assert_called_once_with(session, email)
+        assert email.status == EmailStatus.FAILED.value
+
+    def test_an_email_of_a_deactivated_client_is_notified(self):
+        email = MagicMock()
+        email.status = EmailStatus.PENDING.value
+        email.provider = "brevo"
+        email.client_id = "app-one"
+        email.metadata_ = None
+        session = MagicMock()
+        session.get.return_value = email
+        with (
+            patch("mailler.tasks.send.get_sync_db", return_value=_make_sync_db_ctx(session)),
+            patch("mailler.tasks.send._load_client", return_value=MagicMock(is_active=False)),
+            patch("mailler.tasks.send._update_provider_stats"),
+            patch("mailler.tasks.send._update_email_send_status"),
+            patch("mailler.tasks.send.notify_status_change") as notify,
+        ):
+            send_email_task(str(uuid.uuid4()))
+        notify.assert_called_once_with(session, email)

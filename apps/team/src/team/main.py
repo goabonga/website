@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from team import __version__
 from team.auth import introspection_client, jwks_manager, token_exchange_client
 from team.config import get_settings
-from team.routes import health
+from team.routes import health, usage
 from team.routes.team import (
     agents,
     conversations,
@@ -123,3 +123,6 @@ app.include_router(tasks.router)
 app.include_router(memory.router)
 app.include_router(skills.router)
 app.include_router(team_conversations.router)
+
+# Usage routes
+app.include_router(usage.router)

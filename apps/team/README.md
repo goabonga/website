@@ -44,6 +44,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/platform/{team_id}/agents/{agent_id}/skills/{skill_id}` | scope `team:platform:write` | Delete a skill |
 | GET | `/platform/{team_id}/conversations` | scope `team:platform:read` | List conversations for a team |
 | GET | `/platform/{team_id}/conversations/count` | scope `team:platform:read` | Get conversation count for a team |
+| POST | `/usage/{team_id}/report` | scope `team:write` | Report a task execution event |
+| POST | `/usage/{team_id}/batch` | scope `team:write` | Batch report agent activity |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -53,7 +55,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `team:platform:write` - checked by 20 routes
 - `team:platform:read` - checked by 12 routes
-- `team:write` - checked by 1 route
+- `team:write` - checked by 3 routes
 - `team:read` - checked by 1 route
 
 ## Development

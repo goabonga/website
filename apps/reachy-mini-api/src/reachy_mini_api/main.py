@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from reachy_mini_api import __version__
+from reachy_mini_api.api import router as api_router
 from reachy_mini_api.auth import jwks_manager
 from reachy_mini_api.config import settings
 from reachy_mini_api.logging import get_logger, setup_logging
@@ -51,13 +52,24 @@ swagger_config = get_swagger_ui_oauth2_config()
 app = FastAPI(
     title=settings.app_name,
     description="""
-Internal API for the Reachy Mini robot.
+Internal API for the Reachy Mini robot to fetch reports and data.
+
+## Features
+
+- **Reports**: Fetch daily briefings and quick updates
+- **Notifications**: Pending notification feed
+- **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
 
 This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
 only `openid`, `profile`, and `email` scopes. Routes validate the bearer
 token against the issuer JWKS and check the scopes it carries.
+
+## Required Scopes
+
+- `reachy:reports:read` - Read robot reports
+- `reachy:notifications:read` - Read notifications
 """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -89,3 +101,6 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint (hidden from Swagger)."""
     return HealthResponse(status="healthy")
+
+
+app.include_router(api_router, prefix="/api")

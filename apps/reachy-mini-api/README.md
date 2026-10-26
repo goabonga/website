@@ -6,13 +6,23 @@ Internal FastAPI service used by the Reachy Mini robot. Workspace member of the
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session.
+HTTP routes served by the application and what each one requires. `public` routes need no bearer token or session. A scope is checked on the access token issued by the `auth` application; the wildcards `*` and `<resource>:*` also match.
 
 | Method | Path | Required scope / role / auth | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint (hidden from Swagger) |
+| GET | `/api/reports/daily` | scope `reachy:reports:read` | Get today's daily report for Reachy to announce |
+| GET | `/api/reports/quick` | scope `reachy:reports:read` | Get a quick update for immediate announcement |
+| GET | `/api/reports/notifications` | scope `reachy:notifications:read` | Get pending notifications |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
+
+### Scopes
+
+The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
+
+- `reachy:reports:read` - checked by 2 routes
+- `reachy:notifications:read` - checked by 1 route
 
 ## Development
 

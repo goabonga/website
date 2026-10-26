@@ -257,6 +257,8 @@ async def share_action(
         await db.flush()
     except IntegrityError:
         await db.rollback()
+        # The rollback expired the loaded rows: reload before rendering.
+        package = await _load_owned(db, package_id, user)
         return templates.TemplateResponse(
             request,
             "share.html",

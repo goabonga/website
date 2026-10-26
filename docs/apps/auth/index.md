@@ -29,6 +29,7 @@ The application is documented feature by feature, in the order in which each fea
 14. [Organisation API](14-organisation-api.md): JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
 15. [Background maintenance and operations scripts](15-maintenance.md): Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
 16. [Administration console](16-admin-ui.md): Server-rendered admin pages.
+17. [Account and organisation settings pages](17-settings-ui.md): Self-service settings, personal access tokens and organisation settings.
 
 ## Testing
 

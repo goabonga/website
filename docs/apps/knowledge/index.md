@@ -12,6 +12,8 @@ how it is tested with pytest and behave.
 
 1. [Foundation](00-foundation.md): application factory, internal
    sub-application, settings, logging and the health check.
+2. [Data model](01-data-model.md): SQLAlchemy models, async session and the
+   Alembic migration chain.
 
 ## Running the tests
 

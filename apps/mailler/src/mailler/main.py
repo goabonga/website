@@ -11,7 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from mailler import __version__
 from mailler.config import settings
 from mailler.logging import get_logger, setup_logging
-from mailler.routes import health
+from mailler.routes import (
+    health,
+    providers,
+)
 
 # Setup logging before anything else
 setup_logging(settings.log_level)
@@ -71,6 +74,7 @@ Internal email sending service supporting multiple providers.
 
 ## Features
 
+- **Multi-provider support**: Brevo, SendGrid, AWS SES, Protonmail (SMTP)
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -98,3 +102,4 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(providers.router, prefix="/api/v1")

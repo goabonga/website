@@ -55,6 +55,33 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/11"
     redis_key_prefix: str = "mailler"  # Cache key prefix for auth tokens
 
+    # Default sender
+    default_from: str = ""  # optional platform sender, used when the caller has none
+    default_from_name: str = ""
+
+    # Brevo
+    brevo_api_key: str = ""
+
+    # SendGrid
+    sendgrid_api_key: str = ""
+
+    # AWS SES
+    ses_region: str = ""
+    ses_access_key: str = ""
+    ses_secret_key: str = ""
+
+    # Protonmail Bridge (SMTP)
+    protonmail_host: str = ""
+    protonmail_port: int = 0
+    protonmail_user: str = ""
+    protonmail_password: str = ""
+
+    # Webhook HMAC signature (shared secret with webhooks service)
+    webhook_hmac_secret: str = ""
+
+    # Unsubscribe settings
+    unsubscribe_base_url: str = ""  # public base URL of the API, e.g. https://mailer.example/api/v1
+
     # OAuth2 / OIDC
     oauth2_issuer: str = ""  # empty disables authentication (503)
     oauth2_client_id: str = ""
@@ -69,7 +96,17 @@ class Settings(BaseSettings):
 
 # Load settings with credential support
 settings = Settings(
+    brevo_api_key=get_credential("BREVO_API_KEY", os.environ.get("BREVO_API_KEY", "")),
+    sendgrid_api_key=get_credential("SENDGRID_API_KEY", os.environ.get("SENDGRID_API_KEY", "")),
+    ses_access_key=get_credential("SES_ACCESS_KEY", os.environ.get("SES_ACCESS_KEY", "")),
+    ses_secret_key=get_credential("SES_SECRET_KEY", os.environ.get("SES_SECRET_KEY", "")),
+    protonmail_password=get_credential(
+        "PROTONMAIL_PASSWORD", os.environ.get("PROTONMAIL_PASSWORD", "")
+    ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET", os.environ.get("OAUTH2_CLIENT_SECRET", "")
+    ),
+    webhook_hmac_secret=get_credential(
+        "WEBHOOK_HMAC_SECRET", os.environ.get("WEBHOOK_HMAC_SECRET", "")
     ),
 )

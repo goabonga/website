@@ -6,6 +6,7 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
 from mailler.models.campaign import CampaignStatus, EmailSendStatus
 from mailler.models.email import EmailStatus
 from mailler.tasks.send import (
@@ -503,6 +504,12 @@ class TestSendEmailTask:
 
 
 class TestSendCampaignTask:
+    @pytest.fixture(autouse=True)
+    def no_client_record(self):
+        """The campaigns below belong to clients without a registry record."""
+        with patch("mailler.tasks.send._load_client", return_value=None) as load:
+            yield load
+
     def test_campaign_not_found(self):
         session = MagicMock()
         session.execute.return_value.scalar_one_or_none.return_value = None

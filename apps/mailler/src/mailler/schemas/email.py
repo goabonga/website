@@ -15,14 +15,19 @@ class SendEmailRequest(BaseModel):
     to_email: EmailStr = Field(..., description="Recipient email address")
     to_name: str | None = Field(None, description="Recipient name")
     from_email: EmailStr | None = Field(
-        None, description="Sender email (uses default if not provided)"
+        None,
+        description="Sender email, one of the client's identities (default identity if omitted)",
     )
-    from_name: str | None = Field(None, description="Sender name (uses default if not provided)")
-    reply_to: EmailStr | None = Field(None, description="Reply-to address")
+    from_name: str | None = Field(
+        None, description="Sender name, the one of the chosen identity (default if omitted)"
+    )
+    reply_to: EmailStr | None = Field(None, description="Reply-to address (the client's if fixed)")
     subject: str = Field(..., min_length=1, max_length=500, description="Email subject")
     html_content: str = Field(..., min_length=1, description="HTML content of the email")
     text_content: str | None = Field(None, description="Plain text content (optional)")
-    provider: str = Field(..., description="Email provider (brevo, sendgrid, ses, protonmail)")
+    provider: str | None = Field(
+        None, description="Provider among those the client may use (its default if omitted)"
+    )
     metadata: dict[str, Any] | None = Field(None, description="Custom metadata")
 
     model_config = ConfigDict(

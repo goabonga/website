@@ -13,6 +13,7 @@ from mailler.config import settings
 from mailler.database import get_sync_db
 from mailler.logging import get_logger
 from mailler.models.campaign import EmailCampaign, EmailSend, EmailSendStatus
+from mailler.models.client import AuthorizedClient
 from mailler.models.email import Email, EmailStatus, ProviderStats
 from mailler.services.providers import get_provider
 from mailler.services.rendering import convert_percent_syntax, html_template, text_template
@@ -34,6 +35,15 @@ def _convert_percent_syntax(text: str) -> str:
         Template text with {{ variable }} syntax
     """
     return convert_percent_syntax(text)
+
+
+def _load_client(db, client_id: str | None) -> AuthorizedClient | None:
+    """Return the registry record of a client, or None (emails of administrators have none)."""
+    if not client_id:
+        return None
+    return db.execute(
+        select(AuthorizedClient).where(AuthorizedClient.client_id == client_id)
+    ).scalar_one_or_none()
 
 
 def _update_provider_stats(db, provider: str, status: str) -> None:
@@ -175,6 +185,21 @@ def send_email_task(self, email_id: str) -> dict:
                 extra={"email_id": email_id, "status": email.status},
             )
             return {"status": email.status}
+
+        # A client deactivated after the email was accepted no longer sends
+        client = _load_client(db, email.client_id)
+        if client is not None and not client.is_active:
+            email.status = EmailStatus.FAILED.value
+            email.failed_at = datetime.now(UTC)
+            email.error_message = "Client is deactivated"
+            db.commit()
+            _update_provider_stats(db, email.provider, "failed")
+            _update_email_send_status(db, email, "failed", error_message=email.error_message)
+            logger.warning(
+                "Email of a deactivated client not sent",
+                extra={"email_id": email_id, "client_id": email.client_id},
+            )
+            return {"status": EmailStatus.FAILED.value, "error": email.error_message}
 
         # Update status to queued
         email.status = EmailStatus.QUEUED.value
@@ -365,11 +390,25 @@ def send_campaign_task(self, campaign_id: int) -> dict:
             db.commit()
             return {"error": "Invalid template"}
 
-        # Determine email settings
-        from_email = campaign.from_email or settings.default_from
-        from_name = campaign.from_name or settings.default_from_name
-        reply_to = campaign.reply_to
-        provider = campaign.provider or settings.default_provider
+        # Determine email settings: the campaign, then the record of its client, then (for
+        # campaigns of clients without a record, that is administrators) the platform settings
+        client = _load_client(db, campaign.client_id)
+        if client is not None and not client.is_active:
+            logger.error("Campaign of a deactivated client", extra={"campaign_id": campaign_id})
+            campaign.status = CampaignStatus.FAILED.value
+            db.commit()
+            return {"error": "Client is deactivated"}
+
+        if client is not None:
+            from_email = campaign.from_email or client.from_email
+            from_name = campaign.from_name or client.from_name
+            reply_to = campaign.reply_to or client.reply_to
+            provider = campaign.provider or client.default_provider
+        else:
+            from_email = campaign.from_email or settings.default_from
+            from_name = campaign.from_name or settings.default_from_name
+            reply_to = campaign.reply_to
+            provider = campaign.provider or settings.default_provider
 
         if not from_email or not provider:
             logger.error(

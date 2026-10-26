@@ -15,6 +15,7 @@ from mailler.auth.models import User
 from mailler.auth.token_exchange import TokenExchangeError, token_exchange_client
 from mailler.config import settings
 from mailler.logging import get_logger, set_request_context
+from mailler.services.clients import ensure_authorized
 
 logger = get_logger(__name__)
 
@@ -143,14 +144,20 @@ class AuthContext:
             )
 
 
-def _build_context(request: Request, user: User, is_admin: bool) -> AuthContext:
-    """Build the context of an authenticated call and expose it to logging."""
-    if not is_admin and not user.client_id:
-        logger.info("Token without client identity refused")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Token carries no client identity",
-        )
+async def _build_context(request: Request, user: User, is_admin: bool) -> AuthContext:
+    """Build the context of an authenticated call and expose it to logging.
+
+    A regular client must be registered and active; administrators are not
+    bound by a registration.
+    """
+    if not is_admin:
+        if not user.client_id:
+            logger.info("Token without client identity refused")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Token carries no client identity",
+            )
+        await ensure_authorized(user.client_id)
     set_request_context(user_id=str(user.id), client_id=user.client_id)
     request.state.user_id = str(user.id)
     request.state.client_id = user.client_id
@@ -207,7 +214,7 @@ async def get_auth_context(
 
         user = User.from_jwt_claims(claims)
         is_admin = await _holds_admin_scope(token, user, user.scopes)
-        return _build_context(request, user, is_admin)
+        return await _build_context(request, user, is_admin)
     except HTTPException:
         raise
     except TokenRevokedError:
@@ -296,7 +303,7 @@ def require_scopes(*required_scopes: str) -> Callable:
                 original_scopes = user.scopes
                 user.scopes = granted_scopes
                 is_admin = await _holds_admin_scope(token, user, original_scopes)
-                return _build_context(request, user, is_admin)
+                return await _build_context(request, user, is_admin)
 
             except HTTPException:
                 raise
@@ -369,7 +376,7 @@ def require_scopes(*required_scopes: str) -> Callable:
             )
 
         is_admin = await _holds_admin_scope(token, user, user.scopes)
-        return _build_context(request, user, is_admin)
+        return await _build_context(request, user, is_admin)
 
     return dependency
 

@@ -476,8 +476,11 @@ Feature: Email Campaigns
 
   # ── Sender, provider and isolation ────────────────────────────────────────
 
-  Scenario: The platform provider is used when a campaign names none
-    Given the setting "default_provider" is "platform-provider"
+  Scenario: The sender and the provider of the client record are used when a campaign names none
+    Given the following clients are registered
+      | client_id  | from_email          | from_name | reply_to          | default_provider |
+      | bdd-client | news@bdd-client.example | News      | help@bdd-client.example | ses              |
+    And I am authenticated
     When I send a POST to "/api/v1/templates" with
       """
       {"slug": "fallback-tpl", "name": "Fallback", "subject_template": "Hello", "mjml_source": "<mjml><mj-body><mj-section><mj-column><mj-text>Hi</mj-text></mj-column></mj-section></mj-body></mjml>"}
@@ -506,11 +509,47 @@ Feature: Email Campaigns
     Then the response status should be 200
     When the campaign task runs for "campaign_id"
     Then the task result "queued" should be "1"
-    And the email to "fallback@example.com" should use provider "platform-provider"
-    And the email to "fallback@example.com" should have sender "sender@bdd.example"
+    And the email to "fallback@example.com" should use provider "ses"
+    And the email to "fallback@example.com" should have sender "news@bdd-client.example"
+    And the email to "fallback@example.com" should have sender name "News"
+    And the email to "fallback@example.com" should have reply-to "help@bdd-client.example"
+
+  Scenario: The platform provider is used for an administrator without a record
+    Given I am authenticated as unregistered client "ops" with scopes "mailler:*"
+    And the setting "default_provider" is "platform-provider"
+    When I send a POST to "/api/v1/templates" with
+      """
+      {"slug": "platform-tpl", "name": "Platform", "subject_template": "Hello", "mjml_source": "<mjml><mj-body><mj-section><mj-column><mj-text>Hi</mj-text></mj-column></mj-section></mj-body></mjml>"}
+      """
+    Then I store the response "id" as "template_id"
+    When I send a POST to "/api/v1/contact-groups" with
+      """
+      {"slug": "platform-group", "name": "Platform"}
+      """
+    Then I store the response "id" as "group_id"
+    When I send a POST to "/api/v1/contacts" with
+      """
+      {"email": "platform@example.com"}
+      """
+    Then I store the response "id" as "contact_id"
+    When I send a POST to "/api/v1/contact-groups/{group_id}/contacts" with
+      """
+      {"contact_ids": ["{contact_id}"]}
+      """
+    And I send a POST to "/api/v1/campaigns" with
+      """
+      {"name": "Platform campaign", "template_id": {template_id}, "group_id": {group_id}}
+      """
+    Then I store the response "id" as "campaign_id"
+    When I send a POST to "/api/v1/campaigns/{campaign_id}/send"
+    And the campaign task runs for "campaign_id"
+    Then the task result "queued" should be "1"
+    And the email to "platform@example.com" should use provider "platform-provider"
+    And the email to "platform@example.com" should have sender "sender@bdd.example"
 
   Scenario: A campaign without any provider fails instead of guessing one
-    Given the setting "default_provider" is empty
+    Given I am authenticated as unregistered client "ops" with scopes "mailler:*"
+    And the setting "default_provider" is empty
     When I send a POST to "/api/v1/templates" with
       """
       {"slug": "noprov-tpl", "name": "No provider", "subject_template": "Hello", "mjml_source": "<mjml><mj-body><mj-section><mj-column><mj-text>Hi</mj-text></mj-column></mj-section></mj-body></mjml>"}

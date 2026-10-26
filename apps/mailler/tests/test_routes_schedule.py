@@ -5,7 +5,6 @@
 
 import pytest
 from httpx import AsyncClient
-from mailler.config import settings
 
 
 class TestScheduleEmail:
@@ -54,7 +53,7 @@ class TestScheduleEmail:
     async def test_schedule_email_belongs_to_the_calling_client(
         self, auth_client: AsyncClient, mock_db_session
     ):
-        """The stored email is owned by the client of the token and gets the platform sender."""
+        """The stored email is owned by the client of the token and gets its record identity."""
         response = await auth_client.post(
             "/api/v1/schedule",
             json={
@@ -69,14 +68,14 @@ class TestScheduleEmail:
         assert response.status_code == 200
         email = mock_db_session.add.call_args[0][0]
         assert email.client_id == "test-client-id"
-        assert email.from_email == "sender@example.test"
+        assert email.from_email == "app@client.example"
 
     @pytest.mark.asyncio
     async def test_schedule_email_without_any_sender_is_refused(
-        self, auth_client: AsyncClient, mock_db_session, monkeypatch
+        self, auth_client: AsyncClient, mock_db_session, client_record
     ):
-        """Without a request sender and without DEFAULT_FROM nothing is stored."""
-        monkeypatch.setattr(settings, "default_from", "")
+        """Without a request sender and without a sender in its record nothing is stored."""
+        client_record.from_email = None
         response = await auth_client.post(
             "/api/v1/schedule",
             json={

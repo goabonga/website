@@ -33,8 +33,18 @@ Feature: Send emails
     And I store the response "id" as "email_id"
     And the task "send_email_task" should have been queued for "email_id"
 
-  Scenario: The default sender is applied when none is given
-    Given I am authenticated
+  Scenario: The sender of the client record is applied when none is given
+    Given I am authenticated as client "app-one" with scopes "mailler:send"
+    When I send a POST to "/api/v1/send" with
+      """
+      {"to_email": "recipient@example.com", "subject": "Hi", "html_content": "<p>Hi</p>"}
+      """
+    Then the response status should be 200
+    And the email to "recipient@example.com" should have sender "app-one@bdd.example"
+    And the email to "recipient@example.com" should use provider "brevo"
+
+  Scenario: The platform sender is used for an administrator without a record
+    Given I am authenticated as unregistered client "ops" with scopes "mailler:send mailler:admin"
     And the setting "default_from" is "noreply@example.org"
     When I send a POST to "/api/v1/send" with
       """
@@ -44,7 +54,7 @@ Feature: Send emails
     And the email to "recipient@example.com" should have sender "noreply@example.org"
 
   Scenario: An email without any sender is refused
-    Given I am authenticated
+    Given I am authenticated as unregistered client "ops" with scopes "mailler:send mailler:admin"
     And the setting "default_from" is empty
     When I send a POST to "/api/v1/send" with
       """

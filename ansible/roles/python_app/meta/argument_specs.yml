@@ -765,8 +765,8 @@ argument_specs:
       website_mailler_provider:
         type: str
         description:
-        - Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth,
-          apt_server and knowledge, MAILLER_DEFAULT_PROVIDER of internal). It must be one the
+        - Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth and
+          apt_server, MAILLER_DEFAULT_PROVIDER of internal). It must be one the
           registered client of the application may use.
         default: brevo
       website_internal_billing_api_url:

@@ -11,6 +11,7 @@ from team.models import (
     MemoryEntry,
     Message,
     Team,
+    Workflow,
 )
 
 
@@ -25,6 +26,9 @@ class TestModelsImport:
 
     def test_agent_tablename(self):
         assert Agent.__tablename__ == "agents"
+
+    def test_workflow_tablename(self):
+        assert Workflow.__tablename__ == "workflows"
 
     def test_conversation_tablename(self):
         assert Conversation.__tablename__ == "conversations"
@@ -50,5 +54,6 @@ def test_all_models_registered_in_metadata():
         "messages",
         "skills",
         "teams",
+        "workflows",
     }
     assert expected.issubset(table_names)

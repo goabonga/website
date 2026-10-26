@@ -20,6 +20,7 @@ members = ["apps/*", "libs/*"]
 
 [dependency-groups]
 dev = [
+    "playwright>=1.49",
     "ruff>=0.13",
     "mypy>=1.8",
     "pytest>=8",

@@ -16,6 +16,7 @@ from mailler.routes import (
     health,
     providers,
     send,
+    stats,
 )
 
 # Setup logging before anything else
@@ -78,6 +79,7 @@ Internal email sending service supporting multiple providers.
 
 - **Multi-provider support**: Brevo, SendGrid, AWS SES, Protonmail (SMTP)
 - **Async processing**: All emails sent via Celery workers
+- **Statistics**: Track sent, delivered, bounced, and failed emails
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -90,6 +92,7 @@ the user has the required `mailler:*` scopes via token exchange.
 
 - `mailler:send` - Send and schedule emails
 - `mailler:read` - Read email details and list emails
+- `mailler:stats` - View sending statistics
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -112,4 +115,5 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(send.router, prefix="/api/v1")
 app.include_router(emails.router, prefix="/api/v1")
+app.include_router(stats.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")

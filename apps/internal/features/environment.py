@@ -34,6 +34,7 @@ from internal.main import app
 from sqlalchemy import JSON, Uuid, event
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 # Test user defaults
 TEST_USER_ID = str(uuid.UUID("00000000-0000-0000-0000-000000000001"))
@@ -115,8 +116,10 @@ def before_all(context):
     # Database: throw-away SQLite file, one engine for the whole run
     context.db_dir = tempfile.mkdtemp(prefix="internal-behave-")
     _adapt_metadata_for_sqlite()
+    # No pooling: a connection is opened and closed in the event loop that uses it, and the
+    # engine is used by the scenario thread and by the thread of the server of @browser ones
     context.engine = create_async_engine(
-        f"sqlite+aiosqlite:///{context.db_dir}/internal.db", echo=False
+        f"sqlite+aiosqlite:///{context.db_dir}/internal.db", echo=False, poolclass=NullPool
     )
 
     @event.listens_for(context.engine.sync_engine, "connect")

@@ -51,10 +51,15 @@ def before_scenario(context, scenario):
     context.auth_headers = {}
     context.setting_backup = {}
     context.patchers = []
+    context.ws = None
+    context.last_message = None
 
 
 def after_scenario(context, scenario):
     """Restore overridden settings, patches and the standard streams."""
+    if context.ws is not None:
+        context.ws.__exit__(None, None, None)
+        context.ws = None
     for patcher in reversed(context.patchers):
         patcher.stop()
     for name, value in context.setting_backup.items():

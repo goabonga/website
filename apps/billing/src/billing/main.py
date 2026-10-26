@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from billing import __version__
+from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
 from billing.routes import health
 
@@ -23,6 +24,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_swagger_oauth2_config() -> dict:
+    """Configure Swagger UI OAuth2 login."""
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
@@ -30,18 +47,49 @@ async def lifespan(app: FastAPI):
     yield
     # Cleanup
     logger.info("Shutting down %s", settings.app_name)
+    try:
+        await jwks_manager.close()
+    except Exception as e:
+        logger.warning("Error closing jwks_manager: %s", e)
+    try:
+        await token_exchange_client.close()
+    except Exception as e:
+        logger.warning("Error closing token_exchange_client: %s", e)
+    try:
+        await introspection_client.close()
+    except Exception as e:
+        logger.warning("Error closing introspection_client: %s", e)
 
+
+# Swagger OAuth2 configuration
+swagger_config = get_swagger_oauth2_config()
 
 app = FastAPI(
     title=settings.app_name,
     description="""
 Multi-SaaS Stripe Billing Platform.
+- **OAuth2 authentication**: PKCE-based authentication with scope validation
+
+## Authentication
+
+This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
+only `openid`, `profile`, and `email` scopes. The server validates that
+the user has the required `billing:*` scopes via token exchange.
+
+## Required Scopes
+
+- `billing:platform:read` - Read products, prices, customers, subscriptions
+- `billing:platform:write` - Manage products, prices, customers, subscriptions
+- `billing:usage:write` - Report usage metrics
+- `billing:checkout:write` - Create checkout sessions
+- `billing:webhooks` - Process webhooks
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
+    **swagger_config,
 )
 
 # CORS middleware

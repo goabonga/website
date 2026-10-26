@@ -6,10 +6,12 @@ SaaS applications from a single Stripe account. Each SaaS application is
 isolated through `metadata.saas_id` on every Stripe object.
 
 This package is a member of the uv workspace of the `website` monorepo.
+Full documentation lives in `docs/apps/billing/`.
 
 ## Features
 
 - Health endpoint, environment-driven settings and dual-stream logging
+- OAuth2 / OIDC authentication with scope checks (`billing:*`)
 
 ## Routes and scopes
 
@@ -31,6 +33,15 @@ uv sync --package billing --group dev
 
 # Start the API
 uv run --package billing uvicorn billing.main:app --reload --port 8000
+```
+
+## Development
+
+```bash
+uv run --package billing --group dev pytest apps/billing
+uv run --package billing --group dev behave apps/billing/features
+uv run ruff check apps/billing
+uv run ruff format --check apps/billing
 ```
 
 ## License

@@ -172,3 +172,21 @@ def step_check_json_entry_includes(context, key, field, value):
 def step_check_json_entry_excludes(context, key, field, value):
     entries = context.response.json()[key]
     assert not any(str(entry.get(field)) == value for entry in entries), entries
+
+
+def _lookup(data, path):
+    """Follow a dotted path through dictionaries."""
+    for part in path.split("."):
+        data = data[part]
+    return data
+
+
+@then('the response JSON path "{path}" should be "{value}"')
+def step_check_json_path(context, path, value):
+    actual = _lookup(context.response.json(), path)
+    assert str(actual) == value, f"Expected {path}='{value}', got '{actual}'"
+
+
+@then('the response JSON "{key}" should not have key "{name}"')
+def step_check_json_missing_key(context, key, name):
+    assert name not in context.response.json()[key], context.response.json()[key]

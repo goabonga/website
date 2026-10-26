@@ -147,6 +147,12 @@
             API Docs
         </a>
         {% endif %}
+        {% if user.has_scope('*') or (tenant_member and tenant_member.is_admin) %}
+        <a href="/tenants/members" class="btn btn-secondary">
+            <span style="margin-right: 8px;">&#128101;</span>
+            Team Members
+        </a>
+        {% endif %}
     </div>
 </div>
 

@@ -8,7 +8,7 @@ It has its own OpenAPI documentation at /internal/docs.
 
 Internal routes include health checks, webhook receivers, authentication pages and
 the web pages (landing page, dashboard, pricing, legal pages, MCP downloads,
-collections, documents, search and workspace settings).
+collections, documents, search, workspace settings and members).
 """
 
 from fastapi import FastAPI

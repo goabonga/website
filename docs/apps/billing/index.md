@@ -1,0 +1,37 @@
+# billing
+
+Multi-SaaS Stripe billing platform. A single Stripe account serves several
+SaaS applications: every Stripe object carries `metadata.saas_id`, so
+products, prices, customers and subscriptions of each tenant stay isolated.
+The service manages the catalog, creates Checkout sessions, tracks metered
+usage and keeps local subscription state in sync through Stripe webhooks.
+It is an internal service, reachable only from the VPN subnet or through its
+Unix socket.
+
+Workspace member: `apps/billing` (distribution `billing`, import package
+`billing`, FastAPI application `billing.main:app`).
+
+## Features
+
+The application is built as a sequence of features. Each page below
+documents one of them: what it adds, how it is configured and how it is
+tested.
+
+| # | Feature | Summary |
+|---|---------|---------|
+| 1 | [Foundation](01-foundation.md) | Settings, logging, database session, health endpoint |
+
+## Running the tests
+
+All commands run from the repository root.
+
+```bash
+uv run --package billing --group dev pytest apps/billing
+uv run --package billing --group dev behave apps/billing/features
+```
+
+The pytest suite mocks the database session, Stripe and the authentication
+layer. The behave scenarios run in the same process: the FastAPI application
+is called through an ASGI transport, the database is an in-memory SQLite
+engine, token validation is faked and Stripe is replaced by a mock, so
+neither server, PostgreSQL, Redis nor network access is needed.

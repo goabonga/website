@@ -36,7 +36,11 @@ created by the migrations of the authentication server; `mailler:write` and
 `mailler:admin` are not, and must be created there before they can be granted.
 The operator client of the `internal` application needs the platform scopes and
 the admin scopes of billing and mailler (see
-[python_app](roles/python_app.md#internal)).
+[python_app](roles/python_app.md#internal)), and the operators who manage the
+bindings and the mailler clients hold `billing:admin` and `mailler:admin` as user
+scopes. `internal` also sends through mailler with its own client: register it
+in `website_mailler_clients` like any application when it uses campaigns or
+templates.
 
 ## 2. Declare the application in the inventory
 

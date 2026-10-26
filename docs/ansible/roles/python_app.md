@@ -250,6 +250,7 @@ Settings of the `mailler` application. Its defaults describe no deployment: noth
 | --- | --- | --- |
 | `website_mailler_celery_queue` | `"mailler"` | Celery queue of the three mailler processes (CELERY_QUEUE); the worker consumes it (--queues), the API and beat publish to it. |
 | `website_mailler_legacy_client_id` | `""` | OAuth2 client that owns the data created before the client registry existed (LEGACY_CLIENT_ID). Required only when the database already holds templates, contacts, groups or campaigns: migration 006 stops with an explanation when it is empty. |
+| `website_mailler_admin_scope` | `"mailler:admin"` | Scope that lets a caller cross the client boundary and register clients (ADMIN_SCOPE). Give it only to the operator clients, such as the one of `internal`. |
 | `website_mailler_cors_origins` | `[]` | Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none. |
 | `website_mailler_unsubscribe_base_url` | `""` | Public base URL of the API including /api/v1, used to build the unsubscribe links of the campaigns (UNSUBSCRIBE_BASE_URL). Required to send campaigns. |
 | `website_mailler_protonmail_host` | `{{ protonmail_bridge_smtp_host \| default('') }}` | Protonmail Bridge SMTP host (PROTONMAIL_HOST); follows the protonmail_bridge role. Required, with the port and the user, when the PROTONMAIL_PASSWORD secret is provided. |
@@ -280,12 +281,30 @@ Settings of the `billing` application. They are the values the service uses when
 
 ### Internal
 
-Settings of the `internal` application. The scopes its OAuth client needs are listed in `defaults/main/internal.yml`: the admin scopes of billing and mailler must exist at the authentication server (`billing:admin` is created by its migrations, `mailler:write` and `mailler:admin` are not) and be granted to the operators and to this client. The deployment fails when a URL is not absolute.
+Settings of the `internal` application. The scopes its OAuth client needs are listed in `defaults/main/internal.yml`: the admin scopes of billing and mailler must exist at the authentication server (`billing:admin` is created by its migrations, `mailler:write` and `mailler:admin` are not) and be granted to the operators and to this client. The deployment fails when a URL is not absolute, and when an admin scope differs from the one the service names (they follow `website_billing_partition_admin_scope` and `website_mailler_admin_scope` unless set apart).
+
+The OAuth client of `internal` (`website_oauth2_clients.internal`, client credentials) needs, at the authentication server:
+
+| Service | Scopes |
+| --- | --- |
+| billing | `billing:platform:read`, `billing:platform:write` and the admin scope. Without the admin scope it only sees the SaaS applications it is bound to and cannot create one or manage the bindings. |
+| mailler | `mailler:read`, `mailler:write`, `mailler:send`, `mailler:stats` and the admin scope. Without it internal only sees its own data and the pages of the mailler clients answer 403. |
+
+`internal` is also a mailler client for the records it creates (templates, contacts, groups, campaigns belong to its own OAuth client): register it in `website_mailler_clients` when campaigns or template sending are used, and use its client id as `website_mailler_legacy_client_id` when a database that already holds data is migrated. A SaaS application needs `checkout_urls` before its checkout or customer portal works. Neither service URL has a default in the application any more: `website_internal_billing_api_url` and `website_internal_mailler_api_url` are always written to the environment.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `website_internal_billing_api_url` | `https://{{ website_hostnames.billing }}` | Base URL of the billing API (BILLING_API_URL of internal), required; the host name of billing by default. |
 | `website_internal_mailler_api_url` | `https://{{ website_hostnames.mailler }}` | Base URL of the mailler API (MAILLER_API_URL of internal), required; the host name of mailler by default. |
+| `website_internal_billing_read_scope` | `"billing:platform:read"` | Scope of the calls to billing that read (BILLING_READ_SCOPE). |
+| `website_internal_billing_write_scope` | `"billing:platform:write"` | Scope of the calls to billing that write (BILLING_WRITE_SCOPE). |
+| `website_internal_billing_admin_scope` | `{{ website_billing_partition_admin_scope }}` | Admin scope requested from billing (BILLING_ADMIN_SCOPE); it must be the PARTITION_ADMIN_SCOPE of billing. |
+| `website_internal_billing_timeout` | `30` | Seconds allowed to one request to billing (BILLING_TIMEOUT). |
+| `website_internal_billing_page_size` | `20` | Rows per page of the customer and subscription lists (BILLING_PAGE_SIZE). |
+| `website_internal_billing_recent_limit` | `10` | Rows of the recent tables of a SaaS application page (BILLING_RECENT_LIMIT). |
+| `website_internal_mailler_admin_scope` | `{{ website_mailler_admin_scope }}` | Admin scope requested from mailler (MAILLER_ADMIN_SCOPE); it must be the ADMIN_SCOPE of mailler. Empty: internal only acts as an ordinary registered client. |
+| `website_internal_mailler_timeout` | `30` | Seconds allowed to one request to mailler (MAILLER_TIMEOUT). |
+| `website_internal_mailler_clients_page_size` | `20` | Rows per page of the list of mailler clients (MAILLER_CLIENTS_PAGE_SIZE). |
 
 ### Knowledge
 

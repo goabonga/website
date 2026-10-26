@@ -31,3 +31,4 @@ feature adds, its settings and how it is tested.
 | [TCP upstream targets](14-upstream-targets.md) | Host and port upstreams next to Unix sockets, strict validation |
 | [Per-client template ownership](15-template-ownership.md) | Shared and client-owned nginx templates |
 | [Client status webhooks](16-webhooks.md) | Signed callbacks on status changes, SDK verification helper |
+| [Onboarding a SaaS application](17-saas-onboarding.md) | OAuth2 client, authorized client, SDK and webhook, in order |

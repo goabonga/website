@@ -1,0 +1,36 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for existing certificates
+  ansible.builtin.stat:
+    path: "{{ certbot_letsencrypt_dir }}/live/{{ item.name | default(item.domains[0]) }}/fullchain.pem"
+  register: certbot__existing
+  loop: "{{ certbot_certificates }}"
+  loop_control:
+    label: "{{ item.name | default(item.domains[0]) }}"
+
+- name: Obtain missing certificates
+  ansible.builtin.command:
+    argv: >-
+      {{ ['certbot', 'certonly', '--non-interactive', '--agree-tos',
+          '--config-dir', certbot_letsencrypt_dir,
+          '--cert-name', item.item.name | default(item.item.domains[0]),
+          '--email', item.item.email | default(certbot_email)]
+         + method_args + domain_args + staging_args + server_args + key_args
+         + (item.item.extra_args | default([])) }}
+  vars:
+    method: "{{ item.item.method | default(certbot_default_method) }}"
+    method_args: >-
+      {{ ['--webroot', '--webroot-path', item.item.webroot | default(certbot_webroot)]
+         if method == 'webroot' else ['--' ~ method] }}
+    domain_args: "{{ item.item.domains | map('regex_replace', '^', '--domain=') | list }}"
+    staging_args: "{{ ['--staging'] if certbot_staging | bool else [] }}"
+    server_args: "{{ ['--server', certbot_server] if certbot_server | length > 0 else [] }}"
+    key_type: "{{ item.item.key_type | default(certbot_key_type) }}"
+    key_args: "{{ ['--key-type', key_type] if key_type | length > 0 else [] }}"
+  loop: "{{ certbot__existing.results }}"
+  loop_control:
+    label: "{{ item.item.name | default(item.item.domains[0]) }}"
+  when: not item.stat.exists
+  changed_when: true

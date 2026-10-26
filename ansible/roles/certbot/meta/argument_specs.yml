@@ -1,0 +1,179 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Install certbot, automate renewal and issue Let's Encrypt certificates.
+    description:
+    - Installs certbot, keeps the renewal timer running, installs renewal hooks and obtains
+      the certificates described in certbot_certificates. Certificates are issued only when
+      they do not exist yet, so the role is idempotent.
+    author: Chris
+    options:
+      certbot_enabled:
+        type: bool
+        description:
+        - Master toggle. When false the role does nothing.
+        default: true
+      certbot_apt_update_cache:
+        type: bool
+        description:
+        - Refresh the apt cache before installing packages.
+        default: true
+      certbot_apt_cache_valid_time:
+        type: int
+        description:
+        - Seconds the apt cache is considered fresh.
+        default: 3600
+      certbot_packages:
+        type: list
+        description:
+        - Packages installed for certbot.
+        default:
+        - certbot
+        elements: str
+      certbot_plugin_packages:
+        type: list
+        description:
+        - Extra plugin packages, for example python3-certbot-nginx or python3-certbot-dns-cloudflare.
+        default: []
+        elements: str
+      certbot_letsencrypt_dir:
+        type: path
+        description:
+        - Certbot configuration directory.
+        default: /etc/letsencrypt
+      certbot_email:
+        type: str
+        description:
+        - Account e-mail address. Required when certbot_certificates is not empty.
+        default: ''
+      certbot_agree_tos:
+        type: bool
+        description:
+        - Accept the certificate authority terms of service. Must be true to issue certificates.
+        default: false
+      certbot_staging:
+        type: bool
+        description:
+        - Use the staging environment of the certificate authority.
+        default: false
+      certbot_server:
+        type: str
+        description:
+        - Custom ACME directory URL. The Let's Encrypt production server is used when empty.
+        default: ''
+      certbot_key_type:
+        type: str
+        description:
+        - Key type of new certificates. The certbot default is used when empty.
+        default: ''
+        choices:
+        - ''
+        - rsa
+        - ecdsa
+      certbot_default_method:
+        type: str
+        description:
+        - Authentication method used by certificates that do not set one.
+        default: webroot
+        choices:
+        - webroot
+        - standalone
+        - nginx
+        - apache
+      certbot_webroot:
+        type: path
+        description:
+        - Web root served at /.well-known/acme-challenge/ for the webroot method. Must match
+          the web server configuration.
+        default: /var/www/html
+      certbot_certificates:
+        type: list
+        description:
+        - Certificates to obtain.
+        default: []
+        elements: dict
+        options:
+          domains:
+            type: list
+            description:
+            - Domain names, the first one names the certificate by default.
+            required: true
+            elements: str
+          name:
+            type: str
+            description:
+            - Certificate name, also the directory under /etc/letsencrypt/live.
+          method:
+            type: str
+            description:
+            - Authentication method.
+            choices:
+            - webroot
+            - standalone
+            - nginx
+            - apache
+          webroot:
+            type: path
+            description:
+            - Web root for this certificate.
+          email:
+            type: str
+            description:
+            - Account e-mail for this certificate.
+          key_type:
+            type: str
+            description:
+            - Key type.
+            choices:
+            - rsa
+            - ecdsa
+          extra_args:
+            type: list
+            description:
+            - Additional certbot command line arguments.
+            elements: str
+      certbot_auto_renew:
+        type: bool
+        description:
+        - Enable and start the systemd renewal timer. The timer is stopped and disabled when
+          false.
+        default: true
+      certbot_timer:
+        type: str
+        description:
+        - Name of the renewal timer unit.
+        default: certbot.timer
+      certbot_reload_service:
+        type: str
+        description:
+        - Service reloaded after each renewal, for example nginx. No reload hook is installed
+          when empty.
+        default: ''
+      certbot_hooks:
+        type: list
+        description:
+        - Additional renewal hooks.
+        default: []
+        elements: dict
+        options:
+          name:
+            type: str
+            description:
+            - Hook file name without extension.
+            required: true
+          type:
+            type: str
+            description:
+            - When the hook runs.
+            required: true
+            choices:
+            - pre
+            - deploy
+            - post
+          command:
+            type: str
+            description:
+            - Shell command to run.
+            required: true

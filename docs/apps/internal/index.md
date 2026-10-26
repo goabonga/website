@@ -16,6 +16,7 @@ feature, in the order they were introduced.
 3. [Analytics dashboards](03-analytics.md)
 4. [Admin dashboard and chat history](04-dashboard.md)
 5. [VPN session management](05-vpn.md)
+6. [Billing administration](06-billing.md)
 
 ## Running locally
 

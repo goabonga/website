@@ -3,9 +3,13 @@
 
 """Tests for team/schemas/."""
 
+from uuid import uuid4
+
 from team.schemas import (
     AgentCreate,
     AgentUpdate,
+    ConversationCreate,
+    MessageCreate,
     TeamCreate,
     TeamUpdate,
 )
@@ -34,3 +38,19 @@ class TestTeamSchemas:
         data = TeamUpdate(is_active=False)
         dumped = data.model_dump(exclude_unset=True)
         assert dumped == {"is_active": False}
+
+
+class TestMessageSchemas:
+    def test_message_create_valid(self):
+        agent_id = uuid4()
+        data = MessageCreate(agent_id=agent_id, text="Hello")
+        assert data.agent_id == agent_id
+        assert data.type == "message"
+        assert data.visibility == "public"
+
+
+class TestConversationSchemas:
+    def test_conversation_create_valid(self):
+        data = ConversationCreate(slug="general", title="General Chat")
+        assert data.slug == "general"
+        assert data.type == "general"

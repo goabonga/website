@@ -47,3 +47,9 @@ if settings.cors_origins:
 
 # Include routers
 app.include_router(health_router)
+
+# Register webhook routes based on configuration
+if settings.brevo_enabled:
+    from webhooks.routes.brevo import router as brevo_router
+
+    app.include_router(brevo_router, prefix="/webhooks/brevo", tags=["brevo"])

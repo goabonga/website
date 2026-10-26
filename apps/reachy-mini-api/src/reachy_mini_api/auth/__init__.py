@@ -14,6 +14,7 @@ from reachy_mini_api.auth.dependencies import (
 from reachy_mini_api.auth.introspection import introspection_client
 from reachy_mini_api.auth.jwks import jwks_manager
 from reachy_mini_api.auth.models import User
+from reachy_mini_api.auth.token_exchange import token_exchange_client
 
 __all__ = [
     "Auth",
@@ -25,4 +26,5 @@ __all__ = [
     "introspection_client",
     "jwks_manager",
     "require_scopes",
+    "token_exchange_client",
 ]

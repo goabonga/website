@@ -12,6 +12,7 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from reachy_mini_api.auth.introspection import TokenRevokedError, introspection_client
 from reachy_mini_api.auth.jwks import jwks_manager
 from reachy_mini_api.auth.models import User
+from reachy_mini_api.auth.token_exchange import TokenExchangeError, token_exchange_client
 from reachy_mini_api.config import settings
 from reachy_mini_api.logging import get_logger, set_request_context
 
@@ -155,9 +156,13 @@ async def get_current_user(
 def require_scopes(*required_scopes: str) -> Callable:
     """Create a dependency that requires specific scopes.
 
-    The token is validated (JWKS signature and revocation check for JWTs,
-    introspection for opaque tokens) and the scopes carried by the token are
-    checked, with wildcard support.
+    When token exchange is configured, JWTs are exchanged for the required
+    scopes: the auth server decides whether they were granted and the result
+    is cached in Redis. Otherwise (opaque tokens, token exchange not
+    configured, or no scope required) the token is validated directly
+    (JWKS signature and revocation check for JWTs, introspection for opaque
+    tokens) and the scopes carried by the token are checked, with wildcard
+    support.
 
     Usage:
         @router.get("/resource")
@@ -192,8 +197,59 @@ def require_scopes(*required_scopes: str) -> Callable:
             )
 
         is_jwt = _is_jwt_token(token)
+
+        # Token exchange only works with JWT tokens, not opaque tokens (PATs)
+        if is_jwt and token_exchange_client.is_configured and scopes_list:
+            try:
+                result = await token_exchange_client.validate_token_scopes(token, scopes_list)
+
+                granted_scopes = result.get("scope", "").split()
+
+                # Get claims from exchanged token or validate original
+                claims = result.get("claims", {})
+                if not claims:
+                    try:
+                        claims = await introspection_client.validate_token_with_introspection(token)
+                    except Exception as e:
+                        logger.warning("Token validation failed after exchange: %s", e)
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Token validation failed",
+                            headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+                        )
+
+                user = User.from_jwt_claims(claims)
+                user.scopes = granted_scopes
+
+                _set_request_identity(request, claims, user)
+                return AuthContext(user=user)
+
+            except TokenExchangeError as e:
+                logger.info("Token exchange failed: %s", e)
+                if e.error_code == "invalid_grant":
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid or expired token",
+                        headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+                    )
+                elif e.error_code == "insufficient_scope":
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Insufficient scopes. Required: {', '.join(scopes_list)}",
+                        headers={
+                            "WWW-Authenticate": f'Bearer error="insufficient_scope" scope="{" ".join(scopes_list)}"'
+                        },
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=str(e),
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+
+        # Direct validation: for opaque tokens (PATs) or when token exchange is not configured
         if not is_jwt:
-            logger.debug("Opaque token detected, using introspection")
+            logger.debug("Opaque token detected, skipping token exchange, using introspection")
 
         try:
             if is_jwt:

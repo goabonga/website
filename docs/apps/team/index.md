@@ -20,6 +20,7 @@ is tested with pytest and behave.
 | [Workflows](08-workflows.md) | multi-step workflow definitions |
 | [Tasks](09-tasks.md) | tasks, agent state, execution log and cancellation |
 | [Usage reporting](10-usage.md) | execution events reported by services |
+| [Tool registry](11-tools.md) | tool catalog and the platform tools |
 
 ## Running the tests
 

@@ -25,6 +25,7 @@ documented on its own page.
 | [Contact groups](10-contact-groups.md) | Named sets of contacts and memberships |
 | [Public unsubscribe](11-unsubscribe.md) | Signed unsubscribe links and pages |
 | [Email campaigns](12-campaigns.md) | Campaign lifecycle and worker tasks |
+| [Brevo delivery webhooks](13-webhooks.md) | Delivery events and signature checks |
 
 ## Running the tests
 

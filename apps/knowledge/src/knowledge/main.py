@@ -5,7 +5,7 @@
 
 This application has two parts:
 1. Public API (main app) - Customer-facing REST API with docs at /docs
-2. Internal routes (mounted sub-app) - health checks (and later web UI, webhooks)
+2. Internal routes (mounted sub-app) - health checks and webhooks (and later web UI)
    with docs at /internal/docs
 """
 
@@ -172,7 +172,7 @@ app.include_router(search.router, prefix="/api/v1", tags=["Search"])
 # =============================================================================
 # MOUNT INTERNAL SUB-APPLICATION
 # =============================================================================
-# Internal routes include: health checks (and later webhooks, auth and web UI)
+# Internal routes include: health checks and webhooks (and later auth and web UI)
 # These have their own OpenAPI documentation at /internal/docs
 
 app.mount("", internal_app)

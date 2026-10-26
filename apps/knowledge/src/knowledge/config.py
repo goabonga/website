@@ -83,19 +83,40 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_window: int = 60  # seconds
 
-    # Multi-Tenancy
-    tenant_base_domain: str = ""  # Base domain for subdomain resolution (e.g., example.com)
-    tenant_custom_domain_lookup: bool = True  # Enable custom domain CNAME resolution
     # Quota limits of the plans, by plan slug ("*" applies to every other plan), for example
     # {"free": {"max_collections": 3}, "*": {"max_collections": 1}}. A limit that is not listed
     # is 0 (nothing allowed) and -1 means unlimited. Empty by default: the deployment decides.
     quota_fallback_limits: dict[str, dict[str, int]] = {}
+
+    # Multi-Tenancy
+    tenant_base_domain: str = ""  # Base domain for subdomain resolution (e.g., example.com)
+    tenant_custom_domain_lookup: bool = True  # Enable custom domain CNAME resolution
+
+    # Billing service (platform billing, shared by several SaaS applications)
+    billing_api_url: str = ""  # HTTP URL of the billing service; empty = not configured
+    billing_socket_path: str = ""  # Unix socket of the billing service (alternative to the URL)
+    billing_app_slug: str = ""  # slug of this SaaS application in billing (plans)
+    billing_saas_id: str = ""  # id of this SaaS application in billing: required to use billing
+    billing_client_id: str = ""  # OAuth2 client of the service calls; empty = oauth2_client_id
+    billing_client_secret: str = ""  # its secret; empty = oauth2_client_secret
+    billing_cache_ttl: int = 300  # seconds the plans are cached
+    billing_webhook_secret: str = ""  # signs the billing webhooks: required to accept them
+    billing_event_ttl: int = 604800  # seconds a processed billing event id is remembered
+    # Where Stripe sends the customer back after a checkout: both must be covered by the
+    # checkout URL allow-list of the SaaS application in billing
+    billing_checkout_success_url: str = ""
+    billing_checkout_cancel_url: str = ""
+
+    # Calls to the platform services (billing, mailler, custom domains)
+    service_timeout: float = 10.0  # seconds
 
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {
     "openai_api_key": "OPENAI_API_KEY",
     "oauth2_client_secret": "OAUTH2_CLIENT_SECRET",
+    "billing_client_secret": "BILLING_CLIENT_SECRET",
+    "billing_webhook_secret": "BILLING_WEBHOOK_SECRET",
 }
 
 

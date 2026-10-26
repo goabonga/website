@@ -52,6 +52,7 @@ vault_analytics_oauth2_swagger_client_id: CHANGE_ME
 # client is registered.
 # vault_webhooks_oauth2_client_id: CHANGE_ME
 # vault_vpn_portal_openvpn_oauth2_client_id: CHANGE_ME
+# vault_knowledge_oauth2_client_id: CHANGE_ME
 
 # --------------------------------------------------------------------------
 # OAuth2 clients (secrets)
@@ -77,6 +78,7 @@ vault_analytics_oauth2_client_secret: CHANGE_ME
 # registered.
 # vault_webhooks_oauth2_client_secret: CHANGE_ME
 # vault_vpn_portal_openvpn_oauth2_client_secret: CHANGE_ME
+# vault_knowledge_oauth2_client_secret: CHANGE_ME
 
 # --------------------------------------------------------------------------
 # Application secrets
@@ -166,6 +168,49 @@ vault_openai_api_key: CHANGE_ME
 # step_ca_vpn_portal_password. Required when vpn_portal is enabled. openssl
 # rand -base64 32 (same value on both sides).
 # vault_vpn_portal_stepca_password: CHANGE_ME
+
+
+# --------------------------------------------------------------------------
+# Knowledge and the shared services it is a client of
+# --------------------------------------------------------------------------
+# Needed to add knowledge (see the end of apps.yml). The two webhook secrets
+# are at least 32 characters and are also registered in custom_domain and
+# billing.
+
+# BILLING_WEBHOOK_SECRET in website_secrets of knowledge. Required when
+# knowledge is enabled. openssl rand -hex 32 (at least 32 characters, also set
+# in billing).
+# vault_knowledge_billing_webhook_secret: CHANGE_ME
+
+# CUSTOM_DOMAIN_WEBHOOK_SECRET in website_secrets of knowledge and
+# webhook_secret of website_custom_domain_clients. Required when knowledge is
+# enabled. openssl rand -hex 32 (at least 32 characters, same value in both
+# places).
+# vault_knowledge_custom_domain_webhook_secret: CHANGE_ME
+
+# website_knowledge_billing_saas_id. Required when knowledge uses billing
+# (known after the first onboarding run). Identifier returned by billing-admin
+# saas list.
+# vault_knowledge_billing_saas_id: CHANGE_ME
+
+# MAILLER_CLIENT_SECRET in website_secrets of knowledge_worker. Optional:
+# knowledge has its own mailler client. Client secret shown by auth when the
+# client is registered.
+# vault_knowledge_mailler_client_secret: CHANGE_ME
+
+# CUSTOM_DOMAIN_CLIENT_SECRET in website_secrets of knowledge. Optional:
+# knowledge has its own custom_domain client. Client secret shown by auth when
+# the client is registered.
+# vault_knowledge_custom_domain_client_secret: CHANGE_ME
+
+# BILLING_CLIENT_SECRET in website_secrets of knowledge. Optional: knowledge
+# has its own billing client. Client secret shown by auth when the client is
+# registered.
+# vault_knowledge_billing_client_secret: CHANGE_ME
+
+# GITHUB_WEBHOOK_SECRET in website_secrets of knowledge. Optional: GitHub
+# webhooks are used. openssl rand -hex 32 (same value in the GitHub webhook).
+# vault_knowledge_github_webhook_secret: CHANGE_ME
 
 
 # --------------------------------------------------------------------------

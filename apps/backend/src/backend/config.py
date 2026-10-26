@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     redis_url: str = ""  # Uses prompt_cache_redis_url if empty
     redis_key_prefix: str = "fastapi"
 
+    # Rate limiting
+    rate_limit_redis_url: str = "redis://localhost:6379/1"
+    rate_limit_anon: int = 10  # requests per window for anonymous users
+    rate_limit_auth: int = 60  # requests per window for authenticated users
+    rate_limit_window: int = 60  # window size in seconds
+
+    # Session creation rate limiting (anti-abuse)
+    session_create_limit: int = 3  # max new sessions per IP per window
+    session_create_window: int = 86400  # 24 hours window for session creation
+
     # OAuth2 / OIDC
     oauth2_issuer: str = ""
     oauth2_swagger_client_id: str = ""

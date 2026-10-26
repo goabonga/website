@@ -4,18 +4,21 @@
 """FastAPI authentication dependencies."""
 
 import logging
+from collections.abc import Callable
 from typing import Annotated
+from urllib.parse import urlencode
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2AuthorizationCodeBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from knowledge.auth.jwt import JWTValidationError, get_jwt_validator
-from knowledge.auth.models import User
+from knowledge.auth.models import User, WebAuthContext
 from knowledge.auth.token_exchange import TokenExchangeError, get_token_exchange_client
-from knowledge.config import get_settings
+from knowledge.config import TEMPLATES_DIR, docs_context, get_settings
 from knowledge.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -66,6 +69,13 @@ def get_oauth2_scheme() -> OAuth2AuthorizationCodeBearer | None:
     if _oauth2_scheme is None:
         _oauth2_scheme = _get_oauth2_scheme()
     return _oauth2_scheme
+
+
+# Cookie names for web auth
+ACCESS_TOKEN_COOKIE = "access_token"
+REFRESH_TOKEN_COOKIE = "refresh_token"
+ACTIVE_TENANT_COOKIE = "active_tenant_id"
+USER_INFO_COOKIE = "user_info"
 
 
 class AuthContext:
@@ -307,8 +317,255 @@ def require_scopes(*required_scopes: str):
     return check_scopes
 
 
+# =============================================================================
+# Web Authentication (Cookie-based)
+# =============================================================================
+
+
+def _create_login_redirect(request: Request) -> RedirectResponse:
+    """Create redirect to login page with return URL."""
+    return_url = request.url.path
+    if request.url.query:
+        return_url = f"{return_url}?{request.url.query}"
+    login_url = f"/auth/login?{urlencode({'redirect': return_url})}"
+    return RedirectResponse(url=login_url, status_code=302)
+
+
+async def get_token_from_cookie(request: Request) -> str | None:
+    """Extract access token from cookie."""
+    return request.cookies.get(ACCESS_TOKEN_COOKIE)
+
+
+async def get_current_user_or_redirect(
+    request: Request,
+) -> User | RedirectResponse:
+    """Get current user from cookie or redirect to login.
+
+    For web pages that require authentication.
+    Uses token exchange to get API scopes based on user roles.
+    """
+    token = await get_token_from_cookie(request)
+
+    if not token:
+        return _create_login_redirect(request)
+
+    if not settings.oauth2_issuer:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="OAuth2 issuer not configured",
+        )
+
+    try:
+        jwt_validator = get_jwt_validator()
+        # Fetch userinfo to get name, email, etc.
+        claims = await jwt_validator.validate_token_with_introspection(token, fetch_userinfo=True)
+
+        # Use token exchange to get API scopes based on user roles
+        api_scopes: list[str] = []
+        if settings.oauth2_client_id and settings.oauth2_client_secret:
+            try:
+                token_exchange_client = get_token_exchange_client()
+                # Exchange token requesting all Knowledge API scopes
+                exchange_result = await token_exchange_client.exchange_token(
+                    token, requested_scopes=KNOWLEDGE_API_SCOPES
+                )
+                scope_str = exchange_result.get("scope", "")
+                api_scopes = scope_str.split() if scope_str else []
+                logger.debug(f"Token exchange granted scopes: {api_scopes}")
+            except TokenExchangeError as e:
+                logger.warning(f"Token exchange failed: {e}")
+
+        # Merge API scopes with original claims
+        if api_scopes:
+            claims["scope"] = " ".join(api_scopes)
+
+        return User.from_jwt_claims(claims)
+    except Exception as e:
+        logger.debug(f"Cookie auth failed: {e}")
+        return _create_login_redirect(request)
+
+
+async def get_web_auth_context(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> WebAuthContext | RedirectResponse:
+    """Get web authentication context with tenant resolution.
+
+    For web pages that need both user and tenant context.
+    """
+    from knowledge.models import Organization, OrganizationMember
+
+    user_result = await get_current_user_or_redirect(request)
+    if isinstance(user_result, RedirectResponse):
+        return user_result
+
+    user = user_result
+
+    # Get active organization from cookie (still uses tenant cookie name for backward compat)
+    active_org_id = request.cookies.get(ACTIVE_TENANT_COOKIE)
+
+    organization = None
+    org_member = None
+
+    if active_org_id:
+        try:
+            org_uuid = UUID(active_org_id)
+            # Verify user is member of this organization
+            result = await db.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == org_uuid,
+                    OrganizationMember.user_id == user.id,
+                )
+            )
+            org_member = result.scalar_one_or_none()
+
+            if org_member:
+                result = await db.execute(
+                    select(Organization).where(
+                        Organization.id == org_uuid,
+                        Organization.is_active == True,  # noqa: E712
+                    )
+                )
+                organization = result.scalar_one_or_none()
+        except ValueError:
+            pass
+
+    # If no active organization, try to find user's first organization
+    if not organization:
+        result = await db.execute(
+            select(OrganizationMember).where(OrganizationMember.user_id == user.id).limit(1)
+        )
+        org_member = result.scalar_one_or_none()
+
+        if org_member:
+            result = await db.execute(
+                select(Organization).where(
+                    Organization.id == org_member.organization_id,
+                    Organization.is_active == True,  # noqa: E712
+                )
+            )
+            organization = result.scalar_one_or_none()
+
+    return WebAuthContext(
+        user=user,
+        tenant=organization,  # Backward compat: tenant alias for organization
+        tenant_member=org_member,  # Backward compat: tenant_member alias
+    )
+
+
+def require_scope_or_redirect(required_scope: str) -> Callable:
+    """Dependency factory that requires a scope or redirects to 403.
+
+    For web pages that need scope checking with HTML error page.
+    """
+
+    async def check_scope(
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+    ) -> WebAuthContext | Response:
+        from fastapi.templating import Jinja2Templates
+
+        auth_result = await get_web_auth_context(request, db)
+        if isinstance(auth_result, RedirectResponse):
+            return auth_result
+
+        if not auth_result.has_scope(required_scope):
+            # Return 403 page
+            templates = Jinja2Templates(directory=TEMPLATES_DIR, context_processors=[docs_context])
+            return templates.TemplateResponse(
+                request,
+                "errors/403.html",
+                {
+                    "user": auth_result.user,
+                    "required_scope": required_scope,
+                },
+                status_code=403,
+            )
+
+        return auth_result
+
+    return check_scope
+
+
+def require_resource_scopes_or_redirect(
+    resource: str, extra_scopes: list[str] | None = None
+) -> Callable:
+    """Dependency factory that requires read/write/delete scopes for a resource.
+
+    For web pages that need full CRUD access to a resource.
+    """
+
+    async def check_scopes(
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+    ) -> WebAuthContext | Response:
+        auth_result = await get_web_auth_context(request, db)
+        if isinstance(auth_result, RedirectResponse):
+            return auth_result
+
+        # Check resource scopes
+        required_scopes = [f"{resource}:read", f"{resource}:write"]
+        if extra_scopes:
+            required_scopes.extend(extra_scopes)
+
+        for scope in required_scopes:
+            if not auth_result.has_scope(scope):
+                from fastapi.templating import Jinja2Templates
+
+                templates = Jinja2Templates(
+                    directory=TEMPLATES_DIR, context_processors=[docs_context]
+                )
+                return templates.TemplateResponse(
+                    request,
+                    "errors/403.html",
+                    {
+                        "user": auth_result.user,
+                        "required_scope": scope,
+                    },
+                    status_code=403,
+                )
+
+        return auth_result
+
+    return check_scopes
+
+
+def require_tenant_admin() -> Callable:
+    """Dependency factory that requires tenant admin privileges.
+
+    For web pages that need admin access to the tenant.
+    """
+
+    async def check_admin(
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+    ) -> WebAuthContext | Response:
+        auth_result = await get_web_auth_context(request, db)
+        if isinstance(auth_result, RedirectResponse):
+            return auth_result
+
+        if not auth_result.is_tenant_admin:
+            from fastapi.templating import Jinja2Templates
+
+            templates = Jinja2Templates(directory=TEMPLATES_DIR, context_processors=[docs_context])
+            return templates.TemplateResponse(
+                request,
+                "errors/403.html",
+                {
+                    "user": auth_result.user,
+                    "required_scope": "tenant:admin",
+                },
+                status_code=403,
+            )
+
+        return auth_result
+
+    return check_admin
+
+
 # Type aliases for cleaner dependency injection
 Auth = Annotated[AuthContext, Depends(get_auth_context)]
 OptionalAuth = Annotated[AuthContext | None, Depends(get_optional_auth_context)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+WebAuth = Annotated[WebAuthContext | RedirectResponse, Depends(get_web_auth_context)]

@@ -1,0 +1,215 @@
+{% extends "auth/account_base.html" %}
+
+{% block account_content %}
+<!-- Password Section -->
+<div class="account-card">
+    <div class="account-card-header">
+        <h2>Password</h2>
+    </div>
+
+    <form method="post" action="/auth/account/password">
+        <div class="account-form-group">
+            <label for="current_password">Current Password</label>
+            <input type="password" id="current_password" name="current_password" class="form-control" required>
+        </div>
+
+        <div class="account-form-group">
+            <label for="new_password">New Password</label>
+            <input type="password" id="new_password" name="new_password" class="form-control" required minlength="8">
+            <ul id="password-requirements" class="password-requirements" style="margin-top: 8px; padding-left: 20px;">
+                <li id="req-length">At least 8 characters</li>
+                <li id="req-uppercase">At least one uppercase letter</li>
+                <li id="req-lowercase">At least one lowercase letter</li>
+                <li id="req-digit">At least one digit</li>
+            </ul>
+        </div>
+
+        <div class="account-form-group">
+            <label for="confirm_password">Confirm New Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Change Password</button>
+    </form>
+</div>
+
+<!-- Two-Factor Authentication Section -->
+<div class="account-card">
+    <div class="account-card-header">
+        <h2>Two-Factor Authentication (2FA)</h2>
+    </div>
+
+    {% if backup_codes %}
+    <!-- Show backup codes after enabling -->
+    <div class="alert alert-success">
+        Two-factor authentication has been enabled successfully!
+    </div>
+
+    <div class="alert alert-warning">
+        <strong>Save these backup codes!</strong> You will need them if you lose access to your authenticator app.
+        Each code can only be used once.
+    </div>
+
+    <div class="backup-codes">
+        {% for code in backup_codes %}
+        <div class="backup-code">{{ code }}</div>
+        {% endfor %}
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 16px; margin-bottom: 16px;">
+        Store these codes in a secure location. Once you leave this page, you won't be able to see them again.
+    </p>
+
+    <a href="/auth/account/security" class="btn btn-primary">Done</a>
+
+    {% elif mfa_status.totp_enabled %}
+    <!-- MFA is enabled -->
+    <div class="mfa-status">
+        <span class="icon">&#128274;</span>
+        <div class="status-text">
+            <strong>Two-factor authentication is enabled</strong>
+            <span>Your account is protected with TOTP authenticator</span>
+        </div>
+        <span class="badge badge-success">Enabled</span>
+    </div>
+
+    {% if mfa_status.backup_codes_remaining is not none %}
+    <div class="alert {% if mfa_status.backup_codes_remaining < 3 %}alert-warning{% else %}alert-success{% endif %}">
+        You have <strong>{{ mfa_status.backup_codes_remaining }}</strong> backup codes remaining.
+        {% if mfa_status.backup_codes_remaining < 3 %}
+        Consider regenerating your backup codes.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 24px;">
+        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 16px;">Manage 2FA</h3>
+
+        <!-- Regenerate backup codes -->
+        <form method="post" action="/auth/account/security/regenerate-codes" style="margin-bottom: 16px;">
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 12px;">
+                Generate new backup codes. This will invalidate your existing codes.
+            </p>
+            <div class="account-form-group" style="max-width: 300px;">
+                <label for="regenerate_code">Enter your 2FA code to regenerate</label>
+                <input type="text" id="regenerate_code" name="code" class="form-control"
+                    placeholder="000000" pattern="[0-9]{6}" maxlength="6" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Regenerate Backup Codes</button>
+        </form>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 24px 0;">
+
+        <!-- Disable 2FA -->
+        <form method="post" action="/auth/account/security/disable">
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 12px;">
+                Disable two-factor authentication. This will make your account less secure.
+            </p>
+            <div class="account-form-group" style="max-width: 300px;">
+                <label for="disable_code">Enter your 2FA code to disable</label>
+                <input type="text" id="disable_code" name="code" class="form-control"
+                    placeholder="000000" pattern="[0-9]{6}" maxlength="6" required>
+            </div>
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to disable 2FA? This will make your account less secure.')">
+                Disable Two-Factor Authentication
+            </button>
+        </form>
+    </div>
+
+    {% elif totp_setup %}
+    <!-- TOTP setup in progress -->
+    <div class="alert alert-warning">
+        Scan the QR code below with your authenticator app, then enter the code to enable 2FA.
+    </div>
+
+    <div class="qr-container">
+        {% if totp_setup.qr_code.startswith('data:image') %}
+        <img src="{{ totp_setup.qr_code }}" alt="TOTP QR Code">
+        {% else %}
+        <img src="data:image/png;base64,{{ totp_setup.qr_code }}" alt="TOTP QR Code">
+        {% endif %}
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 8px;">
+        Or manually enter this secret key in your authenticator app:
+    </p>
+    <div class="secret-code">{{ totp_setup.secret }}</div>
+
+    <form method="post" action="/auth/account/security/verify" style="margin-top: 24px;">
+        <div class="account-form-group" style="max-width: 300px;">
+            <label for="verify_code">Enter the 6-digit code from your authenticator app</label>
+            <input type="text" id="verify_code" name="code" class="form-control"
+                placeholder="000000" pattern="[0-9]{6}" maxlength="6" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary">Verify and Enable</button>
+        <a href="/auth/account/security" class="btn btn-secondary" style="margin-left: 8px;">Cancel</a>
+    </form>
+
+    {% else %}
+    <!-- MFA not enabled -->
+    <div class="mfa-status">
+        <span class="icon">&#128275;</span>
+        <div class="status-text">
+            <strong>Two-factor authentication is not enabled</strong>
+            <span>Add an extra layer of security to your account</span>
+        </div>
+        <span class="badge badge-warning">Disabled</span>
+    </div>
+
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+        Two-factor authentication adds an additional layer of security to your account by requiring a code from your authenticator app in addition to your password.
+    </p>
+
+    <form method="post" action="/auth/account/security/setup">
+        <button type="submit" class="btn btn-success">Enable Two-Factor Authentication</button>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('new_password');
+    const confirmInput = document.getElementById('confirm_password');
+    const form = passwordInput ? passwordInput.closest('form') : null;
+
+    if (!passwordInput || !form) return;
+
+    const requirements = {
+        length: { element: document.getElementById('req-length'), regex: /.{8,}/ },
+        uppercase: { element: document.getElementById('req-uppercase'), regex: /[A-Z]/ },
+        lowercase: { element: document.getElementById('req-lowercase'), regex: /[a-z]/ },
+        digit: { element: document.getElementById('req-digit'), regex: /\d/ }
+    };
+
+    function validatePassword() {
+        const password = passwordInput.value;
+        let allValid = true;
+
+        for (const [key, req] of Object.entries(requirements)) {
+            const isValid = req.regex.test(password);
+            req.element.classList.toggle('valid', isValid);
+            req.element.classList.toggle('invalid', !isValid && password.length > 0);
+            if (!isValid) allValid = false;
+        }
+
+        return allValid;
+    }
+
+    passwordInput.addEventListener('input', validatePassword);
+
+    form.addEventListener('submit', function(e) {
+        if (!validatePassword()) {
+            e.preventDefault();
+            alert('Password does not meet all requirements.');
+            return false;
+        }
+
+        if (passwordInput.value !== confirmInput.value) {
+            e.preventDefault();
+            alert('Passwords do not match.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

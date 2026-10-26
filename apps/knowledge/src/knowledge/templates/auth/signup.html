@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Knowledge</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-red: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        /* Main content */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+
+        .signup-container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .signup-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .signup-header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .signup-header p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Steps indicator */
+        .steps {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 32px;
+            gap: 8px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .step.active {
+            color: var(--accent-blue);
+        }
+
+        .step.completed {
+            color: var(--accent-green);
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        .step.active .step-number {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .step.completed .step-number {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .step-divider {
+            width: 40px;
+            height: 1px;
+            background-color: var(--border-color);
+        }
+
+        /* Card */
+        .signup-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+        }
+
+        /* Plan selection */
+        .plan-options {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .plan-option {
+            position: relative;
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .plan-option:hover {
+            border-color: var(--text-muted);
+        }
+
+        .plan-option.selected {
+            border-color: var(--accent-blue);
+            background-color: rgba(88, 166, 255, 0.05);
+        }
+
+        .plan-option input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .plan-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .plan-icon {
+            font-size: 1.5rem;
+        }
+
+        .plan-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .plan-badge {
+            margin-left: auto;
+            font-size: 0.625rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: rgba(163, 113, 247, 0.15);
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .plan-description {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .plan-features {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .plan-feature {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background-color: var(--bg-input);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 0.875rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            transition: border-color 0.15s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Enterprise fields */
+        .enterprise-fields {
+            display: none;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .enterprise-fields.visible {
+            display: block;
+        }
+
+        .enterprise-fields h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        .btn-primary:disabled {
+            background-color: var(--bg-input);
+            border-color: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-input);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+        }
+
+        .alert-error {
+            background-color: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--accent-red);
+        }
+
+        /* Footer link */
+        .signup-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .signup-footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .signup-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Password requirements */
+        .password-requirements {
+            list-style: none;
+            padding: 0;
+            margin: 8px 0 0 0;
+            font-size: 0.75rem;
+        }
+        .password-requirements li {
+            padding: 2px 0 2px 20px;
+            position: relative;
+            color: var(--text-muted);
+        }
+        .password-requirements li::before {
+            content: "✗";
+            position: absolute;
+            left: 0;
+        }
+        .password-requirements li.valid {
+            color: var(--accent-green);
+        }
+        .password-requirements li.valid::before {
+            content: "✓";
+        }
+        .password-requirements li.invalid {
+            color: var(--accent-red);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">Knowledge<span>.</span></a>
+    </header>
+
+    <main>
+        <div class="signup-container">
+            <div class="signup-header">
+                <h1>Create your account</h1>
+                <p>Get started with Knowledge in minutes</p>
+            </div>
+
+            <div class="steps">
+                <div class="step active" id="step1-indicator">
+                    <div class="step-number">1</div>
+                    <span>Choose Plan</span>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step" id="step2-indicator">
+                    <div class="step-number">2</div>
+                    <span>Account Details</span>
+                </div>
+            </div>
+
+            <div class="signup-card">
+                {% if error %}
+                <div class="alert alert-error">{{ error }}</div>
+                {% endif %}
+
+                <!-- Step 1: Plan Selection -->
+                <div id="step1">
+                    <div class="plan-options">
+                        <label class="plan-option selected" id="plan-personal">
+                            <input type="radio" name="plan_type" value="personal" checked>
+                            <div class="plan-header">
+                                <span class="plan-icon">&#128100;</span>
+                                <span class="plan-name">Personal</span>
+                            </div>
+                            <p class="plan-description">Perfect for individual developers and small projects.</p>
+                            <div class="plan-features">
+                                <span class="plan-feature">3 Collections</span>
+                                <span class="plan-feature">200 Documents</span>
+                                <span class="plan-feature">1,000 API calls/month</span>
+                            </div>
+                        </label>
+
+                        <label class="plan-option" id="plan-enterprise">
+                            <input type="radio" name="plan_type" value="enterprise">
+                            <div class="plan-header">
+                                <span class="plan-icon">&#127970;</span>
+                                <span class="plan-name">Enterprise</span>
+                                <span class="plan-badge">Team</span>
+                            </div>
+                            <p class="plan-description">For teams and organizations that need more power and collaboration.</p>
+                            <div class="plan-features">
+                                <span class="plan-feature">Unlimited Collections</span>
+                                <span class="plan-feature">Unlimited Documents</span>
+                                <span class="plan-feature">Team Members</span>
+                                <span class="plan-feature">Priority Support</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary" onclick="goToStep2()">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Account Details -->
+                <form id="step2" class="hidden" method="post" action="/auth/signup">
+                    <input type="hidden" name="plan_type" id="plan_type_hidden" value="personal">
+                    {% if redirect %}
+                    <input type="hidden" name="redirect" value="{{ redirect }}">
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="nickname">Nickname</label>
+                        <input
+                            type="text"
+                            id="nickname"
+                            name="nickname"
+                            class="form-control"
+                            placeholder="Your nickname"
+                            value="{{ nickname or '' }}"
+                            required
+                            maxlength="255"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="firstname">First Name</label>
+                        <input
+                            type="text"
+                            id="firstname"
+                            name="firstname"
+                            class="form-control"
+                            placeholder="John"
+                            value="{{ firstname or '' }}"
+                            required
+                            maxlength="255"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lastname">Last Name</label>
+                        <input
+                            type="text"
+                            id="lastname"
+                            name="lastname"
+                            class="form-control"
+                            placeholder="Doe"
+                            value="{{ lastname or '' }}"
+                            required
+                            maxlength="255"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="workspace_name">Workspace name</label>
+                        <input
+                            type="text"
+                            id="workspace_name"
+                            name="workspace_name"
+                            class="form-control"
+                            placeholder="My Workspace"
+                            value="{{ workspace_name or '' }}"
+                            required
+                            maxlength="255"
+                        >
+                        <p class="form-hint">The name of your workspace. You can change it later.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email address</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-control"
+                            placeholder="you@example.com"
+                            value="{{ email or '' }}"
+                            required
+                            autocomplete="email"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-control"
+                            placeholder="Create a strong password"
+                            required
+                            minlength="8"
+                            autocomplete="new-password"
+                        >
+                        <ul id="password-requirements" class="password-requirements">
+                            <li id="req-length" class="invalid">At least 8 characters</li>
+                            <li id="req-uppercase" class="invalid">At least one uppercase letter</li>
+                            <li id="req-digit" class="invalid">At least one digit</li>
+                            <li id="req-special" class="invalid">At least one special character</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password_confirm">Confirm password</label>
+                        <input
+                            type="password"
+                            id="password_confirm"
+                            name="password_confirm"
+                            class="form-control"
+                            placeholder="Confirm your password"
+                            required
+                            minlength="8"
+                            autocomplete="new-password"
+                        >
+                    </div>
+
+                    <!-- Enterprise-only fields -->
+                    <div class="enterprise-fields" id="enterprise-fields">
+                        <h3>Organization Details</h3>
+
+                        <div class="form-group">
+                            <label for="company_name">Company name</label>
+                            <input
+                                type="text"
+                                id="company_name"
+                                name="company_name"
+                                class="form-control"
+                                placeholder="Acme Inc."
+                                value="{{ company_name or '' }}"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="company_size">Company size</label>
+                            <select id="company_size" name="company_size" class="form-control">
+                                <option value="">Select size...</option>
+                                <option value="1-10">1-10 employees</option>
+                                <option value="11-50">11-50 employees</option>
+                                <option value="51-200">51-200 employees</option>
+                                <option value="201-500">201-500 employees</option>
+                                <option value="500+">500+ employees</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep1()">
+                            Back
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Create Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="signup-footer">
+                Already have an account? <a href="/auth/signin">Sign in</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Plan selection
+        const planPersonal = document.getElementById('plan-personal');
+        const planEnterprise = document.getElementById('plan-enterprise');
+        const enterpriseFields = document.getElementById('enterprise-fields');
+        const planTypeHidden = document.getElementById('plan_type_hidden');
+        const companyNameInput = document.getElementById('company_name');
+
+        planPersonal.addEventListener('click', function() {
+            planPersonal.classList.add('selected');
+            planEnterprise.classList.remove('selected');
+            planTypeHidden.value = 'personal';
+        });
+
+        planEnterprise.addEventListener('click', function() {
+            planEnterprise.classList.add('selected');
+            planPersonal.classList.remove('selected');
+            planTypeHidden.value = 'enterprise';
+        });
+
+        // Step navigation
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step1Indicator = document.getElementById('step1-indicator');
+        const step2Indicator = document.getElementById('step2-indicator');
+
+        function goToStep2() {
+            step1.classList.add('hidden');
+            step2.classList.remove('hidden');
+            step1Indicator.classList.remove('active');
+            step1Indicator.classList.add('completed');
+            step2Indicator.classList.add('active');
+
+            // Show/hide enterprise fields
+            if (planTypeHidden.value === 'enterprise') {
+                enterpriseFields.classList.add('visible');
+                companyNameInput.required = true;
+            } else {
+                enterpriseFields.classList.remove('visible');
+                companyNameInput.required = false;
+            }
+
+            // Focus email input
+            document.getElementById('email').focus();
+        }
+
+        function goToStep1() {
+            step2.classList.add('hidden');
+            step1.classList.remove('hidden');
+            step2Indicator.classList.remove('active');
+            step1Indicator.classList.remove('completed');
+            step1Indicator.classList.add('active');
+        }
+
+        // Password validation
+        const form = document.getElementById('step2');
+        const password = document.getElementById('password');
+        const passwordConfirm = document.getElementById('password_confirm');
+
+        const requirements = {
+            length: { element: document.getElementById('req-length'), regex: /.{8,}/ },
+            uppercase: { element: document.getElementById('req-uppercase'), regex: /[A-Z]/ },
+            digit: { element: document.getElementById('req-digit'), regex: /\d/ },
+            special: { element: document.getElementById('req-special'), regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/ }
+        };
+
+        function validatePassword() {
+            const pwd = password.value;
+            let allValid = true;
+
+            for (const [key, req] of Object.entries(requirements)) {
+                const isValid = req.regex.test(pwd);
+                req.element.classList.toggle('valid', isValid);
+                req.element.classList.toggle('invalid', !isValid);
+                if (!isValid) allValid = false;
+            }
+
+            return allValid;
+        }
+
+        password.addEventListener('input', validatePassword);
+
+        form.addEventListener('submit', function(e) {
+            if (!validatePassword()) {
+                e.preventDefault();
+                alert('Password does not meet all requirements.');
+                password.focus();
+                return;
+            }
+
+            if (password.value !== passwordConfirm.value) {
+                e.preventDefault();
+                alert('Passwords do not match');
+                passwordConfirm.focus();
+            }
+        });
+
+        // If there was an error, show step 2
+        {% if error and email %}
+        goToStep2();
+        {% endif %}
+    </script>
+</body>
+</html>

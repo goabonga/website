@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Knowledge{% endblock %} - Knowledge API</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Custom scrollbar - Webkit browsers */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 5px;
+            border: 2px solid var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: var(--bg-dark);
+        }
+
+        /* Firefox scrollbar */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-dark);
+        }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px;
+        }
+
+        .nav-section {
+            margin-bottom: 16px;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 8px 12px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            transition: all 0.15s ease;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background-color: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .nav-item-icon {
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* Sidebar footer */
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+        }
+
+        .tenant-switcher {
+            margin-bottom: 12px;
+        }
+
+        .tenant-switcher select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info .user-name {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .user-info .logout-btn {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+        }
+
+        .user-info .logout-btn:hover {
+            color: var(--accent-red);
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 24px;
+            min-height: 100vh;
+            max-width: calc(100vw - 260px);
+            overflow-x: hidden;
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
+            max-width: 100vw;
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .page-header .breadcrumb {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .page-header .breadcrumb a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .page-header .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .btn-danger {
+            background-color: var(--accent-red);
+            border-color: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #e64940;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 0.875rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            transition: border-color 0.15s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Tables */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table th {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-input);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 12px;
+        }
+
+        .badge-blue {
+            background-color: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .badge-green {
+            background-color: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+        }
+
+        .badge-yellow {
+            background-color: rgba(210, 153, 34, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .badge-red {
+            background-color: rgba(248, 81, 73, 0.15);
+            color: var(--accent-red);
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+        }
+
+        .alert-success {
+            background-color: rgba(63, 185, 80, 0.15);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            color: var(--accent-green);
+        }
+
+        .alert-error {
+            background-color: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--accent-red);
+        }
+
+        .alert-warning {
+            background-color: rgba(210, 153, 34, 0.15);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+            color: var(--accent-yellow);
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .stat-progress {
+            margin-top: 8px;
+            height: 4px;
+            background-color: var(--bg-input);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .stat-progress-bar {
+            height: 100%;
+            background-color: var(--accent-blue);
+            transition: width 0.3s ease;
+        }
+
+        .stat-progress-bar.warning {
+            background-color: var(--accent-yellow);
+        }
+
+        .stat-progress-bar.danger {
+            background-color: var(--accent-red);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 24px;
+        }
+
+        .pagination a,
+        .pagination span {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            text-decoration: none;
+        }
+
+        .pagination a {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .pagination a:hover {
+            background-color: var(--border-color);
+        }
+
+        .pagination .active {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        /* Mobile hamburger menu (CSS-only) */
+        .hamburger-toggle {
+            display: none;
+        }
+
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mobile-header h2 {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mobile-header .subtitle {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        .hamburger-btn {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 110;
+        }
+
+        .hamburger-btn span {
+            display: block;
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-secondary);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .mobile-header {
+                display: flex;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100%;
+                z-index: 100;
+                transition: left 0.3s ease;
+                overflow-y: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+                max-width: 100%;
+                width: 100%;
+            }
+
+            /* Hamburger animation when open */
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(1) {
+                transform: rotate(45deg) translate(5px, 5px);
+            }
+
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(2) {
+                opacity: 0;
+            }
+
+            .hamburger-toggle:checked ~ .mobile-header .hamburger-btn span:nth-child(3) {
+                transform: rotate(-45deg) translate(5px, -5px);
+            }
+
+            /* Show sidebar when toggle is checked */
+            .hamburger-toggle:checked ~ .layout .sidebar {
+                left: 0;
+            }
+
+            /* Show overlay when toggle is checked */
+            .hamburger-toggle:checked ~ .menu-overlay {
+                display: block;
+                opacity: 1;
+            }
+
+            /* Hide sidebar header on mobile (shown in mobile-header) */
+            .sidebar .sidebar-header {
+                display: none;
+            }
+
+            /* Adjust sidebar nav padding on mobile */
+            .sidebar .sidebar-nav {
+                padding-top: 16px;
+            }
+
+            /* Stats grid single column on mobile */
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Table responsive */
+            .table {
+                font-size: 0.8rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 8px;
+            }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if user %}
+    <!-- Mobile hamburger menu toggle (CSS-only) -->
+    <input type="checkbox" id="hamburger-toggle" class="hamburger-toggle">
+
+    <!-- Mobile header with hamburger -->
+    <header class="mobile-header">
+        <h2>Knowledge <span class="subtitle">Vector Storage</span></h2>
+        <label for="hamburger-toggle" class="hamburger-btn" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </label>
+    </header>
+
+    <!-- Overlay to close menu when clicking outside -->
+    <label for="hamburger-toggle" class="menu-overlay"></label>
+    {% endif %}
+
+    <div class="layout">
+        {% if user %}
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Knowledge</h1>
+                <div class="subtitle">Vector Storage & Search</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Account</div>
+                    <a href="/auth/account" class="nav-item {% if active_section == 'account_profile' %}active{% endif %}">
+                        <span class="nav-item-icon">&#128100;</span>
+                        Profile
+                    </a>
+                    <a href="/auth/account/security" class="nav-item {% if active_section == 'account_security' %}active{% endif %}">
+                        <span class="nav-item-icon">&#128274;</span>
+                        Security
+                    </a>
+                </div>
+
+                {% if docs_enabled %}
+                <div class="nav-section">
+                    <div class="nav-section-title">Developers</div>
+                    <a href="/docs" class="nav-item" target="_blank">
+                        <span class="nav-item-icon">&#128195;</span>
+                        API Docs
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-footer">
+                {% if tenant %}
+                <div class="tenant-switcher">
+                    <small style="color: var(--text-muted);">{{ tenant.name }}</small>
+                </div>
+                {% endif %}
+
+                <div class="user-info">
+                    <span class="user-name">{{ user.display_name or user.email or 'User' }}</span>
+                    <a href="/auth/logout" class="logout-btn">Logout</a>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+
+        <main class="main-content {% if not user %}full-width{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

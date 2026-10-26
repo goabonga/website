@@ -9,6 +9,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+
 
 def get_credential(name: str, default: str = "") -> str:
     """Read a secret from systemd credentials or environment.
@@ -76,6 +78,9 @@ class Settings(BaseSettings):
     oauth2_introspection_cache_ttl: int = 60  # 1 minute for introspection
     oauth2_trusted_issuers: str = ""
     jwks_cache_ttl: int = 3600
+
+    # Public client (Web UI) - uses PKCE for browser login
+    oauth2_frontend_client_id: str = ""
 
     # OpenAI (for embeddings)
     openai_api_key: str = ""
@@ -145,6 +150,8 @@ class Settings(BaseSettings):
 
     # Web UI settings
     app_base_url: str = ""  # Public URL of the application, e.g. https://knowledge.example.com
+    cookie_secure: bool = True  # Set False for local dev without HTTPS
+    cookie_domain: str = ""  # Leave empty for same-domain
 
 
 # Secrets that can be delivered as systemd credentials or environment variables.
@@ -158,6 +165,15 @@ CREDENTIAL_FIELDS = {
     "custom_domain_client_secret": "CUSTOM_DOMAIN_CLIENT_SECRET",
     "custom_domain_webhook_secret": "CUSTOM_DOMAIN_WEBHOOK_SECRET",
 }
+
+
+def docs_context(request) -> dict[str, bool]:
+    """Template context of every page: whether the API documentation is served.
+
+    The pages link to the documentation only when ``DOCS_ENABLED`` is set; otherwise the
+    link would lead to a 404.
+    """
+    return {"docs_enabled": get_settings().docs_enabled}
 
 
 @lru_cache

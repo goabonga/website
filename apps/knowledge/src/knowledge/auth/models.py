@@ -3,6 +3,7 @@
 
 """User model from JWT claims."""
 
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -112,3 +113,92 @@ class User(BaseModel):
     def can_delete(self, resource: str) -> bool:
         """Check if user can delete a resource."""
         return self.has_scope(f"{resource}:delete") or self.has_scope(f"{resource}:write")
+
+
+class WebAuthContext(BaseModel):
+    """Web authentication context with tenant resolution.
+
+    Used for web pages that need both user and tenant context.
+    """
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    user: User
+    tenant: Any = None  # Organization model (SQLAlchemy)
+    tenant_member: Any = None  # OrganizationMember model (SQLAlchemy)
+
+    @property
+    def user_id(self) -> UUID:
+        """Get user ID."""
+        return self.user.id
+
+    @property
+    def tenant_id(self) -> UUID:
+        """Get active tenant ID.
+
+        Raises:
+            HTTPException: 403 if no active tenant.
+        """
+        from fastapi import HTTPException, status
+
+        if not self.tenant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No active tenant. Please select a tenant.",
+            )
+        return self.tenant.id
+
+    @property
+    def scopes(self) -> list[str]:
+        """Get user scopes."""
+        return self.user.scopes
+
+    def has_scope(self, scope: str) -> bool:
+        """Check if user has a specific scope."""
+        return self.user.has_scope(scope)
+
+    def require_scope(self, scope: str) -> None:
+        """Require a specific scope."""
+        self.user.require_scope(scope)
+
+    @property
+    def is_tenant_owner(self) -> bool:
+        """Check if user is the tenant owner."""
+        if not self.tenant_member:
+            return False
+        return self.tenant_member.is_owner
+
+    @property
+    def is_tenant_admin(self) -> bool:
+        """Check if user is a tenant admin (owner or admin)."""
+        if not self.tenant_member:
+            return False
+        return self.tenant_member.is_admin
+
+    @property
+    def can_manage_members(self) -> bool:
+        """Check if user can manage tenant members."""
+        if not self.tenant_member:
+            return False
+        return self.tenant_member.can_manage_members
+
+    @property
+    def can_manage_tenant(self) -> bool:
+        """Check if user can manage tenant settings."""
+        if not self.tenant_member:
+            return False
+        return self.tenant_member.can_manage_tenant
+
+    def require_tenant_admin(self) -> None:
+        """Require tenant admin privileges.
+
+        Raises:
+            HTTPException: 403 if not admin.
+        """
+        from fastapi import HTTPException, status
+
+        if not self.is_tenant_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant admin privileges required.",
+            )

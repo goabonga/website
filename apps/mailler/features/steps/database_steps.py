@@ -3,10 +3,23 @@
 
 """Step definitions to seed and inspect the in-process database."""
 
+import re
+from datetime import UTC, datetime, timedelta
+
 from behave import given, then
 from mailler.database import get_sync_db
 from mailler.models import Email, EmailStatus, ProviderStats
 from sqlalchemy import func, select
+
+
+def _offset(text):
+    """Parse an offset such as ``10m``, ``-2h`` or ``+3d`` into a timedelta."""
+    match = re.fullmatch(r"([+-]?)(\d+)([mhd])", text.strip())
+    assert match, f"Invalid offset: {text}"
+    sign, amount, unit = match.groups()
+    unit_name = {"m": "minutes", "h": "hours", "d": "days"}[unit]
+    delta = timedelta(**{unit_name: int(amount)})
+    return -delta if sign == "-" else delta
 
 
 def seed_email(context, to_email="seeded@example.com", **fields):
@@ -115,7 +128,13 @@ def step_provider_stats(context, provider, count, counter):
 
 
 def _seed_table(context, client_id=None):
-    """Seed emails from a table; optional columns: alias, subject, provider, status, client_id."""
+    """Seed emails from a table.
+
+    Optional columns: subject, provider, status, client_id, alias, ``age`` (how
+    long ago the email was created, e.g. ``10m``) and ``scheduled_in`` (offset
+    of the scheduled time, e.g. ``-5m`` or ``+2h``).
+    """
+    now = datetime.now(UTC)
     for row in context.table:
         fields = {
             key: row[key]
@@ -124,6 +143,10 @@ def _seed_table(context, client_id=None):
         }
         if client_id is not None:
             fields["client_id"] = client_id
+        if "age" in row.headings:
+            fields["created_at"] = now - _offset(row["age"])
+        if "scheduled_in" in row.headings:
+            fields["scheduled_at"] = now + _offset(row["scheduled_in"])
         alias = row["alias"] if "alias" in row.headings else None
         email_id = seed_email(context, row["to_email"], **fields)
         if alias:
@@ -138,3 +161,19 @@ def step_seed_emails(context):
 @given('the following emails are stored for client "{client}"')
 def step_seed_client_emails(context, client):
     _seed_table(context, client)
+
+
+@then('the email to "{to_email}" should be scheduled')
+def step_email_scheduled(context, to_email):
+    email = load_email(to_email=to_email)
+    assert email is not None and email.scheduled_at is not None, "Email is not scheduled"
+
+
+@then('the email to "{to_email}" should no longer be stored')
+def step_email_gone(context, to_email):
+    assert load_email(to_email=to_email) is None, f"{to_email} is still stored"
+
+
+@then('the email to "{to_email}" should still be stored')
+def step_email_still_stored(context, to_email):
+    assert load_email(to_email=to_email) is not None, f"{to_email} was removed"

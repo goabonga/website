@@ -22,7 +22,7 @@ celery_app = Celery(
     "knowledge",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["knowledge.tasks"],
+    include=["knowledge.tasks", "knowledge.tasks.custom_domain"],
 )
 
 # Celery configuration
@@ -56,5 +56,9 @@ celery_app.conf.beat_schedule = {
     "send-deletion-reminders": {
         "task": "knowledge.tasks.send_deletion_reminders",
         "schedule": settings.deletion_check_interval,
+    },
+    "reconcile-custom-domains": {
+        "task": "knowledge.tasks.custom_domain.reconcile_custom_domains",
+        "schedule": settings.custom_domain_reconcile_interval,
     },
 }

@@ -5,8 +5,8 @@ Feature: Data model and database migrations
 
   Scenario: The migration history has a single head
     When I load the migration history
-    Then the migration history should have a single head "008_add_custom_domain_fields"
-    And the migration history should contain 8 revisions
+    Then the migration history should have a single head "009_custom_domain_service"
+    And the migration history should contain 9 revisions
 
   Scenario: The first migrations render as SQL without a database
     When I render the SQL of the migrations up to "002_multi_tenant_web"

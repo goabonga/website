@@ -135,6 +135,30 @@ class TestServiceFactories:
         result = get_jwks_service()
         assert isinstance(result, JWKSService)
 
+    def test_get_user_service(self):
+        from auth.api.deps import get_user_service
+        from auth.services.user import UserService
+
+        assert isinstance(get_user_service(), UserService)
+
+    def test_get_email_service(self):
+        from auth.api.deps import get_email_service
+        from auth.services.email import EmailService
+
+        assert isinstance(get_email_service(), EmailService)
+
+    def test_get_password_service(self):
+        from auth.api.deps import get_password_service
+        from auth.services.password import PasswordService
+
+        assert isinstance(get_password_service(), PasswordService)
+
+    def test_get_profile_service(self):
+        from auth.api.deps import get_profile_service
+        from auth.services.profile import ProfileService
+
+        assert isinstance(get_profile_service(), ProfileService)
+
     def test_get_trust_service(self):
         from auth.api.deps import get_trust_service
         from auth.services.trust import TrustPolicyService

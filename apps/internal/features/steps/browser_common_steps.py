@@ -318,3 +318,10 @@ def step_field_options(context, name):
     labels = [text.strip() for text in field(context, name).locator("option").all_inner_texts()]
     expected = [row["option"] for row in context.table]
     assert labels == expected, labels
+
+
+@then('the field "{name}" should have the placeholder "{text}"')
+def step_field_placeholder(context, name, text):
+    from e2e_support.steps import field
+
+    expect(field(context, name)).to_have_attribute("placeholder", text)

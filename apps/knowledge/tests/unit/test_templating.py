@@ -3,6 +3,7 @@
 
 """Tests for knowledge/templating.py and the deployment values of the public pages."""
 
+from datetime import datetime
 from types import SimpleNamespace as NS
 from unittest.mock import patch
 
@@ -188,11 +189,13 @@ def _sidebar(active_section, is_admin=True, tenants=(), scopes=()):
 class TestSidebar:
     def test_administrators_see_the_workspace_section(self):
         html = _sidebar("dashboard")
-        assert 'href="/tenants/settings"' in html and 'href="/tenants/pricing"' in html
+        for href in ("/tenants/settings", "/tenants/members", "/tenants/pricing"):
+            assert f'href="{href}"' in html
 
     def test_members_do_not(self):
         html = _sidebar("dashboard", is_admin=False)
-        assert "/tenants/settings" not in html and "/tenants/pricing" not in html
+        for href in ("/tenants/settings", "/tenants/members", "/tenants/pricing"):
+            assert href not in html
 
     def test_a_user_with_every_scope_sees_it_whatever_the_role(self):
         html = _sidebar("dashboard", is_admin=False, scopes=["*"])
@@ -205,6 +208,7 @@ class TestSidebar:
             ("collections", "/collections"),
             ("search", "/search"),
             ("organization_settings", "/tenants/settings"),
+            ("organization_members", "/tenants/members"),
             ("pricing", "/tenants/pricing"),
             ("account_profile", "/auth/account"),
             ("account_security", "/auth/account/security"),
@@ -220,3 +224,25 @@ class TestSidebar:
     def test_the_switcher_needs_several_workspaces(self):
         assert 'action="/tenants/switch"' not in _sidebar("dashboard", tenants=["Acme"])
         assert 'action="/tenants/switch"' in _sidebar("dashboard", tenants=["Acme", "Beta"])
+
+
+class TestInvitationPage:
+    def _render(self, user=None):
+        invitation = NS(
+            token="tok",
+            email="bob@example.test",
+            role=NS(value="member"),
+            expires_at=datetime(2026, 1, 1),
+        )
+        with patch.object(templating, "get_settings", return_value=_settings()):
+            return (
+                create_templates()
+                .get_template("tenants/invite_view.html")
+                .render(user=user, invitation=invitation, tenant=NS(name="Acme"))
+            )
+
+    def test_the_visitor_signs_in_or_up_and_comes_back_to_the_invitation(self):
+        html = self._render()
+        assert 'href="/auth/login?redirect=/tenants/invites/tok"' in html
+        assert 'href="/auth/signup?redirect=/tenants/invites/tok"' in html
+        assert "/auth/register" not in html

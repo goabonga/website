@@ -467,6 +467,11 @@
                         <span class="nav-icon">&#128202;</span>Analytics
                     </a>
                 </li>
+                <li>
+                    <a href="/mailler" class="{% if active_section == 'mailler' %}active{% endif %}">
+                        <span class="nav-icon">&#128233;</span>Mailler Stats
+                    </a>
+                </li>
                 {% if user and user.has_scope('vpn:admin') %}
                 <li>
                     <a href="/vpn/sessions" class="{% if active_section == 'vpn' %}active{% endif %}">

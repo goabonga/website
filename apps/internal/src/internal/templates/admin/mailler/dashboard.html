@@ -1,0 +1,439 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Mailler Dashboard{% endblock %}
+
+{% block head %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.25rem;
+        text-align: center;
+    }
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #e94560;
+        margin-bottom: 0.25rem;
+    }
+    .stat-card .stat-label {
+        font-size: 0.85rem;
+        color: #a0a0a0;
+        text-transform: uppercase;
+    }
+    .stat-card.success .stat-value {
+        color: #00b894;
+    }
+    .stat-card.warning .stat-value {
+        color: #fdcb6e;
+    }
+    .stat-card.danger .stat-value {
+        color: #ff6b6b;
+    }
+    .chart-container {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .chart-title {
+        color: #e0e0e0;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+    .data-list {
+        list-style: none;
+    }
+    .data-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #0f3460;
+    }
+    .data-list li:last-child {
+        border-bottom: none;
+    }
+    .data-list .data-label {
+        color: #e0e0e0;
+        font-weight: 500;
+    }
+    .data-list .data-value {
+        color: #a0a0a0;
+        font-family: monospace;
+    }
+    .data-list .data-bar {
+        height: 4px;
+        background: #0f3460;
+        border-radius: 2px;
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+    .data-list .data-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+    }
+    .data-list .data-bar-fill.sent {
+        background: #74b9ff;
+    }
+    .data-list .data-bar-fill.delivered {
+        background: #00b894;
+    }
+    .data-list .data-bar-fill.bounced {
+        background: #fdcb6e;
+    }
+    .data-list .data-bar-fill.failed {
+        background: #ff6b6b;
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 1024px) {
+        .grid-2 {
+            grid-template-columns: 1fr;
+        }
+    }
+    .filters {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .filters select {
+        padding: 0.5rem 1rem;
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        color: #e0e0e0;
+        cursor: pointer;
+    }
+    .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+    .provider-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+    .provider-brevo {
+        background: rgba(0, 123, 255, 0.2);
+        color: #74b9ff;
+    }
+    .provider-sendgrid {
+        background: rgba(0, 184, 148, 0.2);
+        color: #00b894;
+    }
+    .provider-ses {
+        background: rgba(255, 153, 51, 0.2);
+        color: #ffa502;
+    }
+    .provider-protonmail {
+        background: rgba(110, 69, 226, 0.2);
+        color: #a29bfe;
+    }
+    .daily-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 120px;
+        padding-top: 1rem;
+    }
+    .daily-bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+    }
+    .daily-bar-stack {
+        width: 100%;
+        display: flex;
+        flex-direction: column-reverse;
+    }
+    .daily-bar-segment {
+        width: 100%;
+        min-height: 1px;
+    }
+    .daily-bar-segment.delivered {
+        background: #00b894;
+    }
+    .daily-bar-segment.sent {
+        background: #74b9ff;
+    }
+    .daily-bar-segment.bounced {
+        background: #fdcb6e;
+    }
+    .daily-bar-segment.failed {
+        background: #ff6b6b;
+    }
+    .daily-bar-label {
+        font-size: 0.65rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        max-height: 50px;
+        overflow: hidden;
+    }
+    .legend {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #a0a0a0;
+    }
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+    }
+    .legend-color.delivered {
+        background: #00b894;
+    }
+    .legend-color.sent {
+        background: #74b9ff;
+    }
+    .legend-color.bounced {
+        background: #fdcb6e;
+    }
+    .legend-color.failed {
+        background: #ff6b6b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <h1>Mailler Dashboard</h1>
+        <a href="/mailler/emails" class="btn btn-secondary btn-sm">View All Emails &rarr;</a>
+    </div>
+    <div class="filters">
+        <label for="days">Period:</label>
+        <select id="days" onchange="applyFilters()">
+            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+            <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+        </select>
+        {% if providers %}
+        <label for="provider">Provider:</label>
+        <select id="provider" onchange="applyFilters()">
+            <option value="">All providers</option>
+            {% for p in providers %}
+            <option value="{{ p }}" {% if provider_filter == p %}selected{% endif %}>{{ p | capitalize }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if stats and stats.total %}
+{% set total = stats.total %}
+{% set total_emails = total.sent + total.delivered + total.bounced + total.failed %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ "{:,}".format(total.sent + total.delivered) }}</div>
+        <div class="stat-label">Total Sent</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ "{:,}".format(total.delivered) }}</div>
+        <div class="stat-label">Delivered</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-value">{{ "{:,}".format(total.bounced) }}</div>
+        <div class="stat-label">Bounced</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ "{:,}".format(total.failed) }}</div>
+        <div class="stat-label">Failed</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ delivery_rate }}%</div>
+        <div class="stat-label">Delivery Rate</div>
+    </div>
+    <div class="stat-card {% if bounce_rate > 5 %}danger{% elif bounce_rate > 2 %}warning{% endif %}">
+        <div class="stat-value">{{ bounce_rate }}%</div>
+        <div class="stat-label">Bounce Rate</div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Unable to fetch mailler statistics. Check if the mailler service is running.</div>
+{% endif %}
+
+{% if stats and stats.by_date %}
+<!-- Daily Statistics Chart -->
+<div class="chart-container">
+    <h3 class="chart-title">Daily Email Volume</h3>
+    {% set max_daily = namespace(value=1) %}
+    {% for day in stats.by_date %}
+        {% set day_total = day.sent + day.delivered + day.bounced + day.failed %}
+        {% if day_total > max_daily.value %}
+            {% set max_daily.value = day_total %}
+        {% endif %}
+    {% endfor %}
+    <div class="daily-chart">
+        {% for day in stats.by_date %}
+        {% set day_total = day.sent + day.delivered + day.bounced + day.failed %}
+        {% set height_pct = (day_total / max_daily.value * 100) if max_daily.value > 0 else 0 %}
+        <div class="daily-bar" title="{{ day.date }}: {{ day_total }} emails">
+            <div class="daily-bar-stack" style="height: {{ height_pct }}%;">
+                {% if day.failed > 0 %}
+                <div class="daily-bar-segment failed" style="height: {{ (day.failed / day_total * 100) if day_total > 0 else 0 }}%;"></div>
+                {% endif %}
+                {% if day.bounced > 0 %}
+                <div class="daily-bar-segment bounced" style="height: {{ (day.bounced / day_total * 100) if day_total > 0 else 0 }}%;"></div>
+                {% endif %}
+                {% if day.sent > 0 %}
+                <div class="daily-bar-segment sent" style="height: {{ (day.sent / day_total * 100) if day_total > 0 else 0 }}%;"></div>
+                {% endif %}
+                {% if day.delivered > 0 %}
+                <div class="daily-bar-segment delivered" style="height: {{ (day.delivered / day_total * 100) if day_total > 0 else 0 }}%;"></div>
+                {% endif %}
+            </div>
+            <span class="daily-bar-label">{{ day.date[-5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="legend">
+        <div class="legend-item"><span class="legend-color delivered"></span> Delivered</div>
+        <div class="legend-item"><span class="legend-color sent"></span> Sent</div>
+        <div class="legend-item"><span class="legend-color bounced"></span> Bounced</div>
+        <div class="legend-item"><span class="legend-color failed"></span> Failed</div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid-2">
+    <!-- By Provider -->
+    <div class="chart-container">
+        <h3 class="chart-title">Statistics by Provider</h3>
+        {% if stats and stats.by_provider %}
+        <ul class="data-list">
+            {% for provider_name, provider_stats in stats.by_provider.items() %}
+            {% set provider_total = provider_stats.sent + provider_stats.delivered + provider_stats.bounced + provider_stats.failed %}
+            <li>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="provider-badge provider-{{ provider_name }}">{{ provider_name }}</span>
+                        <span class="data-value">{{ "{:,}".format(provider_total) }} emails</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.5rem; font-size: 0.8rem;">
+                        <div><span class="text-muted">Sent:</span> {{ provider_stats.sent }}</div>
+                        <div><span class="text-success">Del:</span> {{ provider_stats.delivered }}</div>
+                        <div><span class="text-warning">Bnc:</span> {{ provider_stats.bounced }}</div>
+                        <div><span class="text-danger">Fail:</span> {{ provider_stats.failed }}</div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="no-data">No provider data available</div>
+        {% endif %}
+    </div>
+
+    <!-- Provider Performance -->
+    <div class="chart-container">
+        <h3 class="chart-title">Provider Performance</h3>
+        {% if stats and stats.by_provider %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Delivery Rate</th>
+                    <th>Bounce Rate</th>
+                    <th>Fail Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for provider_name, provider_stats in stats.by_provider.items() %}
+                {% set provider_sent = provider_stats.sent + provider_stats.delivered %}
+                {% set p_delivery = ((provider_stats.delivered / provider_sent * 100) | round(1)) if provider_sent > 0 else 0 %}
+                {% set p_bounce = ((provider_stats.bounced / provider_sent * 100) | round(1)) if provider_sent > 0 else 0 %}
+                {% set p_fail = ((provider_stats.failed / provider_sent * 100) | round(1)) if provider_sent > 0 else 0 %}
+                <tr>
+                    <td><span class="provider-badge provider-{{ provider_name }}">{{ provider_name }}</span></td>
+                    <td class="text-success">{{ p_delivery }}%</td>
+                    <td class="{% if p_bounce > 5 %}text-danger{% elif p_bounce > 2 %}text-warning{% endif %}">{{ p_bounce }}%</td>
+                    <td class="{% if p_fail > 5 %}text-danger{% elif p_fail > 1 %}text-warning{% endif %}">{{ p_fail }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No provider data available</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if stats and stats.by_date %}
+<!-- Daily Breakdown Table -->
+<div class="chart-container">
+    <h3 class="chart-title">Daily Breakdown</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Sent</th>
+                <th>Delivered</th>
+                <th>Bounced</th>
+                <th>Failed</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for day in stats.by_date | reverse %}
+            {% set day_total = day.sent + day.delivered + day.bounced + day.failed %}
+            <tr>
+                <td class="mono">{{ day.date }}</td>
+                <td>{{ "{:,}".format(day.sent) }}</td>
+                <td class="text-success">{{ "{:,}".format(day.delivered) }}</td>
+                <td class="{% if day.bounced > 0 %}text-warning{% endif %}">{{ "{:,}".format(day.bounced) }}</td>
+                <td class="{% if day.failed > 0 %}text-danger{% endif %}">{{ "{:,}".format(day.failed) }}</td>
+                <td><strong>{{ "{:,}".format(day_total) }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+function applyFilters() {
+    const days = document.getElementById('days').value;
+    const provider = document.getElementById('provider')?.value || '';
+    let url = '/mailler?days=' + days;
+    if (provider) {
+        url += '&provider=' + encodeURIComponent(provider);
+    }
+    window.location.href = url;
+}
+</script>
+{% endblock %}

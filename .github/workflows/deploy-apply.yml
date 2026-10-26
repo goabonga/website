@@ -1,0 +1,195 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Applies the production deployment when its pull request, opened by
+# deploy-plan.yml from deploy/production-<version> into deploy/production, is
+# MERGED: runs the playbooks, tags the deployment, publishes its release and
+# lands the deployment commit on main, which is the deployment journal.
+#
+# THE AUTHORISATION
+#
+# Two gates, both configured in the repository settings:
+#   * deploy/production is protected: one approving review from a code owner
+#     before the merge, where the diff and the pins are visible;
+#   * the `production` GitHub Environment has required reviewers: the apply job
+#     pauses until one of them approves the run, right before anything touches
+#     the host. The credentials of the host live in that environment only.
+# `closed` fires for a merge and for a close without merge, hence the
+# `merged == true` guard: abandoning a deployment pull request deploys nothing.
+#
+# WHAT THIS JOB DOES NOT DO
+#
+# It does not bump. deploy-plan wrote the version and the pins on the branch, a
+# reviewer approved exactly that diff, and the playbooks run from the merged
+# tree: the collection of this very commit is what gets installed.
+#
+# ORDER, AND WHAT A FAILURE LEAVES BEHIND
+#
+# Apply, then tag, then main. A failed apply leaves no tag and no commit on
+# main: deploy-production stays pending and the next plan proposes the next
+# version, so the environment stays visibly owed instead of silently marked
+# done. A failure after a successful apply (main moved, push refused) is
+# reported loudly: the host is live but unrecorded, and the message says what
+# to push by hand.
+
+name: deploy-apply
+
+on:
+  pull_request:
+    # `branches` filters on the BASE of the PR: a PR targeting the deploy branch.
+    branches: [deploy/production]
+    types: [closed]
+
+concurrency:
+  group: deploy-apply-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: apply (production)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write   # push the tag and the release
+    env:
+      ENVIRONMENT: production
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          # main is protected: the owner of the PAT is a bypass actor.
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+          persist-credentials: true
+      - uses: ./.github/actions/deploy-setup
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          vault-password: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      - run: uv tool install multicz
+
+      - name: Read the version this deployment releases
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(multicz get "deploy-${ENVIRONMENT}")
+          if [ -z "$VERSION" ]; then
+            echo "::error::multicz could not read the version of deploy-${ENVIRONMENT}"
+            exit 1
+          fi
+          TAG="deploy-${ENVIRONMENT}-v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::${TAG} already exists: this deployment has already been released"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "applying and releasing ${TAG}"
+
+      - name: Detect GPG availability
+        id: gpg
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Import and unlock the GPG key
+        if: steps.gpg.outputs.available == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback --sign > /dev/null
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          UID_LINE=$(gpg --list-keys --with-colons "$KEY_ID" | awk -F: '/^uid/{print $10; exit}')
+          git config user.name "${UID_LINE%% <*}"
+          git config user.email "$(printf '%s' "$UID_LINE" | sed -nE 's/.*<([^>]+)>.*/\1/p')"
+          git config user.signingkey "$KEY_ID"
+          git config commit.gpgsign true
+      - name: Configure the git identity without a GPG key
+        if: steps.gpg.outputs.available != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply the playbooks
+        run: |
+          set -euo pipefail
+          cd "deploy/${ENVIRONMENT}"
+          for playbook in $(uv run --no-sync python -c \
+              "import yaml;print(' '.join(yaml.safe_load(open('deploy.yml'))['playbooks']))"); do
+            echo "::group::playbook ${playbook}"
+            uv run --no-sync ansible-playbook "goabonga.website.${playbook}"
+            echo "::endgroup::"
+          done
+
+      - name: Tag the deployment and land it on main
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SIGNED: ${{ steps.gpg.outputs.available }}
+          MERGER: ${{ github.event.pull_request.merged_by.login }}
+          MERGER_ID: ${{ github.event.pull_request.merged_by.id }}
+        run: |
+          set -euo pipefail
+          SIGN_FLAG=""
+          if [ "$SIGNED" = "true" ]; then SIGN_FLAG="-s"; fi
+
+          pushed=false
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::the ${TAG} commits conflict with main. The apply SUCCEEDED: the host is live but unrecorded. Rebase deploy/${ENVIRONMENT} onto main by hand, then tag ${TAG} and push."
+              exit 1
+            fi
+            if [ -n "${MERGER:-}" ]; then
+              git commit --amend --no-edit \
+                --author="${MERGER} <${MERGER_ID}+${MERGER}@users.noreply.github.com>"
+            fi
+            git tag -f -a $SIGN_FLAG -m "deploy-${ENVIRONMENT} v${VERSION} (applied)" "$TAG"
+            if git push --atomic origin "HEAD:main" "refs/tags/${TAG}"; then
+              pushed=true
+              echo "main fast-forwarded onto the ${TAG} deployment"
+              break
+            fi
+            echo "main moved during attempt ${attempt}: refetching and replaying"
+          done
+          if [ "$pushed" != "true" ]; then
+            echo "::error::could not land ${TAG} on main after 3 attempts. The apply SUCCEEDED: the host is live but unrecorded. Push the deployment commit and the tag by hand."
+            exit 1
+          fi
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+
+      - name: Summary
+        if: always()
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## deploy-apply: ${RESULT}"
+            echo
+            echo "Deployment: \`${TAG}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

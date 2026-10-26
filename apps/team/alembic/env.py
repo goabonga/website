@@ -25,6 +25,7 @@ from team.models import (  # noqa: F401
     Message,
     Skill,
     Team,
+    Workflow,
 )
 
 config = context.config

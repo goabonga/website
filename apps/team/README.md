@@ -27,6 +27,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/platform/conversations/{conversation_id}` | scope `team:platform:write` | Delete a conversation |
 | POST | `/platform/conversations/{conversation_id}/messages` | scope `team:write` | Post a message inside a conversation |
 | GET | `/platform/conversations/{conversation_id}/messages` | scope `team:read` | List messages for a conversation |
+| POST | `/platform/{team_id}/workflows` | scope `team:platform:write` | Create a new workflow |
+| GET | `/platform/{team_id}/workflows` | scope `team:platform:read` | List workflows for a team |
+| PATCH | `/platform/{team_id}/workflows/{workflow_id}` | scope `team:platform:write` | Update workflow configuration |
+| DELETE | `/platform/{team_id}/workflows/{workflow_id}` | scope `team:platform:write` | Delete a workflow |
 | GET | `/platform/{team_id}/memory` | scope `team:platform:read` | Access shared memory for a team |
 | POST | `/platform/{team_id}/memory` | scope `team:platform:write` | Create a memory entry for a team |
 | PATCH | `/platform/{team_id}/memory/{entry_id}` | scope `team:platform:write` | Update a memory entry's content and/or metadata |
@@ -45,8 +49,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `team:platform:write` - checked by 15 routes
-- `team:platform:read` - checked by 11 routes
+- `team:platform:write` - checked by 18 routes
+- `team:platform:read` - checked by 12 routes
 - `team:write` - checked by 1 route
 - `team:read` - checked by 1 route
 

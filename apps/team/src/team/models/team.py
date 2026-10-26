@@ -28,3 +28,4 @@ class Team(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     agents = relationship("Agent", back_populates="team")
+    workflows = relationship("Workflow", back_populates="team")

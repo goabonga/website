@@ -56,6 +56,8 @@ how it is tested with pytest and behave.
     domain from the browser.
 23. [Deployment](22-deployment.md): processes, database, Redis, configuration
     and sockets.
+24. [Platform onboarding](23-platform-onboarding.md): registering knowledge as a
+    client of mailler, custom-domain and billing.
 
 ## Running the tests
 

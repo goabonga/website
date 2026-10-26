@@ -24,7 +24,10 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     include=[
+        "team.tasks.dispatch_tasks",
+        "team.tasks.webhook_tasks",
         "team.tasks.agent_runner",
+        "team.tasks.auto_orchestrate",
     ],
 )
 
@@ -46,3 +49,17 @@ celery_app.conf.update(
         "team": {"exchange": "team", "routing_key": "team"},
     },
 )
+
+# Beat schedule for periodic tasks
+celery_app.conf.beat_schedule = {
+    "dispatch-tasks-every-5-minutes": {
+        "task": "team.tasks.dispatch_tasks.dispatch_tasks",
+        "schedule": 300.0,  # Every 5 minutes
+        "kwargs": {"batch_size": 50},
+    },
+    "auto-orchestrate-every-15-minutes": {
+        "task": "team.tasks.auto_orchestrate.auto_orchestrate",
+        "schedule": 900.0,  # Every 15 minutes
+        "kwargs": {"team_slug": "goabonga"},
+    },
+}

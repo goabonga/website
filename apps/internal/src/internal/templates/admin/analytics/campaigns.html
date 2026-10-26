@@ -1,0 +1,144 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Marketing Campaigns{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Marketing Campaigns</h1>
+    <div>
+        <label style="color: #a0a0a0; margin-right: 0.5rem;">
+            <input type="checkbox" id="includeInactive" {% if include_inactive %}checked{% endif %} onchange="toggleInactive(this.checked)">
+            Show inactive
+        </label>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if request.query_params.get('success') %}
+<div class="alert alert-success">{{ request.query_params.get('success') }}</div>
+{% endif %}
+
+<div class="admin-card">
+    {% if campaigns %}
+    <form id="bulkDeleteForm" action="/analytics/campaigns/bulk-delete" method="POST">
+        <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+            <label style="color: #a0a0a0; display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">
+                Select all
+            </label>
+            <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" style="display: none;" onclick="return confirmBulkDelete()">
+                Delete selected (<span id="selectedCount">0</span>)
+            </button>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Campaign</th>
+                    <th>Tracking Key</th>
+                    <th>Status</th>
+                    <th>Clicks</th>
+                    <th>Unique Clicks</th>
+                    <th>Pixels</th>
+                    <th>Opens</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campaign in campaigns %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="campaign_ids" value="{{ campaign.id }}" class="campaign-checkbox" onchange="updateSelection()">
+                    </td>
+                    <td>
+                        <a href="/analytics/campaigns/{{ campaign.id }}" style="color: #e94560; text-decoration: none;">
+                            {{ campaign.name }}
+                        </a>
+                    </td>
+                    <td class="mono">{{ campaign.tracking_key }}</td>
+                    <td>
+                        {% if campaign.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ "{:,}".format(campaign.click_count) }}</td>
+                    <td>{{ "{:,}".format(campaign.unique_click_count) }}</td>
+                    <td>{{ "{:,}".format(campaign.pixel_count) }}</td>
+                    <td>{{ "{:,}".format(campaign.total_opens) }}</td>
+                    <td style="color: #a0a0a0;">{{ campaign.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td style="display: flex; gap: 0.5rem;">
+                        <a href="/analytics/campaigns/{{ campaign.id }}" class="btn btn-secondary btn-sm">View</a>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteSingle('{{ campaign.id }}')">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">&#128202;</div>
+        <h3>No campaigns found</h3>
+        <p>Create campaigns in the analytics API to start tracking.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <h2>About Campaign Tracking</h2>
+    <p style="color: #a0a0a0; margin-bottom: 1rem;">
+        Campaigns allow you to track marketing efforts:
+    </p>
+    <ul style="color: #a0a0a0; margin-left: 1.5rem; line-height: 1.8;">
+        <li><strong>Tracking Links:</strong> Use <code style="background: #0f3460; padding: 0.25rem 0.5rem; border-radius: 4px;">https://ua.goabonga.com/t/{tracking_key}</code> to track link clicks</li>
+        <li><strong>Tracking Pixels:</strong> Embed <code style="background: #0f3460; padding: 0.25rem 0.5rem; border-radius: 4px;">&lt;img src="https://ua.goabonga.com/p/{pixel_key}.gif"&gt;</code> in emails to track opens</li>
+    </ul>
+</div>
+
+<script>
+function toggleInactive(checked) {
+    window.location.href = '/analytics/campaigns?include_inactive=' + checked;
+}
+
+function toggleSelectAll(checked) {
+    document.querySelectorAll('.campaign-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateSelection();
+}
+
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('.campaign-checkbox:checked');
+    const count = checkboxes.length;
+    const btn = document.getElementById('bulkDeleteBtn');
+    const countSpan = document.getElementById('selectedCount');
+    const selectAll = document.getElementById('selectAll');
+    const allCheckboxes = document.querySelectorAll('.campaign-checkbox');
+
+    countSpan.textContent = count;
+    btn.style.display = count > 0 ? 'inline-block' : 'none';
+    selectAll.checked = count === allCheckboxes.length && count > 0;
+}
+
+function confirmBulkDelete() {
+    const count = document.querySelectorAll('.campaign-checkbox:checked').length;
+    return confirm(`Are you sure you want to delete ${count} campaign(s)? This will permanently delete all associated pixels and click data.`);
+}
+
+function deleteSingle(campaignId) {
+    if (confirm('Are you sure you want to delete this campaign? This will permanently delete all associated pixels and click data.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/analytics/campaigns/${campaignId}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

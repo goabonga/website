@@ -28,6 +28,9 @@ Request body (`SendEmailRequest`):
 
 \* Either `subject` and `html_content`, or `template_slug`.
 
+The optional `Idempotency-Key` header makes the request safe to repeat, see
+[idempotent sending](19-idempotency.md).
+
 The response is `{"id", "status": "queued", "message", "task_id", "missing_variables"}`. The email
 row is created with status `pending`; for machine clients (client
 credentials) `user_id` is left empty and the OAuth client id (see

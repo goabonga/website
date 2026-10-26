@@ -258,3 +258,62 @@ Feature: Email campaigns management
     When I send a GET request to "/email-campaigns/999/stats"
     Then the response status code should be 404
     And the response should be valid JSON
+
+  # --- Sidebar ---
+
+  Scenario: Sidebar on the email campaigns list
+    Given I am authenticated with only the scopes "email_campaigns:* vpn:admin billing:read" granted by token exchange
+    And the campaigns API returns a list of campaigns
+    When I send a GET request to "/email-campaigns"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-campaigns"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the new email campaign form
+    Given I am authenticated with only the scopes "email_campaigns:* vpn:admin billing:read" granted by token exchange
+    And the campaigns API returns templates and groups for the form
+    When I send a GET request to "/email-campaigns/new"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-campaigns"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the email campaign detail
+    Given I am authenticated with only the scopes "email_campaigns:* vpn:admin billing:read" granted by token exchange
+    And a campaign exists via API with id 1
+    When I send a GET request to "/email-campaigns/1"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-campaigns"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario: Sidebar on the email campaign edit form
+    Given I am authenticated with only the scopes "email_campaigns:* vpn:admin billing:read" granted by token exchange
+    And a draft campaign exists via API with id 1
+    And the campaigns API returns templates and groups for the form
+    When I send a GET request to "/email-campaigns/1/edit"
+    Then the response status code should be 200
+    And the active sidebar link should be "/email-campaigns"
+    And the sidebar should link to "/vpn/sessions"
+    And the sidebar should link to "/billing"
+    And the sidebar should show the user "admin@test.local"
+
+  Scenario Outline: Sidebar gated links follow the scopes on the email campaigns list
+    Given I am authenticated with only the scopes "<scopes>" granted by token exchange
+    And the campaigns API returns a list of campaigns
+    When I send a GET request to "/email-campaigns"
+    Then the response status code should be 200
+    And the sidebar link to "/vpn/sessions" should be <vpn>
+    And the sidebar link to "/billing" should be <billing>
+
+    Examples:
+      | scopes                                   | vpn     | billing |
+      | email_campaigns:*                        | hidden  | hidden  |
+      | email_campaigns:* vpn:admin              | visible | hidden  |
+      | email_campaigns:* billing:read           | hidden  | visible |
+      | email_campaigns:* vpn:admin billing:read | visible | visible |
+      | *                                        | visible | visible |

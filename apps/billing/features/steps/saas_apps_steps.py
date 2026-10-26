@@ -22,6 +22,8 @@ def step_create_saas_app(context, name, slug):
                 "name": name,
                 "slug": slug,
                 "description": f"BDD test app: {name}",
+                # Redirect targets used by the checkout and portal scenarios
+                "checkout_url_allowlist": ["https://example.com"],
             },
         ),
     )

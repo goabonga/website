@@ -1,0 +1,34 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Dialplan context that hands a call to the fastagi or audiosocket component.
+
+- name: Look for Asterisk
+  ansible.builtin.stat:
+    path: "{{ website_asterisk_config_dir }}/extensions.conf"
+  register: python_app__asterisk
+
+- name: Check that Asterisk is installed
+  ansible.builtin.assert:
+    that:
+      - python_app__asterisk.stat.exists
+    fail_msg: "{{ website_asterisk_config_dir }}/extensions.conf not found. Run the asterisk role first."
+    quiet: true
+
+- name: Deploy the dialplan of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: "asterisk-{{ python_app__c.type }}.conf.j2"
+    dest: "{{ website_asterisk_config_dir }}/extensions_{{ python_app__unit }}.conf"
+    owner: "{{ website_asterisk_user }}"
+    group: "{{ website_asterisk_group }}"
+    mode: "0640"
+  notify: python_app | reload asterisk
+
+- name: Include the dialplan of {{ python_app__unit }}
+  ansible.builtin.lineinfile:
+    path: "{{ website_asterisk_config_dir }}/extensions.conf"
+    regexp: "^#include extensions_{{ python_app__unit | regex_escape }}\\.conf"
+    line: "#include extensions_{{ python_app__unit }}.conf"
+    insertafter: EOF
+  notify: python_app | reload asterisk

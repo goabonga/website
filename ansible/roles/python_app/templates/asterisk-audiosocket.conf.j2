@@ -1,0 +1,15 @@
+; Managed by Ansible (goabonga.website.python_app)
+; AudioSocket dialplan of {{ python_app__unit }}, included from extensions.conf.
+
+[{{ python_app__c.asterisk.context }}]
+exten => s,1,NoOp(Starting AudioSocket: {{ python_app__unit }})
+ same => n,Answer()
+ same => n,Wait(0.5)
+ same => n,Set(AUDIOSOCKET_UUID=${UUID()})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},{{ python_app__c.audiosocket.host }}:{{ python_app__c.audiosocket.port }})
+ same => n,Hangup()
+{% if python_app__c.asterisk.test_extension | length > 0 %}
+
+; Direct extension for tests.
+exten => {{ python_app__c.asterisk.test_extension }},1,Goto({{ python_app__c.asterisk.context }},s,1)
+{% endif %}

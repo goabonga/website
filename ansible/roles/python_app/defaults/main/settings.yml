@@ -210,3 +210,12 @@ website_dnsmasq_vpn_dir: /etc/dnsmasq-vpn.d
 website_aws_route53_access_key_id: ""
 website_aws_route53_secret_access_key: ""
 
+# ---------------------------------------------------------------------------
+# Asterisk
+# ---------------------------------------------------------------------------
+
+# Configuration directory and account of Asterisk (follow the asterisk role).
+website_asterisk_config_dir: "{{ asterisk_config_dir | default('/etc/asterisk') }}"
+website_asterisk_user: "{{ asterisk_user | default('asterisk') }}"
+website_asterisk_group: "{{ asterisk_group | default('asterisk') }}"
+

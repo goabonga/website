@@ -124,3 +124,9 @@
   ansible.builtin.include_tasks: fail2ban.yml
   when: python_app__c.fail2ban.enabled | bool
 
+- name: Integrate {{ python_app__unit }} with Asterisk
+  ansible.builtin.include_tasks: asterisk.yml
+  when:
+    - python_app__c.type in ['audiosocket', 'fastagi']
+    - python_app__c.asterisk.enabled | bool
+

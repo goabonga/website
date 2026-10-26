@@ -14,4 +14,10 @@ nav = [
     { "Applications" = [
         { "Overview" = "apps/index.md" },
     ] },
+    { "Ansible" = [
+        { "Roles" = [
+            { "PostgreSQL" = "ansible/roles/postgres.md" },
+            { "users" = "ansible/roles/users.md" },
+        ] },
+    ] },
 ]

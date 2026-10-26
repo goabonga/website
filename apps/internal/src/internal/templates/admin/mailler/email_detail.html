@@ -1,0 +1,419 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Email Detail - Mailler{% endblock %}
+
+{% block head %}
+<style>
+    .email-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .email-header h1 {
+        flex: 1;
+        word-break: break-word;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .status-pending {
+        background: rgba(160, 160, 160, 0.2);
+        color: #a0a0a0;
+    }
+    .status-queued {
+        background: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+    }
+    .status-sent {
+        background: rgba(116, 185, 255, 0.2);
+        color: #74b9ff;
+    }
+    .status-delivered {
+        background: rgba(0, 184, 148, 0.2);
+        color: #00b894;
+    }
+    .status-bounced {
+        background: rgba(253, 203, 110, 0.2);
+        color: #fdcb6e;
+    }
+    .status-failed {
+        background: rgba(214, 48, 49, 0.2);
+        color: #ff6b6b;
+    }
+    .provider-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+    .provider-brevo {
+        background: rgba(0, 123, 255, 0.2);
+        color: #74b9ff;
+    }
+    .provider-sendgrid {
+        background: rgba(0, 184, 148, 0.2);
+        color: #00b894;
+    }
+    .provider-ses {
+        background: rgba(255, 153, 51, 0.2);
+        color: #ffa502;
+    }
+    .provider-protonmail {
+        background: rgba(110, 69, 226, 0.2);
+        color: #a29bfe;
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    .detail-section {
+        background: #16213e;
+        border-radius: 8px;
+        border: 1px solid #0f3460;
+        padding: 1.25rem;
+    }
+    .detail-section h3 {
+        color: #e94560;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #0f3460;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #0f3460;
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    .detail-label {
+        color: #a0a0a0;
+        font-size: 0.85rem;
+    }
+    .detail-value {
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        text-align: right;
+        word-break: break-all;
+        max-width: 60%;
+    }
+    .timeline {
+        position: relative;
+        padding-left: 1.5rem;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.35rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #0f3460;
+    }
+    .timeline-item {
+        position: relative;
+        padding: 0.5rem 0;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.15rem;
+        top: 0.75rem;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #0f3460;
+    }
+    .timeline-item.active::before {
+        background: #00b894;
+    }
+    .timeline-item.warning::before {
+        background: #fdcb6e;
+    }
+    .timeline-item.error::before {
+        background: #ff6b6b;
+    }
+    .timeline-label {
+        color: #a0a0a0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+    .timeline-value {
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        font-family: monospace;
+    }
+    .content-preview {
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+        max-height: 400px;
+        overflow: auto;
+    }
+    .content-preview.html-preview {
+        background: white;
+        color: black;
+    }
+    .content-preview.text-preview {
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #a0a0a0;
+    }
+    .content-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .content-tab {
+        padding: 0.5rem 1rem;
+        background: #0f3460;
+        border: none;
+        border-radius: 4px;
+        color: #a0a0a0;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .content-tab.active {
+        background: #e94560;
+        color: white;
+    }
+    .metadata-json {
+        background: #1a1a2e;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        padding: 1rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        color: #a0a0a0;
+        max-height: 200px;
+        overflow: auto;
+    }
+    .error-box {
+        background: rgba(214, 48, 49, 0.1);
+        border: 1px solid rgba(214, 48, 49, 0.3);
+        border-radius: 4px;
+        padding: 1rem;
+        color: #ff6b6b;
+        font-family: monospace;
+        font-size: 0.85rem;
+        margin-top: 1rem;
+    }
+    .id-display {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <h1>{{ email.subject }}</h1>
+        <div class="id-display">ID: {{ email.id }}</div>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <span class="status-badge status-{{ email.status }}">{{ email.status }}</span>
+        <a href="/mailler/emails" class="btn btn-secondary">&larr; Back to list</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="detail-grid">
+    <!-- Recipient & Sender Info -->
+    <div class="detail-section">
+        <h3>Recipient & Sender</h3>
+        <div class="detail-row">
+            <span class="detail-label">To</span>
+            <span class="detail-value">
+                {{ email.to_email }}
+                {% if email.to_name %}<br><small class="text-muted">{{ email.to_name }}</small>{% endif %}
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">From</span>
+            <span class="detail-value">
+                {{ email.from_email or '-' }}
+                {% if email.from_name %}<br><small class="text-muted">{{ email.from_name }}</small>{% endif %}
+            </span>
+        </div>
+        {% if email.reply_to %}
+        <div class="detail-row">
+            <span class="detail-label">Reply-To</span>
+            <span class="detail-value">{{ email.reply_to }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Provider & Status -->
+    <div class="detail-section">
+        <h3>Delivery Info</h3>
+        <div class="detail-row">
+            <span class="detail-label">Provider</span>
+            <span class="detail-value"><span class="provider-badge provider-{{ email.provider }}">{{ email.provider }}</span></span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value"><span class="status-badge status-{{ email.status }}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">{{ email.status }}</span></span>
+        </div>
+        {% if email.provider_message_id %}
+        <div class="detail-row">
+            <span class="detail-label">Provider Message ID</span>
+            <span class="detail-value mono" style="font-size: 0.75rem;">{{ email.provider_message_id }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="detail-label">Retry Count</span>
+            <span class="detail-value">{{ email.retry_count }}</span>
+        </div>
+        {% if email.task_id %}
+        <div class="detail-row">
+            <span class="detail-label">Celery Task ID</span>
+            <span class="detail-value mono" style="font-size: 0.7rem;">{{ email.task_id }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Timeline -->
+    <div class="detail-section">
+        <h3>Timeline</h3>
+        <div class="timeline">
+            <div class="timeline-item active">
+                <div class="timeline-label">Created</div>
+                <div class="timeline-value">{{ email.created_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% if email.scheduled_at %}
+            <div class="timeline-item {% if email.status == 'pending' %}active{% endif %}">
+                <div class="timeline-label">Scheduled</div>
+                <div class="timeline-value">{{ email.scheduled_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+            {% if email.queued_at %}
+            <div class="timeline-item active">
+                <div class="timeline-label">Queued</div>
+                <div class="timeline-value">{{ email.queued_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+            {% if email.sent_at %}
+            <div class="timeline-item active">
+                <div class="timeline-label">Sent</div>
+                <div class="timeline-value">{{ email.sent_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+            {% if email.delivered_at %}
+            <div class="timeline-item active">
+                <div class="timeline-label">Delivered</div>
+                <div class="timeline-value">{{ email.delivered_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+            {% if email.bounced_at %}
+            <div class="timeline-item warning">
+                <div class="timeline-label">Bounced</div>
+                <div class="timeline-value">{{ email.bounced_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+            {% if email.failed_at %}
+            <div class="timeline-item error">
+                <div class="timeline-label">Failed</div>
+                <div class="timeline-value">{{ email.failed_at[:19] | replace('T', ' ') }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% if email.error_message %}
+        <div class="error-box">
+            <strong>Error:</strong> {{ email.error_message }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- OAuth Context -->
+    <div class="detail-section">
+        <h3>OAuth Context</h3>
+        <div class="detail-row">
+            <span class="detail-label">Client ID</span>
+            <span class="detail-value mono" style="font-size: 0.8rem;">{{ email.client_id or '-' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">User ID</span>
+            <span class="detail-value mono" style="font-size: 0.8rem;">{{ email.user_id or '-' }}</span>
+        </div>
+        {% if email.metadata %}
+        <h4 style="color: #a0a0a0; font-size: 0.8rem; margin-top: 1rem; margin-bottom: 0.5rem;">Metadata</h4>
+        <div class="metadata-json">{{ email.metadata | tojson(indent=2) }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Email Content -->
+<div class="admin-card" style="margin-top: 1.5rem;">
+    <h2>Email Content</h2>
+    <div class="content-tabs">
+        <button class="content-tab active" onclick="showTab('html')">HTML Preview</button>
+        <button class="content-tab" onclick="showTab('source')">HTML Source</button>
+        {% if email.text_content %}
+        <button class="content-tab" onclick="showTab('text')">Plain Text</button>
+        {% endif %}
+    </div>
+    <div id="html-content" class="content-preview html-preview">
+        <iframe id="html-iframe" style="width: 100%; height: 350px; border: none;"></iframe>
+    </div>
+    <div id="source-content" class="content-preview text-preview" style="display: none;">{{ email.html_content }}</div>
+    {% if email.text_content %}
+    <div id="text-content" class="content-preview text-preview" style="display: none;">{{ email.text_content }}</div>
+    {% endif %}
+</div>
+
+<script>
+// Initialize HTML preview
+document.addEventListener('DOMContentLoaded', function() {
+    const iframe = document.getElementById('html-iframe');
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write({{ email.html_content | tojson }});
+    doc.close();
+});
+
+function showTab(tab) {
+    // Hide all content
+    document.getElementById('html-content').style.display = 'none';
+    document.getElementById('source-content').style.display = 'none';
+    const textContent = document.getElementById('text-content');
+    if (textContent) textContent.style.display = 'none';
+
+    // Remove active from all tabs
+    document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+
+    // Show selected content and activate tab
+    if (tab === 'html') {
+        document.getElementById('html-content').style.display = 'block';
+        document.querySelectorAll('.content-tab')[0].classList.add('active');
+    } else if (tab === 'source') {
+        document.getElementById('source-content').style.display = 'block';
+        document.querySelectorAll('.content-tab')[1].classList.add('active');
+    } else if (tab === 'text' && textContent) {
+        textContent.style.display = 'block';
+        document.querySelectorAll('.content-tab')[2].classList.add('active');
+    }
+}
+</script>
+{% endblock %}

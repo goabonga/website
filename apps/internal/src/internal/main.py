@@ -22,6 +22,7 @@ from internal.routes import (
     analytics_router,
     auth_router,
     billing_router,
+    mailler_router,
     team_router,
     vpn_router,
 )
@@ -155,6 +156,7 @@ async def health_check() -> HealthResponse:
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
+app.include_router(mailler_router)
 app.include_router(team_router)
 app.include_router(vpn_router)
 app.include_router(billing_router)

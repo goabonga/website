@@ -51,6 +51,17 @@ class Settings(BaseSettings):
     # Session signing key (read from systemd credentials in production)
     secret_key: str = "change-me-in-production"
 
+    # Mailler API (internal email service)
+    mailler_api_url: str = ""  # Mailler service URL (empty: mailler pages show no data)
+    # Scope that lets this application see and manage every client of the mailler service. It is
+    # requested with every call and must be the scope the service names in ADMIN_SCOPE. Empty:
+    # this application only acts as an ordinary registered client of the service.
+    mailler_admin_scope: str = "mailler:admin"
+    mailler_timeout: float = 30.0  # seconds, per request to the mailler service
+    mailler_socket_path: str = ""  # Unix socket path (e.g., /run/mailler/mailler.sock)
+    # Provider shown for a campaign that names none; empty: the one of its mailler client
+    mailler_default_provider: str = ""
+
     # Analytics API
     analytics_api_url: str = "https://ua.goabonga.com"
 

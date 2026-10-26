@@ -26,6 +26,9 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/analytics/ips` | session; scope `analytics:read` | List IP addresses with their statistics |
 | GET | `/analytics/ips/{ip_address:path}` | session; scope `analytics:read` | View detailed statistics for a specific IP address |
 | POST | `/analytics/reset` | session; scope `analytics:delete` | Reset all analytics data |
+| GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
+| GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
+| GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
 | GET | `/team` | session; scope `team:read` | Team dashboard - overview of all teams |
 | GET | `/team/new` | session; scope `team:write` | New team form |
 | POST | `/team/new` | session; scope `team:write` | Create a new team |
@@ -101,6 +104,7 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:read` - checked by 5 routes
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
+- `mailler:read` - checked by 3 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes
 - `vpn:admin` - checked by 2 routes

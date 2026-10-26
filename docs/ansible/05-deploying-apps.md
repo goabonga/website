@@ -7,6 +7,7 @@ The `apps` playbook deploys the applications of this repository with the
 | --- | --- |
 | `website_apps_enabled` | The applications to deploy. |
 | `website_apps_overrides` | What differs from the catalog, per component. |
+| `website_apps_pins` | The release of each application to deploy, as a git ref (`auth: auth-v1.2.0`). A pin wins over a version set in the overrides; the deployment workflow writes it. |
 | `website_secrets` | The secret values ([Secrets](03-secrets.md)). |
 
 ```yaml

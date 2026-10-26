@@ -42,6 +42,7 @@ applications. It is a member of the `website` uv workspace.
 - Workspace members, roles and email invitations.
 - Workspace deletion confirmed by email, scheduled at the end of the billing
   period and cancellable.
+- Custom domain settings page for Enterprise workspaces.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -125,6 +126,11 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/organizations/members/{member_id}/role`, `/tenants/members/{member_id}/role` | session; organization admin or owner | Update a member's role |
 | GET | `/organizations/invites/{token}`, `/tenants/invites/{token}` | public | View an invitation (public page) |
 | POST | `/organizations/invites/{token}/accept`, `/tenants/invites/{token}/accept` | session | Accept an invitation |
+| GET | `/organizations/domain`, `/tenants/domain` | session; organization admin or owner | Custom domain settings page (Enterprise only) |
+| POST | `/organizations/domain`, `/tenants/domain` | session; organization admin or owner | Register the custom domain of the organization in the custom-domain service |
+| POST | `/organizations/domain/verify`, `/tenants/domain/verify` | session; organization admin or owner | Ask the custom-domain service to verify the DNS of the domain again |
+| GET | `/organizations/domain/status`, `/tenants/domain/status` | session | Get custom domain status (JSON endpoint for polling) |
+| POST | `/organizations/domain/remove`, `/tenants/domain/remove` | session; organization admin or owner | Remove the custom domain of the organization, here and in the service |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

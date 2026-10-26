@@ -16,6 +16,11 @@ website_mailler_celery_queue: mailler
 # it is empty. Not needed on a new database.
 website_mailler_legacy_client_id: ""
 
+# Scope that lets a caller cross the client boundary and register clients
+# (ADMIN_SCOPE). Give it only to the operator clients, for example the one of
+# the internal application, which requests it (website_internal_mailler_admin_scope).
+website_mailler_admin_scope: mailler:admin
+
 # Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
 website_mailler_cors_origins: []
 

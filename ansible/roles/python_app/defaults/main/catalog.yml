@@ -507,6 +507,15 @@ website_apps_catalog:
       MAILLER_API_URL: "{{ website_internal_mailler_api_url }}"
       BILLING_API_URL: "{{ website_internal_billing_api_url }}"
       BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      BILLING_READ_SCOPE: "{{ website_internal_billing_read_scope }}"
+      BILLING_WRITE_SCOPE: "{{ website_internal_billing_write_scope }}"
+      BILLING_ADMIN_SCOPE: "{{ website_internal_billing_admin_scope }}"
+      BILLING_TIMEOUT: "{{ website_internal_billing_timeout }}"
+      BILLING_PAGE_SIZE: "{{ website_internal_billing_page_size }}"
+      BILLING_RECENT_LIMIT: "{{ website_internal_billing_recent_limit }}"
+      MAILLER_ADMIN_SCOPE: "{{ website_internal_mailler_admin_scope }}"
+      MAILLER_TIMEOUT: "{{ website_internal_mailler_timeout }}"
+      MAILLER_CLIENTS_PAGE_SIZE: "{{ website_internal_mailler_clients_page_size }}"
       TEAM_SOCKET_PATH: "/run/team/team.sock"
     secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
     oauth2:
@@ -650,6 +659,7 @@ website_apps_catalog:
       CELERY_QUEUE: "{{ website_mailler_celery_queue }}"
       TOKEN_INTROSPECTION_CACHE_TTL: "60"
       OAUTH2_CLIENT_CACHE_TTL: "300"
+      ADMIN_SCOPE: "{{ website_mailler_admin_scope }}"
       CORS_ORIGINS: "{{ website_mailler_cors_origins }}"
       LEGACY_CLIENT_ID: "{{ website_mailler_legacy_client_id }}"
       UNSUBSCRIBE_BASE_URL: "{{ website_mailler_unsubscribe_base_url }}"

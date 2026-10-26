@@ -93,6 +93,20 @@
     quiet: true
   when: "'internal' in python_app__apps"
 
+- name: Check that internal and the services agree on the admin scopes
+  ansible.builtin.assert:
+    that:
+      - "'billing' not in python_app__apps or website_internal_billing_admin_scope == website_billing_partition_admin_scope"
+      - "'mailler' not in python_app__apps or website_internal_mailler_admin_scope == '' or website_internal_mailler_admin_scope == website_mailler_admin_scope"
+    fail_msg: >-
+      internal asks billing for {{ website_internal_billing_admin_scope }} and mailler for
+      {{ website_internal_mailler_admin_scope }}, but they name {{ website_billing_partition_admin_scope }}
+      (website_billing_partition_admin_scope) and {{ website_mailler_admin_scope }}
+      (website_mailler_admin_scope) as their admin scopes: without the same scope on both sides internal
+      only sees its own data.
+    quiet: true
+  when: "'internal' in python_app__apps"
+
 - name: Check the billing settings of knowledge
   ansible.builtin.assert:
     that:

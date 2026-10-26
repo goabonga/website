@@ -59,6 +59,11 @@ def step_config_contains(context, text):
     assert text in context.rendered, context.rendered
 
 
+@then('the configuration does not contain "{text}"')
+def step_config_lacks(context, text):
+    assert text not in context.rendered, context.rendered
+
+
 @when('I check the template "{source}"')
 def step_validate(context, source):
     context.validation = template_service.validate_template(source.replace("\\n", "\n"))

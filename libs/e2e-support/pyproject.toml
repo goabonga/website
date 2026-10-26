@@ -11,7 +11,9 @@ license = "MIT"
 authors = [{ name = "Chris", email = "goabonga@pm.me" }]
 dependencies = [
     "behave>=1.2.6",
+    "fastapi>=0.109.0",
     "playwright>=1.49",
+    "pyjwt[crypto]>=2.8.0",
     "uvicorn>=0.27.0",
 ]
 

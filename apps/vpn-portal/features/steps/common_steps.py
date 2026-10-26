@@ -31,3 +31,9 @@ def step_check_response_value(context, key, value):
     body = context.response.json()
     assert key in body, f"Response missing key '{key}'. Body: {body}"
     assert str(body[key]) == value, f"Expected {key}='{value}', got '{body[key]}'"
+
+
+@then('the response body should include "{key}"')
+def step_check_response_contains_key(context, key):
+    body = context.response.json()
+    assert key in body, f"Response missing key '{key}'. Body: {body}"

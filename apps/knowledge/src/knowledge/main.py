@@ -20,6 +20,7 @@ from knowledge.auth.token_exchange import get_token_exchange_client
 from knowledge.config import get_settings
 from knowledge.internal import internal_app
 from knowledge.logging import get_logger, setup_logging
+from knowledge.routes import collections
 
 settings = get_settings()
 
@@ -77,6 +78,7 @@ Vector storage and semantic search platform for AI agents and applications.
 
 ## Features
 
+- **Collections**: Create and manage document collections with vector embeddings
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -101,7 +103,9 @@ For internal routes (health checks), see [/internal/docs](/internal/docs)
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
-    openapi_tags=[],
+    openapi_tags=[
+        {"name": "Collections", "description": "Manage document collections"},
+    ],
     lifespan=lifespan,
     **swagger_config,
 )
@@ -118,6 +122,12 @@ app.add_middleware(
     allow_methods=settings.cors_methods,
     allow_headers=settings.cors_headers,
 )
+
+# =============================================================================
+# PUBLIC API ROUTES
+# =============================================================================
+
+app.include_router(collections.router, prefix="/api/v1", tags=["Collections"])
 
 # =============================================================================
 # MOUNT INTERNAL SUB-APPLICATION

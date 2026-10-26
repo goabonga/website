@@ -79,6 +79,9 @@ uv run --package team alembic -c apps/team/alembic.ini upgrade head
 # Run the Celery worker
 uv run --package team celery -A team.celery:celery_app worker --loglevel=info -Q team
 
+# Run the Celery beat scheduler
+uv run --package team celery -A team.celery:celery_app beat --loglevel=info
+
 # Tests
 uv run --package team --group dev pytest apps/team
 uv run --package team --group dev behave apps/team/features

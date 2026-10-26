@@ -31,6 +31,7 @@ documented on its own page.
 | [Client sending limits](16-client-limits.md) | Rate limit and daily quota per client |
 | [Command line](17-command-line.md) | `mailler` command: clients and template import |
 | [Sending from a template](18-template-sending.md) | `template_slug` and `variables` in one call |
+| [Idempotent sending](19-idempotency.md) | `Idempotency-Key` header on send and schedule |
 
 ## Running the tests
 

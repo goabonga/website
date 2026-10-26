@@ -76,6 +76,9 @@ docker compose -f apps/team/compose.yml up -d
 # Apply the database migrations
 uv run --package team alembic -c apps/team/alembic.ini upgrade head
 
+# Run the Celery worker
+uv run --package team celery -A team.celery:celery_app worker --loglevel=info -Q team
+
 # Tests
 uv run --package team --group dev pytest apps/team
 uv run --package team --group dev behave apps/team/features

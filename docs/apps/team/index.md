@@ -25,6 +25,7 @@ is tested with pytest and behave.
 | [Workspace tools](13-workspace-tools.md) | files, git, GitHub and SQL tools |
 | [LLM completions](14-llm.md) | chat completions with tool calling for OpenAI and Anthropic |
 | [Agent runner](15-agent-runner.md) | Celery worker that executes a task with an agent |
+| [Task dispatch](16-task-dispatch.md) | periodic dispatch, auto orchestration and webhook events |
 
 ## Running the tests
 

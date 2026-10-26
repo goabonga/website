@@ -15,6 +15,7 @@ Full documentation lives in `docs/apps/billing/`.
 - PostgreSQL data model with Alembic migrations
 - Stripe service wrapper enforcing the `saas_id` metadata
 - Onboarding of SaaS applications
+- Product catalog per SaaS application
 
 ## Routes and scopes
 
@@ -28,6 +29,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/platform/saas/{saas_id}` | scope `billing:platform:read` | Get a SaaS application by ID |
 | PATCH | `/platform/saas/{saas_id}` | scope `billing:platform:write` | Update a SaaS application |
 | POST | `/platform/saas/{saas_id}/sync-stripe` | scope `billing:platform:write` | Sync products and prices to Stripe |
+| POST | `/platform/{saas_id}/products` | scope `billing:platform:write` | Create a new product (syncs to Stripe) |
+| GET | `/platform/{saas_id}/products` | scope `billing:platform:read` | List all products for a SaaS app |
+| GET | `/platform/{saas_id}/products/{product_id}` | scope `billing:platform:read` | Get a product by ID |
+| PATCH | `/platform/{saas_id}/products/{product_id}` | scope `billing:platform:write` | Update a product (syncs to Stripe) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -35,8 +40,8 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `billing:platform:write` - checked by 3 routes
-- `billing:platform:read` - checked by 2 routes
+- `billing:platform:write` - checked by 5 routes
+- `billing:platform:read` - checked by 4 routes
 
 ## Usage
 

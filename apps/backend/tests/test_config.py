@@ -67,6 +67,25 @@ class TestSettingsDefaults:
         assert s.redis_url == ""
         assert s.redis_key_prefix == "fastapi"
 
+    def test_rate_limit_defaults(self, monkeypatch):
+        """Rate limits default to 10 anonymous and 60 authenticated requests per minute."""
+        for name in (
+            "RATE_LIMIT_REDIS_URL",
+            "RATE_LIMIT_ANON",
+            "RATE_LIMIT_AUTH",
+            "RATE_LIMIT_WINDOW",
+            "SESSION_CREATE_LIMIT",
+            "SESSION_CREATE_WINDOW",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.rate_limit_redis_url == "redis://localhost:6379/1"
+        assert s.rate_limit_anon == 10
+        assert s.rate_limit_auth == 60
+        assert s.rate_limit_window == 60
+        assert s.session_create_limit == 3
+        assert s.session_create_window == 86400
+
 
 class TestGetCredential:
     """Tests for get_credential."""

@@ -5,6 +5,7 @@
 
 import os
 import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -47,6 +48,32 @@ def sample_jwt_claims(user_id):
         "exp": 9999999999,
         "iat": 1700000000,
     }
+
+
+@pytest.fixture
+def mock_redis():
+    """Return a mocked Redis client."""
+    r = AsyncMock()
+    r.get = AsyncMock(return_value=None)
+    r.set = AsyncMock()
+    r.setex = AsyncMock()
+    r.delete = AsyncMock()
+    r.expire = AsyncMock()
+    r.pipeline = MagicMock()
+    r.close = AsyncMock()
+    r.aclose = AsyncMock()
+    r.zrem = AsyncMock()
+
+    # Pipeline mock
+    pipe = AsyncMock()
+    pipe.execute = AsyncMock(return_value=[0, 0])
+    pipe.zremrangebyscore = MagicMock()
+    pipe.zcard = MagicMock()
+    pipe.zadd = MagicMock()
+    pipe.expire = MagicMock()
+    r.pipeline.return_value = pipe
+
+    return r
 
 
 @pytest.fixture

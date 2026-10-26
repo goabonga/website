@@ -3,6 +3,8 @@
 
 """Common step definitions for HTTP request and response handling."""
 
+import json
+
 from behave import then, when
 
 
@@ -70,3 +72,47 @@ def step_check_json_null(context, key):
 def step_check_response_header(context, header, value):
     actual = context.response.headers.get(header)
     assert actual == value, f"Expected header '{header}' to be '{value}', got '{actual}'"
+
+
+@when('I send a POST request to "{path}" with body:')
+def step_send_post_request_with_body(context, path):
+    context.response = context.client.post(path, json=json.loads(context.text))
+
+
+@then('the response content type should contain "{content_type}"')
+def step_check_content_type_contains(context, content_type):
+    actual = context.response.headers.get("content-type", "")
+    assert content_type in actual, (
+        f"Expected content type to contain '{content_type}', got '{actual}'"
+    )
+
+
+@then('the response JSON "{key}" should be an empty list')
+def step_check_json_empty_list(context, key):
+    data = context.response.json()
+    assert key in data, f"Key '{key}' not in response"
+    assert data[key] == [], f"Expected empty list, got {data[key]}"
+
+
+@then('the response JSON "{key}" should have {count:d} items')
+def step_check_json_list_count(context, key, count):
+    data = context.response.json()
+    assert key in data, f"Key '{key}' not in response"
+    assert len(data[key]) == count, f"Expected {count} items, got {len(data[key])}"
+
+
+@then('the response JSON at "{path}" should be "{value}"')
+def step_check_json_path(context, path, value):
+    """Navigate a dotted path like 'messages[0].role' into the JSON."""
+    current = context.response.json()
+    for part in path.replace("]", "").replace("[", ".").split("."):
+        current = current[int(part)] if part.isdigit() else current[part]
+    assert str(current) == value, f"At path '{path}': expected '{value}', got '{current}'"
+
+
+@then('the response should set a "{cookie_name}" cookie')
+def step_check_cookie_set(context, cookie_name):
+    cookie_header = context.response.headers.get("set-cookie", "")
+    assert cookie_name in cookie_header, (
+        f"Expected '{cookie_name}' cookie to be set. Set-Cookie header: '{cookie_header}'"
+    )

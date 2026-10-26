@@ -304,3 +304,12 @@ def step_download_content(context, text):
 
     content = Path(context.download.path()).read_text(encoding="utf-8")
     assert text in content, content
+
+
+@then('the field "{name}" should offer these options')
+def step_field_options(context, name):
+    from e2e_support.steps import field
+
+    labels = [text.strip() for text in field(context, name).locator("option").all_inner_texts()]
+    expected = [row["option"] for row in context.table]
+    assert labels == expected, labels

@@ -23,6 +23,7 @@ from team.models import (  # noqa: F401
     ConversationParticipant,
     MemoryEntry,
     Message,
+    Skill,
     Team,
 )
 

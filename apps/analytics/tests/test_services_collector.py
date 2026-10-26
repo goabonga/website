@@ -109,6 +109,11 @@ class TestGetClientIp:
         assert result == "unknown"
 
 
+# ---------------------------------------------------------------------------
+# Helpers shared across CollectorService tests
+# ---------------------------------------------------------------------------
+
+
 def _make_mock_request(
     client_host="1.2.3.4",
     user_agent="TestAgent/1.0",
@@ -171,6 +176,11 @@ def _default_device_info():
         os_version="6.1",
         is_bot=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# TestCollectorServiceGetOrCreateSession
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -386,6 +396,11 @@ class TestCollectorServiceGetOrCreateSession:
         assert created_session.ip_address is None
 
 
+# ---------------------------------------------------------------------------
+# TestCollectorServiceTrackEvent
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
 class TestCollectorServiceTrackEvent:
     """Tests for CollectorService.track_event."""
@@ -461,6 +476,11 @@ class TestCollectorServiceTrackEvent:
         assert created_event.event_data is None
         assert created_event.page_url is None
         assert created_event.page_title is None
+
+
+# ---------------------------------------------------------------------------
+# TestCollectorServiceTrackPixelOpen
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -620,6 +640,133 @@ class TestCollectorServiceTrackPixelOpen:
         assert pixel_open.ip_address is None
 
 
+# ---------------------------------------------------------------------------
+# TestCollectorServiceTrackCampaignClick
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestCollectorServiceTrackCampaignClick:
+    """Tests for CollectorService.track_campaign_click."""
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_campaign_found_and_active(self, mock_settings, mock_geoip):
+        """When the campaign is found and active, a CampaignClick record
+        should be created and click_count incremented."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        campaign_id = uuid.uuid4()
+        mock_campaign = MagicMock()
+        mock_campaign.id = campaign_id
+        mock_campaign.name = "Summer Sale"
+        mock_campaign.click_count = 42
+        mock_result.scalar_one_or_none.return_value = mock_campaign
+
+        mock_geoip.lookup.return_value = _default_geo()
+        request = _make_mock_request()
+
+        result = await service.track_campaign_click(
+            db=mock_db,
+            tracking_key="summer-sale-key",
+            request=request,
+        )
+
+        assert result is mock_campaign
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_awaited_once()
+
+        # Verify CampaignClick record
+        click = mock_db.add.call_args[0][0]
+        assert click.campaign_id == campaign_id
+        assert click.ip_address == "1.2.3.4"
+        assert click.user_agent == "TestAgent/1.0"
+        assert click.country == "US"
+        assert click.city == "New York"
+        assert click.referrer == "https://example.com/ref"
+
+        # Verify click_count incremented
+        assert mock_campaign.click_count == 43
+
+    async def test_campaign_not_found_returns_none(self):
+        """When the campaign is not found (or not active), return None."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_result.scalar_one_or_none.return_value = None
+
+        request = _make_mock_request()
+
+        result = await service.track_campaign_click(
+            db=mock_db,
+            tracking_key="nonexistent-key",
+            request=request,
+        )
+
+        assert result is None
+        mock_db.add.assert_not_called()
+        mock_db.commit.assert_not_awaited()
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_campaign_click_unknown_ip_stored_as_none(self, mock_settings, mock_geoip):
+        """When client IP is 'unknown', ip_address on CampaignClick should be None."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        mock_campaign = MagicMock()
+        mock_campaign.id = uuid.uuid4()
+        mock_campaign.name = "Test"
+        mock_campaign.click_count = 0
+        mock_result.scalar_one_or_none.return_value = mock_campaign
+
+        mock_geoip.lookup.return_value = GeoLocation()
+        request = _make_mock_request(client_host=None)
+
+        await service.track_campaign_click(
+            db=mock_db,
+            tracking_key="some-key",
+            request=request,
+        )
+
+        click = mock_db.add.call_args[0][0]
+        assert click.ip_address is None
+
+    @patch("analytics.services.collector.geoip_service")
+    @patch("analytics.services.collector.settings")
+    async def test_campaign_click_without_referer(self, mock_settings, mock_geoip):
+        """A click without a referer header should still work correctly."""
+        service = CollectorService()
+        mock_db, mock_result = _make_mock_db()
+        mock_settings.anonymize_ip = False
+
+        mock_campaign = MagicMock()
+        mock_campaign.id = uuid.uuid4()
+        mock_campaign.name = "No Referer Campaign"
+        mock_campaign.click_count = 0
+        mock_result.scalar_one_or_none.return_value = mock_campaign
+
+        mock_geoip.lookup.return_value = _default_geo()
+        request = _make_mock_request(referer=None)
+
+        result = await service.track_campaign_click(
+            db=mock_db,
+            tracking_key="key",
+            request=request,
+        )
+
+        assert result is mock_campaign
+        click = mock_db.add.call_args[0][0]
+        assert click.referrer is None
+
+
+# ---------------------------------------------------------------------------
+# TestCollectorServiceCreateCampaign
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
 class TestCollectorServiceCreateCampaign:
     """Tests for CollectorService.create_campaign."""
@@ -679,6 +826,11 @@ class TestCollectorServiceCreateCampaign:
         await service.create_campaign(db=mock_db, name="Test")
 
         mock_gen_key.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# TestCollectorServiceCreatePixel
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio

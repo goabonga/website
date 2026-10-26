@@ -3,7 +3,7 @@
 
 """Tests for analytics.models module."""
 
-from analytics.models import Base, Campaign, Event, Pixel, PixelOpen, Session
+from analytics.models import Base, Campaign, CampaignClick, Event, Pixel, PixelOpen, Session
 
 
 class TestModelImports:
@@ -26,6 +26,9 @@ class TestModelImports:
 
     def test_pixel_open_model(self):
         assert PixelOpen.__tablename__ == "analytics_pixel_opens"
+
+    def test_campaign_click_model(self):
+        assert CampaignClick.__tablename__ == "analytics_campaign_clicks"
 
 
 class TestSessionModel:
@@ -80,16 +83,30 @@ class TestPixelOpenModel:
         assert "PixelOpen" in repr(pixel_open)
 
 
+class TestCampaignClickModel:
+    """Tests for CampaignClick model."""
+
+    def test_repr(self):
+        import uuid
+        from datetime import datetime
+
+        click = CampaignClick()
+        click.campaign_id = uuid.uuid4()
+        click.clicked_at = datetime(2025, 1, 1)
+        assert "CampaignClick" in repr(click)
+
+
 class TestSchema:
     """Tests for the table definitions."""
 
     def test_tables_registered_on_base(self):
         assert {
-            "analytics_campaigns",
+            "analytics_sessions",
+            "analytics_campaign_clicks",
             "analytics_events",
             "analytics_pixel_opens",
             "analytics_pixels",
-            "analytics_sessions",
+            "analytics_campaigns",
         } <= set(Base.metadata.tables)
 
     def test_session_id_is_unique_and_indexed(self):
@@ -157,3 +174,17 @@ class TestCampaignSchema:
     def test_pixel_opens_relationship_cascades_deletes(self):
         relationship = Pixel.__mapper__.relationships["opens"]
         assert "delete-orphan" in relationship.cascade
+
+
+class TestCampaignClickSchema:
+    """Tests for the campaign click table definition."""
+
+    def test_click_references_campaign_with_cascade(self):
+        (foreign_key,) = CampaignClick.__table__.c.campaign_id.foreign_keys
+        assert foreign_key.column.table.name == "analytics_campaigns"
+        assert foreign_key.ondelete == "CASCADE"
+
+    def test_campaign_clicks_relationship_cascades_deletes(self):
+        relationship = Campaign.__mapper__.relationships["clicks"]
+        assert "delete-orphan" in relationship.cascade
+        assert relationship.back_populates == "campaign"

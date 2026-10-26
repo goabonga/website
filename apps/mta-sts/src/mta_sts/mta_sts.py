@@ -28,4 +28,8 @@ def render_mta_sts_policy() -> str:
 @router.get("/.well-known/mta-sts.txt", include_in_schema=False)
 async def mta_sts_policy():
     """Serve MTA-STS policy (RFC 8461)."""
-    return Response(content=render_mta_sts_policy(), media_type="text/plain")
+    return Response(
+        content=render_mta_sts_policy(),
+        media_type="text/plain",
+        headers={"Cache-Control": f"max-age={settings.mta_sts_max_age}"},
+    )

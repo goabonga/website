@@ -3,6 +3,824 @@
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
 # Catalog of the deployable components, keyed by component. Each entry is
-# deep-merged over python_app_component_defaults. Replace it entirely or adjust
-# it with website_apps_overrides.
-website_apps_catalog: {}
+# deep-merged over python_app_component_defaults, so it only states what
+# differs from them. The first component of an application, named like the
+# application, is its primary component (account, directory, release,
+# database); the others set app. Host names come from website_hostnames and
+# secrets from website_secrets: the catalog holds neither a domain nor a
+# credential. Replace it entirely or adjust it with website_apps_overrides.
+#
+# Optional behaviours that need an operator decision are off by default, for
+# example the wildcard certificate of the multi-tenant applications (auth and
+# knowledge): enable it with nginx.ssl_wildcard, nginx.ssl_wildcard_domains
+# and nginx.ssl_dns_provider in website_apps_overrides.
+website_apps_catalog:
+  analytics:
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    postgres:
+      database: analytics
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      CORS_ORIGINS: ["https://{{ website_hostnames.frontend }}", "https://www.{{ website_hostnames.frontend }}", "https://{{ website_hostnames.backend }}"]
+      DATABASE_ECHO: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=7"
+      CACHE_TTL: "300"
+      GEOIP_ENABLED: "true"
+      GEOIP_DATABASE_PATH: "/usr/share/GeoIP/GeoLite2-City.mmdb"
+      SESSION_COOKIE_NAME: "ua_sid"
+      SESSION_COOKIE_MAX_AGE: "31536000"
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SAMESITE: "none"
+      PIXEL_CACHE_CONTROL: "no-cache, no-store, must-revalidate"
+      DATA_RETENTION_DAYS: "395"
+      ANONYMIZE_IP: "false"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+    optional_secret_names: ["OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  apt_server:
+    extra_groups: ["mailler"]
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      client_max_body_size: "500M"
+      custom_locations:
+        - path: "/_internal/"
+          config: |
+            internal;
+            alias /var/lib/apt-server/;
+            sendfile on;
+            tcp_nopush on;
+    postgres:
+      database: apt_server
+      async_db: true
+    alembic:
+      enabled: true
+    hardening:
+      read_write_paths:
+        - /var/lib/apt-server
+    env_vars:
+      REDIS_URL: "{{ website_redis_url }}?db=14"
+      REDIS_KEY_PREFIX: "apt_server"
+      APT_REPO_ROOT: "/var/lib/apt-server"
+      APT_SUITES: "stable"
+      APT_COMPONENTS: "main,private"
+      APT_PUBLIC_COMPONENTS: "main"
+      APT_ARCHITECTURES: "amd64,arm64,all"
+      APT_INTERNAL_PREFIX: "/_internal"
+      APT_INDEX_CACHE_TTL: "60"
+      SESSION_COOKIE_NAME: "apt_session"
+      SESSION_MAX_AGE: "86400"
+      EMAIL_BACKEND: "mailler"
+      MAILLER_URL: "http://localhost"
+      MAILLER_UNIX_SOCKET: "/run/mailler/mailler.sock"
+      MAILLER_PROVIDER: "brevo"
+      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
+    secret_names: ["OAUTH2_CLIENT_SECRET", "SESSION_SECRET", "MAILLER_CLIENT_SECRET", "WEBHOOK_SECRET"]
+    oauth2:
+      enabled: true
+
+  asterisk:
+    name: asterisk-bot
+    type: audiosocket
+    user: asterisk-bot
+    postgres:
+      database: application
+      shared: true
+      pgvector: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      OPENAI_MODEL: "gpt-4o-realtime-preview-2024-12-17"
+      OPENAI_VOICE: "verse"
+      RAG_ENABLED: "true"
+      RAG_SIMILARITY_THRESHOLD: "0.7"
+      RAG_MAX_RESULTS: "3"
+    secret_names: ["OPENAI_API_KEY"]
+    asterisk:
+      enabled: true
+      context: fastagi-bot
+
+  auth:
+    extra_groups: ["mailler"]
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    postgres:
+      database: auth
+    alembic:
+      enabled: true
+    fail2ban:
+      enabled: true
+      routes:
+        - {path: "/auth/register", method: POST, maxretry: 5, findtime: 10m, bantime: 1h}
+        - {path: "/auth/login", method: POST, maxretry: 10, findtime: 5m, bantime: 30m}
+        - {path: "/oauth2/token", method: POST, maxretry: 20, findtime: 1m, bantime: 15m}
+        - {path: "/auth/password/reset", method: POST, maxretry: 5, findtime: 10m, bantime: 1h}
+    env_vars:
+      LOG_LEVEL: "INFO"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      JWKS_KEY_SIZE: "2048"
+      JWKS_ROTATION_DAYS: "90"
+      JWKS_GRACE_PERIOD_DAYS: "30"
+      EMAIL_BACKEND: "mailler"
+      SMTP_HOST: "{{ website_smtp_host }}"
+      SMTP_PORT: "{{ website_smtp_port }}"
+      SMTP_TLS: "true"
+      MAILLER_URL: "http://localhost"
+      MAILLER_UNIX_SOCKET: "/run/mailler/mailler.sock"
+      MAILLER_PROVIDER: "brevo"
+      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
+      SESSION_EXPIRY_DAYS: "7"
+      SESSION_COOKIE_NAME: "session"
+      SESSION_COOKIE_SECURE: "true"
+      MFA_EMAIL_CODE_EXPIRY_MINUTES: "10"
+      AUTHORIZATION_CODE_EXPIRY_MINUTES: "10"
+      ACCESS_TOKEN_EXPIRY_MINUTES: "60"
+      REFRESH_TOKEN_EXPIRY_DAYS: "30"
+      ID_TOKEN_EXPIRY_MINUTES: "60"
+      DEVICE_CODE_EXPIRY_MINUTES: "15"
+      DEVICE_CODE_INTERVAL: "5"
+      PAR_REQUEST_EXPIRY_SECONDS: "60"
+      UPLOAD_DIRECTORY: "uploads"
+      UPLOAD_MAX_SIZE_MB: "5"
+      UPLOAD_ALLOWED_TYPES: "image/jpeg,image/png,image/gif,image/webp"
+      TENANT_BASE_DOMAIN: "{{ website_hostnames.auth }}"
+      TENANT_CUSTOM_DOMAIN_LOOKUP: "true"
+    secret_names: ["JWKS_ENCRYPTION_KEY", "MAILLER_CLIENT_SECRET"]
+    optional_secret_names: ["SMTP_PASSWORD"]
+
+  auth_beat:
+    app: auth
+    type: celery_beat
+    postgres:
+      database: auth
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+    secret_names: ["JWKS_ENCRYPTION_KEY"]
+
+  auth_worker:
+    app: auth
+    type: celery_worker
+    extra_groups: ["mailler"]
+    sudoers:
+      - "/usr/sbin/nginx -t"
+      - "/usr/bin/systemctl reload nginx"
+      - "/usr/bin/certbot certonly *"
+      - "/usr/bin/cp /tmp/* /etc/nginx/sites-enabled/*"
+      - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
+      - "/usr/bin/mkdir -p /var/www/certbot"
+    celery:
+      queues: ["auth"]
+    postgres:
+      database: auth
+    hardening:
+      read_write_paths:
+        - /etc/nginx/sites-enabled
+        - /etc/letsencrypt
+        - /var/lib/letsencrypt
+        - /var/www/certbot
+        - /var/www/html
+        - /var/log/letsencrypt
+        - /var/log/nginx
+        - /opt
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      EMAIL_BACKEND: "mailler"
+      SMTP_HOST: "{{ website_smtp_host }}"
+      SMTP_PORT: "{{ website_smtp_port }}"
+      SMTP_TLS: "true"
+      MAILLER_URL: "http://localhost"
+      MAILLER_UNIX_SOCKET: "/run/mailler/mailler.sock"
+      MAILLER_PROVIDER: "brevo"
+      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
+      CUSTOM_DOMAIN_NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
+      CUSTOM_DOMAIN_NGINX_IPV4: "{{ website_listen_ipv4 }}"
+      CUSTOM_DOMAIN_NGINX_IPV6: "{{ website_listen_ipv6 }}"
+      CUSTOM_DOMAIN_UPSTREAM_SOCKET: "/run/auth/auth.sock"
+      CUSTOM_DOMAIN_CERTBOT_ENABLED: "true"
+      CUSTOM_DOMAIN_CERTBOT_EMAIL: "{{ website_certbot_email }}"
+      CUSTOM_DOMAIN_DNS_CHECK_INTERVAL_MINUTES: "5"
+    secret_names: ["JWKS_ENCRYPTION_KEY", "MAILLER_CLIENT_SECRET"]
+    optional_secret_names: ["SMTP_PASSWORD"]
+
+  backend:
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    postgres:
+      database: application
+      shared: true
+      pgvector: true
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DEBUG: "false"
+      CORS_ORIGINS: ["https://{{ website_hostnames.backend }}", "https://{{ website_hostnames.frontend }}", "https://www.{{ website_hostnames.frontend }}"]
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      OPENAI_MODEL: "gpt-4o-mini"
+      RAG_EMBEDDING_MODEL: "text-embedding-3-small"
+      RAG_SIMILARITY_THRESHOLD: "0.7"
+      RAG_MAX_RESULTS: "5"
+      PROMPT_CACHE_REDIS_URL: "{{ website_redis_url }}?db=4"
+      PROMPT_CACHE_TTL: "300"
+      RATE_LIMIT_REDIS_URL: "{{ website_redis_url }}?db=2"
+      RATE_LIMIT_ANON: "10"
+      RATE_LIMIT_AUTH: "60"
+      RATE_LIMIT_WINDOW: "60"
+      SESSION_REDIS_URL: "{{ website_redis_url }}?db=3"
+      SESSION_REDIS_TTL: "3600"
+      SESSION_COOKIE_NAME: "session_id"
+      SESSION_COOKIE_MAX_AGE: "2592000"
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SAMESITE: "lax"
+      SESSION_COOKIE_DOMAIN: ""
+      SESSION_CREATE_LIMIT: "10"
+      SESSION_CREATE_WINDOW: "3600"
+      CONVERSATION_CACHE_TTL: "1800"
+      CONVERSATION_SYNC_INTERVAL: "30"
+    secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  backend_beat:
+    app: backend
+    type: celery_beat
+    postgres:
+      database: application
+      shared: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+
+  backend_worker:
+    app: backend
+    type: celery_worker
+    celery:
+      concurrency: 4
+      queues: ["backend"]
+    postgres:
+      database: application
+      shared: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      OPENAI_MODEL: "gpt-4o-mini"
+      RAG_EMBEDDING_MODEL: "text-embedding-3-small"
+      RAG_SIMILARITY_THRESHOLD: "0.7"
+      RAG_MAX_RESULTS: "5"
+      SESSION_REDIS_URL: "{{ website_redis_url }}?db=3"
+      SESSION_REDIS_TTL: "3600"
+      CONVERSATION_CACHE_TTL: "1800"
+      CONVERSATION_SYNC_INTERVAL: "30"
+    secret_names: ["OPENAI_API_KEY"]
+
+  billing:
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+    postgres:
+      database: billing
+      async_db: true
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      DATABASE_ECHO: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=12"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+    secret_names: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  billing_beat:
+    app: billing
+    type: celery_beat
+    postgres:
+      database: billing
+      async_db: true
+    env_vars:
+      DOCS_ENABLED: "false"
+      DATABASE_ECHO: "false"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+
+  billing_worker:
+    app: billing
+    type: celery_worker
+    celery:
+      queues: ["billing"]
+    postgres:
+      database: billing
+      async_db: true
+    env_vars:
+      DOCS_ENABLED: "false"
+      DATABASE_ECHO: "false"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=12"
+    secret_names: ["STRIPE_SECRET_KEY"]
+
+  custom_domain:
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+    postgres:
+      database: custom_domain
+      async_db: true
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=13"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_VALIDATION_MODE: "introspection"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
+      NGINX_CONFIG_PREFIX: "custom-domain-"
+      NGINX_IPV4: "{{ website_listen_ipv4 }}"
+      NGINX_IPV6: "{{ website_listen_ipv6 }}"
+      CERTBOT_ENABLED: "true"
+      CERTBOT_EMAIL: "{{ website_certbot_email }}"
+      CERTBOT_WEBROOT: "/var/www/certbot"
+      DNS_CHECK_INTERVAL_MINUTES: "5"
+      CERTIFICATE_RENEWAL_DAYS: "30"
+      DOMAIN_ACTIVATION_TIMEOUT_HOURS: "48"
+      DOMAIN_HEALTH_CHECK_INTERVAL_HOURS: "24"
+      SOFT_DELETE_PURGE_DAYS: "30"
+    secret_names: ["OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  custom_domain_beat:
+    app: custom_domain
+    type: celery_beat
+    postgres:
+      database: custom_domain
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=13"
+      DNS_CHECK_INTERVAL_MINUTES: "5"
+      CERTIFICATE_RENEWAL_DAYS: "30"
+      DOMAIN_ACTIVATION_TIMEOUT_HOURS: "48"
+      DOMAIN_HEALTH_CHECK_INTERVAL_HOURS: "24"
+      SOFT_DELETE_PURGE_DAYS: "30"
+
+  custom_domain_worker:
+    app: custom_domain
+    type: celery_worker
+    sudoers:
+      - "/usr/sbin/nginx -t"
+      - "/usr/bin/systemctl reload nginx"
+      - "/usr/bin/certbot certonly *"
+      - "/usr/bin/cp /tmp/* /etc/nginx/sites-enabled/*"
+      - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
+      - "/usr/bin/mkdir -p /var/www/certbot"
+    celery:
+      queues: ["custom-domain"]
+    postgres:
+      database: custom_domain
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=13"
+      NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
+      NGINX_CONFIG_PREFIX: "custom-domain-"
+      NGINX_IPV4: "{{ website_listen_ipv4 }}"
+      NGINX_IPV6: "{{ website_listen_ipv6 }}"
+      CERTBOT_ENABLED: "true"
+      CERTBOT_EMAIL: "{{ website_certbot_email }}"
+      CERTBOT_WEBROOT: "/var/www/certbot"
+      DNS_CHECK_INTERVAL_MINUTES: "5"
+      CERTIFICATE_RENEWAL_DAYS: "30"
+      DOMAIN_ACTIVATION_TIMEOUT_HOURS: "48"
+      DOMAIN_HEALTH_CHECK_INTERVAL_HOURS: "24"
+      SOFT_DELETE_PURGE_DAYS: "30"
+
+  frontend:
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      redirect_domains:
+        - "www.{{ website_hostnames.frontend }}"
+      static:
+        enabled: true
+        location: /static
+        alias: apps/frontend/web/dist
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DEBUG: "false"
+      AUTH_URL: "https://{{ website_hostnames.auth }}"
+      API_URL: "https://{{ website_hostnames.backend }}"
+      ANALYTICS_URL: "https://{{ website_hostnames.analytics }}"
+    oauth2:
+      enabled: true
+    build_node: true
+    build_chdir: apps/frontend/web
+    build_commands:
+      - npm ci
+      - npm run build
+
+  internal:
+    extra_groups: ["mailler", "billing", "team"]
+    gunicorn:
+      workers: 1
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+    postgres:
+      database: application
+      shared: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      REDIS_URL: "{{ website_redis_url }}?db=3"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      APP_BASE_URL: "https://{{ website_hostnames.internal }}"
+      COOKIE_SECURE: "true"
+      RAG_EMBEDDING_MODEL: "text-embedding-3-small"
+      ANALYTICS_API_URL: "https://{{ website_hostnames.analytics }}"
+      VPN_PORTAL_API_URL: "https://{{ website_hostnames.vpn_portal }}"
+      MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
+      MAILLER_DEFAULT_PROVIDER: "brevo"
+      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      TEAM_SOCKET_PATH: "/run/team/team.sock"
+    secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
+    oauth2:
+      enabled: true
+
+  internal_worker:
+    app: internal
+    type: celery_worker
+    extra_groups: ["mailler", "billing", "team"]
+    celery:
+      queues: ["internal"]
+    postgres:
+      database: application
+      shared: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=3"
+      MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
+      MAILLER_DEFAULT_PROVIDER: "brevo"
+      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      TEAM_SOCKET_PATH: "/run/team/team.sock"
+    secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
+
+  knowledge:
+    extra_groups: ["billing", "mailler"]
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    postgres:
+      database: knowledge
+      pgvector: true
+      async_db: true
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=9"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      EMBEDDING_MODEL: "text-embedding-3-small"
+      EMBEDDING_DIMENSION: "1536"
+      DEFAULT_SIMILARITY_THRESHOLD: "0.7"
+      DEFAULT_SEARCH_LIMIT: "10"
+      MAX_SEARCH_LIMIT: "100"
+      RATE_LIMIT_REQUESTS: "100"
+      RATE_LIMIT_WINDOW: "60"
+      OAUTH2_TOKEN_CACHE_TTL: "300"
+      OAUTH2_INTROSPECTION_CACHE_TTL: "60"
+      APP_BASE_URL: "https://{{ website_hostnames.knowledge }}"
+      COOKIE_SECURE: "true"
+      COOKIE_DOMAIN: "{{ website_hostnames.knowledge }}"
+      EMAIL_BACKEND: "mailler"
+      SMTP_HOST: "{{ website_smtp_host }}"
+      SMTP_PORT: "{{ website_smtp_port }}"
+      SMTP_TLS: "true"
+      MAILLER_URL: "http://localhost"
+      MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
+      MAILLER_PROVIDER: "brevo"
+      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
+      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      TENANT_BASE_DOMAIN: "{{ website_hostnames.knowledge }}"
+      TENANT_CUSTOM_DOMAIN_LOOKUP: "true"
+    secret_names: ["OPENAI_API_KEY", "OAUTH2_CLIENT_SECRET", "BILLING_WEBHOOK_SECRET"]
+    optional_secret_names: ["SMTP_PASSWORD"]
+    oauth2:
+      enabled: true
+
+  knowledge_beat:
+    app: knowledge
+    type: celery_beat
+    postgres:
+      database: knowledge
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+
+  knowledge_worker:
+    app: knowledge
+    type: celery_worker
+    extra_groups: ["billing", "mailler"]
+    sudoers:
+      - "/usr/sbin/nginx -t"
+      - "/usr/bin/systemctl reload nginx"
+      - "/usr/bin/certbot certonly *"
+      - "/usr/bin/cp /tmp/* /etc/nginx/sites-enabled/*"
+      - "/usr/bin/rm -f /etc/nginx/sites-enabled/custom-domain-*"
+      - "/usr/bin/mkdir -p /var/www/certbot"
+    celery:
+      queues: ["knowledge"]
+    postgres:
+      database: knowledge
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      EMAIL_BACKEND: "mailler"
+      SMTP_HOST: "{{ website_smtp_host }}"
+      SMTP_PORT: "{{ website_smtp_port }}"
+      SMTP_TLS: "true"
+      MAILLER_URL: "http://localhost"
+      MAILLER_SOCKET_PATH: "/run/mailler/mailler.sock"
+      MAILLER_PROVIDER: "brevo"
+      MAILLER_AUTH_URL: "https://{{ website_hostnames.auth }}"
+      BILLING_SOCKET_PATH: "/run/billing/billing.sock"
+      CUSTOM_DOMAIN_NGINX_SITES_DIR: "/etc/nginx/sites-enabled"
+      CUSTOM_DOMAIN_NGINX_IPV4: "{{ website_listen_ipv4 }}"
+      CUSTOM_DOMAIN_NGINX_IPV6: "{{ website_listen_ipv6 }}"
+      CUSTOM_DOMAIN_UPSTREAM_SOCKET: "/run/knowledge/knowledge.sock"
+      CUSTOM_DOMAIN_CERTBOT_ENABLED: "true"
+      CUSTOM_DOMAIN_CERTBOT_EMAIL: "{{ website_certbot_email }}"
+      CUSTOM_DOMAIN_DNS_CHECK_INTERVAL_MINUTES: "5"
+    secret_names: ["MAILLER_CLIENT_SECRET", "OPENAI_API_KEY"]
+    optional_secret_names: ["SMTP_PASSWORD"]
+
+  mailler:
+    extra_groups: ["internal"]
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+    postgres:
+      database: mailler
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=11"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      PROTONMAIL_PORT: "1025"
+      INTERNAL_API_SOCKET: "/run/internal/internal.sock"
+    secret_names: ["OAUTH2_CLIENT_SECRET", "BREVO_API_KEY", "WEBHOOK_HMAC_SECRET"]
+    optional_secret_names: ["SENDGRID_API_KEY", "SES_ACCESS_KEY", "SES_SECRET_KEY", "PROTONMAIL_PASSWORD"]
+    oauth2:
+      enabled: true
+
+  mailler_beat:
+    app: mailler
+    type: celery_beat
+    postgres:
+      database: mailler
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+
+  mailler_worker:
+    app: mailler
+    type: celery_worker
+    celery:
+      concurrency: 4
+      queues: ["mailler"]
+    postgres:
+      database: mailler
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      PROTONMAIL_PORT: "1025"
+    secret_names: ["BREVO_API_KEY", "WEBHOOK_HMAC_SECRET"]
+    optional_secret_names: ["SENDGRID_API_KEY", "SES_ACCESS_KEY", "SES_SECRET_KEY", "PROTONMAIL_PASSWORD"]
+
+  mta_sts:
+    gunicorn:
+      workers: 1
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    env_vars:
+      MTA_STS_MODE: "enforce"
+      MTA_STS_MAX_AGE: "86400"
+
+  reachy_mini_api:
+    gunicorn:
+      workers: 1
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+      websocket:
+        enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DEBUG: "false"
+      CORS_ORIGINS: ["https://{{ website_hostnames.reachy_mini_api }}"]
+      REDIS_URL: "{{ website_redis_url }}?db=6"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      JWKS_CACHE_TTL: "3600"
+    secret_names: ["OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  team:
+    extra_groups: ["mailler", "analytics", "auth"]
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+      ssl: step-ca
+      internal_domain: true
+    postgres:
+      database: team
+      pgvector: true
+      async_db: true
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      REDIS_URL: "{{ website_redis_url }}?db=14"
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      MAILLER_BASE_URL: "unix:///run/mailler/mailler.sock"
+      ANALYTICS_BASE_URL: "unix:///run/analytics/analytics.sock"
+      AUTH_BASE_URL: "unix:///run/auth/auth.sock"
+    secret_names: ["OPENAI_API_KEY"]
+    optional_secret_names: ["ANTHROPIC_API_KEY", "OAUTH2_CLIENT_SECRET", "GITHUB_TOKEN"]
+    oauth2:
+      enabled: true
+
+  team_beat:
+    app: team
+    type: celery_beat
+    extra_path: ["/usr/bin", "/usr/local/bin"]
+    postgres:
+      database: team
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=14"
+
+  team_worker:
+    app: team
+    type: celery_worker
+    extra_groups: ["mailler", "analytics", "auth"]
+    extra_path: ["/usr/bin", "/usr/local/bin"]
+    celery:
+      queues: ["team"]
+    postgres:
+      database: team
+      async_db: true
+    env_vars:
+      CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
+      CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      REDIS_URL: "{{ website_redis_url }}?db=14"
+      MAILLER_BASE_URL: "unix:///run/mailler/mailler.sock"
+      ANALYTICS_BASE_URL: "unix:///run/analytics/analytics.sock"
+      AUTH_BASE_URL: "unix:///run/auth/auth.sock"
+    secret_names: ["OPENAI_API_KEY"]
+    optional_secret_names: ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"]
+
+  vpn_portal:
+    stepca_group_member: true
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    postgres:
+      database: vpn_portal
+    alembic:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DEBUG: "false"
+      STEPCA_URL: "https://127.0.0.1:8443"
+      STEPCA_ROOT_CA: "/etc/step-ca/certs/root_ca.crt"
+      STEPCA_PROVISIONER: "vpn-portal"
+      STEPCA_PROVISIONER_PASSWORD_FILE: "/etc/step-ca/secrets/vpn-portal-password"
+      CERT_DEFAULT_DURATION_MINUTES: "10"
+      CERT_MAX_DURATION_MINUTES: "15"
+      OAUTH2_CLIENT_CACHE_TTL: "300"
+      TOKEN_INTROSPECTION_CACHE_TTL: "60"
+      JWKS_CACHE_TTL: "3600"
+      REDIS_URL: "{{ website_redis_url }}?db=8"
+      OPENVPN_PORT: "1194"
+      OPENVPN_PROTO: "udp"
+      OPENVPN_CA_PATH: "/etc/openvpn/server/ca.crt"
+      OPENVPN_TA_KEY_PATH: "/etc/openvpn/server/ta.key"
+    secret_names: ["STEPCA_PROVISIONER_PASSWORD", "OAUTH2_CLIENT_SECRET"]
+    oauth2:
+      enabled: true
+
+  vpn_portal_openvpn:
+    app: vpn_portal
+    type: script
+    hardening:
+      enabled: false
+    env_vars:
+      OPENVPN_OAUTH2_TOKEN_URL: "https://{{ website_hostnames.auth }}/oauth2/token"
+      OPENVPN_API_BASE_URL: "https://{{ website_hostnames.vpn_portal }}"
+      OPENVPN_OAUTH2_CLIENT_ID: "vpn-portal-openvpn"
+      OPENVPN_OAUTH2_SCOPE: "vpn:server"
+      OPENVPN_TOKEN_CACHE_PATH: "/var/run/vpn-portal-openvpn/token.json"
+      OPENVPN_MANAGEMENT_HOST: "127.0.0.1"
+      OPENVPN_MANAGEMENT_PORT: "7505"
+    secret_names: ["OPENVPN_OAUTH2_CLIENT_SECRET"]
+    script:
+      wrappers:
+        - {name: openvpn-connect, entrypoint: scripts/openvpn.py, args: --connect}
+        - {name: openvpn-disconnect, entrypoint: scripts/openvpn.py, args: --disconnect}
+        - {name: openvpn-reneg, entrypoint: scripts/openvpn.py, args: --reneg}
+    openvpn:
+      hook_connect: openvpn-connect
+      hook_disconnect: openvpn-disconnect
+      hook_reneg: openvpn-reneg
+      reneg_sec: 30
+      management_port: 7505
+
+  webhooks:
+    extra_groups: ["internal", "mailler", "billing"]
+    gunicorn:
+      workers: 1
+    healthcheck:
+      enabled: true
+    nginx:
+      enabled: true
+    env_vars:
+      LOG_LEVEL: "INFO"
+      DOCS_ENABLED: "false"
+      OAUTH2_TOKEN_URL: "https://{{ website_hostnames.auth }}/oauth2/token"
+      SES_ENABLED: "false"
+      BREVO_ENABLED: "true"
+      BREVO_INTERNAL_API_SOCKET: "/run/mailler/mailler.sock"
+      SENDGRID_ENABLED: "false"
+      STRIPE_ENABLED: "true"
+      STRIPE_INTERNAL_API_SOCKET: "/run/billing/billing.sock"
+      GITHUB_ENABLED: "false"
+    secret_names: ["OAUTH2_CLIENT_SECRET"]

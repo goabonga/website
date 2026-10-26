@@ -16,9 +16,10 @@ argument_specs:
       website_apps_catalog:
         type: dict
         description:
-        - Catalog of the deployable components, keyed by component. Each entry is deep-merged
-          over python_app_component_defaults. Replace it entirely or adjust it with website_apps_overrides.
-        default: {}
+        - 'Optional behaviours that need an operator decision are off by default, for example
+          the wildcard certificate of the multi-tenant applications (auth and knowledge):
+          enable it with nginx.ssl_wildcard, nginx.ssl_wildcard_domains and nginx.ssl_dns_provider
+          in website_apps_overrides.'
       python_app_component_defaults:
         type: dict
         description:

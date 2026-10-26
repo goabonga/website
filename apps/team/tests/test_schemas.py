@@ -13,6 +13,8 @@ from team.schemas import (
     MessageCreate,
     TeamCreate,
     TeamUpdate,
+    WorkflowCreate,
+    WorkflowUpdate,
 )
 
 
@@ -39,6 +41,18 @@ class TestTeamSchemas:
         data = TeamUpdate(is_active=False)
         dumped = data.model_dump(exclude_unset=True)
         assert dumped == {"is_active": False}
+
+
+class TestWorkflowSchemas:
+    def test_workflow_create_valid(self):
+        data = WorkflowCreate(name="Deploy Pipeline")
+        assert data.name == "Deploy Pipeline"
+        assert data.steps == {}
+
+    def test_workflow_update_partial(self):
+        data = WorkflowUpdate(status="active")
+        dumped = data.model_dump(exclude_unset=True)
+        assert dumped == {"status": "active"}
 
 
 class TestMessageSchemas:

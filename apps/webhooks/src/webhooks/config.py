@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     stripe_internal_api_socket: str = ""  # Unix socket (overrides URL)
     stripe_internal_api_token: str = ""  # Bearer token for internal API
 
+    # SendGrid -> Internal API
+    sendgrid_enabled: bool = False
+    sendgrid_webhook_verification_key: str = ""  # ECDSA public key (PEM format)
+    sendgrid_internal_api_url: str = ""
+    sendgrid_internal_api_socket: str = ""  # Unix socket (overrides URL)
+    sendgrid_internal_api_token: str = ""  # Bearer token for internal API
+
 
 settings = Settings(
     brevo_webhook_secret=get_credential(
@@ -89,6 +96,14 @@ settings = Settings(
     stripe_internal_api_token=get_credential(
         "STRIPE_INTERNAL_API_TOKEN",
         os.environ.get("STRIPE_INTERNAL_API_TOKEN", ""),
+    ),
+    sendgrid_webhook_verification_key=get_credential(
+        "SENDGRID_WEBHOOK_VERIFICATION_KEY",
+        os.environ.get("SENDGRID_WEBHOOK_VERIFICATION_KEY", ""),
+    ),
+    sendgrid_internal_api_token=get_credential(
+        "SENDGRID_INTERNAL_API_TOKEN",
+        os.environ.get("SENDGRID_INTERNAL_API_TOKEN", ""),
     ),
     oauth2_client_secret=get_credential(
         "OAUTH2_CLIENT_SECRET",

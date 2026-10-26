@@ -14,6 +14,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/webhooks/brevo`, `/webhooks/brevo/` | public; HMAC-SHA256 signature checked when `BREVO_WEBHOOK_SECRET` is set | Proxy Brevo webhook to internal API (only when `BREVO_ENABLED` is set) |
 | POST | `/webhooks/ses`, `/webhooks/ses/` | public; forwarded without a signature check | Proxy SES/SNS webhook to internal API (only when `SES_ENABLED` is set) |
 | POST | `/webhooks/stripe`, `/webhooks/stripe/` | public; `Stripe-Signature` header forwarded, checked by the internal API | Proxy Stripe webhook to internal API (only when `STRIPE_ENABLED` is set) |
+| POST | `/webhooks/sendgrid`, `/webhooks/sendgrid/` | public; ECDSA signature checked when `SENDGRID_WEBHOOK_VERIFICATION_KEY` is set | Proxy SendGrid webhook to internal API (only when `SENDGRID_ENABLED` is set) |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -61,6 +62,16 @@ Read from the environment (a `.env` file is loaded when present).
 | `STRIPE_INTERNAL_API_URL` | HTTP URL of the internal API | - |
 | `STRIPE_INTERNAL_API_SOCKET` | Unix socket of the internal API (overrides the URL) | - |
 | `STRIPE_INTERNAL_API_TOKEN` | Static bearer token for the internal API | - |
+
+### SendGrid
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `SENDGRID_ENABLED` | Register the `/webhooks/sendgrid` route | `false` |
+| `SENDGRID_WEBHOOK_VERIFICATION_KEY` | ECDSA public key (PEM); signatures are verified only when set | - |
+| `SENDGRID_INTERNAL_API_URL` | HTTP URL of the internal API | - |
+| `SENDGRID_INTERNAL_API_SOCKET` | Unix socket of the internal API (overrides the URL) | - |
+| `SENDGRID_INTERNAL_API_TOKEN` | Static bearer token for the internal API | - |
 
 ## Downstream authentication
 

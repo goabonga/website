@@ -63,3 +63,8 @@ if settings.stripe_enabled:
     from webhooks.routes.stripe import router as stripe_router
 
     app.include_router(stripe_router, prefix="/webhooks/stripe", tags=["stripe"])
+
+if settings.sendgrid_enabled:
+    from webhooks.routes.sendgrid import router as sendgrid_router
+
+    app.include_router(sendgrid_router, prefix="/webhooks/sendgrid", tags=["sendgrid"])

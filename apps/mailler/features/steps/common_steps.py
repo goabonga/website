@@ -210,3 +210,15 @@ def step_add_listed_to_group(context, group_alias):
         ),
     )
     assert context.response.status_code == 200, context.response.text
+
+
+@when('I send a raw POST to "{path}" with body "{body}" and header "{header_name}: {header_value}"')
+def step_send_raw_post(context, path, body, header_name, header_value):
+    context.response = _run(
+        context,
+        _get_client(context).post(
+            _resolve(context, path),
+            content=body.encode(),
+            headers={header_name: header_value},
+        ),
+    )

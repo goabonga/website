@@ -22,6 +22,7 @@ from internal.routes import (
     analytics_router,
     auth_router,
     billing_router,
+    contacts_router,
     mailler_router,
     team_router,
     vpn_router,
@@ -101,6 +102,7 @@ Internal Admin Dashboard for managing platform services.
 
 ## Features
 
+- **Contact management**: Manage contacts and contact groups
 - **Analytics**: View and manage analytics data
 - **Billing**: Manage billing and subscriptions
 - **VPN**: Manage VPN configurations
@@ -115,6 +117,7 @@ Access is controlled per resource via scoped permissions.
 
 ## Required Scopes
 
+- `contacts:write`, `contacts:delete` - Manage contacts
 - `analytics:write`, `analytics:delete` - Manage analytics
 - `billing:write`, `billing:admin` - Manage billing
 - `vpn:admin` - Manage VPN configurations
@@ -156,6 +159,7 @@ async def health_check() -> HealthResponse:
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
+app.include_router(contacts_router)
 app.include_router(mailler_router)
 app.include_router(team_router)
 app.include_router(vpn_router)

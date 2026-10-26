@@ -26,6 +26,19 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/analytics/ips` | session; scope `analytics:read` | List IP addresses with their statistics |
 | GET | `/analytics/ips/{ip_address:path}` | session; scope `analytics:read` | View detailed statistics for a specific IP address |
 | POST | `/analytics/reset` | session; scope `analytics:delete` | Reset all analytics data |
+| GET | `/contacts` | session; scope `contacts:read` | List all contacts with pagination, search, and filtering |
+| GET | `/contacts/new` | session; scope `contacts:write` | Show form to create a new contact |
+| POST | `/contacts/new` | session; scope `contacts:write` | Create a new contact |
+| GET | `/contacts/import` | session; scope `contacts:write` | Show CSV import form |
+| POST | `/contacts/import` | session; scope `contacts:write` | Import contacts from CSV file |
+| GET | `/contacts/export` | session; scope `contacts:read` | Export contacts to CSV file |
+| GET | `/contacts/{contact_id}` | session; scope `contacts:read` | View contact detail |
+| GET | `/contacts/{contact_id}/edit` | session; scope `contacts:write` | Show form to edit a contact |
+| POST | `/contacts/{contact_id}/edit` | session; scope `contacts:write` | Update a contact |
+| POST | `/contacts/{contact_id}/unsubscribe` | session; scope `contacts:write` | Mark a contact as unsubscribed |
+| POST | `/contacts/{contact_id}/delete` | session; scope `contacts:delete` | Delete a contact |
+| POST | `/contacts/bulk-delete` | session; scope `contacts:delete` | Delete multiple contacts |
+| POST | `/contacts/bulk-add-to-group` | session; scope `contacts:write` | Add multiple contacts to a group |
 | GET | `/mailler` | session; scope `mailler:read` | Mailler statistics dashboard |
 | GET | `/mailler/emails` | session; scope `mailler:read` | List all emails with pagination and filters |
 | GET | `/mailler/emails/{email_id}` | session; scope `mailler:read` | View email details |
@@ -104,6 +117,9 @@ The application defines no scope, it only checks the ones carried by the access 
 - `analytics:read` - checked by 5 routes
 - `analytics:write` - checked by 2 routes
 - `analytics:delete` - checked by 1 route
+- `contacts:read` - checked by 3 routes
+- `contacts:write` - checked by 8 routes
+- `contacts:delete` - checked by 2 routes
 - `mailler:read` - checked by 3 routes
 - `team:read` - checked by 9 routes
 - `team:write` - checked by 27 routes

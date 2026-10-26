@@ -44,3 +44,21 @@ class TestSettings:
         with patch.dict("os.environ", {"app_name": "lower"}, clear=True):
             s = Settings(_env_file=None)
         assert s.app_name == "lower"
+
+    def test_security_txt_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.security_contact == ""
+        assert s.security_expires == ""
+        assert s.security_encryption == ""
+        assert s.security_csaf == ""
+
+    def test_security_txt_env_override(self):
+        env = {
+            "SECURITY_CONTACT": "mailto:security@example.com",
+            "SECURITY_POLICY": "https://example.com/policy",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.security_contact == "mailto:security@example.com"
+        assert s.security_policy == "https://example.com/policy"

@@ -32,6 +32,7 @@ class TestAppConfiguration:
         from analytics.main import app
 
         assert app.url_path_for("health_check") == "/health"
+        assert app.url_path_for("security_txt") == "/.well-known/security.txt"
 
 
 class TestVersion:

@@ -1,9 +1,12 @@
 # mailler
 
-Internal email sending service. Other platform services submit emails to its
-HTTP API; mailler queues them in Celery and delivers them through one of
-several providers. The application is built as a sequence of features, each
-documented on its own page.
+Internal email sending service shared by several applications (its clients).
+The applications submit emails to its HTTP API; mailler queues them in Celery
+and delivers them through one of several providers, with the sender and the
+provider that the record of each client allows, and keeps the data of the
+clients apart. The application is built as a sequence of features, each
+documented on its own page; [onboarding an application](22-multi-client-onboarding.md)
+is the place to start to connect a new one.
 
 - Workspace member: `apps/mailler` (distribution `mailler`, import package `mailler`).
 - ASGI entry point: `mailler.main:app` (FastAPI).
@@ -34,6 +37,7 @@ documented on its own page.
 | [Idempotent sending](19-idempotency.md) | `Idempotency-Key` header on send and schedule |
 | [Status callbacks](20-status-callbacks.md) | Signed notifications of the status of the emails |
 | [Deployment](21-deployment.md) | Processes, backing services, configuration and secrets |
+| [Onboarding an application](22-multi-client-onboarding.md) | Checklist to connect an application, isolation rules |
 
 ## Running the tests
 

@@ -7,6 +7,12 @@ resolution-markers = [
     "python_full_version < '3.12'",
 ]
 
+[manifest]
+members = [
+    "e2e-support",
+    "website",
+]
+
 [[package]]
 name = "ansible-core"
 version = "2.19.14"
@@ -486,6 +492,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/ca/e9/5e99e56e03f946185
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/89/362146b2ec7d0d503f824ac8496c88f0408ee0d39203b02cc10feac08146/deepmerge-4.0.0-py3-none-any.whl", hash = "sha256:a36dd5810fc3b90bd3e0b681158221361d6a31a6109411b27b211b371fed6d5b", size = 15429, upload-time = "2026-10-25T19:25:28.012Z" },
 ]
+
+[[package]]
+name = "e2e-support"
+version = "0.0.0"
+source = { editable = "libs/e2e-support" }
 
 [[package]]
 name = "greenlet"

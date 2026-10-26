@@ -26,6 +26,7 @@ dependencies = [
     "redis>=5.2.0",
     "httpx>=0.28.0",
     "PyJWT[crypto]>=2.9.0",
+    "openai>=1.57.0",
 ]
 
 [tool.hatch.build.targets.wheel]

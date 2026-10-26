@@ -69,9 +69,15 @@ class Settings(BaseSettings):
     oauth2_trusted_issuers: str = ""
     jwks_cache_ttl: int = 3600
 
+    # OpenAI (for embeddings)
+    openai_api_key: str = ""
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimension: int = 1536
+
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {
+    "openai_api_key": "OPENAI_API_KEY",
     "oauth2_client_secret": "OAUTH2_CLIENT_SECRET",
 }
 

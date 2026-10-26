@@ -27,3 +27,4 @@ feature adds, its settings and how it is tested.
 | [Domain maintenance](10-domain-maintenance.md) | Certificate renewal, health checks, cleanup and purge |
 | [Administration statistics](11-admin-stats.md) | Overview, top clients, recent activity and dashboard |
 | [Command line interface](12-cli.md) | Seed, client and template commands |
+| [Python client SDK](13-python-sdk.md) | Typed sync and async client for the API |

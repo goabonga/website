@@ -15,3 +15,4 @@ feature adds, its settings and how it is tested.
 | Page | Feature |
 | --- | --- |
 | [Application foundation](00-foundation.md) | Settings, logging, database session, health check |
+| [OAuth2 authentication](01-oauth2-authentication.md) | Bearer token validation and scope checks |

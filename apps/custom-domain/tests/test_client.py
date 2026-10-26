@@ -1885,3 +1885,60 @@ class TestSSEEventFlatItems:
         assert e.event_type == "step_completed"
         assert e.payload["step"] == "certbot"
         assert e.timestamp is not None
+
+
+class TestTemplateOwnership:
+    """The SDK knows about shared and client-owned templates."""
+
+    def test_available_templates_are_listed(self):
+        client = CustomDomainClient(base_url="https://api.example.com", access_token="t")
+        answer = {
+            "items": [
+                {
+                    "id": 1,
+                    "slug": "default",
+                    "name": "Default",
+                    "description": None,
+                    "shared": True,
+                },
+                {"id": 2, "slug": "own", "name": "Own", "description": "d", "shared": False},
+            ],
+            "total": 2,
+        }
+        with patch.object(client, "_request", return_value=answer) as mock_req:
+            templates = client.domains.list_available_templates()
+        mock_req.assert_called_once_with("GET", "/templates")
+        assert [(t.slug, t.shared) for t in templates] == [("default", True), ("own", False)]
+        assert templates[1].description == "d"
+        client.close()
+
+    @pytest.mark.asyncio
+    async def test_async_available_templates(self):
+        client = AsyncCustomDomainClient(base_url="https://api.example.com", access_token="t")
+        answer = {"items": [{"id": 1, "slug": "s", "name": "S", "shared": True}], "total": 1}
+        with patch.object(client, "_request", return_value=answer):
+            templates = await client.list_available_templates()
+        assert templates[0].id == 1
+        await client.close()
+
+    def test_template_carries_slug_and_owner(self):
+        from custom_domain.client import Template
+
+        template = Template.from_dict({"id": 1, "name": "N", "slug": "n", "client_id": "tenant-a"})
+        assert (template.slug, template.client_id) == ("n", "tenant-a")
+        assert Template.from_dict({"id": 1, "name": "N"}).client_id is None
+
+    def test_create_sends_the_slug_and_the_owner(self):
+        client = CustomDomainClient(base_url="https://api.example.com", access_token="t")
+        with patch.object(client, "_request", return_value={"id": 1, "name": "N"}) as mock_req:
+            client.templates.create(
+                slug="n", name="N", http_template="h", https_template="s", client_id="tenant-a"
+            )
+        assert mock_req.call_args.kwargs["json"] == {
+            "slug": "n",
+            "name": "N",
+            "http_template": "h",
+            "https_template": "s",
+            "client_id": "tenant-a",
+        }
+        client.close()

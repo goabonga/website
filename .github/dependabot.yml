@@ -25,6 +25,7 @@ updates:
           - "mypy"
           - "pytest*"
           - "behave"
+          - "playwright"
           - "pre-commit"
           - "ansible-core"
     # Plain types here: the dependabot-rewrite workflow re-scopes each commit

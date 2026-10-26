@@ -232,6 +232,13 @@ def step_confirmation_asked(context, text):
     )
 
 
+@then('the page should have alerted "{text}"')
+def step_alerted(context, text):
+    assert any(text in message for message in context.dialogs.messages), (
+        f"dialogs shown: {context.dialogs.messages}"
+    )
+
+
 @then("the page should not have asked for any confirmation")
 def step_no_confirmation(context):
     assert not context.dialogs.messages, f"confirmations asked: {context.dialogs.messages}"

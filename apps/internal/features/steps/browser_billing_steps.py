@@ -53,3 +53,11 @@ def step_created_product_feature(context, label):
 @then("the billing service should not have been asked to create a SaaS app")
 def step_no_saas_app_created(context):
     context.mock_billing.create_saas_app.assert_not_awaited()
+
+
+@then("the product should have been created with the limits '{limits}'")
+def step_created_with_limits(context, limits):
+    import json
+
+    metadata = context.mock_billing.create_product.await_args.kwargs["metadata"]
+    assert metadata["limits"] == json.loads(limits), metadata

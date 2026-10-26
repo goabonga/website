@@ -99,6 +99,7 @@ argument_specs:
               path: /ws
               timeout: 1h
             custom_locations: []
+            webhook_paths: []
             client_max_body_size: ''
             csp: ''
             headers: []

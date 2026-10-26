@@ -141,6 +141,10 @@ python_app_component_defaults:
       timeout: 1h
     # Extra location blocks: [{path, config}].
     custom_locations: []
+    # Exact paths that receive webhooks from other services: reachable by
+    # POST from any address, even when allowed_hosts restricts the rest of the
+    # virtual host, and by no other method.
+    webhook_paths: []
     client_max_body_size: ""
     csp: ""
     # Extra add_header lines.

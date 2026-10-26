@@ -539,6 +539,9 @@ website_apps_catalog:
       enabled: true
     nginx:
       enabled: true
+      webhook_paths:
+        - /webhooks/billing
+        - /webhooks/custom-domain
     postgres:
       database: knowledge
       pgvector: true

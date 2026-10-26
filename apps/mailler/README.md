@@ -41,6 +41,17 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/contact-groups/{group_id}/available-contacts` | scope `mailler:read` | List contacts NOT in a group (available for adding) |
 | POST | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Add contacts to a group |
 | DELETE | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Remove contacts from a group |
+| GET | `/api/v1/campaigns` | scope `mailler:read` | List the campaigns of the calling client with pagination |
+| POST | `/api/v1/campaigns` | scope `mailler:write` | Create a new campaign |
+| GET | `/api/v1/campaigns/{campaign_id}` | scope `mailler:read` | Get campaign by ID |
+| PUT | `/api/v1/campaigns/{campaign_id}` | scope `mailler:write` | Update a campaign |
+| DELETE | `/api/v1/campaigns/{campaign_id}` | scope `mailler:write` | Delete a campaign |
+| POST | `/api/v1/campaigns/{campaign_id}/schedule` | scope `mailler:send` | Schedule a campaign for future sending |
+| POST | `/api/v1/campaigns/{campaign_id}/send` | scope `mailler:send` | Start sending a campaign immediately |
+| POST | `/api/v1/campaigns/{campaign_id}/pause` | scope `mailler:send` | Pause a sending campaign |
+| POST | `/api/v1/campaigns/{campaign_id}/resume` | scope `mailler:send` | Resume a paused campaign |
+| GET | `/api/v1/campaigns/{campaign_id}/preview` | scope `mailler:read` | Preview a campaign with sample data |
+| GET | `/api/v1/campaigns/{campaign_id}/sends` | scope `mailler:read` | List sends for a campaign |
 | GET | `/api/v1/unsubscribe` | public; HMAC-signed link | Display unsubscribe confirmation page |
 | POST | `/api/v1/unsubscribe` | public; HMAC-signed link | Process unsubscribe request |
 
@@ -52,7 +63,7 @@ Emails, templates, contacts, groups and campaigns belong to the client of the ac
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `mailler:send` - checked by 2 routes
-- `mailler:read` - checked by 16 routes
+- `mailler:send` - checked by 6 routes
+- `mailler:read` - checked by 20 routes
 - `mailler:stats` - checked by 1 route
-- `mailler:write` - checked by 13 routes
+- `mailler:write` - checked by 16 routes

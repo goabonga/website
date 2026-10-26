@@ -12,6 +12,7 @@ from mailler import __version__
 from mailler.config import settings
 from mailler.logging import get_logger, setup_logging
 from mailler.routes import (
+    campaigns,
     contact_groups,
     contacts,
     emails,
@@ -127,4 +128,5 @@ app.include_router(providers.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(contacts.router, prefix="/api/v1")
 app.include_router(contact_groups.router, prefix="/api/v1")
+app.include_router(campaigns.router, prefix="/api/v1")
 app.include_router(unsubscribe.router, prefix="/api/v1")

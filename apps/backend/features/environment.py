@@ -8,8 +8,13 @@ Starlette test client, and every external dependency is replaced by a fake
 or a patch. No database or Redis server is needed.
 """
 
-from backend.main import app
-from starlette.testclient import TestClient
+import os
+
+from backend.main import app  # noqa: E402
+
+os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.example.com")
+
+from starlette.testclient import TestClient  # noqa: E402
 
 
 def before_scenario(context, scenario):

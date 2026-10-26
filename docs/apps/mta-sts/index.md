@@ -17,3 +17,5 @@ documents one feature as it exists in the code.
    problems on stderr.
 3. [MTA-STS policy](03-policy.md) - the RFC 8461 policy served at
    `/.well-known/mta-sts.txt`.
+4. [Policy caching](04-caching.md) - `Cache-Control` header aligned on the
+   policy lifetime.

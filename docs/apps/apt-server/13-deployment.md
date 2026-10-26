@@ -12,7 +12,8 @@ that nginx proxies to. There is no Celery worker and no scheduler: the only
 background work is the lazy cleanup of unfinished chunked uploads and the
 share notification tasks, both inside the API process.
 
-Gunicorn is installed by the deployment, it is not imported by the package.
+Gunicorn is a dependency of the package, started from the application
+environment by the deployment, but not imported by it.
 Older deployments referenced the code as `app.main:app`; from this repository
 the import package is `apt_server`, so the path becomes `apt_server.main:app`.
 
@@ -102,8 +103,29 @@ loaded with `LoadCredentialEncrypted`), which the application reads from
 
 ## Ansible
 
-The `ansible/` collection of this repository provisions hosts (users,
-security, PostgreSQL, Redis, nginx, certificates). It does not yet contain a
-role that deploys this application, so the unit, the nginx virtual host and
-the credentials described above are currently managed outside this
-repository.
+The [python_app](../../ansible/roles/python_app.md) role deploys the unit from
+the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable
+`apt_server` in `website_apps_enabled` and it brings the single component
+`apt_server`, whose unit is named `apt-server`.
+
+- gunicorn listens on the socket `/run/apt-server/apt-server.sock`, with 2
+  workers and a `/health` probe. The `apt_server` database is migrated with
+  Alembic on each release and reached with the asyncpg driver.
+- The nginx virtual host (`apt` entry of `website_hostnames`) sets
+  `client_max_body_size 500M` and the `/_internal/` location aliased to
+  `/var/lib/apt-server/`, as shown above. That directory is the only extra
+  writable path of the unit (`APT_REPO_ROOT`).
+- The unit joins the `mailler` group and sends the share notifications through
+  `/run/mailler/mailler.sock` (`EMAIL_BACKEND=mailler`, `MAILLER_PROVIDER`
+  from `website_mailler_provider`, `MAILLER_AUTH_URL` on the `auth` host), so
+  enable `mailler` first. Redis is enabled on database 14 with the key prefix
+  `apt_server`.
+- The four secrets (`OAUTH2_CLIENT_SECRET`, `SESSION_SECRET`,
+  `MAILLER_CLIENT_SECRET`, `WEBHOOK_SECRET`) are required in
+  `website_secrets` ([Secrets](../../ansible/03-secrets.md)).
+- The catalog does not set `MAILLER_CLIENT_ID`, `APT_GPG_KEY_ID`,
+  `FRONTEND_HOST` and `APT_ORIGIN`: add them with `env_vars` in
+  `website_apps_overrides`. The GPG key must still be imported in the keyring
+  of the service account; nothing in the role does it, and the OAuth2 client
+  identifiers come from `website_oauth2_clients`.

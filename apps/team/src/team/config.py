@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     # LLM API keys (Anthropic; the OpenAI key is declared with the memory feature)
     anthropic_api_key: str = ""
 
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/10"
+    celery_result_backend: str = "redis://localhost:6379/11"
+
 
 @lru_cache
 def get_settings() -> Settings:

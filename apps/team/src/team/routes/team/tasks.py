@@ -52,7 +52,8 @@ async def create_task(
 ) -> Task:
     """Create a new task.
 
-    If agent_id is provided, the task is created in the assigned status.
+    If agent_id is provided, the task is immediately assigned and
+    dispatched to the Celery worker for execution.
     """
     await get_team_or_404(team_id, db)
 
@@ -73,6 +74,13 @@ async def create_task(
     await db.refresh(task)
 
     logger.info("Task %s created for team %s (status=%s)", task.id, team_id, task.status)
+
+    # Trigger immediate execution after commit
+    if data.agent_id:
+        from team.tasks.agent_runner import run_agent_task
+
+        run_agent_task.delay(str(task.id))
+        logger.info("Dispatched run_agent_task for task %s", task.id)
 
     return task
 

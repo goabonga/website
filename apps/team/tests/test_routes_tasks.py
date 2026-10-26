@@ -4,7 +4,7 @@
 """Tests for task management routes."""
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -55,7 +55,7 @@ class TestCreateTask:
 
     @pytest.mark.asyncio
     async def test_create_task_assigned_with_agent(self, auth_client: AsyncClient, mock_db_session):
-        """Task with agent_id is created in the assigned status."""
+        """Task with agent_id is assigned and dispatched immediately."""
         team_id = uuid4()
         agent_id = uuid4()
 
@@ -63,21 +63,25 @@ class TestCreateTask:
         mock_result.scalar_one_or_none.return_value = _make_team_mock()
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        response = await auth_client.post(
-            f"/platform/{team_id}/tasks",
-            json={
-                "title": "Analyze logs",
-                "agent_id": str(agent_id),
-                "input_data": {"prompt": "Check the logs"},
-                "priority": 50,
-            },
-        )
+        with patch("team.tasks.agent_runner.run_agent_task") as mock_run:
+            mock_run.delay = MagicMock()
 
-        assert response.status_code == 201
-        data = response.json()
-        assert data["title"] == "Analyze logs"
-        assert data["status"] == "assigned"
-        assert data["priority"] == 50
+            response = await auth_client.post(
+                f"/platform/{team_id}/tasks",
+                json={
+                    "title": "Analyze logs",
+                    "agent_id": str(agent_id),
+                    "input_data": {"prompt": "Check the logs"},
+                    "priority": 50,
+                },
+            )
+
+            assert response.status_code == 201
+            data = response.json()
+            assert data["title"] == "Analyze logs"
+            assert data["status"] == "assigned"
+            assert data["priority"] == 50
+            mock_run.delay.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_create_task_with_all_fields(self, auth_client: AsyncClient, mock_db_session):

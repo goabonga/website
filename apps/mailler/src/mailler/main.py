@@ -23,17 +23,68 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     logger.info("Mailler API starting")
     yield
+    # Cleanup
+    from mailler.auth import introspection_client, jwks_manager, token_exchange_client
+
+    try:
+        await jwks_manager.close()
+    except Exception as e:
+        logger.warning("Error closing jwks_manager: %s", e)
+    try:
+        await token_exchange_client.close()
+    except Exception as e:
+        logger.warning("Error closing token_exchange_client: %s", e)
+    try:
+        await introspection_client.close()
+    except Exception as e:
+        logger.warning("Error closing introspection_client: %s", e)
     logger.info("Mailler API shutting down")
 
 
+def get_swagger_ui_oauth2_config() -> dict:
+    """Get Swagger UI OAuth2 configuration.
+
+    Configures PKCE-based OAuth2 flow for Swagger documentation.
+    Only requests openid, profile, and email scopes - the server
+    validates actual permissions via token exchange.
+    """
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
+swagger_config = get_swagger_ui_oauth2_config()
+
 app = FastAPI(
     title="Mailler API",
-    description="Internal email sending service supporting multiple providers.",
+    description="""
+Internal email sending service supporting multiple providers.
+
+## Features
+
+- **OAuth2 authentication**: PKCE-based authentication with scope validation
+
+## Authentication
+
+This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
+only `openid`, `profile`, and `email` scopes. The server validates that
+the user has the required `mailler:*` scopes via token exchange.
+    """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
+    **swagger_config,
 )
 
 # CORS middleware

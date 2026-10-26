@@ -23,7 +23,11 @@ celery_app = Celery(
     "billing",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["billing.tasks.usage_tasks", "billing.tasks.stripe_sync_tasks"],
+    include=[
+        "billing.tasks.usage_tasks",
+        "billing.tasks.stripe_sync_tasks",
+        "billing.tasks.webhook_tasks",
+    ],
 )
 
 # Celery configuration

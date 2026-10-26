@@ -3,7 +3,10 @@
 
 """SaaS webhook dispatch service.
 
-Sends billing events to registered SaaS applications.
+Sends billing events to registered SaaS applications. The delivery is done
+by a Celery task (``billing.tasks.webhook_tasks``) that retries failures with
+a backoff; the event, including its identifier, is built once and every
+attempt sends the same body.
 
 Each event carries a stable identifier (``id``): it is derived from the
 Stripe event that caused it, so the same Stripe event always produces the
@@ -14,6 +17,7 @@ The body is signed with the webhook secret of the SaaS application
 (HMAC-SHA256, hex) and the signature is sent in ``X-Billing-Signature``.
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -55,11 +59,16 @@ class WebhookDeliveryError(Exception):
         self.retryable = retryable
 
 
+def new_http_client() -> httpx.AsyncClient:
+    """Create an HTTP client for the deliveries of one Celery task (it has its own event loop)."""
+    return httpx.AsyncClient(timeout=settings.saas_webhook_timeout)
+
+
 def get_http_client() -> httpx.AsyncClient:
     """Get or create HTTP client for webhook dispatch."""
     global _http_client
     if _http_client is None:
-        _http_client = httpx.AsyncClient(timeout=settings.saas_webhook_timeout)
+        _http_client = new_http_client()
     return _http_client
 
 
@@ -116,8 +125,18 @@ def build_event(
     }
 
 
-async def deliver_event(saas_app: SaasApp, event: dict[str, Any]) -> None:
+async def deliver_event(
+    saas_app: SaasApp,
+    event: dict[str, Any],
+    client: httpx.AsyncClient | None = None,
+) -> None:
     """Send an event to the webhook URL of a SaaS application, once.
+
+    Args:
+        saas_app: The SaaS application to notify.
+        event: The event, as built by ``build_event``.
+        client: HTTP client to use. A Celery task passes a client bound to its own
+            event loop; the shared client is used otherwise.
 
     Raises:
         WebhookDeliveryError: If the receiver cannot be reached or refuses the event.
@@ -133,7 +152,7 @@ async def deliver_event(saas_app: SaasApp, event: dict[str, Any]) -> None:
         headers[SIGNATURE_HEADER] = sign_payload(payload, saas_app.webhook_secret)
 
     try:
-        client = get_http_client()
+        client = client or get_http_client()
         response = await client.post(
             saas_app.webhook_url,
             content=payload,
@@ -180,11 +199,37 @@ async def dispatch_webhook(
 
     event_id = build_event_id(saas_app.id, source_event_id, event_type, subscription_id)
     event = build_event(saas_app, event_type, data, event_id)
+    # The body is fixed now (datetimes become strings): every attempt sends the same bytes
+    event = json.loads(json.dumps(event, default=str))
+    return await schedule_delivery(saas_app, event)
+
+
+async def schedule_delivery(saas_app: SaasApp, event: dict[str, Any]) -> bool:
+    """Queue the delivery of an event; deliver it at once if the queue is unavailable.
+
+    Returns:
+        True if the event was queued or delivered.
+    """
+    from billing.tasks.webhook_tasks import deliver_saas_webhook
+
+    try:
+        await asyncio.to_thread(
+            deliver_saas_webhook.apply_async,
+            args=[saas_app.id, event],
+            queue=settings.celery_queue,
+            retry=False,  # a broker that is down must not hold the Stripe event: fall back below
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            f"Could not queue webhook {event['id']} for {saas_app.slug} ({e}); delivering it now"
+        )
+
     try:
         await deliver_event(saas_app, event)
         return True
     except WebhookDeliveryError as e:
-        logger.error(f"Webhook failed for {saas_app.slug}: {event_type} ({event_id}) - {e}")
+        logger.error(f"Webhook failed for {saas_app.slug}: {event['type']} ({event['id']}) - {e}")
         return False
 
 

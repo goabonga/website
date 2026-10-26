@@ -26,6 +26,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Partitioning of the API per SaaS application: OAuth clients are bound to the applications they may act on, with an admin API and the `billing-admin` command
 - Stripe webhook processing and subscription events pushed to each SaaS application
 - Celery tasks for usage reporting, cleanup and Stripe catalog sync
+- Delivery of the notifications to each SaaS application through Celery, with retries and backoff
 
 ## Routes and scopes
 

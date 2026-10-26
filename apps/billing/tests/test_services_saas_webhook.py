@@ -27,6 +27,7 @@ from billing.services.saas_webhook import (
     dispatch_webhook,
     get_http_client,
     get_saas_app_by_id,
+    new_http_client,
     notify_subscription_created,
     notify_subscription_deleted,
     notify_subscription_updated,
@@ -44,6 +45,13 @@ def _reset_http_client():
     saas_webhook._http_client = None
     yield
     saas_webhook._http_client = None
+
+
+@pytest.fixture(autouse=True)
+def queue():
+    """Replace the Celery queue: nothing in these tests may reach a broker."""
+    with patch("billing.tasks.webhook_tasks.deliver_saas_webhook.apply_async") as apply_async:
+        yield apply_async
 
 
 @pytest.fixture
@@ -360,6 +368,19 @@ def _status_error(status_code: int) -> httpx.HTTPStatusError:
 class TestDeliverEvent:
     """One attempt, with a classified failure."""
 
+    async def test_an_explicit_client_is_used_instead_of_the_shared_one(self, saas_app):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post.return_value = _ok_response()
+
+        await deliver_event(saas_app, {"id": "e", "type": "t"}, client=client)
+
+        client.post.assert_called_once()
+
+    def test_new_http_client_uses_the_configured_timeout(self, monkeypatch):
+        monkeypatch.setattr(settings, "saas_webhook_timeout", 2.5)
+
+        assert new_http_client().timeout.read == 2.5
+
     async def test_success_signs_the_exact_body(self, saas_app, mock_http_client):
         mock_http_client.post.return_value = _ok_response()
         event = {"id": "evt-1", "type": "subscription.created", "data": {"x": 1}}
@@ -431,102 +452,74 @@ class TestDeliverEvent:
 
 
 class TestDispatchWebhook:
-    """Tests for dispatch_webhook."""
+    """dispatch_webhook builds the event once and queues its delivery."""
 
-    async def test_success_with_signature(self, saas_app, mock_http_client):
-        """Successful dispatch with HMAC signature header."""
-        mock_http_client.post.return_value = _ok_response()
-
+    async def test_queues_the_event(self, saas_app, queue):
         result = await dispatch_webhook(
             saas_app, "subscription.created", {"key": "value"}, "evt_1", "sub-1"
         )
 
         assert result is True
-        mock_http_client.post.assert_called_once()
-        call_kwargs = mock_http_client.post.call_args[1]
-        assert call_kwargs["headers"]["Content-Type"] == "application/json"
-        assert "X-Billing-Signature" in call_kwargs["headers"]
-
-        payload = json.loads(call_kwargs["content"])
-        assert payload["type"] == "subscription.created"
-        assert payload["data"] == {"key": "value"}
-        assert payload["saas_slug"] == "test-app"
-        assert payload["saas_id"] == "saas-uuid-1"
-        assert payload["id"] == build_event_id(
+        queue.assert_called_once()
+        kwargs = queue.call_args.kwargs
+        assert kwargs["queue"] == settings.celery_queue
+        assert kwargs["retry"] is False
+        app_id, event = kwargs["args"]
+        assert app_id == "saas-uuid-1"
+        assert event["type"] == "subscription.created"
+        assert event["data"] == {"key": "value"}
+        assert event["saas_slug"] == "test-app"
+        assert event["saas_id"] == "saas-uuid-1"
+        assert event["id"] == build_event_id(
             "saas-uuid-1", "evt_1", "subscription.created", "sub-1"
         )
-        assert "created" in payload
+        assert "created" in event
 
-    async def test_a_redelivered_stripe_event_keeps_its_id(self, saas_app, mock_http_client):
-        mock_http_client.post.return_value = _ok_response()
+    async def test_the_queued_event_is_json_serializable(self, saas_app, queue):
+        """Datetimes are turned into strings before they reach the broker."""
+        data = {"when": datetime(2025, 1, 1, tzinfo=UTC)}
 
+        await dispatch_webhook(saas_app, "subscription.updated", data, "evt_1", "sub-1")
+
+        event = queue.call_args.kwargs["args"][1]
+        assert json.loads(json.dumps(event))["data"]["when"] == str(
+            datetime(2025, 1, 1, tzinfo=UTC)
+        )
+
+    async def test_a_redelivered_stripe_event_keeps_its_id(self, saas_app, queue):
         await dispatch_webhook(saas_app, "subscription.updated", {}, "evt_9", "sub-1")
         await dispatch_webhook(saas_app, "subscription.updated", {}, "evt_9", "sub-1")
 
-        ids = [
-            json.loads(call[1]["content"])["id"] for call in mock_http_client.post.call_args_list
-        ]
+        ids = [call.kwargs["args"][1]["id"] for call in queue.call_args_list]
         assert ids[0] == ids[1]
 
-    async def test_no_webhook_url_returns_false(self, saas_app_no_url):
-        """Returns False when saas_app has no webhook_url."""
+    async def test_no_webhook_url_returns_false_and_queues_nothing(self, saas_app_no_url, queue):
         result = await dispatch_webhook(
             saas_app_no_url, "subscription.created", {"key": "value"}, "evt_1", "sub-1"
         )
-        assert result is False
-
-    async def test_http_status_error_returns_false(self, saas_app, mock_http_client):
-        """Returns False on HTTP status error."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_http_client.post.return_value = mock_response
-        mock_response.raise_for_status.side_effect = _status_error(500)
-
-        result = await dispatch_webhook(saas_app, "subscription.created", {"data": 1}, "e", "s")
 
         assert result is False
+        queue.assert_not_called()
 
-    async def test_generic_exception_returns_false(self, saas_app, mock_http_client):
-        """Returns False on any unexpected exception."""
-        mock_http_client.post.side_effect = Exception("Connection refused")
-
-        result = await dispatch_webhook(saas_app, "subscription.created", {"data": 1}, "e", "s")
-
-        assert result is False
-
-    async def test_no_webhook_secret_no_signature_header(
-        self, saas_app_no_secret, mock_http_client
+    async def test_broker_down_falls_back_to_an_immediate_delivery(
+        self, saas_app, queue, mock_http_client
     ):
-        """When webhook_secret is None, X-Billing-Signature should NOT be sent."""
+        queue.side_effect = ConnectionError("broker down")
         mock_http_client.post.return_value = _ok_response()
 
-        result = await dispatch_webhook(saas_app_no_secret, "test.event", {"x": 1}, "e", "s")
+        result = await dispatch_webhook(saas_app, "test.event", {"x": 1}, "e", "s")
 
         assert result is True
-        call_kwargs = mock_http_client.post.call_args[1]
-        assert "X-Billing-Signature" not in call_kwargs["headers"]
+        body = mock_http_client.post.call_args[1]["content"]
+        assert json.loads(body)["type"] == "test.event"
 
-    async def test_posts_to_correct_url(self, saas_app, mock_http_client):
-        """Verify the POST is sent to saas_app.webhook_url."""
-        mock_http_client.post.return_value = _ok_response()
+    async def test_broker_down_and_receiver_down_returns_false(
+        self, saas_app, queue, mock_http_client
+    ):
+        queue.side_effect = ConnectionError("broker down")
+        mock_http_client.post.side_effect = httpx.ConnectError("refused")
 
-        await dispatch_webhook(saas_app, "test.event", {}, "e", "s")
-
-        call_args = mock_http_client.post.call_args
-        assert call_args[0][0] == "https://app.example.com/webhooks"
-
-    async def test_signature_matches_payload(self, saas_app, mock_http_client):
-        """X-Billing-Signature should match sign_payload(payload, secret)."""
-        mock_http_client.post.return_value = _ok_response()
-
-        await dispatch_webhook(saas_app, "test.event", {"id": 42}, "e", "s")
-
-        call_kwargs = mock_http_client.post.call_args[1]
-        sent_payload = call_kwargs["content"]
-        sent_sig = call_kwargs["headers"]["X-Billing-Signature"]
-
-        expected_sig = sign_payload(sent_payload, saas_app.webhook_secret)
-        assert sent_sig == expected_sig
+        assert await dispatch_webhook(saas_app, "test.event", {}, "e", "s") is False
 
 
 # =========================================================================
@@ -612,25 +605,20 @@ class TestNotifySubscription:
         assert data["plan_name"] is None
         assert data["plan_slug"] is None
 
-    async def test_end_to_end_payload_is_signed_and_identified(
-        self, mock_db, mock_http_client, notify, event_type
+    async def test_queued_payload_carries_slug_plan_price_limits_and_id(
+        self, mock_db, queue, notify, event_type
     ):
         """Through the real dispatch: slug, plan slug, price id, limits and event id."""
         sub = _make_subscription_mock(limits={"max_seats": 5})
-        sub.customer.saas_app.webhook_url = "https://app.example.com/webhooks"
-        sub.customer.saas_app.webhook_secret = "whsec_test"
         mock_db.execute.return_value = _found(sub)
-        mock_http_client.post.return_value = _ok_response()
 
         assert await notify(mock_db, sub, "evt_5") is True
 
-        body = mock_http_client.post.call_args[1]["content"]
-        event = json.loads(body)
+        app_id, event = queue.call_args.kwargs["args"]
+        assert app_id == "saas-uuid-1"
         assert event["type"] == event_type
         assert event["saas_slug"] == "test-app"
         assert event["id"] == build_event_id("saas-uuid-1", "evt_5", event_type, "sub-uuid-1")
         assert event["data"]["plan_slug"] == "pro"
         assert event["data"]["price_id"] == "price-uuid-1"
         assert event["data"]["limits"] == {"max_seats": 5}
-        headers = mock_http_client.post.call_args[1]["headers"]
-        assert headers["X-Billing-Signature"] == sign_payload(body, "whsec_test")

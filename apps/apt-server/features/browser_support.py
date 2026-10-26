@@ -13,9 +13,11 @@ from urllib.parse import urlparse
 
 from apt_server.auth import introspection_client, jwks_manager, userinfo_client
 from apt_server.config import settings
+from apt_server.db.models import Package
 from apt_server.main import app
 from e2e_support import behave_hooks as e2e
 from e2e_support.oidc import Client, FakeOIDCProvider
+from sqlalchemy import select
 
 #: Hosts of the servers started by the stack.
 LOOPBACK = ("127.0.0.1", "localhost")
@@ -30,6 +32,15 @@ SESSION_SECRET = "apt-session-secret"
 
 def provider_of(context) -> FakeOIDCProvider:
     return context.e2e.servers["provider"].app
+
+
+def package_id(context, name):
+    """The id of the package called ``name`` in the scenario database."""
+
+    async def find(session):
+        return (await session.execute(select(Package.id).where(Package.name == name))).scalar_one()
+
+    return context.run_db(find)
 
 
 def _use_fresh_http_clients() -> None:

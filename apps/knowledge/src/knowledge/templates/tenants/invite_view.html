@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation - Knowledge</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .tenant-info {
+            background-color: var(--bg-input);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .tenant-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .tenant-role {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 12px;
+            background-color: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4c9aed;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .user-info {
+            background-color: var(--bg-input);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+        }
+
+        .user-info strong {
+            color: var(--accent-green);
+        }
+
+        .note {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">Knowledge<span>.</span></div>
+
+        <h1>You've been invited!</h1>
+        <p class="subtitle">Join an organization on Knowledge</p>
+
+        <div class="tenant-info">
+            <div class="tenant-name">{{ tenant.name }}</div>
+            <div class="tenant-role">
+                Invited as <span class="badge">{{ invitation.role.value | capitalize }}</span>
+            </div>
+        </div>
+
+        {% if user %}
+        <div class="user-info">
+            Logged in as <strong>{{ user.display_name or user.email }}</strong>
+        </div>
+
+        <form method="post" action="/tenants/invites/{{ invitation.token }}/accept">
+            <button type="submit" class="btn btn-primary">Accept Invitation</button>
+        </form>
+
+        <a href="/dashboard" class="btn btn-secondary">Maybe Later</a>
+
+        {% else %}
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+            Sign in or create an account to accept this invitation for <strong>{{ invitation.email }}</strong>
+        </p>
+
+        <a href="/auth/login?redirect=/tenants/invites/{{ invitation.token }}" class="btn btn-primary">
+            Sign In to Accept
+        </a>
+
+        <a href="/auth/signup?redirect=/tenants/invites/{{ invitation.token }}" class="btn btn-secondary">
+            Create an Account
+        </a>
+        {% endif %}
+
+        <p class="note">
+            This invitation expires on {{ invitation.expires_at.strftime('%B %d, %Y at %H:%M UTC') }}
+        </p>
+    </div>
+</body>
+</html>

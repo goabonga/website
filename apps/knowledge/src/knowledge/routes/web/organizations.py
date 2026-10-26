@@ -3,6 +3,8 @@
 
 """Organization management web routes."""
 
+import secrets
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -12,15 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from knowledge.auth.dependencies import (
     ACTIVE_TENANT_COOKIE,
+    get_token_from_cookie,
     get_web_auth_context,
 )
 from knowledge.auth.models import WebAuthContext
+from knowledge.config import get_settings
 from knowledge.database import get_db
 from knowledge.logging import get_logger
 from knowledge.models import (
     Organization,
+    OrganizationInvitation,
     OrganizationMember,
 )
+from knowledge.models.enums import InvitationStatus, OrganizationMemberRole
 from knowledge.services.billing import BillingAPIError, checkout_redirect_urls, get_billing_client
 from knowledge.services.quotas import QuotaService
 from knowledge.templating import create_templates
@@ -429,3 +435,505 @@ async def update_organization_settings(
     await db.commit()
 
     return RedirectResponse(url="/organizations/settings", status_code=302)
+
+
+@router.get("/members", response_class=HTMLResponse)
+async def organization_members(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Organization members page."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    if not auth_result.is_tenant_admin:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:admin",
+            },
+            status_code=403,
+        )
+
+    organization = auth_result.tenant
+
+    # Get members
+    result = await db.execute(
+        select(OrganizationMember)
+        .where(OrganizationMember.organization_id == organization.id)
+        .order_by(OrganizationMember.created_at)
+    )
+    members = result.scalars().all()
+
+    # Get pending invitations
+    result = await db.execute(
+        select(OrganizationInvitation).where(
+            OrganizationInvitation.organization_id == organization.id,
+            OrganizationInvitation.status == InvitationStatus.PENDING,
+            OrganizationInvitation.expires_at > datetime.now(UTC),
+        )
+    )
+    invitations = result.scalars().all()
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/members.html",  # Keep template path for now
+        {
+            **(await _get_common_context(request, db, auth_result, "organization_members")),
+            "members": members,
+            "invitations": invitations,
+        },
+    )
+
+
+@router.get("/invite", response_class=HTMLResponse)
+async def invite_form(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Show invitation form."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    if not auth_result.is_tenant_admin:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:admin",
+            },
+            status_code=403,
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/invite.html",  # Keep template path for now
+        {
+            **(await _get_common_context(request, db, auth_result, "organization_members")),
+        },
+    )
+
+
+@router.post("/invite", response_class=HTMLResponse)
+async def create_invitation(
+    request: Request,
+    email: str = Form(...),
+    role: str = Form("member"),
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Create a new invitation."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    if not auth_result.is_tenant_admin:
+        return templates.TemplateResponse(
+            request,
+            "errors/403.html",
+            {
+                "user": auth_result.user,
+                "required_scope": "organization:admin",
+            },
+            status_code=403,
+        )
+
+    organization = auth_result.tenant
+    user = auth_result.user
+
+    # Validate role
+    try:
+        member_role = OrganizationMemberRole(role)
+        # Only owners can invite other owners
+        if member_role == OrganizationMemberRole.OWNER and not auth_result.is_tenant_owner:
+            member_role = OrganizationMemberRole.ADMIN
+    except ValueError:
+        member_role = OrganizationMemberRole.MEMBER
+
+    # Check if email already has a pending invitation
+    result = await db.execute(
+        select(OrganizationInvitation).where(
+            OrganizationInvitation.organization_id == organization.id,
+            OrganizationInvitation.email == email.lower(),
+            OrganizationInvitation.status == InvitationStatus.PENDING,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        return templates.TemplateResponse(
+            request,
+            "tenants/invite.html",  # Keep template path for now
+            {
+                **(await _get_common_context(request, db, auth_result, "organization_members")),
+                "error": f"An invitation for {email} is already pending.",
+                "form_email": email,
+                "form_role": role,
+            },
+        )
+
+    # Create invitation
+    invitation = OrganizationInvitation(
+        organization_id=organization.id,
+        email=email.lower(),
+        role=member_role,
+        token=secrets.token_urlsafe(32),
+        invited_by=user.id,
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+    )
+    db.add(invitation)
+    await db.commit()
+
+    # Send invitation email
+    from knowledge.tasks import send_workspace_invitation_email
+
+    settings = get_settings()
+    base_url = settings.app_base_url.rstrip("/")
+    invitation_url = f"{base_url}/tenants/invites/{invitation.token}"
+    inviter_name = user.display_name or user.email or "A team member"
+
+    send_workspace_invitation_email.delay(
+        to=email.lower(),
+        workspace_name=organization.name,
+        inviter_name=inviter_name,
+        role=member_role.value,
+        invitation_url=invitation_url,
+        year=datetime.now(UTC).year,
+    )
+
+    return RedirectResponse(url="/organizations/members", status_code=302)
+
+
+@router.post("/invitations/{invitation_id}/resend")
+async def resend_invitation(
+    request: Request,
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Resend an invitation email."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+    user = auth_result.user
+
+    result = await db.execute(
+        select(OrganizationInvitation).where(
+            OrganizationInvitation.id == invitation_id,
+            OrganizationInvitation.organization_id == organization.id,
+            OrganizationInvitation.status == InvitationStatus.PENDING,
+            OrganizationInvitation.expires_at > datetime.now(UTC),
+        )
+    )
+    invitation = result.scalar_one_or_none()
+
+    if invitation:
+        from knowledge.tasks import send_workspace_invitation_email
+
+        settings = get_settings()
+        base_url = settings.app_base_url.rstrip("/")
+        invitation_url = f"{base_url}/tenants/invites/{invitation.token}"
+        inviter_name = user.display_name or user.email or "A team member"
+
+        send_workspace_invitation_email.delay(
+            to=invitation.email,
+            workspace_name=organization.name,
+            inviter_name=inviter_name,
+            role=invitation.role.value,
+            invitation_url=invitation_url,
+            year=datetime.now(UTC).year,
+        )
+
+    return RedirectResponse(url="/organizations/members", status_code=302)
+
+
+@router.post("/invitations/{invitation_id}/revoke")
+async def revoke_invitation(
+    request: Request,
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Revoke a pending invitation."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+
+    result = await db.execute(
+        select(OrganizationInvitation).where(
+            OrganizationInvitation.id == invitation_id,
+            OrganizationInvitation.organization_id == organization.id,
+            OrganizationInvitation.status == InvitationStatus.PENDING,
+        )
+    )
+    invitation = result.scalar_one_or_none()
+
+    if invitation:
+        invitation.status = InvitationStatus.REVOKED
+        await db.commit()
+
+    return RedirectResponse(url="/organizations/members", status_code=302)
+
+
+@router.post("/members/{member_id}/remove")
+async def remove_member(
+    request: Request,
+    member_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Remove a member from the organization."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+    user = auth_result.user
+
+    result = await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.id == member_id,
+            OrganizationMember.organization_id == organization.id,
+        )
+    )
+    member = result.scalar_one_or_none()
+
+    if member:
+        # Can't remove yourself
+        if member.user_id == user.id:
+            return RedirectResponse(url="/organizations/members", status_code=302)
+
+        # Can't remove owner unless you're owner
+        if member.role == OrganizationMemberRole.OWNER and not auth_result.is_tenant_owner:
+            return RedirectResponse(url="/organizations/members", status_code=302)
+
+        await db.delete(member)
+        await db.commit()
+
+    return RedirectResponse(url="/organizations/members", status_code=302)
+
+
+@router.post("/members/{member_id}/role")
+async def update_member_role(
+    request: Request,
+    member_id: UUID,
+    role: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    auth_result: WebAuthContext | RedirectResponse = Depends(get_web_auth_context),
+):
+    """Update a member's role."""
+    if isinstance(auth_result, RedirectResponse):
+        return auth_result
+
+    if not auth_result.tenant or not auth_result.is_tenant_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    organization = auth_result.tenant
+    user = auth_result.user
+
+    result = await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.id == member_id,
+            OrganizationMember.organization_id == organization.id,
+        )
+    )
+    member = result.scalar_one_or_none()
+
+    if member:
+        # Can't change your own role
+        if member.user_id == user.id:
+            return RedirectResponse(url="/organizations/members", status_code=302)
+
+        try:
+            new_role = OrganizationMemberRole(role)
+            # Only owners can promote to owner
+            if new_role == OrganizationMemberRole.OWNER and not auth_result.is_tenant_owner:
+                new_role = OrganizationMemberRole.ADMIN
+            member.role = new_role
+            await db.commit()
+        except ValueError:
+            pass
+
+    return RedirectResponse(url="/organizations/members", status_code=302)
+
+
+@router.get("/invites/{token}", response_class=HTMLResponse)
+async def view_invitation(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """View an invitation (public page)."""
+    result = await db.execute(
+        select(OrganizationInvitation).where(OrganizationInvitation.token == token)
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        return templates.TemplateResponse(
+            request,
+            "tenants/invite_error.html",  # Keep template path for now
+            {
+                "user": None,
+                "error": "Invitation not found",
+            },
+        )
+
+    if invitation.status != InvitationStatus.PENDING:
+        return templates.TemplateResponse(
+            request,
+            "tenants/invite_error.html",  # Keep template path for now
+            {
+                "user": None,
+                "error": f"This invitation has been {invitation.status.value}",
+            },
+        )
+
+    if invitation.expires_at < datetime.now(UTC):
+        invitation.status = InvitationStatus.EXPIRED
+        await db.commit()
+        return templates.TemplateResponse(
+            request,
+            "tenants/invite_error.html",  # Keep template path for now
+            {
+                "user": None,
+                "error": "This invitation has expired",
+            },
+        )
+
+    # Get organization
+    result = await db.execute(
+        select(Organization).where(Organization.id == invitation.organization_id)
+    )
+    organization = result.scalar_one_or_none()
+
+    # Check if user is logged in
+    access_token = await get_token_from_cookie(request)
+    user = None
+
+    if access_token:
+        from knowledge.auth.jwt import get_jwt_validator
+        from knowledge.auth.models import User
+
+        try:
+            jwt_validator = get_jwt_validator()
+            claims = await jwt_validator.validate_token_with_introspection(access_token)
+            user = User.from_jwt_claims(claims)
+        except Exception:
+            pass
+
+    return templates.TemplateResponse(
+        request,
+        "tenants/invite_view.html",  # Keep template path for now
+        {
+            "user": user,
+            "invitation": invitation,
+            "tenant": organization,  # Backward compat
+            "organization": organization,
+        },
+    )
+
+
+@router.post("/invites/{token}/accept")
+async def accept_invitation(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Accept an invitation."""
+    # Must be logged in
+    access_token = await get_token_from_cookie(request)
+    if not access_token:
+        return RedirectResponse(
+            url=f"/auth/login?redirect=/organizations/invites/{token}",
+            status_code=302,
+        )
+
+    from knowledge.auth.jwt import get_jwt_validator
+    from knowledge.auth.models import User
+
+    try:
+        jwt_validator = get_jwt_validator()
+        claims = await jwt_validator.validate_token_with_introspection(access_token)
+        user = User.from_jwt_claims(claims)
+    except Exception:
+        return RedirectResponse(
+            url=f"/auth/login?redirect=/organizations/invites/{token}",
+            status_code=302,
+        )
+
+    # Get invitation
+    result = await db.execute(
+        select(OrganizationInvitation).where(OrganizationInvitation.token == token)
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation or invitation.status != InvitationStatus.PENDING:
+        return RedirectResponse(url=f"/organizations/invites/{token}", status_code=302)
+
+    if invitation.expires_at < datetime.now(UTC):
+        invitation.status = InvitationStatus.EXPIRED
+        await db.commit()
+        return RedirectResponse(url=f"/organizations/invites/{token}", status_code=302)
+
+    # Check if already a member
+    result = await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.organization_id == invitation.organization_id,
+            OrganizationMember.user_id == user.id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        # Already a member, just mark invitation as accepted
+        invitation.status = InvitationStatus.ACCEPTED
+        invitation.accepted_at = datetime.now(UTC)
+        await db.commit()
+    else:
+        # Create membership
+        member = OrganizationMember(
+            organization_id=invitation.organization_id,
+            user_id=user.id,
+            role=invitation.role,
+        )
+        db.add(member)
+
+        invitation.status = InvitationStatus.ACCEPTED
+        invitation.accepted_at = datetime.now(UTC)
+        await db.commit()
+
+    # Set active tenant cookie and redirect to dashboard
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    response.set_cookie(
+        key=ACTIVE_TENANT_COOKIE,  # Keep cookie name for backward compat
+        value=str(invitation.organization_id),
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+    )
+    return response

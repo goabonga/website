@@ -15,8 +15,8 @@ code base.
 | `backend-worker` | `celery -A backend.celery:celery_app worker --queues=backend --concurrency=4` | Runs Celery tasks (the conversation sync) |
 | `backend-beat` | `celery -A backend.celery:celery_app beat` | Enqueues the periodic `sync_dirty_conversations` task; exactly one instance may run |
 
-Gunicorn is a dependency of the package, started from the application
-environment. Older deployments referenced the code as `app.main:app` and
+Gunicorn is a dependency of the package: the Ansible role starts
+`bin/gunicorn` of the application environment. Older deployments referenced the code as `app.main:app` and
 `app.celery:celery_app`; from this repository the import package is
 `backend`, so those paths become `backend.main:app` and
 `backend.celery:celery_app`.
@@ -71,14 +71,32 @@ The production environment files still define `OAUTH2_CLIENT_REDIS_URL`,
 which this application does not read: the token introspection and exchange
 caches use `REDIS_URL` and stay disabled while it is empty. Define
 `REDIS_URL` (and optionally `REDIS_KEY_PREFIX`) to enable them; the effect of
-leaving it empty is one introspection request per authenticated call.
+leaving it empty is one introspection request per authenticated call. The
+Ansible catalog does not set `REDIS_URL` either: add it with `env_vars` in
+`website_apps_overrides` to enable the caches.
 
 ## Ansible
 
-The `ansible/` collection of this repository provisions hosts (users,
-security, PostgreSQL, Redis, nginx, certificates). It does not yet contain a
-role that deploys this application, so the three units above are currently
-installed by the production inventory outside this repository.
+The [python_app](../../ansible/roles/python_app.md) role deploys the three
+units from the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable
+`backend` in `website_apps_enabled` and it brings the components `backend`,
+`backend_worker` and `backend_beat`.
+
+- `backend` runs gunicorn on the socket `/run/backend/backend.sock`, with a
+  `/health` probe, nginx on the public host name of the API
+  (`website_hostnames`), and Alembic migrations on each release. The database
+  is the shared `application` database, with `pgvector`.
+- `backend_worker` consumes the queue `backend` with 4 processes;
+  `backend_beat` runs the schedule. Redis databases are 4 (prompt cache),
+  2 (rate limiter) and 3 (sessions, used by the API and the worker), with
+  the Celery broker and result backend taken from the shared Redis settings.
+- The secrets ([Secrets](../../ansible/03-secrets.md)) are
+  `OPENAI_API_KEY` and `OAUTH2_CLIENT_SECRET` for the API, and
+  `OPENAI_API_KEY` for the worker. The OAuth2 client identifiers come from
+  `website_oauth2_clients`.
+- Every other variable of the table above keeps the default of the
+  application unless set in `env_vars` of an override.
 
 ## Verifying a deployment
 

@@ -21,6 +21,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Subscription lifecycle (create, update, cancel, upgrade with proration preview)
 - Cancel and reactivate actions for subscriptions
 - Public pricing plans per SaaS application
+- Stripe Checkout sessions
 
 ## Routes and scopes
 
@@ -60,6 +61,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/cancel` | scope `billing:platform:write` | Cancel a subscription, at the end of the paid period by default |
 | POST | `/platform/{saas_id}/subscriptions/{subscription_id}/reactivate` | scope `billing:platform:write` | Undo a cancellation scheduled for the end of the period |
 | GET | `/plans/{app_slug}` | public | List all plans for a SaaS application |
+| POST | `/checkout/session` | scope `billing:checkout:write` | Create a Stripe Checkout Session |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -69,6 +71,7 @@ The application defines no scope, it only checks the ones carried by the access 
 
 - `billing:platform:write` - checked by 16 routes
 - `billing:platform:read` - checked by 14 routes
+- `billing:checkout:write` - checked by 1 route
 
 ## Usage
 

@@ -20,6 +20,7 @@ from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import httpx
@@ -71,6 +72,7 @@ SECTIONS: dict[str, Section] = {
     "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
     "vpn": Section("/vpn/sessions", "vpn:admin", "vpn:admin"),
+    "billing": Section("/billing", "billing:*", "billing:read"),
 }
 
 # Targets of the outbound service clients replaced by mocks.
@@ -78,6 +80,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.analytics.analytics_client",
     "internal.routes.admin.analytics_client",
     "internal.routes.admin.auth_client",
+    "internal.routes.billing.billing_client",
     "internal.routes.vpn.vpn_portal_client",
 )
 
@@ -332,6 +335,93 @@ async def configure_vpn(env: "Env") -> dict:
     return {}
 
 
+async def configure_billing(env: "Env") -> dict:
+    """Make the billing service return one SaaS app, product, price, customer and subscription."""
+    created = datetime(2024, 1, 1)
+    price = SimpleNamespace(
+        id="price-1",
+        stripe_price_id="stripe_price_1",
+        unit_amount=1999,
+        currency="eur",
+        billing_type="recurring",
+        recurring_interval="month",
+        recurring_interval_count=1,
+        usage_type="licensed",
+        nickname="Monthly",
+        is_active=True,
+        created_at=created,
+    )
+    product = SimpleNamespace(
+        id="prod-1",
+        name="Pro",
+        slug="pro",
+        description="Pro plan",
+        stripe_product_id="stripe_prod_1",
+        is_active=True,
+        sort_order=0,
+        default_trial_days=0,
+        is_recommended=False,
+        features=[],
+        limits={},
+        metadata={},
+        created_at=created,
+        extra_data=SimpleNamespace(
+            slug="pro",
+            is_recommended=False,
+            sort_order=0,
+            default_trial_days=0,
+            features=[{"label": "Feature 1", "highlight": False, "disabled": False}],
+            limits={"max_users": 10},
+        ),
+    )
+    customer = SimpleNamespace(
+        id="cust-1",
+        email="customer@example.com",
+        name="Customer",
+        stripe_customer_id="stripe_cus_1",
+        external_id="ext-1",
+        created_at=created,
+    )
+    subscription = SimpleNamespace(
+        id="sub-1",
+        customer_id="cust-1",
+        stripe_subscription_id="stripe_sub_1",
+        stripe_subscription_item_id="stripe_si_1",
+        status="active",
+        current_period_start=created,
+        current_period_end=datetime(2024, 2, 1),
+        cancel_at_period_end=False,
+        canceled_at=None,
+        created_at=created,
+    )
+    saas = SimpleNamespace(
+        id="saas-1",
+        name="Acme",
+        slug="acme",
+        description="Acme app",
+        is_active=True,
+        webhook_url="",
+        webhook_secret="",
+        branding=None,
+        checkout_url_allowlist=["https://app.example.test"],
+        stripe_connected=False,
+        created_at=created,
+        products=[],
+    )
+    billing = env.client("billing.billing_client")
+    billing.list_saas_apps.return_value = [saas]
+    billing.get_saas_app.return_value = saas
+    billing.list_products.return_value = [product]
+    billing.get_product.return_value = product
+    billing.list_prices.return_value = [price]
+    billing.list_customers.return_value = [customer]
+    billing.get_customer.return_value = customer
+    billing.list_customer_subscriptions.return_value = [subscription]
+    billing.list_subscriptions.return_value = [subscription]
+    billing.get_subscription.return_value = subscription
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -348,6 +438,21 @@ PAGES: dict[str, list[Page]] = {
     ],
     "vpn": [
         Page("/vpn/sessions", "vpn", configure_vpn),
+    ],
+    "billing": [
+        Page("/billing", "billing", configure_billing),
+        Page("/billing/saas/new", "billing", configure_billing),
+        Page("/billing/saas/saas-1", "billing", configure_billing),
+        Page("/billing/saas/saas-1/edit", "billing", configure_billing),
+        Page("/billing/saas/saas-1/products", "billing", configure_billing),
+        Page("/billing/saas/saas-1/products/new", "billing", configure_billing),
+        Page("/billing/saas/saas-1/products/prod-1", "billing", configure_billing),
+        Page("/billing/saas/saas-1/products/prod-1/edit", "billing", configure_billing),
+        Page("/billing/saas/saas-1/products/prod-1/prices/new", "billing", configure_billing),
+        Page("/billing/saas/saas-1/customers", "billing", configure_billing),
+        Page("/billing/saas/saas-1/customers/cust-1", "billing", configure_billing),
+        Page("/billing/saas/saas-1/subscriptions", "billing", configure_billing),
+        Page("/billing/saas/saas-1/subscriptions/sub-1", "billing", configure_billing),
     ],
 }
 

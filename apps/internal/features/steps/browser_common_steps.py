@@ -271,3 +271,36 @@ def step_clear(context, name):
     from e2e_support.steps import field
 
     field(context, name).fill("")
+
+
+@when('I choose the file "{filename}" for "{name}" with the following content')
+def step_choose_file(context, filename, name):
+    """Upload a file made of the text of the step into a file input."""
+    from e2e_support.steps import field
+
+    mime = "text/csv" if filename.endswith(".csv") else "text/plain"
+    field(context, name).set_input_files(
+        files=[{"name": filename, "mimeType": mime, "buffer": context.text.encode()}]
+    )
+
+
+@when('I download the file with "{target}"')
+def step_download(context, target):
+    from e2e_support.steps import clickable
+
+    with context.page.expect_download() as download_info:
+        clickable(context, target).click()
+    context.download = download_info.value
+
+
+@then('the downloaded file should be called "{filename}"')
+def step_download_name(context, filename):
+    assert context.download.suggested_filename == filename, context.download.suggested_filename
+
+
+@then('the downloaded file should contain "{text}"')
+def step_download_content(context, text):
+    from pathlib import Path
+
+    content = Path(context.download.path()).read_text(encoding="utf-8")
+    assert text in content, content

@@ -141,6 +141,12 @@ class Settings(BaseSettings):
     stale_cleanup_cron: str = "0 4 * * *"
     purge_deleted_cron: str = "0 5 * * 0"
 
+    # Webhooks sent to the clients
+    webhook_timeout_seconds: int = 10
+    webhook_max_retries: int = 5
+    webhook_retry_delay_seconds: int = 60
+    webhook_allow_insecure_urls: bool = False
+
     # Templates
     templates_dir: str = "custom_domain/templates"
 

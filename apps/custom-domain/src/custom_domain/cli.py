@@ -44,6 +44,26 @@ def _check_upstream(value: str | None) -> str | None:
     return value.strip()
 
 
+def _check_webhook_url(value: str | None) -> str | None:
+    """Click callback: accept an https URL (see ``validate_webhook_url``)."""
+    from custom_domain.schemas.validators import validate_webhook_url
+
+    try:
+        return validate_webhook_url(value)
+    except ValueError as error:
+        raise click.BadParameter(str(error)) from error
+
+
+def _check_webhook_secret(value: str | None) -> str | None:
+    """Click callback: accept a secret that is long enough to be an HMAC key."""
+    from custom_domain.schemas.validators import validate_webhook_secret
+
+    try:
+        return validate_webhook_secret(value)
+    except ValueError as error:
+        raise click.BadParameter(str(error)) from error
+
+
 @click.group()
 def cli():
     """Custom Domain Service CLI."""
@@ -167,6 +187,19 @@ async def _seed():
 )
 @click.option("--cname", default=None, help="Default CNAME target")
 @click.option("--max-domains", default=None, type=int, help="Maximum domains allowed")
+@click.option(
+    "--webhook-url",
+    default=None,
+    callback=lambda _ctx, _param, value: _check_webhook_url(value),
+    help="URL that receives signed status notifications (https)",
+)
+@click.option(
+    "--webhook-secret",
+    default=None,
+    envvar="CUSTOM_DOMAIN_WEBHOOK_SECRET",
+    callback=lambda _ctx, _param, value: _check_webhook_secret(value),
+    help="HMAC secret of the webhook, at least 32 characters; prefer the environment variable",
+)
 def create_client(
     client_id: str,
     name: str,
@@ -174,9 +207,24 @@ def create_client(
     upstream: str,
     cname: str,
     max_domains: int,
+    webhook_url: str | None,
+    webhook_secret: str | None,
 ):
     """Create a new authorized client."""
-    asyncio.run(_create_client(client_id, name, description, upstream, cname, max_domains))
+    if webhook_url and not webhook_secret:
+        raise click.UsageError("--webhook-url needs --webhook-secret")
+    asyncio.run(
+        _create_client(
+            client_id,
+            name,
+            description,
+            upstream,
+            cname,
+            max_domains,
+            webhook_url,
+            webhook_secret,
+        )
+    )
 
 
 async def _create_client(
@@ -186,6 +234,8 @@ async def _create_client(
     upstream: str,
     cname: str,
     max_domains: int,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
 ):
     """Create a new authorized client."""
     session = await get_session()
@@ -208,6 +258,8 @@ async def _create_client(
             default_upstream_target=upstream,
             default_cname_target=cname,
             max_domains=max_domains,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
             is_active=True,
         )
 
@@ -251,6 +303,8 @@ async def _list_clients():
                 click.echo(f"    CNAME: {client.default_cname_target}")
             if client.max_domains:
                 click.echo(f"    Max domains: {client.max_domains}")
+            if client.webhook_url:
+                click.echo(f"    Webhook: {client.webhook_url}")
         click.echo()
 
     except Exception as e:

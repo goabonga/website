@@ -55,6 +55,8 @@ class TestListClients:
         mock_client.default_nginx_template_id = None
         mock_client.max_domains = 10
         mock_client.is_active = True
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
 
         mock_db = AsyncMock()
@@ -171,6 +173,8 @@ class TestGetClient:
         mock_client.max_domains = 10
         mock_client.metadata_ = {}
         mock_client.is_active = True
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
         mock_client.updated_at = datetime.now(UTC)
 
@@ -222,6 +226,8 @@ class TestUpdateClient:
         mock_client.max_domains = 10
         mock_client.metadata_ = {}
         mock_client.is_active = True
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
         mock_client.updated_at = datetime.now(UTC)
 
@@ -256,6 +262,8 @@ class TestUpdateClient:
         mock_client.max_domains = 10
         mock_client.metadata_ = {}
         mock_client.is_active = True
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
         mock_client.updated_at = datetime.now(UTC)
 
@@ -382,6 +390,8 @@ class TestDeactivateClient:
         mock_client.max_domains = 10
         mock_client.metadata_ = {}
         mock_client.is_active = True
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
         mock_client.updated_at = datetime.now(UTC)
 
@@ -436,6 +446,8 @@ class TestActivateClient:
         mock_client.max_domains = 10
         mock_client.metadata_ = {}
         mock_client.is_active = False
+        mock_client.webhook_url = None
+        mock_client.webhook_secret = None
         mock_client.created_at = datetime.now(UTC)
         mock_client.updated_at = datetime.now(UTC)
 

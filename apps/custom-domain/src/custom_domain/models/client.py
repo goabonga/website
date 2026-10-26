@@ -49,6 +49,18 @@ class AuthorizedClient(Base):
         nullable=True,
     )
 
+    # Status callbacks (see tasks/webhooks.py)
+    webhook_url: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+        comment="URL that receives signed status notifications",
+    )
+    webhook_secret: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="HMAC secret shared with the client",
+    )
+
     # Limits
     max_domains: Mapped[int | None] = mapped_column(
         Integer,

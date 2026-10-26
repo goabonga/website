@@ -51,6 +51,15 @@ def deployment_settings(monkeypatch, tmp_path):
     return settings
 
 
+@pytest.fixture(autouse=True)
+def webhook_queue():
+    """Never reach a broker: webhook deliveries are queued on a mock."""
+    from custom_domain.tasks.webhooks import deliver_webhook
+
+    with patch.object(deliver_webhook, "apply_async") as queued:
+        yield queued
+
+
 @pytest.fixture
 def mock_db_session():
     """Create a mock database session."""
@@ -314,6 +323,8 @@ def sample_client_data():
         "default_cname_target": "apps.example.com",
         "max_domains": 10,
         "is_active": True,
+        "webhook_url": None,
+        "webhook_secret": None,
     }
 
 

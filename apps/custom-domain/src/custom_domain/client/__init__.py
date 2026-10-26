@@ -56,6 +56,12 @@ from custom_domain.client.client import (
     TemplatesAPI,
     ValidationError,
 )
+from custom_domain.client.webhooks import (
+    WebhookEvent,
+    WebhookSignatureError,
+    construct_event,
+    verify_webhook_signature,
+)
 
 __all__ = [
     "AsyncCustomDomainClient",
@@ -83,4 +89,8 @@ __all__ = [
     "TemplateList",
     "TemplatesAPI",
     "ValidationError",
+    "WebhookEvent",
+    "WebhookSignatureError",
+    "construct_event",
+    "verify_webhook_signature",
 ]

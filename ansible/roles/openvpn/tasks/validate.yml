@@ -1,0 +1,33 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Assert the target is a Debian-family system
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'Debian'
+    fail_msg: The openvpn role only supports Debian-family distributions.
+    quiet: true
+
+- name: Assert the client names are safe and unique
+  ansible.builtin.assert:
+    that:
+      - openvpn_clients | map(attribute='name') | map('regex_search', '^[A-Za-z0-9._-]+$') | select('none') | list | length == 0
+      - openvpn_clients | map(attribute='name') | list | length == openvpn_clients | map(attribute='name') | unique | list | length
+    fail_msg: >-
+      Client names must be unique and only contain letters, digits, dots, underscores and dashes.
+    quiet: true
+
+- name: Assert static addresses need the subnet topology
+  ansible.builtin.assert:
+    that: openvpn_topology == 'subnet'
+    fail_msg: Static client addresses are written for the subnet topology; set openvpn_topology to subnet.
+    quiet: true
+  when: openvpn_clients | selectattr('ip', 'defined') | list | length > 0
+
+- name: Assert the NAT interface is known
+  ansible.builtin.assert:
+    that: __openvpn_nat_interface | length > 0
+    fail_msg: >-
+      No default IPv4 interface was found. Set openvpn_nat_interface or disable openvpn_nat_enabled.
+    quiet: true
+  when: openvpn_nat_enabled | bool

@@ -1,0 +1,330 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the openvpn role. Every knob is prefixed with `openvpn_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+openvpn_enabled: true
+
+# Refresh the apt cache before installing packages.
+openvpn_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+openvpn_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation
+# ======================================================================
+# Packages to install.
+openvpn_packages:
+- openvpn
+
+# Packages providing iptables rule persistence. Empty installs nothing.
+openvpn_firewall_packages:
+- iptables-persistent
+
+
+# ======================================================================
+# Server
+# ======================================================================
+# Name of the server instance: the configuration is /etc/openvpn/server/<name>.conf and the
+# unit openvpn-server@<name>.
+openvpn_server_name: server
+
+# Directory holding the server configuration, certificates and keys. The openvpn-server@
+# unit reads /etc/openvpn/server: change it only if you provide your own unit.
+openvpn_config_dir: /etc/openvpn/server
+
+# Client configuration directory holding the static address of each client.
+openvpn_ccd_dir: '{{ openvpn_config_dir }}/ccd'
+
+# Listening port.
+openvpn_port: 1194
+
+# Transport protocol.
+openvpn_proto: udp
+
+# Virtual device type or name.
+openvpn_dev: tun
+
+# Addressing topology. `subnet` is required for the static addresses written for the
+# clients.
+openvpn_topology: subnet
+
+# VPN network address.
+openvpn_server_network: 10.8.0.0
+
+# VPN network mask.
+openvpn_server_netmask: 255.255.255.0
+
+# Data channel cipher.
+openvpn_cipher: AES-256-GCM
+
+# HMAC digest.
+openvpn_auth: SHA256
+
+# Minimum TLS version. Empty leaves the OpenVPN default.
+openvpn_tls_version_min: '1.2'
+
+# User the server drops privileges to.
+openvpn_user: nobody
+
+# Group the server drops privileges to.
+openvpn_group: nogroup
+
+# keepalive directive (ping interval and timeout).
+openvpn_keepalive: 10 120
+
+# Let clients reach each other.
+openvpn_client_to_client: true
+
+# Push a default route so client traffic goes through the VPN.
+openvpn_redirect_gateway: true
+
+# Extra routes pushed to clients, each as `network netmask`.
+openvpn_push_routes: []
+
+# DNS servers pushed to clients.
+openvpn_dns_servers:
+- '{{ openvpn_dns_listen_address }}'
+
+# DNS search domain pushed to clients. Empty pushes none.
+openvpn_push_domain: internal
+
+# Log verbosity (verb).
+openvpn_verbosity: 3
+
+# Directory holding the log, status and address pool files.
+openvpn_log_dir: /var/log/openvpn
+
+# Raw directives appended to the server configuration, one per entry.
+openvpn_extra_config: []
+
+# State of the server service.
+openvpn_service_state: started
+
+# Enable the server service at boot.
+openvpn_service_enabled: true
+
+
+# ======================================================================
+# Routing and NAT
+# ======================================================================
+# Enable IPv4 forwarding.
+openvpn_ip_forward: true
+
+# File persisting the forwarding setting.
+openvpn_sysctl_file: /etc/sysctl.d/99-openvpn.conf
+
+# Masquerade the traffic of the VPN network.
+openvpn_nat_enabled: true
+
+# Outgoing interface of the NAT rule. Empty uses the default IPv4 interface reported by
+# Ansible.
+openvpn_nat_interface: ''
+
+# Save the rule set after a change.
+openvpn_firewall_persist: true
+
+# File receiving the saved rule set (iptables-persistent format).
+openvpn_firewall_rules_file: /etc/iptables/rules.v4
+
+
+# ======================================================================
+# PKI
+# ======================================================================
+# Certificate authority issuing the server and client certificates.
+openvpn_pki_backend: easyrsa
+
+# Fall back to Easy-RSA when step-ca is requested but its root certificate or the
+# provisioner password is missing. When false the role fails instead.
+openvpn_pki_fallback: true
+
+
+# ======================================================================
+# Easy-RSA PKI
+# ======================================================================
+# Package providing Easy-RSA.
+openvpn_easyrsa_package: easy-rsa
+
+# Easy-RSA working directory and PKI location.
+openvpn_easyrsa_dir: /etc/openvpn/easy-rsa
+
+# EASYRSA_DN: distinguished name mode.
+openvpn_easyrsa_dn_mode: cn_only
+
+# RSA key size.
+openvpn_easyrsa_key_size: 2048
+
+# Validity of the CA certificate in days.
+openvpn_easyrsa_ca_expire: 3650
+
+# Validity of the issued certificates in days.
+openvpn_easyrsa_cert_expire: 3650
+
+# Common name of the CA.
+openvpn_easyrsa_ca_cn: OpenVPN-CA
+
+
+# ======================================================================
+# step-ca PKI
+# ======================================================================
+# Package providing the step command.
+openvpn_stepca_package: step-cli
+
+# URL of the step-ca authority. Follows the step_ca role when it ran in the same play.
+openvpn_stepca_url: '{{ step_ca_url | default(''https://127.0.0.1:8443'') }}'
+
+# Root certificate of the authority on this host.
+openvpn_stepca_root_ca: /etc/step-ca/certs/root_ca.crt
+
+# Name of the JWK provisioner used to issue certificates.
+openvpn_stepca_provisioner: openvpn
+
+# Password of the provisioner key. Required for the step-ca backend. Provide it from a
+# vault.
+openvpn_stepca_password: ''
+
+# File holding the provisioner password, written by the role.
+openvpn_stepca_password_file: /etc/step-ca/secrets/openvpn-password
+
+# Create or update the provisioner in the authority from this role. Disable it when the
+# step_ca role manages the provisioner.
+openvpn_stepca_manage_provisioner: true
+
+# STEPPATH of the authority on this host.
+openvpn_stepca_home: /etc/step-ca
+
+# ca.json of the authority on this host.
+openvpn_stepca_config_file: /etc/step-ca/config/ca.json
+
+# User owning the authority files and running the step commands that edit ca.json.
+openvpn_stepca_user: step
+
+# Group owning the password file.
+openvpn_stepca_group: step
+
+# systemd unit restarted after the provisioner changes.
+openvpn_stepca_service_name: step-ca
+
+# Validity of the issued certificates; also the maximum and default duration of the
+# provisioner.
+openvpn_stepca_cert_duration: 8760h
+
+# Common name of the server certificate.
+openvpn_stepca_server_name: openvpn-server
+
+
+# ======================================================================
+# Clients
+# ======================================================================
+# Clients to create. Each gets a certificate, an optional static address and a profile.
+openvpn_clients: []
+
+# Directory on the server holding the client profiles.
+openvpn_clients_dir: /etc/openvpn/clients
+
+# Address or name clients connect to, written in the profiles.
+openvpn_server_public_address: '{{ ansible_host | default(inventory_hostname) }}'
+
+# Raw directives appended to every client profile, one per entry.
+openvpn_clients_extra_config: []
+
+# Fetch the profiles to the controller.
+openvpn_clients_export_enabled: true
+
+# Controller directory receiving the profiles. They embed the client keys: protect or
+# encrypt this directory.
+openvpn_clients_export_dir: '{{ inventory_dir | dirname }}/exports/openvpn-clients'
+
+
+# ======================================================================
+# VPN DNS resolver
+# ======================================================================
+# Run a dedicated dnsmasq instance bound to the VPN address.
+openvpn_dns_enabled: true
+
+# Package providing dnsmasq.
+openvpn_dns_package: dnsmasq
+
+# Path of the dnsmasq executable.
+openvpn_dns_binary: /usr/sbin/dnsmasq
+
+# Name of the systemd unit of the VPN resolver.
+openvpn_dns_service_name: dnsmasq-vpn
+
+# Configuration file of the VPN resolver.
+openvpn_dns_config_file: /etc/dnsmasq-vpn.conf
+
+# Directory of additional configuration files of the VPN resolver.
+openvpn_dns_config_dir: /etc/dnsmasq-vpn.d
+
+# VPN address the resolver listens on.
+openvpn_dns_listen_address: 10.8.0.1
+
+# Port the resolver listens on.
+openvpn_dns_port: 53
+
+# Upstream resolvers.
+openvpn_dns_upstream_servers:
+- 1.1.1.1
+- 1.0.0.1
+
+# Local domain of the VPN. Each client is served as <name>.<domain>.
+openvpn_dns_local_domain: vpn.internal
+
+# Additional names served by the VPN resolver.
+openvpn_dns_hosts: []
+
+# Resolver cache size.
+openvpn_dns_cache_size: 500
+
+# Also write the client records into the configuration directory of the main dnsmasq
+# instance and restart it.
+openvpn_dns_publish_to_main: false
+
+# Configuration directory of the main dnsmasq instance.
+openvpn_dns_main_config_dir: /etc/dnsmasq.d
+
+# systemd unit of the main dnsmasq instance.
+openvpn_dns_main_service_name: dnsmasq
+
+
+# ======================================================================
+# step-ca on the VPN
+# ======================================================================
+# Publish step-ca on the VPN address through nginx and name it in the VPN resolver. nginx
+# must be installed and the proxy certificate must exist (see the step_ca role).
+openvpn_stepca_nginx_enabled: false
+
+# Name under which step-ca is published. Follows the step_ca role when it ran in the same
+# play.
+openvpn_stepca_domain: '{{ step_ca_domain | default(''step-ca.internal'') }}'
+
+# host:port of the authority behind the proxy.
+openvpn_stepca_upstream: 127.0.0.1:8443
+
+# Path of nginx, used to detect an installation.
+openvpn_stepca_nginx_binary: /usr/sbin/nginx
+
+# systemd unit reloaded after a change.
+openvpn_stepca_nginx_service_name: nginx
+
+# nginx sites-available directory.
+openvpn_stepca_nginx_sites_available: /etc/nginx/sites-available
+
+# nginx sites-enabled directory.
+openvpn_stepca_nginx_sites_enabled: /etc/nginx/sites-enabled
+
+# Directory holding fullchain.pem and privkey.pem of the proxy certificate.
+openvpn_stepca_nginx_cert_dir: /etc/letsencrypt/live/{{ openvpn_stepca_domain }}
+
+# ssl_protocols of the proxy.
+openvpn_stepca_nginx_ssl_protocols: TLSv1.2 TLSv1.3
+
+# ssl_ciphers of the proxy.
+openvpn_stepca_nginx_ssl_ciphers: ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384

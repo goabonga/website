@@ -1,0 +1,24 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install OpenVPN
+  ansible.builtin.apt:
+    name: "{{ openvpn_packages + openvpn_firewall_packages }}"
+    state: present
+    update_cache: "{{ openvpn_apt_update_cache }}"
+    cache_valid_time: "{{ openvpn_apt_cache_valid_time }}"
+
+- name: Create the server directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ openvpn_config_dir }}", mode: "0755" }
+    - { path: "{{ openvpn_ccd_dir }}", mode: "0755" }
+    - { path: "{{ openvpn_log_dir }}", mode: "0755" }
+  loop_control:
+    label: "{{ item.path }}"

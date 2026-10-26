@@ -1,0 +1,54 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the openvpn configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Install OpenVPN
+  ansible.builtin.import_tasks: install.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Build the PKI
+  ansible.builtin.import_tasks: pki.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Configure the server
+  ansible.builtin.import_tasks: server.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Configure routing and NAT
+  ansible.builtin.import_tasks: network.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Run the server
+  ansible.builtin.import_tasks: service.yml
+  when: openvpn_enabled | bool
+  tags: [openvpn]
+
+- name: Create the clients
+  ansible.builtin.import_tasks: clients.yml
+  when:
+    - openvpn_enabled | bool
+    - openvpn_clients | length > 0
+  tags: [openvpn]
+
+- name: Run the VPN resolver
+  ansible.builtin.import_tasks: dns.yml
+  when:
+    - openvpn_enabled | bool
+    - openvpn_dns_enabled | bool
+  tags: [openvpn]
+
+- name: Publish step-ca on the VPN
+  ansible.builtin.import_tasks: stepca_expose.yml
+  when:
+    - openvpn_enabled | bool
+    - openvpn_stepca_nginx_enabled | bool
+  tags: [openvpn]

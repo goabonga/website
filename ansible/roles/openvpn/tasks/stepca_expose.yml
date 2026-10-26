@@ -1,0 +1,45 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Look for nginx
+  ansible.builtin.stat:
+    path: "{{ openvpn_stepca_nginx_binary }}"
+  register: openvpn_nginx_stat
+
+- name: Assert nginx is installed and the resolver is enabled
+  ansible.builtin.assert:
+    that:
+      - openvpn_nginx_stat.stat.exists
+      - openvpn_dns_enabled | bool
+    fail_msg: >-
+      openvpn_stepca_nginx_enabled needs nginx ({{ openvpn_stepca_nginx_binary }}) and
+      openvpn_dns_enabled. Install nginx first or disable the option.
+    quiet: true
+
+- name: Name step-ca in the VPN resolver
+  ansible.builtin.copy:
+    content: |
+      # Ansible managed
+      address=/{{ openvpn_stepca_domain }}/{{ openvpn_dns_listen_address }}
+    dest: "{{ openvpn_dns_config_dir }}/step-ca.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart dnsmasq vpn
+
+- name: Render the nginx site
+  ansible.builtin.template:
+    src: nginx-stepca.conf.j2
+    dest: "{{ openvpn_stepca_nginx_sites_available }}/{{ openvpn_stepca_domain }}-vpn"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | reload nginx
+
+- name: Enable the nginx site
+  ansible.builtin.file:
+    src: "{{ openvpn_stepca_nginx_sites_available }}/{{ openvpn_stepca_domain }}-vpn"
+    dest: "{{ openvpn_stepca_nginx_sites_enabled }}/{{ openvpn_stepca_domain }}-vpn"
+    state: link
+  notify: openvpn | reload nginx

@@ -1,0 +1,19 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=dnsmasq - VPN DNS server
+Documentation=man:dnsmasq(8)
+After=network.target {{ __openvpn_unit }}.service
+Wants={{ __openvpn_unit }}.service
+BindsTo={{ __openvpn_unit }}.service
+
+[Service]
+Type=forking
+PIDFile=/run/{{ openvpn_dns_service_name }}.pid
+ExecStartPre={{ openvpn_dns_binary }} --test --conf-file={{ openvpn_dns_config_file }}
+ExecStart={{ openvpn_dns_binary }} --conf-file={{ openvpn_dns_config_file }} --pid-file=/run/{{ openvpn_dns_service_name }}.pid
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

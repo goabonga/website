@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Create the client profile directory
+  ansible.builtin.file:
+    path: "{{ openvpn_clients_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create the step-ca client certificate directory
+  ansible.builtin.file:
+    path: "{{ openvpn_clients_dir }}/certs"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: openvpn_effective_pki_backend == 'step-ca'
+
+- name: Read the CA certificate
+  ansible.builtin.slurp:
+    src: "{{ openvpn_config_dir }}/ca.crt"
+  register: openvpn_ca_cert
+
+- name: Read the TLS authentication key
+  ansible.builtin.slurp:
+    src: "{{ openvpn_config_dir }}/ta.key"
+  register: openvpn_ta_key
+  no_log: true
+
+- name: Create the client export directory on the controller
+  ansible.builtin.file:
+    path: "{{ openvpn_clients_export_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  when: openvpn_clients_export_enabled | bool
+
+- name: Create each client
+  ansible.builtin.include_tasks: client.yml
+  loop: "{{ openvpn_clients }}"
+  loop_control:
+    loop_var: openvpn_c
+    label: "{{ openvpn_c.name }}"

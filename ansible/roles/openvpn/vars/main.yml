@@ -1,0 +1,19 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Internal values derived from the public variables. They are not meant to be
+# overridden.
+
+# Number of bits of the VPN netmask, used by the NAT rule.
+__openvpn_prefix: >-
+  {{ openvpn_server_netmask.split('.') | map('int') | map('string')
+     | map('extract', {'0': 0, '128': 1, '192': 2, '224': 3, '240': 4, '248': 5, '252': 6, '254': 7, '255': 8})
+     | sum }}
+
+# Outgoing interface of the NAT rule.
+__openvpn_nat_interface: >-
+  {{ openvpn_nat_interface if openvpn_nat_interface | length > 0
+     else (ansible_facts['default_ipv4'] | default({})).interface | default('') }}
+
+# Name of the systemd unit of the server.
+__openvpn_unit: "openvpn-server@{{ openvpn_server_name }}"

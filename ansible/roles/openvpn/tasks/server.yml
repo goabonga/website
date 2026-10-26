@@ -1,0 +1,28 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Other roles add blocks to the server configuration (the hooks of the VPN
+# portal, delimited by "# BEGIN/END ANSIBLE MANAGED" markers). They are read
+# back and rendered in place so that the template does not remove them, and
+# the next run of their role does not add them again.
+- name: Read the current server configuration
+  ansible.builtin.slurp:
+    src: "{{ openvpn_config_dir }}/{{ openvpn_server_name }}.conf"
+  register: openvpn__server_conf
+  failed_when: false
+
+- name: Keep the blocks managed by other roles
+  ansible.builtin.set_fact:
+    openvpn__foreign_blocks: >-
+      {{ openvpn__server_conf.content | default('') | b64decode
+         | regex_findall('(?ms)^# BEGIN ANSIBLE MANAGED[^\n]*\n.*?^# END ANSIBLE MANAGED[^\n]*\n') }}
+
+- name: Render the server configuration
+  ansible.builtin.template:
+    src: server.conf.j2
+    dest: "{{ openvpn_config_dir }}/{{ openvpn_server_name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart

@@ -1,0 +1,72 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install dnsmasq
+  ansible.builtin.apt:
+    name: "{{ openvpn_dns_package }}"
+    state: present
+
+- name: Create the VPN resolver configuration directory
+  ansible.builtin.file:
+    path: "{{ openvpn_dns_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the VPN resolver configuration
+  ansible.builtin.template:
+    src: dnsmasq-vpn.conf.j2
+    dest: "{{ openvpn_dns_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart dnsmasq vpn
+
+- name: Render the VPN client records
+  ansible.builtin.template:
+    src: dnsmasq-vpn-clients.conf.j2
+    dest: "{{ openvpn_dns_config_dir }}/clients.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart dnsmasq vpn
+
+- name: Publish the VPN client records to the main dnsmasq instance
+  ansible.builtin.template:
+    src: dnsmasq-vpn-clients.conf.j2
+    dest: "{{ openvpn_dns_main_config_dir }}/vpn-clients.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: openvpn | restart dnsmasq
+  when: openvpn_dns_publish_to_main | bool
+
+- name: Remove the published VPN client records
+  ansible.builtin.file:
+    path: "{{ openvpn_dns_main_config_dir }}/vpn-clients.conf"
+    state: absent
+  notify: openvpn | restart dnsmasq
+  when: not (openvpn_dns_publish_to_main | bool)
+
+- name: Install the VPN resolver unit
+  ansible.builtin.template:
+    src: dnsmasq-vpn.service.j2
+    dest: "/etc/systemd/system/{{ openvpn_dns_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - openvpn | reload systemd
+    - openvpn | restart dnsmasq vpn
+
+- name: Apply pending resolver changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Run the VPN resolver
+  ansible.builtin.systemd:
+    name: "{{ openvpn_dns_service_name }}"
+    state: started
+    enabled: true
+    daemon_reload: true

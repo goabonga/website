@@ -1,0 +1,42 @@
+{{ ansible_managed | comment }}
+# Reverse proxy publishing step-ca as {{ openvpn_stepca_domain }} on the VPN address.
+
+upstream step_ca_vpn_backend {
+    server {{ openvpn_stepca_upstream }};
+}
+
+server {
+    listen {{ openvpn_dns_listen_address }}:80;
+    server_name {{ openvpn_stepca_domain }};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen {{ openvpn_dns_listen_address }}:443 ssl;
+    server_name {{ openvpn_stepca_domain }};
+
+    ssl_certificate {{ openvpn_stepca_nginx_cert_dir }}/fullchain.pem;
+    ssl_certificate_key {{ openvpn_stepca_nginx_cert_dir }}/privkey.pem;
+    ssl_protocols {{ openvpn_stepca_nginx_ssl_protocols }};
+    ssl_ciphers {{ openvpn_stepca_nginx_ssl_ciphers }};
+    ssl_prefer_server_ciphers off;
+
+    access_log /var/log/nginx/{{ openvpn_stepca_domain }}-vpn-access.log;
+    error_log /var/log/nginx/{{ openvpn_stepca_domain }}-vpn-error.log;
+
+    location / {
+        proxy_pass https://step_ca_vpn_backend;
+        proxy_ssl_verify off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}

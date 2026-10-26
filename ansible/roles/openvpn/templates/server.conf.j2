@@ -1,0 +1,66 @@
+{{ ansible_managed | comment }}
+port {{ openvpn_port }}
+proto {{ openvpn_proto }}
+dev {{ openvpn_dev }}
+{% if openvpn_dev.startswith('tun') %}
+topology {{ openvpn_topology }}
+{% endif %}
+
+ca {{ openvpn_config_dir }}/ca.crt
+cert {{ openvpn_config_dir }}/server.crt
+key {{ openvpn_config_dir }}/server.key
+{% if openvpn_effective_pki_backend == 'step-ca' %}
+dh none
+{% else %}
+dh {{ openvpn_config_dir }}/dh.pem
+{% endif %}
+tls-auth {{ openvpn_config_dir }}/ta.key 0
+{% if openvpn_tls_version_min %}
+tls-version-min {{ openvpn_tls_version_min }}
+{% endif %}
+
+server {{ openvpn_server_network }} {{ openvpn_server_netmask }}
+ifconfig-pool-persist {{ openvpn_log_dir }}/ipp.txt
+client-config-dir {{ openvpn_ccd_dir }}
+{% if openvpn_client_to_client | bool %}
+client-to-client
+{% endif %}
+
+{% if openvpn_redirect_gateway | bool %}
+push "redirect-gateway def1 bypass-dhcp"
+{% endif %}
+{% for route in openvpn_push_routes %}
+push "route {{ route }}"
+{% endfor %}
+{% for dns in openvpn_dns_servers %}
+push "dhcp-option DNS {{ dns }}"
+{% endfor %}
+{% if openvpn_push_domain %}
+push "dhcp-option DOMAIN {{ openvpn_push_domain }}"
+{% endif %}
+
+keepalive {{ openvpn_keepalive }}
+cipher {{ openvpn_cipher }}
+auth {{ openvpn_auth }}
+
+user {{ openvpn_user }}
+group {{ openvpn_group }}
+persist-key
+persist-tun
+
+{% for block in openvpn__foreign_blocks %}
+{{ block | trim }}
+{% endfor %}
+status {{ openvpn_log_dir }}/openvpn-status.log
+log-append {{ openvpn_log_dir }}/openvpn.log
+verb {{ openvpn_verbosity }}
+{% if openvpn_proto.startswith('udp') %}
+explicit-exit-notify 1
+{% endif %}
+{% if openvpn_extra_config | length > 0 %}
+
+# Extra configuration
+{% for line in openvpn_extra_config %}
+{{ line }}
+{% endfor %}
+{% endif %}

@@ -13,6 +13,7 @@ from apt_server.db.models import (
     Package,
     PackageACL,
     PackageVisibility,
+    UserCache,
 )
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -128,3 +129,19 @@ async def test_index_cache_row_round_trip(db) -> None:
     assert stored.body == b"Package: demo\n"
     assert stored.generated_at is not None
     assert "k" * 64 in repr(stored)
+
+
+async def test_user_cache_display_prefers_email_then_name_then_sub(db) -> None:
+    db.add_all(
+        [
+            UserCache(sub="s1", email="a@example.com", name="Alice"),
+            UserCache(sub="s2", email="", name="Bob"),
+            UserCache(sub="s3", email="", name=""),
+        ]
+    )
+    await db.commit()
+
+    displays = {row.sub: row.display for row in (await db.execute(select(UserCache))).scalars()}
+
+    assert displays == {"s1": "a@example.com", "s2": "Bob", "s3": "s3"}
+    assert "a@example.com" in repr(await db.get(UserCache, "s1"))

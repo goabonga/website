@@ -11,6 +11,7 @@ access control.
 - Component visibility and `apt:*` scope hierarchy
 - Package catalog and per-package ACL stored in PostgreSQL (Alembic)
 - Per-caller `Packages` and `Release` index rendering with a database cache
+- APT client endpoints: `dists/`, `pool/`, `pubkey.gpg`, Basic or Bearer auth
 
 ## Routes and scopes
 
@@ -22,6 +23,13 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/docs/oauth2-redirect` | public | OAuth2 redirect page for Swagger UI (only when `DOCS_ENABLED` is set) |
 | GET | `/health` | public | Health check endpoint |
 | GET | `/me` | bearer token (any scope) | Return current user profile from OIDC UserInfo |
+| GET | `/pubkey.gpg` | public | Export the GPG public key used to sign `Release` |
+| GET | `/dists/{suite}/Release` | public components, else credentials (token or session) | Serve the `Release` file of a suite |
+| GET | `/dists/{suite}/InRelease` | public components, else credentials (token or session) | Serve the signed `InRelease` file of a suite |
+| GET | `/dists/{suite}/Release.gpg` | public components, else credentials (token or session) | Serve the detached `Release.gpg` signature of a suite |
+| GET | `/dists/{suite}/{component}/binary-{architecture}/Packages` | public components, else credentials (token or session) | Serve the `Packages` index of a component and architecture |
+| GET | `/dists/{suite}/{component}/binary-{architecture}/Packages.gz` | public components, else credentials (token or session) | Serve the compressed `Packages.gz` index of a component and architecture |
+| GET | `/pool/{component}/{prefix}/{name}/{filename}` | public package, else credentials (token or session) with read access to the package | Serve a `.deb` via `X-Accel-Redirect` after the ACL check |
 
 The built web client and other static files are served publicly under `/static`.
 

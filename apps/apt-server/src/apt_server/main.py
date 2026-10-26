@@ -27,6 +27,7 @@ from apt_server.auth.dependencies import oauth2_scheme
 from apt_server.config import settings
 from apt_server.database import engine
 from apt_server.logging import get_logger, setup_logging
+from apt_server.routes.apt import router as apt_router
 
 setup_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -145,3 +146,6 @@ async def me(auth: Auth, token: str = Depends(oauth2_scheme)) -> dict:
         "picture": profile.get("picture"),
         "scopes": auth.scopes,
     }
+
+
+app.include_router(apt_router)

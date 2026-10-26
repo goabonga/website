@@ -42,6 +42,7 @@ Every package owns its version, changelog and git tag.
 | [`playbook-bootstrap`](ansible/playbooks/bootstrap.yml) | First run on a fresh host: deploy account and SSH hardening. | [docs](docs/ansible/06-playbooks.md) | `playbook-bootstrap-v<version>` |
 | [`playbook-site`](ansible/playbooks/site.yml) | Base infrastructure of the platform. | [docs](docs/ansible/06-playbooks.md) | `playbook-site-v<version>` |
 | [`playbook-apps`](ansible/playbooks/apps.yml) | Deployment of the enabled applications. | [docs](docs/ansible/06-playbooks.md) | `playbook-apps-v<version>` |
+| [`deploy-production`](deploy/production) | What is deployed to production, recorded by the deploy workflows after each apply. | [docs](docs/ansible/08-production-deployment.md) | `deploy-production-v<version>` |
 
 ## Documentation
 
@@ -94,6 +95,12 @@ GitHub Pages. Maintainers do not bump versions or edit changelogs by hand.
 Tags are named `<component>-v<version>`, for example `auth-v1.2.0`,
 `ansible-v1.0.0` or `playbook-site-v1.0.0`. The playbooks depend on the
 `ansible` component, so a collection release also releases them.
+
+`deploy-production` is the exception: the release job leaves it out, and only the
+deploy workflows bump it, after a deployment has been applied. A `deploy-plan` run
+opens a pull request when production owes a deployment and `deploy-apply` applies it
+once it is merged and approved. See
+[Production deployment](docs/ansible/08-production-deployment.md).
 
 ## Contributing
 

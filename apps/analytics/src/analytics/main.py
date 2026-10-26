@@ -32,6 +32,31 @@ async def lifespan(app: FastAPI):
     # Shutdown: clean up resources
     logger.info(f"Shutting down {settings.app_name}")
 
+    from analytics.auth.jwt import jwt_validator
+    from analytics.auth.token_exchange import token_exchange_client
+
+    await jwt_validator.close()
+    await token_exchange_client.close()
+
+
+def get_swagger_oauth2_config() -> dict:
+    """Build Swagger UI OAuth2 configuration if OAuth2 is configured."""
+    if not settings.oauth2_issuer or not settings.oauth2_swagger_client_id:
+        return {}
+
+    return {
+        "swagger_ui_init_oauth": {
+            "clientId": settings.oauth2_swagger_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+        },
+        "swagger_ui_parameters": {
+            "persistAuthorization": True,
+        },
+    }
+
+
+# Swagger OAuth2 configuration
+swagger_config = get_swagger_oauth2_config()
 
 app = FastAPI(
     title=settings.app_name,
@@ -43,12 +68,26 @@ Analytics tracking service for event collection, pixel tracking, and campaign an
 - **Event collection**: Track custom events via JavaScript SDK
 - **Pixel tracking**: 1x1 pixel tracking for emails and pages
 - **Campaign analytics**: UTM parameter tracking and attribution
+- **OAuth2 authentication**: PKCE-based authentication with scope validation
+
+## Authentication
+
+This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
+only `openid`, `profile`, and `email` scopes. The server validates that
+the user has the required `analytics:*` scopes via token exchange.
+
+## Required Scopes
+
+- `analytics:read` - Read analytics data and statistics
+- `analytics:write` - Create and manage tracking events
+- `analytics:delete` - Delete analytics data
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
+    **swagger_config,
 )
 
 # CORS middleware

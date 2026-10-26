@@ -303,6 +303,7 @@ website_apps_catalog:
       async_db: true
     alembic:
       enabled: true
+    env_defaults: "{{ website_billing_shared_env }}"
     env_vars:
       LOG_LEVEL: "INFO"
       DOCS_ENABLED: "false"
@@ -310,8 +311,16 @@ website_apps_catalog:
       REDIS_URL: "{{ website_redis_url }}?db=12"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_billing_celery_queue }}"
       TOKEN_INTROSPECTION_CACHE_TTL: "60"
       OAUTH2_CLIENT_CACHE_TTL: "300"
+      CORS_ORIGINS: "{{ website_billing_cors_origins }}"
+      PARTITION_ADMIN_SCOPE: "{{ website_billing_partition_admin_scope }}"
+      PARTITION_ALLOW_UNBOUND: "{{ website_billing_partition_allow_unbound }}"
+      PLANS_PUBLIC: "{{ website_billing_plans_public }}"
+      REDIRECT_ALLOWLIST_REQUIRED: "{{ website_billing_redirect_allowlist_required }}"
+      STRIPE_WEBHOOK_REQUIRED_SCOPE: "{{ website_billing_stripe_webhook_required_scope }}"
+      STRIPE_PUBLISHABLE_KEY: "{{ website_billing_stripe_publishable_key }}"
     secret_names: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
@@ -322,25 +331,32 @@ website_apps_catalog:
     postgres:
       database: billing
       async_db: true
+    env_defaults: "{{ website_billing_shared_env }}"
     env_vars:
       DOCS_ENABLED: "false"
       DATABASE_ECHO: "false"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_billing_celery_queue }}"
 
+  # The worker also delivers the notifications to the webhook URL of each SaaS
+  # application: nothing in the unit restricts its network, so the host only
+  # needs a route to those URLs.
   billing_worker:
     app: billing
     type: celery_worker
     celery:
-      queues: ["billing"]
+      queues: ["{{ website_billing_celery_queue }}"]
     postgres:
       database: billing
       async_db: true
+    env_defaults: "{{ website_billing_shared_env }}"
     env_vars:
       DOCS_ENABLED: "false"
       DATABASE_ECHO: "false"
       CELERY_BROKER_URL: "{{ website_celery_broker_url }}"
       CELERY_RESULT_BACKEND: "{{ website_celery_result_backend }}"
+      CELERY_QUEUE: "{{ website_billing_celery_queue }}"
       REDIS_URL: "{{ website_redis_url }}?db=12"
     secret_names: ["STRIPE_SECRET_KEY"]
 

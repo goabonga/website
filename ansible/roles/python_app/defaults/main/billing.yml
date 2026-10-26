@@ -1,0 +1,51 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Settings of the billing application. Every value is the one the service
+# uses when the variable is not set, except where stated: they are exposed so
+# that a deployment states them instead of inheriting them.
+
+# Celery queue of the three processes (CELERY_QUEUE); the worker consumes it
+# (--queues), the API and beat publish to it.
+website_billing_celery_queue: billing
+
+# Settings that the API, worker and beat units must share (CELERY_TIMEZONE,
+# CELERY_TASK_TIME_LIMIT, USAGE_REPORT_INTERVAL, USAGE_REPORT_BATCH_SIZE,
+# USAGE_CLEANUP_INTERVAL, USAGE_RETENTION_DAYS, STRIPE_SYNC_INTERVAL,
+# SAAS_WEBHOOK_TIMEOUT, SAAS_WEBHOOK_MAX_ATTEMPTS, SAAS_WEBHOOK_BACKOFF_SECONDS,
+# SAAS_WEBHOOK_BACKOFF_FACTOR, SAAS_WEBHOOK_BACKOFF_MAX_SECONDS). The worker
+# delivers the notifications to the webhook URL of each SaaS application, so
+# its host must be able to reach them.
+website_billing_shared_env: {}
+
+# Scope that lets a client act on every SaaS application and manage the
+# bindings (PARTITION_ADMIN_SCOPE). Give it only to the operator client(s),
+# for example the one of the internal application.
+website_billing_partition_admin_scope: billing:admin
+
+# Let an OAuth client without any binding act on every SaaS application
+# (PARTITION_ALLOW_UNBOUND). Transition aid for the first deployment only:
+# bind the clients, then set it back to false.
+website_billing_partition_allow_unbound: false
+
+# Serve GET /plans/<slug> without a token (PLANS_PUBLIC). Otherwise a bound
+# client with billing:platform:read is required.
+website_billing_plans_public: false
+
+# Refuse checkout and portal redirect URLs while a SaaS application lists no
+# allowed prefix (REDIRECT_ALLOWLIST_REQUIRED). The prefixes are set per SaaS
+# application (website_billing_saas_apps, the admin API or the internal UI).
+website_billing_redirect_allowlist_required: true
+
+# Scope a bearer token must also carry to post a Stripe event, on top of the
+# signature (STRIPE_WEBHOOK_REQUIRED_SCOPE). Empty: the Stripe signature is the
+# only authentication of /webhooks/stripe, which is what the webhooks gateway
+# relies on.
+website_billing_stripe_webhook_required_scope: ""
+
+# Stripe publishable key (STRIPE_PUBLISHABLE_KEY). Public, not a secret.
+website_billing_stripe_publishable_key: ""
+
+# Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
+website_billing_cors_origins: []

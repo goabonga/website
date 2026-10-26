@@ -182,6 +182,9 @@ python_app_component_defaults:
   oauth2:
     enabled: false
 
+  # Environment variables shared by several components, merged under env_vars
+  # (an entry of env_vars wins) and over the generated variables.
+  env_defaults: {}
   # Environment file content, merged over the generated variables.
   env_vars: {}
   # Names of secrets that must be provided through website_secrets.

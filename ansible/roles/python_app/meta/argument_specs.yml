@@ -123,6 +123,7 @@ argument_specs:
             format: custom
           oauth2:
             enabled: false
+          env_defaults: {}
           env_vars: {}
           secret_names: []
           optional_secret_names: []
@@ -691,3 +692,59 @@ argument_specs:
           status.
         default: []
         elements: dict
+      website_billing_celery_queue:
+        type: str
+        description:
+        - Celery queue of the three billing processes (CELERY_QUEUE); the worker consumes it
+          (--queues), the API and beat publish to it.
+        default: billing
+      website_billing_shared_env:
+        type: dict
+        description:
+        - Settings the API, worker and beat units of billing must share (CELERY_TIMEZONE,
+          CELERY_TASK_TIME_LIMIT, USAGE_REPORT_INTERVAL, USAGE_REPORT_BATCH_SIZE,
+          USAGE_CLEANUP_INTERVAL, USAGE_RETENTION_DAYS, STRIPE_SYNC_INTERVAL and the
+          SAAS_WEBHOOK_* delivery settings). The worker delivers the notifications to the webhook
+          URL of each SaaS application, so its host must be able to reach them.
+        default: {}
+      website_billing_partition_admin_scope:
+        type: str
+        description:
+        - Scope that lets a client act on every SaaS application and manage the bindings
+          (PARTITION_ADMIN_SCOPE). Give it only to the operator clients.
+        default: billing:admin
+      website_billing_partition_allow_unbound:
+        type: bool
+        description:
+        - Let an OAuth client without any binding act on every SaaS application
+          (PARTITION_ALLOW_UNBOUND). Transition aid for the first deployment only.
+        default: false
+      website_billing_plans_public:
+        type: bool
+        description:
+        - Serve GET /plans/<slug> without a token (PLANS_PUBLIC).
+        default: false
+      website_billing_redirect_allowlist_required:
+        type: bool
+        description:
+        - Refuse checkout and portal redirect URLs while a SaaS application lists no allowed
+          prefix (REDIRECT_ALLOWLIST_REQUIRED).
+        default: true
+      website_billing_stripe_webhook_required_scope:
+        type: str
+        description:
+        - 'Scope a bearer token must also carry to post a Stripe event
+          (STRIPE_WEBHOOK_REQUIRED_SCOPE). Empty: the Stripe signature is the only authentication
+          of /webhooks/stripe.'
+        default: ''
+      website_billing_stripe_publishable_key:
+        type: str
+        description:
+        - Stripe publishable key (STRIPE_PUBLISHABLE_KEY). Public, not a secret.
+        default: ''
+      website_billing_cors_origins:
+        type: list
+        description:
+        - Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none.
+        default: []
+        elements: str

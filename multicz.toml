@@ -100,3 +100,18 @@ bump_files = [
 ]
 changelog = "apps/backend/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.webhooks]
+tag_format = "webhooks-v{version}"
+paths = [
+    "apps/webhooks/src/**",
+    "apps/webhooks/features/**",
+    "apps/webhooks/tests/**",
+    "apps/webhooks/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/webhooks/pyproject.toml", key = "project.version" },
+    { file = "apps/webhooks/src/webhooks/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/webhooks/CHANGELOG.md"
+post_bump = ["uv lock"]

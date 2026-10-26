@@ -1,0 +1,174 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit Campaign' if campaign else 'New Campaign' }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>{{ 'Edit Campaign' if campaign else 'New Email Campaign' }}</h1>
+    <a href="/email-campaigns" class="btn btn-secondary">Back to Campaigns</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="post" action="{{ '/email-campaigns/' + campaign.id|string + '/edit' if campaign else '/email-campaigns/new' }}">
+        <div class="form-section">
+            <h3>Campaign Details</h3>
+
+            <div class="form-group">
+                <label for="name">Campaign Name *</label>
+                <input type="text" id="name" name="name" class="form-control" required
+                       value="{{ campaign.name if campaign else '' }}"
+                       placeholder="e.g., Newsletter January 2024">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="2"
+                          placeholder="Optional internal notes about this campaign">{{ campaign.description or '' if campaign else '' }}</textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Email Content</h3>
+
+            <div class="form-group">
+                <label for="template_id">Email Template *</label>
+                <select id="template_id" name="template_id" class="form-control" required>
+                    <option value="">Select a template...</option>
+                    {% for template in email_templates %}
+                    <option value="{{ template.id }}"
+                            {% if campaign and campaign.template_id == template.id %}selected{% endif %}>
+                        {{ template.name }}
+                        {% if template.subject %} - {{ template.subject[:50] }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not email_templates %}
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    No templates available. <a href="/email-templates/new" style="color: #e94560;">Create one first</a>.
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="subject_override">Subject Line Override</label>
+                <input type="text" id="subject_override" name="subject_override" class="form-control"
+                       value="{{ campaign.subject_override or '' if campaign else '' }}"
+                       placeholder="Leave empty to use template subject">
+                <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.8rem;">
+                    Override the template's subject line for this campaign
+                </p>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Recipients</h3>
+
+            <div class="form-group">
+                <label for="group_id">Contact Group *</label>
+                <select id="group_id" name="group_id" class="form-control" required>
+                    <option value="">Select a contact group...</option>
+                    {% for group in contact_groups %}
+                    <option value="{{ group.id }}"
+                            {% if campaign and campaign.group_id == group.id %}selected{% endif %}>
+                        {{ group.name }} ({{ group.member_count if group.member_count else 0 }} contacts)
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not contact_groups %}
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    No contact groups available. <a href="/contact-groups/new" style="color: #e94560;">Create one first</a>.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Email Provider</h3>
+
+            <div class="form-group">
+                <label for="provider">Provider</label>
+                <select id="provider" name="provider" class="form-control">
+                    <option value="">Use default provider</option>
+                    {% for prov in email_providers %}
+                    <option value="{{ prov }}"
+                            {% if campaign and campaign.provider == prov %}selected{% endif %}>
+                        {{ prov|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.8rem;">
+                    Select which email provider to use for sending this campaign
+                </p>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Sender Information</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="from_name">From Name</label>
+                    <input type="text" id="from_name" name="from_name" class="form-control"
+                           value="{{ campaign.from_name or '' if campaign else '' }}"
+                           placeholder="e.g., John from Company">
+                </div>
+
+                <div class="form-group">
+                    <label for="from_email">From Email</label>
+                    <input type="email" id="from_email" name="from_email" class="form-control"
+                           value="{{ campaign.from_email or '' if campaign else '' }}"
+                           placeholder="e.g., newsletter@company.com">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="reply_to">Reply-To Email</label>
+                <input type="email" id="reply_to" name="reply_to" class="form-control"
+                       value="{{ campaign.reply_to or '' if campaign else '' }}"
+                       placeholder="Leave empty to use From Email">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Scheduling</h3>
+
+            <div class="form-group">
+                <label for="scheduled_at">Schedule Send (Optional)</label>
+                <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-control"
+                       value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign and campaign.scheduled_at else '' }}">
+                <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.8rem;">
+                    Leave empty to send immediately when you click "Start Campaign"
+                </p>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary">
+                {{ 'Update Campaign' if campaign else 'Create Campaign' }}
+            </button>
+            <a href="/email-campaigns" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #2a2a4a;
+}
+.form-section:last-of-type {
+    border-bottom: none;
+}
+.form-section h3 {
+    color: #e94560;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

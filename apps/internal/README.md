@@ -50,6 +50,18 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/contact-groups/{group_id}/remove-contacts` | session; scope `contacts:write` | Remove contacts from a group |
 | POST | `/contact-groups/bulk-delete` | session; scope `contacts:delete` | Delete multiple contact groups |
 | POST | `/contact-groups/{group_id}/delete` | session; scope `contacts:delete` | Delete a contact group |
+| GET | `/email-campaigns` | session; scope `email_campaigns:read` | List all email campaigns with pagination and filtering |
+| GET | `/email-campaigns/new` | session; scope `email_campaigns:write` | Show form to create a new email campaign |
+| POST | `/email-campaigns/new` | session; scope `email_campaigns:write` | Create a new email campaign |
+| POST | `/email-campaigns/bulk-delete` | session; scope `email_campaigns:delete` | Delete multiple email campaigns at once |
+| GET | `/email-campaigns/{campaign_id}` | session; scope `email_campaigns:read` | View email campaign detail with statistics |
+| GET | `/email-campaigns/{campaign_id}/edit` | session; scope `email_campaigns:write` | Show form to edit an email campaign |
+| POST | `/email-campaigns/{campaign_id}/edit` | session; scope `email_campaigns:write` | Update an email campaign |
+| POST | `/email-campaigns/{campaign_id}/send` | session; scope `email_campaigns:send` | Start sending an email campaign |
+| POST | `/email-campaigns/{campaign_id}/pause` | session; scope `email_campaigns:send` | Pause a sending campaign |
+| POST | `/email-campaigns/{campaign_id}/resume` | session; scope `email_campaigns:send` | Resume a paused campaign |
+| POST | `/email-campaigns/{campaign_id}/delete` | session; scope `email_campaigns:delete` | Delete an email campaign |
+| GET | `/email-campaigns/{campaign_id}/stats` | session; scope `email_campaigns:read` | Get campaign statistics as JSON (for AJAX updates) |
 | GET | `/email-templates` | session; scope `email_templates:read` | List all email templates with pagination and filtering |
 | GET | `/email-templates/new` | session; scope `email_templates:write` | Show form to create a new email template |
 | POST | `/email-templates/new` | session; scope `email_templates:write` | Create a new email template |
@@ -142,6 +154,10 @@ The application defines no scope, it only checks the ones carried by the access 
 - `contacts:read` - checked by 5 routes
 - `contacts:write` - checked by 15 routes
 - `contacts:delete` - checked by 4 routes
+- `email_campaigns:read` - checked by 3 routes
+- `email_campaigns:write` - checked by 4 routes
+- `email_campaigns:delete` - checked by 2 routes
+- `email_campaigns:send` - checked by 3 routes
 - `email_templates:read` - checked by 4 routes
 - `email_templates:write` - checked by 5 routes
 - `email_templates:delete` - checked by 2 routes

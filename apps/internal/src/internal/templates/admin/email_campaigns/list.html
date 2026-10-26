@@ -1,0 +1,252 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Email Campaigns{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Email Campaigns</h1>
+    <a href="/email-campaigns/new" class="btn btn-primary">
+        <span>+</span> New Campaign
+    </a>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-card">
+    <form method="get" action="/email-campaigns" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <input type="text" name="search" class="form-control" placeholder="Search campaigns..." value="{{ search or '' }}">
+        </div>
+        <div style="min-width: 150px;">
+            <select name="status" class="form-control">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s | capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        {% if search or status_filter %}
+        <a href="/email-campaigns" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if campaigns %}
+    <!-- Bulk Actions -->
+    <div id="bulk-actions" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: #1a1a2e; border-radius: 8px;">
+        <span id="selected-count" style="color: #a0a0a0; margin-right: 1rem;">0 selected</span>
+        <button type="button" class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
+    </div>
+
+    <form id="bulk-form" method="post" action="/email-campaigns/bulk-delete">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="select-all" onchange="toggleSelectAll()" style="cursor: pointer;">
+                    </th>
+                    <th>Campaign</th>
+                    <th>Template</th>
+                    <th>Recipients</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campaign in campaigns %}
+                <tr data-campaign-id="{{ campaign.id }}">
+                    <td>
+                        {% if campaign.status != 'sending' %}
+                        <input type="checkbox" name="campaign_ids" value="{{ campaign.id }}" class="campaign-checkbox" onchange="updateBulkActions()" style="cursor: pointer;">
+                        {% else %}
+                        <span class="text-muted" title="Cannot delete while sending">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/email-campaigns/{{ campaign.id }}" style="color: #e94560; text-decoration: none;">
+                            {{ campaign.name }}
+                        </a>
+                        {% if campaign.group %}
+                        <div class="text-muted" style="font-size: 0.8rem;">To: {{ campaign.group.name }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if campaign.template %}
+                        <span style="font-size: 0.9rem;">{{ campaign.template.name }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if campaign.status in ['draft', 'scheduled'] %}
+                            {{ campaign.group.member_count if campaign.group and campaign.group.member_count else '-' }}
+                        {% else %}
+                            {{ campaign.total_recipients }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if campaign.status == 'draft' %}
+                        <span class="badge badge-secondary status-badge" data-status="draft">Draft</span>
+                        {% elif campaign.status == 'scheduled' %}
+                        <span class="badge badge-info status-badge" data-status="scheduled">Scheduled</span>
+                        {% elif campaign.status == 'sending' %}
+                        <span class="badge badge-warning status-badge" data-status="sending">Sending</span>
+                        {% elif campaign.status == 'paused' %}
+                        <span class="badge badge-warning status-badge" data-status="paused">Paused</span>
+                        {% elif campaign.status == 'completed' %}
+                        <span class="badge badge-success status-badge" data-status="completed">Completed</span>
+                        {% elif campaign.status == 'failed' %}
+                        <span class="badge badge-danger status-badge" data-status="failed">Failed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if campaign.status in ['sending', 'paused', 'completed'] %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="flex: 1; height: 6px; background: #1a1a2e; border-radius: 3px; overflow: hidden;">
+                                <div class="progress-fill" style="width: {{ campaign.progress_percent }}%; height: 100%; background: {% if campaign.status == 'completed' %}#00b894{% else %}#e94560{% endif %}; transition: width 0.5s ease;"></div>
+                            </div>
+                            <span class="progress-text" style="font-size: 0.8rem; color: #a0a0a0;">{{ campaign.progress_percent }}%</span>
+                        </div>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size: 0.85rem;">
+                        {{ campaign.updated_at.strftime('%Y-%m-%d %H:%M') if campaign.updated_at else '-' }}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            {% if campaign.status in ['draft', 'scheduled'] %}
+                            <a href="/email-campaigns/{{ campaign.id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                            {% endif %}
+                            <a href="/email-campaigns/{{ campaign.id }}" class="btn btn-sm btn-secondary">View</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+
+    <script>
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.campaign-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateBulkActions();
+    }
+
+    function updateBulkActions() {
+        const checkboxes = document.querySelectorAll('.campaign-checkbox:checked');
+        const bulkActions = document.getElementById('bulk-actions');
+        const selectedCount = document.getElementById('selected-count');
+
+        if (checkboxes.length > 0) {
+            bulkActions.style.display = 'flex';
+            bulkActions.style.alignItems = 'center';
+            selectedCount.textContent = checkboxes.length + ' selected';
+        } else {
+            bulkActions.style.display = 'none';
+        }
+
+        // Update select-all checkbox state
+        const allCheckboxes = document.querySelectorAll('.campaign-checkbox');
+        const selectAll = document.getElementById('select-all');
+        if (allCheckboxes.length > 0) {
+            selectAll.checked = checkboxes.length === allCheckboxes.length;
+            selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+        }
+    }
+
+    function bulkDelete() {
+        const checkboxes = document.querySelectorAll('.campaign-checkbox:checked');
+        if (checkboxes.length === 0) {
+            alert('Please select at least one campaign to delete.');
+            return;
+        }
+
+        const confirmMsg = 'Are you sure you want to delete ' + checkboxes.length + ' campaign(s)? This cannot be undone.';
+        if (confirm(confirmMsg)) {
+            document.getElementById('bulk-form').submit();
+        }
+    }
+
+    // Auto-refresh for active campaigns
+    const activeCampaignIds = [
+        {% for campaign in campaigns %}
+        {% if campaign.status in ['sending', 'paused'] %}
+        {{ campaign.id }},
+        {% endif %}
+        {% endfor %}
+    ];
+
+    function refreshActiveCampaigns() {
+        if (activeCampaignIds.length === 0) return;
+
+        activeCampaignIds.forEach(campaignId => {
+            fetch('/email-campaigns/' + campaignId + '/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const row = document.querySelector(`tr[data-campaign-id="${campaignId}"]`);
+                    if (!row) return;
+
+                    // Update progress bar
+                    const progressBar = row.querySelector('.progress-fill');
+                    const progressText = row.querySelector('.progress-text');
+                    if (progressBar) {
+                        progressBar.style.width = data.progress_percent + '%';
+                    }
+                    if (progressText) {
+                        progressText.textContent = data.progress_percent + '%';
+                    }
+
+                    // Update status badge if changed
+                    const statusBadge = row.querySelector('.status-badge');
+                    if (statusBadge && data.status !== statusBadge.dataset.status) {
+                        // Reload page if status changed to completed or failed
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            window.location.reload();
+                        }
+                    }
+                })
+                .catch(error => console.error('Failed to fetch campaign stats:', error));
+        });
+    }
+
+    // Refresh every 5 seconds if there are active campaigns
+    if (activeCampaignIds.length > 0) {
+        setInterval(refreshActiveCampaigns, 5000);
+    }
+    </script>
+
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+        {% if page > 1 %}
+        <a href="/email-campaigns?page={{ page - 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+        {% endif %}
+        <span style="padding: 0.35rem 0.75rem; color: #a0a0a0;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} total)
+        </span>
+        {% if page < total_pages %}
+        <a href="/email-campaigns?page={{ page + 1 }}{% if search %}&search={{ search | urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter | urlencode }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem;">&#128232;</div>
+        <p>No email campaigns found</p>
+        <a href="/email-campaigns/new" class="btn btn-primary" style="margin-top: 1rem;">Create your first campaign</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

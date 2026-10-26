@@ -37,14 +37,16 @@ async def send_email(
         SendEmailResponse with email ID and task ID
     """
     # The sender and the provider come from the record of the client
+    client = await clients.get_client(db, auth.client_id)
     identity = clients.resolve_identity(
-        await clients.get_client(db, auth.client_id),
+        client,
         is_admin=auth.is_admin,
         from_email=request.from_email,
         from_name=request.from_name,
         reply_to=request.reply_to,
         provider=request.provider,
     )
+    await clients.enforce_limits(db, client, is_admin=auth.is_admin)
 
     # Create email record
     # For machine clients (client_credentials), user_id should be None

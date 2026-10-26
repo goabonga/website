@@ -93,6 +93,8 @@ async def create_client(
         allowed_senders=[s.model_dump() for s in request.allowed_senders],
         allowed_providers=request.allowed_providers,
         default_provider=request.default_provider,
+        rate_limit_per_minute=request.rate_limit_per_minute,
+        daily_quota=request.daily_quota,
     )
 
     try:

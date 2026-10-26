@@ -49,6 +49,12 @@ class ClientCreate(BaseModel):
     default_provider: str | None = Field(
         None, description="Provider used when the client names none"
     )
+    rate_limit_per_minute: int | None = Field(
+        None, ge=1, description="Emails accepted per minute (unlimited when empty)"
+    )
+    daily_quota: int | None = Field(
+        None, ge=1, description="Emails accepted per UTC day (unlimited when empty)"
+    )
 
     @field_validator("allowed_providers")
     @classmethod
@@ -85,6 +91,8 @@ class ClientUpdate(BaseModel):
     allowed_senders: list[SenderIdentity] | None = None
     allowed_providers: list[str] | None = None
     default_provider: str | None = None
+    rate_limit_per_minute: int | None = Field(None, ge=1)
+    daily_quota: int | None = Field(None, ge=1)
 
     @field_validator("allowed_providers")
     @classmethod
@@ -110,6 +118,8 @@ class ClientResponse(BaseModel):
     allowed_senders: list[SenderIdentity]
     allowed_providers: list[str]
     default_provider: str | None
+    rate_limit_per_minute: int | None
+    daily_quota: int | None
     created_at: datetime
     updated_at: datetime
 

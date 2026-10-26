@@ -621,6 +621,15 @@ async def start_campaign(
             detail="No active contacts in the selected group",
         )
 
+    # The whole campaign counts against the daily quota of the client
+    await clients.enforce_limits(
+        db,
+        await clients.get_client(db, campaign.client_id),
+        is_admin=auth.is_admin,
+        count=total,
+        rate=False,
+    )
+
     # Update campaign
     campaign.status = CampaignStatus.SENDING.value
     campaign.started_at = datetime.now(UTC)

@@ -11,15 +11,17 @@ arbitrary ``from_email``. Administrators are not bound by a record.
 
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mailler.config import settings
 from mailler.database import AsyncSessionLocal
 from mailler.logging import get_logger
 from mailler.models.client import AuthorizedClient
+from mailler.models.email import Email
 
 logger = get_logger(__name__)
 
@@ -211,3 +213,65 @@ def resolve_identity(
         reply_to=reply_to,
         provider=provider,
     )
+
+
+# The rate limit is expressed per minute
+RATE_WINDOW = timedelta(minutes=1)
+
+
+async def _count_emails_since(db: AsyncSession, client_id: str, since: datetime) -> int:
+    result = await db.execute(
+        select(func.count(Email.id)).where(Email.client_id == client_id, Email.created_at >= since)
+    )
+    return result.scalar() or 0
+
+
+async def enforce_limits(
+    db: AsyncSession,
+    client: AuthorizedClient | None,
+    *,
+    is_admin: bool,
+    count: int = 1,
+    rate: bool = True,
+) -> None:
+    """Refuse a request that would take a client over its rate limit or daily quota.
+
+    Emails are counted from the ``emails`` table, so the figures are shared by
+    every API process. The check is not atomic: concurrent requests can
+    overshoot a limit slightly. Administrators and clients without limits pass.
+
+    Args:
+        db: Database session.
+        client: Registry record of the caller's client.
+        is_admin: Administrators are never limited.
+        count: Number of emails the request adds.
+        rate: Whether the per-minute rate limit applies (campaigns only use the quota).
+
+    Raises:
+        HTTPException: 429 with a ``Retry-After`` header.
+    """
+    if is_admin or client is None:
+        return
+    now = datetime.now(UTC)
+
+    if rate and client.rate_limit_per_minute:
+        used = await _count_emails_since(db, client.client_id, now - RATE_WINDOW)
+        if used + count > client.rate_limit_per_minute:
+            logger.info("Rate limit exceeded", extra={"client_id": client.client_id})
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded: {client.rate_limit_per_minute} emails per minute",
+                headers={"Retry-After": str(int(RATE_WINDOW.total_seconds()))},
+            )
+
+    if client.daily_quota:
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        used = await _count_emails_since(db, client.client_id, start_of_day)
+        if used + count > client.daily_quota:
+            logger.info("Daily quota exceeded", extra={"client_id": client.client_id})
+            retry_after = int((start_of_day + timedelta(days=1) - now).total_seconds())
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Daily quota exceeded: {client.daily_quota} emails per day",
+                headers={"Retry-After": str(max(retry_after, 1))},
+            )

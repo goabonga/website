@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     cors_methods: list[str] = ["*"]
     cors_headers: list[str] = ["*"]
 
+    # Database
+    database_url: str = "postgresql+asyncpg://knowledge:knowledge@localhost:5440/knowledge_test"
+
 
 @lru_cache
 def get_settings() -> Settings:

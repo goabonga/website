@@ -112,3 +112,4 @@ class TestSettings:
         assert hasattr(settings, "certbot_enabled")
         assert hasattr(settings, "celery_broker_url")
         assert hasattr(settings, "dns_check_interval_minutes")
+        assert settings.sse_heartbeat_interval == 30

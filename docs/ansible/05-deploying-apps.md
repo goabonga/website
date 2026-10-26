@@ -38,7 +38,7 @@ workers, beats and scripts that run the same code:
 | `reachy_mini_api` | `reachy-mini-api` (gunicorn) | `reachy.internal` | - | `OAUTH2_CLIENT_SECRET` |
 | `team` | `team` (gunicorn), `team-beat` (celery beat), `team-worker` (celery worker) | `team.internal` | `team` | `OPENAI_API_KEY` |
 | `vpn_portal` | `vpn-portal` (gunicorn), `vpn-portal-openvpn` (script) | `vpn.example.com` | `vpn_portal` | `OAUTH2_CLIENT_SECRET`, `OPENVPN_OAUTH2_CLIENT_SECRET`, `STEPCA_PROVISIONER_PASSWORD` |
-| `webhooks` | `webhooks` (gunicorn) | `webhooks.example.com` | - | `OAUTH2_CLIENT_SECRET` |
+| `webhooks` | `webhooks` (gunicorn) | `webhooks.example.com` | - | - (`OAUTH2_CLIENT_SECRET` is optional, see [billing data](roles/python_app.md#billing-data)) |
 
 (`example.com` stands for `website_domain`; `.internal` hosts are served on
 `website_internal_listen` and registered in dnsmasq.)

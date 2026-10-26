@@ -14,6 +14,7 @@ from analytics.config import settings
 from analytics.logging import setup_logging
 from analytics.routes.collect import router as collect_router
 from analytics.routes.health import router as health_router
+from analytics.routes.pixel import router as pixel_router
 from analytics.routes.security_txt import router as security_txt_router
 
 # Configure logging before anything else
@@ -34,11 +35,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="""
-Analytics tracking service for event collection.
+Analytics tracking service for event collection and pixel tracking.
 
 ## Features
 
 - **Event collection**: Track custom events via JavaScript SDK
+- **Pixel tracking**: 1x1 pixel tracking for emails and pages
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -60,3 +62,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(security_txt_router)
 app.include_router(collect_router)
+app.include_router(pixel_router)

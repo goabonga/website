@@ -37,6 +37,8 @@ how it is tested with pytest and behave.
     download API.
 13. [Background tasks](12-background-tasks.md): Celery worker, email tasks and
     scheduled workspace deletion.
+14. [Custom domains](13-custom-domains.md): domains of Enterprise organizations
+    registered in the custom-domain service, status webhooks and reconciliation.
 
 ## Running the tests
 

@@ -27,6 +27,8 @@ applications. It is a member of the `website` uv workspace.
 - MCP executable releases imported from GitHub and served through a public
   download API.
 - Celery worker and beat for email delivery and scheduled workspace deletion.
+- Custom domains for Enterprise organizations, registered in the
+  custom-domain service (status webhooks and reconciliation).
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -38,6 +40,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint |
 | POST | `/webhooks/billing` | public; HMAC signature required (`BILLING_WEBHOOK_SECRET`) | Receive billing webhook events |
+| POST | `/webhooks/custom-domain` | public; HMAC signature required (`CUSTOM_DOMAIN_WEBHOOK_SECRET`) | Receive a status notification of the custom-domain service |
 | POST | `/webhooks/github/releases` | public; HMAC signature checked when `GITHUB_WEBHOOK_SECRET` is set | Receive GitHub release webhook events |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
@@ -64,8 +67,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/mcp/releases` | public | List all published MCP releases |
 | GET | `/api/v1/mcp/releases/latest` | public | Get the latest published MCP release |
 | GET | `/api/v1/mcp/releases/{version}` | public | Get a specific MCP release by version |
-| GET | `/api/v1/mcp/download/{version}/{platform}` | public | Download a specific release for a platform |
 | GET | `/api/v1/mcp/download/latest/{platform}` | public | Download the latest release for a platform |
+| GET | `/api/v1/mcp/download/{version}/{platform}` | public | Download a specific release for a platform |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

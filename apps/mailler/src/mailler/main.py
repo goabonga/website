@@ -14,6 +14,7 @@ from mailler.logging import get_logger, setup_logging
 from mailler.routes import (
     health,
     providers,
+    send,
 )
 
 # Setup logging before anything else
@@ -75,6 +76,7 @@ Internal email sending service supporting multiple providers.
 ## Features
 
 - **Multi-provider support**: Brevo, SendGrid, AWS SES, Protonmail (SMTP)
+- **Async processing**: All emails sent via Celery workers
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -82,6 +84,10 @@ Internal email sending service supporting multiple providers.
 This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
 only `openid`, `profile`, and `email` scopes. The server validates that
 the user has the required `mailler:*` scopes via token exchange.
+
+## Required Scopes
+
+- `mailler:send` - Send and schedule emails
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -102,4 +108,5 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(send.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")

@@ -217,6 +217,10 @@ def before_all(context):
     context.mock_mailler_mailler = p.start()
     context._patchers.append(p)
 
+    p = patch("internal.routes.contacts.mailler_client", new_callable=AsyncMock)
+    context.mock_mailler_contacts = p.start()
+    context._patchers.append(p)
+
 
 def before_scenario(context, scenario):
     """Reset state before each scenario."""
@@ -241,6 +245,7 @@ def before_scenario(context, scenario):
         context.mock_vpn,
         context.mock_team,
         context.mock_mailler_mailler,
+        context.mock_mailler_contacts,
     ]:
         p_mock.reset_mock()
 

@@ -18,3 +18,4 @@ feature adds, its settings and how it is tested.
 | [OAuth2 authentication](01-oauth2-authentication.md) | Bearer token validation and scope checks |
 | [Data model](02-data-model.md) | Models, status enum, initial alembic migration |
 | [Nginx configuration rendering](03-nginx-rendering.md) | Jinja2 templates and nginx file management |
+| [SSL provisioning](04-ssl-provisioning.md) | Certbot, Celery application, provisioning tasks |

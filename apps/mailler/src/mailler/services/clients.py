@@ -22,6 +22,7 @@ from mailler.database import AsyncSessionLocal
 from mailler.logging import get_logger
 from mailler.models.client import AuthorizedClient
 from mailler.models.email import Email
+from mailler.schemas.client import ClientCreate, ClientUpdate
 
 logger = get_logger(__name__)
 
@@ -37,6 +38,23 @@ class ResolvedIdentity:
     from_name: str | None
     reply_to: str | None
     provider: str
+
+
+def new_client(data: ClientCreate) -> AuthorizedClient:
+    """Build the record of a new client from validated registration data."""
+    return AuthorizedClient(**data.model_dump())
+
+
+def apply_update(client: AuthorizedClient, update: ClientUpdate) -> None:
+    """Apply a partial update: only the fields present in the body change.
+
+    An explicit ``null`` clears an optional field and is ignored for the fields
+    that cannot be empty (activation and the two lists).
+    """
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if value is None and field in ("is_active", "allowed_senders", "allowed_providers"):
+            continue
+        setattr(client, field, value)
 
 
 def clear_cache() -> None:

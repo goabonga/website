@@ -32,3 +32,9 @@
     state: reloaded
   listen: python_app | reload fail2ban
 
+- name: Reload asterisk
+  ansible.builtin.systemd:
+    name: asterisk
+    state: reloaded
+  listen: python_app | reload asterisk
+

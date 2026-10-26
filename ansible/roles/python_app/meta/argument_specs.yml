@@ -8,8 +8,8 @@ argument_specs:
     - Checks out the monorepo, installs each selected application into its own virtualenv
       with uv and renders its environment file, encrypted credentials and systemd units, and
       optionally sets up the PostgreSQL database and migrations, an nginx virtual host with
-      its certificate and fail2ban rate limits. Applications are described by a catalog of
-      components that is merged with the user overrides.
+      its certificate, fail2ban rate limits and the Asterisk dialplan. Applications are described
+      by a catalog of components that is merged with the user overrides.
     author: Chris
     options:
       website_apps_catalog:
@@ -60,6 +60,19 @@ argument_specs:
             module: ''
             args: ''
             stop_timeout: 30
+          fastagi:
+            module: ''
+            host: 127.0.0.1
+            port: 4573
+            agi_script: bot
+          audiosocket:
+            module: ''
+            host: 127.0.0.1
+            port: 9092
+          asterisk:
+            enabled: false
+            context: fastagi-bot
+            test_extension: ''
           build_commands: []
           build_chdir: ''
           build_node: false
@@ -494,3 +507,15 @@ argument_specs:
         description:
         - website_aws_route53_secret_access_key
         default: ''
+      website_asterisk_config_dir:
+        type: str
+        description:
+        - Configuration directory and account of Asterisk (follow the asterisk role).
+      website_asterisk_user:
+        type: str
+        description:
+        - website_asterisk_user
+      website_asterisk_group:
+        type: str
+        description:
+        - website_asterisk_group

@@ -22,6 +22,8 @@ python_app__types:
   - celery_worker
   - celery_beat
   - daemon
+  - audiosocket
+  - fastagi
 
 # Application directory layout, named after the primary component.
 python_app__user: "{{ python_app__p.user | default('', true) or python_app__p.name }}"

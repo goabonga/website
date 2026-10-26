@@ -24,6 +24,7 @@ python_app_component_defaults:
   package: ""
   # Kind of process. gunicorn runs an ASGI service, celery_worker and
   # celery_beat run Celery and daemon runs python -m <module>.
+  # audiosocket and fastagi run the Asterisk integrations.
   type: gunicorn
   # Branch, tag or commit of the application (primary component only);
   # website_repo_version when empty.
@@ -72,6 +73,24 @@ python_app_component_defaults:
     module: ""
     args: ""
     stop_timeout: 30
+  fastagi:
+    # Module run with python -m, <module>.main when empty.
+    module: ""
+    host: 127.0.0.1
+    port: 4573
+    # Script name requested by the dialplan.
+    agi_script: bot
+  audiosocket:
+    # Module run with python -m, <module>.main when empty.
+    module: ""
+    host: 127.0.0.1
+    port: 9092
+  asterisk:
+    # Install a dialplan include for the fastagi and audiosocket types.
+    enabled: false
+    context: fastagi-bot
+    # Extension that jumps to the context, for tests (empty for none).
+    test_extension: ""
 
   # Commands run in the release as the application account, after uv sync, for
   # example the build of a web client.

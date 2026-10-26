@@ -3,6 +3,10 @@
 Description={{ python_app__unit }} ({{ python_app__c.type | replace('_', ' ') }})
 After=network.target redis-server.service
 After=postgresql.service
+{% if python_app__c.type in ['audiosocket', 'fastagi'] %}
+After=asterisk.service
+Wants=asterisk.service
+{% endif %}
 
 [Service]
 Type={{ 'notify' if python_app__c.type == 'gunicorn' else 'simple' }}
@@ -10,6 +14,14 @@ User={{ python_app__user }}
 Group={{ python_app__group }}
 WorkingDirectory={{ python_app__current }}
 Environment="PATH={{ python_app__venv }}/bin{% for path in python_app__c.extra_path %}:{{ path }}{% endfor %}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+{% if python_app__c.type == 'audiosocket' %}
+Environment="AUDIOSOCKET_HOST={{ python_app__c.audiosocket.host }}"
+Environment="AUDIOSOCKET_PORT={{ python_app__c.audiosocket.port }}"
+{% endif %}
+{% if python_app__c.type == 'fastagi' %}
+Environment="FASTAGI_HOST={{ python_app__c.fastagi.host }}"
+Environment="FASTAGI_PORT={{ python_app__c.fastagi.port }}"
+{% endif %}
 EnvironmentFile={{ python_app__env_file }}
 {% for name in python_app__secrets_deployed %}
 LoadCredentialEncrypted={{ name }}:{{ website_credstore_dir }}/{{ python_app__unit }}.{{ name }}.cred
@@ -64,6 +76,10 @@ ExecStart={{ python_app__venv }}/bin/python -m {{ python_app__c.daemon.module | 
 KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec={{ python_app__c.daemon.stop_timeout }}
+{% elif python_app__c.type == 'audiosocket' %}
+ExecStart={{ python_app__venv }}/bin/python -m {{ python_app__c.audiosocket.module | default('', true) or (python_app__module ~ '.main') }}
+{% elif python_app__c.type == 'fastagi' %}
+ExecStart={{ python_app__venv }}/bin/python -m {{ python_app__c.fastagi.module | default('', true) or (python_app__module ~ '.main') }}
 {% endif %}
 Restart=always
 RestartSec=5

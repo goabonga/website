@@ -74,6 +74,14 @@ def get_current_tenant_id():
     return tenant_ctx.tenant_id if tenant_ctx else None
 
 
+#: Messages shown for the ``error`` codes that other flows redirect to the login page with.
+LOGIN_ERRORS = {
+    "federation_failed": (
+        "Sign-in with your identity provider failed. Try again or sign in with your password."
+    ),
+}
+
+
 def _safe_next_url(next_url: str, request_host: str | None) -> str | None:
     """Return ``next_url`` when following it keeps the user on this server, else ``None``.
 
@@ -223,6 +231,7 @@ async def login_form(
     verified: str = "",
     reset: str = "",
     registered: str = "",
+    error: str = "",
     next: str = "",
     email: str = "",
 ) -> HTMLResponse | RedirectResponse:
@@ -233,7 +242,8 @@ async def login_form(
     and issues a `302` redirect to `?next=` (if it starts with `/`) or to
     `/auth/settings`, so authenticated users are never shown the form again.
     Query parameters `verified`, `reset`, and `registered` inject a one-time
-    success banner (e.g. after email verification or password reset). This
+    success banner (e.g. after email verification or password reset); `error`
+    shows the message of a known failure code such as `federation_failed`. This
     endpoint is the user-facing entry point for the OAuth2 authorization-code
     flow (RFC 6749 §4.1) when an authorization request redirects the resource
     owner here for authentication.
@@ -285,7 +295,7 @@ async def login_form(
         "auth/login.html",
         {
             "request": request,
-            "error": None,
+            "error": LOGIN_ERRORS.get(error),
             "success": success,
             "email": email,
             "mfa_required": False,

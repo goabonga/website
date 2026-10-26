@@ -32,3 +32,8 @@ class TestCeleryAppConfig:
         from team.celery import celery_app
 
         assert celery_app.conf.task_default_queue == "team"
+
+    def test_beat_schedule_has_dispatch_tasks(self):
+        from team.celery import celery_app
+
+        assert "dispatch-tasks-every-5-minutes" in celery_app.conf.beat_schedule

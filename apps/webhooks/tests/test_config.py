@@ -193,3 +193,29 @@ class TestSESSettings:
         assert s.ses_internal_api_url == "http://ses-api:8000"
         assert s.ses_internal_api_socket == "/run/ses-internal.sock"
         assert s.ses_internal_api_token == "ses-token"
+
+
+class TestStripeSettings:
+    """Tests for the Stripe settings."""
+
+    def test_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.stripe_enabled is False
+        assert s.stripe_internal_api_url == ""
+        assert s.stripe_internal_api_socket == ""
+        assert s.stripe_internal_api_token == ""
+
+    def test_env_override(self):
+        env = {
+            "STRIPE_ENABLED": "true",
+            "STRIPE_INTERNAL_API_URL": "http://stripe-api:8000",
+            "STRIPE_INTERNAL_API_SOCKET": "/run/stripe-internal.sock",
+            "STRIPE_INTERNAL_API_TOKEN": "stripe-token",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.stripe_enabled is True
+        assert s.stripe_internal_api_url == "http://stripe-api:8000"
+        assert s.stripe_internal_api_socket == "/run/stripe-internal.sock"
+        assert s.stripe_internal_api_token == "stripe-token"

@@ -24,3 +24,5 @@ one feature as it exists in the code.
    and clean skipping for `@browser` scenarios.
 6. [Generic steps](06-steps.md) - navigate, click, fill and expect, in the
    vocabulary of a user.
+7. [Fake OpenID provider](07-fake-openid-provider.md) - users, clients,
+   discovery, keys and recorded requests.

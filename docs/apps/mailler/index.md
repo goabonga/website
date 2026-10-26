@@ -26,6 +26,7 @@ documented on its own page.
 | [Public unsubscribe](11-unsubscribe.md) | Signed unsubscribe links and pages |
 | [Email campaigns](12-campaigns.md) | Campaign lifecycle and worker tasks |
 | [Brevo delivery webhooks](13-webhooks.md) | Delivery events and signature checks |
+| [Inbound email processing](14-inbound.md) | IMAP polling, storage and webhook forwarding |
 
 ## Running the tests
 

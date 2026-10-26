@@ -4,6 +4,7 @@
 """Admin routes."""
 
 from custom_domain.routes.admin.clients import router as clients_router
+from custom_domain.routes.admin.stats import router as stats_router
 from custom_domain.routes.admin.templates import router as templates_router
 
-__all__ = ["clients_router", "templates_router"]
+__all__ = ["clients_router", "stats_router", "templates_router"]

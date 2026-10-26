@@ -28,6 +28,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | DELETE | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Delete a client |
 | POST | `/api/v1/admin/clients/{client_id}/deactivate` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Deactivate a client |
 | POST | `/api/v1/admin/clients/{client_id}/activate` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Activate a client |
+| GET | `/api/v1/admin/stats/overview` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get overview statistics |
+| GET | `/api/v1/admin/stats/top-clients` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get top clients by domain count |
+| GET | `/api/v1/admin/stats/recent-activity` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get recent domain activity |
+| GET | `/api/v1/admin/stats/dashboard` | scopes `custom-domain:admin`, `custom-domain:admin:stats` (all) (`ADMIN_SCOPE` setting) | Get complete dashboard data |
 | GET | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | List all nginx templates |
 | POST | `/api/v1/admin/templates` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Create a new nginx template |
 | GET | `/api/v1/admin/templates/{template_id}` | scopes `custom-domain:admin`, `custom-domain:admin:templates` (all) (`ADMIN_SCOPE` setting) | Get template details |
@@ -48,6 +52,7 @@ The application defines no scope, it only checks the ones carried by the access 
 - `custom-domain:read` - checked by 5 routes
 - `custom-domain:write` - checked by 5 routes
 - `custom-domain:lookup` - checked by 1 route
-- `custom-domain:admin` - checked by 15 routes
+- `custom-domain:admin` - checked by 19 routes
 - `custom-domain:admin:clients` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 7 routes
+- `custom-domain:admin:stats` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 4 routes
 - `custom-domain:admin:templates` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 8 routes

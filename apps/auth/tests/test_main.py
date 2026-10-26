@@ -208,6 +208,23 @@ class _FakePath:
 
 
 class TestTenantMiddlewareWiring:
+    def test_tenant_middleware_registered_when_base_domain_set(self):
+        import importlib
+
+        import auth.main as main_module
+
+        with (
+            patch.object(main_module.settings, "tenant_base_domain", "example.com"),
+            patch.object(main_module.settings, "tenant_custom_domain_lookup", True),
+        ):
+            reloaded = importlib.reload(main_module)
+            names = [m.cls.__name__ for m in reloaded.app.user_middleware]
+
+        assert "TenantMiddleware" in names
+
+        # Restore the default (no tenant base domain) module state.
+        importlib.reload(main_module)
+
     def test_tenant_middleware_absent_by_default(self):
         from auth.main import app
 

@@ -135,6 +135,26 @@ class TestServiceFactories:
         result = get_jwks_service()
         assert isinstance(result, JWKSService)
 
+    def test_get_trust_service(self):
+        from auth.api.deps import get_trust_service
+        from auth.services.trust import TrustPolicyService
+
+        assert isinstance(get_trust_service(), TrustPolicyService)
+
+    @patch("auth.api.deps.async_session_factory", new_callable=MagicMock)
+    @patch("auth.services.branding.BrandingService")
+    def test_get_branding_service(self, mock_branding_cls, mock_factory):
+        from auth.api.deps import get_branding_service
+
+        get_branding_service.cache_clear()
+        mock_branding_cls.return_value = MagicMock()
+
+        result = get_branding_service()
+
+        mock_branding_cls.assert_called_once()
+        assert result is mock_branding_cls.return_value
+        get_branding_service.cache_clear()
+
     def test_get_templates(self):
         from auth.api.deps import get_templates
 

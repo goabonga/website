@@ -15,11 +15,15 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
+from sqlalchemy import inspect
+
 from knowledge.auth.dependencies import AuthContext
 from knowledge.auth.models import User
-from knowledge.models import Collection, Document
-from knowledge.models.enums import OwnerType
+from knowledge.models import Collection, CollectionCollaborator, CollectionInvitation, Document
+from knowledge.models.enums import CollaboratorPermission, OwnerType
 from knowledge.schemas.search import SearchResponse, SearchResult
+from knowledge.services.collaborators import CollaboratorService
+from knowledge.services.collection_invitations import CollectionInvitationService
 from knowledge.services.documents import DocumentService
 
 
@@ -29,6 +33,36 @@ class Store:
     def __init__(self):
         self.collections: dict[UUID, Collection] = {}
         self.documents: dict[UUID, Document] = {}
+        self.collaborators: dict[UUID, CollectionCollaborator] = {}
+        self.invitations: dict[UUID, CollectionInvitation] = {}
+
+    def bucket_for(self, obj):
+        """Return the in-memory table holding objects of this type, if any."""
+        for cls, bucket in (
+            (Collection, self.collections),
+            (Document, self.documents),
+            (CollectionCollaborator, self.collaborators),
+            (CollectionInvitation, self.invitations),
+        ):
+            if isinstance(obj, cls):
+                return bucket
+        return None
+
+
+def apply_flush_defaults(obj):
+    """Mimic what a flush does: Python-side column defaults and server timestamps."""
+    now = datetime.now(UTC)
+    for attr in inspect(type(obj)).column_attrs:
+        if getattr(obj, attr.key) is not None:
+            continue
+        column = attr.columns[0]
+        default = column.default
+        if default is not None and default.is_scalar:
+            setattr(obj, attr.key, default.arg)
+        elif default is not None and default.is_callable:
+            setattr(obj, attr.key, default.arg(None))
+        elif column.server_default is not None and attr.key in ("created_at", "updated_at"):
+            setattr(obj, attr.key, now)
 
 
 class FakeSession:
@@ -47,16 +81,15 @@ class FakeSession:
         self.execute = AsyncMock(return_value=result)
 
     def _add(self, obj):
-        if isinstance(obj, Document):
-            now = datetime.now(UTC)
-            obj.id = obj.id or uuid4()
-            obj.created_at = now
-            obj.updated_at = now
-            self.store.documents[obj.id] = obj
+        bucket = self.store.bucket_for(obj)
+        if bucket is not None:
+            apply_flush_defaults(obj)
+            bucket[obj.id] = obj
 
     async def delete(self, obj):
-        self.store.collections.pop(obj.id, None)
-        self.store.documents.pop(obj.id, None)
+        bucket = self.store.bucket_for(obj)
+        if bucket is not None:
+            bucket.pop(obj.id, None)
 
 
 def make_auth_context(user_id: str, scopes: str, tenant_id: str | None = None) -> AuthContext:
@@ -118,25 +151,105 @@ class FakeCollectionService:
 
     async def get_accessible(self, user_id, collection_id):
         collection = self.store.collections.get(collection_id)
-        if collection and collection.owner_id == user_id:
+        if collection is None:
+            return None
+        if collection.owner_id == user_id:
+            return collection
+        if any(
+            c.collection_id == collection_id and c.user_id == user_id
+            for c in self.store.collaborators.values()
+        ):
             return collection
         return None
 
+    async def get_by_id_global(self, collection_id):
+        return self.store.collections.get(collection_id)
+
 
 class FakeAccessService:
-    """Owners may do everything; nobody else has access."""
+    """Owners may do everything; collaborators get what their permission grants."""
+
+    LEVELS = {
+        CollaboratorPermission.READ: 1,
+        CollaboratorPermission.WRITE: 2,
+        CollaboratorPermission.ADMIN: 3,
+    }
 
     def __init__(self, store: Store):
         self.store = store
 
+    def _level(self, user_id, collection) -> int:
+        if collection.owner_id == user_id:
+            return 4
+        for collaborator in self.store.collaborators.values():
+            if collaborator.collection_id == collection.id and collaborator.user_id == user_id:
+                return self.LEVELS[collaborator.permission]
+        return 0
+
+    async def can_read(self, user_id, collection):
+        return self._level(user_id, collection) >= 1
+
     async def can_write(self, user_id, collection):
-        return collection.owner_id == user_id
+        return self._level(user_id, collection) >= 2
+
+    async def can_admin(self, user_id, collection):
+        return self._level(user_id, collection) >= 3
+
+    async def can_invite(self, user_id, collection):
+        return self._level(user_id, collection) >= 3
 
     async def can_delete(self, user_id, collection):
-        return collection.owner_id == user_id
+        return self._level(user_id, collection) >= 4
 
     async def check_org_can_create_collection(self, user_id, organization_id):
         return False
+
+
+class FakeCollaboratorService(CollaboratorService):
+    """Real CollaboratorService logic; only the two read queries are in memory."""
+
+    async def list(self, collection_id, offset=0, limit=100):
+        items = [
+            c for c in self.db.store.collaborators.values() if c.collection_id == collection_id
+        ]
+        return items[offset : offset + limit]
+
+    async def get(self, collection_id, user_id):
+        for collaborator in self.db.store.collaborators.values():
+            if collaborator.collection_id == collection_id and collaborator.user_id == user_id:
+                return collaborator
+        return None
+
+
+class FakeInvitationService(CollectionInvitationService):
+    """Real CollectionInvitationService logic; only the read queries are in memory."""
+
+    async def get_by_id(self, invitation_id):
+        return self.db.store.invitations.get(invitation_id)
+
+    async def get_by_token(self, token):
+        for invitation in self.db.store.invitations.values():
+            if invitation.token == token:
+                return invitation
+        return None
+
+    async def get_pending_for_email(self, collection_id, email):
+        for invitation in self.db.store.invitations.values():
+            if (
+                invitation.collection_id == collection_id
+                and invitation.email == email.lower()
+                and invitation.is_pending
+            ):
+                return invitation
+        return None
+
+    async def list_for_collection(self, collection_id, status=None, offset=0, limit=100):
+        items = [
+            i
+            for i in self.db.store.invitations.values()
+            if i.collection_id == collection_id and (status is None or i.status == status)
+        ]
+        return items[offset : offset + limit]
 
 
 class FakeTenantCollectionService:

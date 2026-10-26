@@ -131,6 +131,8 @@ class Settings(BaseSettings):
     apt_label: str = "apt-server"
     # GPG key ID (or fingerprint) used to sign Release. Empty disables signing.
     apt_gpg_key_id: str = ""
+    # Path prefix exposed as the `internal` nginx location for X-Accel-Redirect.
+    apt_internal_prefix: str = "/_internal"
     # Seconds a rendered per-caller Packages index lives in index_cache.
     apt_index_cache_ttl: int = 60
 

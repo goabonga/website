@@ -13,6 +13,8 @@ its terms.
 
 - `apps/<name>/` - one application per directory, each a member of the root
   [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/).
+- `libs/<name>/` - support libraries that are not applications (for now
+  `e2e-support`, the browser test tooling), also workspace members.
 - `ansible/` - the Ansible collection that provisions hosts and deploys the
   applications.
 - `docs/` - the Zensical documentation site, configured by `zensical.toml`.
@@ -57,6 +59,52 @@ infrastructure.
 
 Changes under `ansible/` are checked with `ansible-playbook --syntax-check`
 on the playbooks in `ansible/playbooks/`.
+
+### Browser scenarios
+
+Applications that render HTML can have behave scenarios tagged `@browser`,
+driven in a real browser with [Playwright](https://playwright.dev/python/)
+through the `e2e-support` library (`libs/e2e-support`, documented in
+`docs/testing/`). They run in the same `behave` command as the in-process
+scenarios, which they complement.
+
+The browser is a separate download, once per machine (add `--with-deps` to
+install the system libraries too, which needs root):
+
+```bash
+uv run playwright install chromium
+```
+
+Run only the in-process scenarios, or only the browser ones:
+
+```bash
+uv run --package <app> --group dev behave apps/<app>/features -t ~@browser
+uv run --package <app> --group dev behave apps/<app>/features -t @browser
+```
+
+`E2E_SKIP_BROWSER=1` skips the `@browser` scenarios without installing
+anything, and they are skipped with an explanation (not failed) when the
+browser is missing. The behavior is configured by environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `E2E_BROWSER` | `chromium` | `chromium`, `firefox` or `webkit` |
+| `E2E_HEADLESS` | `true` | Set `0` to watch the browser |
+| `E2E_SLOWMO` | `0` | Milliseconds between actions |
+| `E2E_ARTIFACTS_DIR` | `artifacts` | Where failed scenarios save a screenshot, a trace, the HTML and the console log (git-ignored) |
+| `E2E_SKIP_BROWSER` | `false` | Skip the `@browser` scenarios |
+| `E2E_TIMEOUT` | `10000` | Action and expectation timeout, in milliseconds |
+| `E2E_TRACE` | `true` | Record a trace, kept on failure (`python -m playwright show-trace <file>`) |
+
+The library has its own tests, which launch a real browser:
+
+```bash
+uv run --package e2e-support --group dev pytest libs/e2e-support
+```
+
+In CI the browser is installed (and cached) only for the applications that
+have `@browser` scenarios, and the artifacts of failed scenarios are uploaded
+to the workflow run.
 
 ## Features
 

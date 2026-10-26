@@ -73,6 +73,13 @@ uv run --package auth --group dev pytest apps/auth
 uv run --package auth --group dev behave apps/auth/features
 ```
 
+Applications that render HTML can have behave scenarios tagged `@browser` that
+run in a real browser through Playwright. Install the browser once with
+`uv run playwright install chromium`, skip those scenarios with
+`E2E_SKIP_BROWSER=1` or `-t ~@browser`; see
+[docs/testing](docs/testing/index.md) for the library and
+[CONTRIBUTING.md](CONTRIBUTING.md) for the `E2E_*` variables.
+
 Lint the workspace and build the documentation:
 
 ```bash

@@ -10,6 +10,8 @@ applications. It is a member of the `website` uv workspace.
   `/health` endpoint.
 - PostgreSQL data model (SQLAlchemy 2.0 with pgvector) and Alembic
   migrations.
+- OAuth2 bearer authentication with JWKS validation, token exchange and
+  scope checks.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 

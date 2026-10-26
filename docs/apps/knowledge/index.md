@@ -14,6 +14,8 @@ how it is tested with pytest and behave.
    sub-application, settings, logging and the health check.
 2. [Data model](01-data-model.md): SQLAlchemy models, async session and the
    Alembic migration chain.
+3. [OAuth2 authentication](02-authentication.md): bearer token validation,
+   token exchange, scopes and tenant resolution.
 
 ## Running the tests
 

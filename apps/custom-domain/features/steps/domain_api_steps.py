@@ -3,9 +3,9 @@
 
 """Steps for the domain API feature."""
 
-from behave import given, then
+from behave import given, then, when
 from custom_domain.models import AuthorizedClient, CustomDomain, DomainStatus
-from environment import start_patch
+from environment import http_request, start_patch
 from sqlalchemy import select
 
 
@@ -87,3 +87,47 @@ def step_stored_domain_active(context, name):
 @given("no default CNAME target is configured")
 def step_no_default_cname(context):
     step_default_cname_setting(context, "")
+
+
+@when('I register the domain shop.example.com with the template "{slug}"')
+def step_register_with_template(context, slug):
+    http_request(
+        context,
+        "POST",
+        "/api/v1/domains",
+        json={
+            "domain": "shop.example.com",
+            "owner_id": "org_1",
+            "nginx_template_id": context.ids[("template", slug)],
+        },
+    )
+
+
+@when('I update the template of the domain "{name}" to "{slug}"')
+def step_update_template(context, name, slug):
+    http_request(
+        context,
+        "PUT",
+        f"/api/v1/domains/{find_domain(context, name).id}",
+        json={"nginx_template_id": context.ids[("template", slug)]},
+    )
+
+
+@when('I send a PUT request to the client "{client_id}" with the default template "{slug}"')
+def step_put_client_template(context, client_id, slug):
+    http_request(
+        context,
+        "PUT",
+        f"/api/v1/admin/clients/{context.ids[('client', client_id)]}",
+        json={"default_nginx_template_id": context.ids[("template", slug)]},
+    )
+
+
+@given('the client "{client_id}" has the default template "{slug}"')
+def step_client_default_template(context, client_id, slug):
+    with context.db.session() as session:
+        client = session.scalar(
+            select(AuthorizedClient).where(AuthorizedClient.client_id == client_id)
+        )
+        client.default_nginx_template_id = context.ids[("template", slug)]
+        session.commit()

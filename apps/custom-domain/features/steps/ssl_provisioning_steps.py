@@ -208,3 +208,14 @@ def step_task_route(context, task, queue):
 @then("no system command was run")
 def step_no_command(context):
     assert context.commands == []
+
+
+@then('the nginx configuration was rendered from the template "{slug}"')
+def step_rendered_from(context, slug):
+    template = context.nginx.generate_http_config.call_args.args[1]
+    assert template is not None and template.slug == slug, template
+
+
+@then("the nginx configuration was rendered with the packaged templates")
+def step_rendered_packaged(context):
+    assert context.nginx.generate_http_config.call_args.args[1] is None

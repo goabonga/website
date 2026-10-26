@@ -849,6 +849,7 @@ website_apps_catalog:
       LOG_LEVEL: "INFO"
       DOCS_ENABLED: "false"
       OAUTH2_TOKEN_URL: "https://{{ website_hostnames.auth }}/oauth2/token"
+      OAUTH2_CLIENT_ID: "{{ (website_oauth2_clients.get('webhooks') or {}).get('client_id', '') }}"
       SES_ENABLED: "false"
       BREVO_ENABLED: "true"
       BREVO_INTERNAL_API_SOCKET: "/run/mailler/mailler.sock"
@@ -856,4 +857,8 @@ website_apps_catalog:
       STRIPE_ENABLED: "true"
       STRIPE_INTERNAL_API_SOCKET: "/run/billing/billing.sock"
       GITHUB_ENABLED: "false"
-    secret_names: ["OAUTH2_CLIENT_SECRET"]
+    # The OAuth client (website_oauth2_clients.webhooks and the OAUTH2_CLIENT_SECRET
+    # secret) only authenticates the events forwarded to mailler. billing checks
+    # the Stripe signature and ignores the token, so a gateway that only forwards
+    # Stripe events needs neither.
+    optional_secret_names: ["OAUTH2_CLIENT_SECRET"]

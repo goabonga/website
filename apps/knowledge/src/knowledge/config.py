@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_window: int = 60  # seconds
 
+    # Multi-Tenancy
+    tenant_base_domain: str = ""  # Base domain for subdomain resolution (e.g., example.com)
+    tenant_custom_domain_lookup: bool = True  # Enable custom domain CNAME resolution
     # Quota limits of the plans, by plan slug ("*" applies to every other plan), for example
     # {"free": {"max_collections": 3}, "*": {"max_collections": 1}}. A limit that is not listed
     # is 0 (nothing allowed) and -1 means unlimited. Empty by default: the deployment decides.

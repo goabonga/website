@@ -14,6 +14,7 @@ from knowledge.schemas.document import (
     DocumentsCreate,
 )
 from knowledge.schemas.search import SearchRequest, SearchResponse, SearchResult
+from knowledge.schemas.tenant import TenantCreate, TenantResponse
 
 __all__ = [
     "CollectionCreate",
@@ -25,4 +26,6 @@ __all__ = [
     "SearchRequest",
     "SearchResponse",
     "SearchResult",
+    "TenantCreate",
+    "TenantResponse",
 ]

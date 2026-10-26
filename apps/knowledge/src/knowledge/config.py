@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536
 
+    # Search
+    default_similarity_threshold: float = 0.7
+    default_search_limit: int = 10
+    max_search_limit: int = 100
+
 
 # Secrets that can be delivered as systemd credentials or environment variables.
 CREDENTIAL_FIELDS = {

@@ -13,6 +13,7 @@ from knowledge.schemas.document import (
     DocumentResponse,
     DocumentsCreate,
 )
+from knowledge.schemas.search import SearchRequest, SearchResponse, SearchResult
 
 __all__ = [
     "CollectionCreate",
@@ -21,4 +22,7 @@ __all__ = [
     "DocumentCreate",
     "DocumentResponse",
     "DocumentsCreate",
+    "SearchRequest",
+    "SearchResponse",
+    "SearchResult",
 ]

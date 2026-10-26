@@ -22,5 +22,6 @@ telephony
 
 [website:vars]
 # bootstrap.yml runs once as the account created by the hosting provider
-# (-u root); every other run uses the deploy account.
+# (-e ansible_user=root, which wins over this line); every other run uses the
+# deploy account.
 ansible_user=deploy

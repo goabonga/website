@@ -19,7 +19,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from e2e_support.oidc import authorize, token_endpoint
+from e2e_support.oidc import authorize, introspection, token_endpoint
 from e2e_support.oidc.keys import SigningKey
 from e2e_support.oidc.models import (
     AUTHORIZATION_CODE,
@@ -143,6 +143,19 @@ class FakeOIDCProvider:
     def clear_requests(self) -> None:
         self.requests.clear()
 
+    def revoke_tokens(self, user_id: str | None = None) -> None:
+        """Revoke every issued token (or only those of ``user_id``), as an admin would.
+
+        Introspection then reports them inactive, which is how an application notices that a
+        session was ended at the provider.
+        """
+        for access in self.store.access_tokens.values():
+            if user_id is None or access.user_id == user_id:
+                access.revoked = True
+        for refresh in self.store.refresh_tokens.values():
+            if user_id is None or refresh.user_id == user_id:
+                refresh.revoked = True
+
     def end_sessions(self) -> None:
         """Forget every logged-in session: the next authorization asks for a login again."""
         self.store.sessions.clear()
@@ -169,6 +182,7 @@ class FakeOIDCProvider:
 
         authorize.install(self, app)
         token_endpoint.install(self, app)
+        introspection.install(self, app)
         return app
 
     def discovery_document(self, issuer: str) -> dict[str, Any]:

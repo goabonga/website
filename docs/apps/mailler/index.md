@@ -21,6 +21,7 @@ documented on its own page.
 | [Sending statistics](06-stats.md) | Totals, per-provider and per-day counters |
 | [Scheduling and periodic tasks](07-schedule.md) | `POST /schedule`, beat tasks |
 | [MJML email templates](08-templates.md) | Template CRUD, compilation and rendering |
+| [Contacts](09-contacts.md) | Recipients, bulk import and unsubscribe |
 
 ## Running the tests
 

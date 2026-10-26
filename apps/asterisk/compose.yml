@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: asterisk_bot_test
+      POSTGRES_USER: asterisk_bot
+      POSTGRES_PASSWORD: asterisk_bot
+    ports:
+      - "5442:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asterisk_bot -d asterisk_bot_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

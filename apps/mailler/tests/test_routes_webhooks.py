@@ -1987,3 +1987,42 @@ class TestUpdateCampaignStatsMissingBranches:
         assert result is False  # status did not change
         assert mock_send.status == "sent"
         mock_db.commit.assert_called_once()
+
+
+class TestWebhookStatusCallbacks:
+    """A status change reported by the provider is passed on to the client."""
+
+    @patch("mailler.routes.webhooks.get_sync_db")
+    def test_the_client_is_notified_after_the_commit(self, mock_get_db, status_callbacks):
+        from mailler.models.email import EmailStatus
+        from mailler.routes.webhooks import _update_email_status
+
+        mock_email = MagicMock()
+        mock_email.status = "sent"
+        mock_email.provider_message_id = None
+        mock_db = MagicMock()
+        mock_db.get.return_value = mock_email
+        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_db)
+        mock_get_db.return_value.__exit__ = MagicMock(return_value=False)
+        order = []
+        mock_db.commit.side_effect = lambda: order.append("commit")
+        status_callbacks.side_effect = lambda db, email: order.append("notify")
+
+        _update_email_status("email-1", EmailStatus.DELIVERED)
+
+        status_callbacks.assert_called_once_with(mock_db, mock_email)
+        assert order == ["commit", "notify"]
+
+    @patch("mailler.routes.webhooks.get_sync_db")
+    def test_nobody_is_notified_for_an_unknown_email(self, mock_get_db, status_callbacks):
+        from mailler.models.email import EmailStatus
+        from mailler.routes.webhooks import _update_email_status
+
+        mock_db = MagicMock()
+        mock_db.get.return_value = None
+        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_db)
+        mock_get_db.return_value.__exit__ = MagicMock(return_value=False)
+
+        _update_email_status("nope", EmailStatus.DELIVERED)
+
+        status_callbacks.assert_not_called()

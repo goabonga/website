@@ -28,6 +28,8 @@ class TestAuthorizedClientTable:
             "default_provider",
             "rate_limit_per_minute",
             "daily_quota",
+            "callback_url",
+            "callback_secret",
         ):
             assert name in columns
 
@@ -53,3 +55,15 @@ class TestEmailLimitIndex:
             for index in Email.__table__.indexes
         }
         assert indexes["ix_emails_client_id_created_at"] == ["client_id", "created_at"]
+
+
+class TestCallbackColumns:
+    def test_the_callback_is_optional(self):
+        columns = AuthorizedClient.__table__.columns
+        assert columns["callback_url"].nullable is True
+        assert columns["callback_secret"].nullable is True
+
+    def test_the_secret_is_never_exposed_by_the_flag(self):
+        assert AuthorizedClient(client_id="a").has_callback_secret is False
+        assert AuthorizedClient(client_id="a", callback_secret="").has_callback_secret is False
+        assert AuthorizedClient(client_id="a", callback_secret="x" * 20).has_callback_secret is True

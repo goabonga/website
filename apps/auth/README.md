@@ -10,10 +10,11 @@ Centralized OIDC/OAuth2 authentication service.
 - Multi-tenancy and OIDC discovery: Tenant resolution, issuer, branding, trust policies, outbound webhooks and discovery.
 - Outbound webhooks and Celery: Signed webhook deliveries to tenant endpoints through a Celery worker.
 - Registration and email verification: User accounts, password hashing, email delivery and verification.
+- Sessions and logout: Cookie sessions, sliding expiry middleware and logout.
 
 ## Routes and scopes
 
-HTTP routes served by the application and what each one requires. `public` routes need no credentials.
+HTTP routes served by the application and what each one requires. `public` routes need no credentials. `session` routes need the session cookie of a signed-in user.
 
 ### Service and OpenID Connect endpoints
 
@@ -37,6 +38,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/auth/verify-email/api` | public | Verify an email address using a one-time code (JSON API) |
 | POST | `/auth/resend-verification` | public | Re-send the email verification code via the HTML form |
 | POST | `/auth/resend-verification/api` | public | Re-send the email verification code (JSON API) |
+| POST | `/auth/logout` | public (clears the session cookie) | Terminate the current session and redirect to the login page |
+| POST | `/auth/logout/api` | session | Terminate the current session and return a JSON confirmation |
+| POST | `/auth/logout/all` | public (clears the session cookie) | Revoke every active session for the user and redirect to the login page |
+| POST | `/auth/logout/all/api` | session | Revoke every active session for the user and return a JSON confirmation |
 
 Static files are served publicly under `/static` (favicon and Swagger UI assets) and `/uploads` (uploaded files).
 

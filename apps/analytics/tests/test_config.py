@@ -62,3 +62,22 @@ class TestSettings:
             s = Settings(_env_file=None)
         assert s.security_contact == "mailto:security@example.com"
         assert s.security_policy == "https://example.com/policy"
+
+    def test_database_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.database_url == "postgresql://localhost:5432/analytics"
+        assert s.database_echo is False
+        assert s.data_retention_days == 395
+
+    def test_database_env_override(self):
+        env = {
+            "DATABASE_URL": "postgresql:///analytics",
+            "DATABASE_ECHO": "true",
+            "DATA_RETENTION_DAYS": "30",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.database_url == "postgresql:///analytics"
+        assert s.database_echo is True
+        assert s.data_retention_days == 30

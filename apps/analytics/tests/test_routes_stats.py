@@ -29,6 +29,7 @@ from analytics.routes.stats import (
     PixelResponse,
     PixelStats,
     ReferrerStats,
+    ResetResponse,
     StatsResponse,
     get_date_range,
 )
@@ -146,6 +147,18 @@ class TestResponseModels:
     def test_stats_response(self):
         stats = StatsResponse(success=True, data={"key": "value"})
         assert stats.success is True
+
+    def test_reset_response(self):
+        resp = ResetResponse(
+            success=True,
+            sessions_deleted=10,
+            events_deleted=50,
+            campaigns_deleted=2,
+            pixels_deleted=5,
+            clicks_deleted=20,
+            pixel_opens_deleted=30,
+        )
+        assert resp.sessions_deleted == 10
 
 
 class TestRequestModels:
@@ -1137,3 +1150,41 @@ class TestCreatePixelsBatch:
             )
 
         assert resp.status_code == 404
+
+
+class TestResetAllAnalytics:
+    """Tests for DELETE /api/v1/stats/reset endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_reset_all(self, patched_app, mock_db):
+        def make_delete_result(rowcount):
+            r = MagicMock()
+            r.rowcount = rowcount
+            return r
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                make_delete_result(30),  # pixel opens
+                make_delete_result(20),  # clicks
+                make_delete_result(5),  # pixels
+                make_delete_result(2),  # campaigns
+                make_delete_result(50),  # events
+                make_delete_result(10),  # sessions
+            ]
+        )
+        mock_db.commit = AsyncMock()
+
+        transport = ASGITransport(app=patched_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete("/api/v1/stats/reset")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["sessions_deleted"] == 10
+        assert data["events_deleted"] == 50
+        assert data["campaigns_deleted"] == 2
+        assert data["pixels_deleted"] == 5
+        assert data["clicks_deleted"] == 20
+        assert data["pixel_opens_deleted"] == 30
+        mock_db.commit.assert_awaited_once()

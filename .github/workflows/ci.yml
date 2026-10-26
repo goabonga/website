@@ -225,6 +225,19 @@ jobs:
       - run: uv run --no-sync playwright install --with-deps chromium
       - run: uv run --no-sync pytest "libs/${{ matrix.lib }}"
 
+  scripts:
+    name: scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+          python-version: "3.11"
+      - run: uv sync --frozen --only-group dev
+      - run: uv run --no-sync pytest scripts/tests
+
   bandit:
     name: bandit
     runs-on: ubuntu-latest
@@ -281,7 +294,7 @@ jobs:
 
   release:
     name: release
-    needs: [lint, license-headers, multicz, docs, ansible, test, libs, bandit, pip-audit, osv-scanner]
+    needs: [lint, license-headers, multicz, docs, ansible, test, libs, scripts, bandit, pip-audit, osv-scanner]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

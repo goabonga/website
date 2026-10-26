@@ -72,6 +72,7 @@ SECTIONS: dict[str, Section] = {
     "conversations": Section("/conversations", "conversations:*"),
     "analytics": Section("/analytics", "analytics:*"),
     "email_templates": Section("/email-templates", "email_templates:*"),
+    "email_campaigns": Section("/email-campaigns", "email_campaigns:*"),
     "mailler": Section("/mailler", "mailler:*"),
     "contacts": Section("/contacts", "contacts:*"),
     "contact_groups": Section("/contact-groups", "contacts:*"),
@@ -92,6 +93,7 @@ CLIENTS: tuple[str, ...] = (
     "internal.routes.contacts.mailler_client",
     "internal.routes.contact_groups.mailler_client",
     "internal.routes.email_templates.mailler_client",
+    "internal.routes.email_campaigns.mailler_client",
 )
 
 
@@ -676,6 +678,49 @@ async def configure_email_templates(env: "Env") -> dict:
     return {}
 
 
+async def configure_email_campaigns(env: "Env") -> dict:
+    """Make the mailler service return one draft campaign with its form data."""
+    stats = {
+        "total_recipients": 50,
+        "sent_count": 0,
+        "delivered_count": 0,
+        "opened_count": 0,
+        "clicked_count": 0,
+        "bounced_count": 0,
+        "complained_count": 0,
+        "failed_count": 0,
+        "progress_percent": 0,
+        "open_rate": 0,
+        "click_rate": 0,
+        "bounce_rate": 0,
+        "complaint_rate": 0,
+    }
+    campaign = {
+        "id": 1,
+        "name": "Newsletter January",
+        "status": "draft",
+        "template_id": 1,
+        "group_id": 1,
+        "total_recipients": 50,
+        "sent_count": 0,
+        "stats": stats,
+        "created_at": "2024-01-15T12:00:00Z",
+        "updated_at": "2024-01-15T12:00:00Z",
+    }
+    mailler = env.client("email_campaigns.mailler_client")
+    mailler.get_campaigns.return_value = {"items": [campaign], "total": 1, "pages": 1}
+    mailler.get_campaign.return_value = campaign
+    mailler.get_campaign_sends.return_value = {"items": [], "total": 0}
+    mailler.get_templates.return_value = {
+        "items": [{"id": 1, "name": "Welcome", "slug": "welcome", "status": "active"}]
+    }
+    mailler.get_contact_groups.return_value = {
+        "items": [{"id": 1, "name": "Subscribers", "slug": "subscribers"}]
+    }
+    mailler.get_providers.return_value = [{"name": "ses", "label": "Amazon SES"}]
+    return {}
+
+
 # Pages rendering the sidebar, grouped by the feature that introduced them.
 PAGES: dict[str, list[Page]] = {
     "analytics": [
@@ -750,6 +795,12 @@ PAGES: dict[str, list[Page]] = {
         Page("/email-templates/new", "email_templates", configure_email_templates),
         Page("/email-templates/1", "email_templates", configure_email_templates),
         Page("/email-templates/1/edit", "email_templates", configure_email_templates),
+    ],
+    "email_campaigns": [
+        Page("/email-campaigns", "email_campaigns", configure_email_campaigns),
+        Page("/email-campaigns/new", "email_campaigns", configure_email_campaigns),
+        Page("/email-campaigns/1", "email_campaigns", configure_email_campaigns),
+        Page("/email-campaigns/1/edit", "email_campaigns", configure_email_campaigns),
     ],
 }
 

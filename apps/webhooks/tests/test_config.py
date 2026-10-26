@@ -138,3 +138,32 @@ class TestModuleSettings:
                 assert reloaded.settings.oauth2_client_secret == "from-credential"
         finally:
             importlib.reload(config_module)
+
+
+class TestBrevoSettings:
+    """Tests for the Brevo settings."""
+
+    def test_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            s = Settings(_env_file=None)
+        assert s.brevo_enabled is False
+        assert s.brevo_webhook_secret == ""
+        assert s.brevo_internal_api_url == ""
+        assert s.brevo_internal_api_socket == ""
+        assert s.brevo_internal_api_token == ""
+
+    def test_env_override(self):
+        env = {
+            "BREVO_ENABLED": "true",
+            "BREVO_INTERNAL_API_URL": "http://brevo-api:8000",
+            "BREVO_INTERNAL_API_SOCKET": "/run/brevo-internal.sock",
+            "BREVO_INTERNAL_API_TOKEN": "brevo-token",
+            "BREVO_WEBHOOK_SECRET": "brevo-secret",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings(_env_file=None)
+        assert s.brevo_enabled is True
+        assert s.brevo_internal_api_url == "http://brevo-api:8000"
+        assert s.brevo_internal_api_socket == "/run/brevo-internal.sock"
+        assert s.brevo_internal_api_token == "brevo-token"
+        assert s.brevo_webhook_secret == "brevo-secret"

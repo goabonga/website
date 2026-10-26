@@ -4,9 +4,31 @@
 """Tests for webhooks.main module."""
 
 import importlib
+from contextlib import contextmanager
 from unittest.mock import patch
 
 from httpx import ASGITransport, AsyncClient
+
+
+@contextmanager
+def _reloaded_app(env):
+    """Reload webhooks.main with settings built from the given environment."""
+    import webhooks.main as main_module
+    from webhooks.config import Settings
+
+    with patch.dict("os.environ", env, clear=True):
+        configured = Settings(_env_file=None)
+    try:
+        with patch("webhooks.config.settings", configured):
+            importlib.reload(main_module)
+            yield main_module.app
+    finally:
+        importlib.reload(main_module)
+
+
+async def _post(app, path):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        return await client.post(path, content=b"{}")
 
 
 class TestAppConfiguration:
@@ -130,3 +152,19 @@ class TestLifespan:
             async with lifespan(app):
                 pass
         mock_setup.assert_called_once_with(level="DEBUG")
+
+
+class TestBrevoRegistration:
+    """Tests for conditional registration of the Brevo route."""
+
+    async def test_route_not_registered_by_default(self):
+        from webhooks.main import app
+
+        response = await _post(app, "/webhooks/brevo")
+        assert response.status_code == 404
+
+    async def test_route_registered_when_enabled(self):
+        with _reloaded_app({"BREVO_ENABLED": "true"}) as app:
+            # Registered but not wired to an internal API yet: 503, not 404.
+            response = await _post(app, "/webhooks/brevo")
+        assert response.status_code == 503

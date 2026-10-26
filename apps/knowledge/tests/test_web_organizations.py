@@ -16,6 +16,7 @@ from knowledge.auth.models import User, WebAuthContext
 from knowledge.database import get_db
 from knowledge.internal import internal_app
 from knowledge.models.enums import (
+    CustomDomainStatus,
     InvitationStatus,
     OrganizationMemberRole,
     PlanType,
@@ -24,12 +25,18 @@ from knowledge.models.workspace_deletion_request import (
     DeletionRequestStatus,
     WorkspaceDeletionRequest,
 )
+from knowledge.services.custom_domain import CustomDomainError, RegisteredDomain
 from tests.conftest import TEST_TENANT_ID, TEST_USER_ID
 
 
 def _html_response(status_code=200):
     """Return a real HTMLResponse for template mock return values."""
     return HTMLResponse(content="<html>ok</html>", status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _make_mock_tenant(**overrides):
@@ -44,6 +51,8 @@ def _make_mock_tenant(**overrides):
     tenant.custom_domain = overrides.get("custom_domain")
     tenant.custom_domain_status = overrides.get("custom_domain_status")
     tenant.custom_domain_error = overrides.get("custom_domain_error")
+    tenant.custom_domain_service_id = overrides.get("custom_domain_service_id")
+    tenant.custom_domain_cname_target = overrides.get("custom_domain_cname_target")
     return tenant
 
 
@@ -121,6 +130,11 @@ def _make_invitation(**overrides):
     inv.expires_at = overrides.get("expires_at", datetime.now(UTC) + timedelta(days=7))
     inv.accepted_at = overrides.get("accepted_at")
     return inv
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -223,6 +237,11 @@ async def web_client_admin_not_owner(mock_db):
     internal_app.dependency_overrides.clear()
 
 
+# ===========================================================================
+# switch_organization
+# ===========================================================================
+
+
 async def test_switch_org_success(web_client, mock_db):
     member = _make_mock_member()
     mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=member))
@@ -271,6 +290,11 @@ async def test_switch_org_not_member(web_client, mock_db):
     )
     assert response.status_code == 302
     assert response.headers["location"] == "/dashboard"
+
+
+# ===========================================================================
+# pricing_page
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.templates")
@@ -431,6 +455,11 @@ async def test_pricing_subscription_no_price_id(mock_billing, mock_templates, we
     assert response.status_code == 200
 
 
+# ===========================================================================
+# checkout
+# ===========================================================================
+
+
 @patch(
     "knowledge.routes.web.organizations.checkout_redirect_urls",
     return_value=("http://test/ok", "http://test/ko"),
@@ -542,6 +571,11 @@ async def test_checkout_personal_workspace(mock_billing, mock_settings, mock_db)
     internal_app.dependency_overrides.clear()
 
 
+# ===========================================================================
+# upgrade_preview
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.get_billing_client")
 async def test_upgrade_preview_success(mock_billing, web_client, mock_db):
     sub = MagicMock()
@@ -631,6 +665,11 @@ async def test_upgrade_preview_unexpected_error(mock_billing, web_client, mock_d
     response = await web_client.get("/organizations/upgrade/preview?price_id=p1")
     data = response.json()
     assert "Unexpected error" in data["error"]
+
+
+# ===========================================================================
+# upgrade_plan
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.get_billing_client")
@@ -746,6 +785,11 @@ async def test_upgrade_plan_billing_error(mock_billing, web_client, mock_db):
     assert "error=" in response.headers["location"]
 
 
+# ===========================================================================
+# organization_settings (GET)
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.templates")
 @patch("knowledge.routes.web.organizations.QuotaService")
 async def test_settings_page(MockQuota, mock_templates, web_client, mock_db):
@@ -772,6 +816,11 @@ async def test_settings_page_non_admin(mock_templates, web_client_non_admin, moc
 
     response = await web_client_non_admin.get("/organizations/settings")
     assert response.status_code == 403
+
+
+# ===========================================================================
+# update_organization_settings (POST)
+# ===========================================================================
 
 
 async def test_update_settings_success(web_client, mock_db):
@@ -803,6 +852,11 @@ async def test_update_settings_non_admin(mock_templates, web_client_non_admin, m
         data={"name": "New"},
     )
     assert response.status_code == 403
+
+
+# ===========================================================================
+# delete_organization (POST)
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.send_workspace_deletion_email")
@@ -873,6 +927,11 @@ async def test_delete_org_not_owner(mock_templates, web_client_admin_not_owner, 
         data={"confirmation_name": "Test Org"},
     )
     assert response.status_code == 403
+
+
+# ===========================================================================
+# confirm_deletion_page (GET)
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.templates")
@@ -998,6 +1057,11 @@ async def test_confirm_deletion_page_org_not_found(mock_templates, web_client, m
     response = await web_client.get("/organizations/delete/confirm/tok")
     assert response.status_code == 200
     assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/deletion_error.html"
+
+
+# ===========================================================================
+# execute_deletion (POST)
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.send_workspace_deleted_email")
@@ -1359,6 +1423,11 @@ async def test_execute_deletion_trialing_subscription(
         dr.schedule.assert_called_once()
 
 
+# ===========================================================================
+# cancel_scheduled_deletion
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.templates")
 @patch("knowledge.routes.web.organizations.get_billing_client")
 async def test_cancel_scheduled_deletion_success(mock_billing, mock_templates, web_client, mock_db):
@@ -1549,6 +1618,11 @@ async def test_cancel_scheduled_no_sub_cancelled(mock_billing, mock_templates, w
     assert ctx["subscription_reactivated"] is False
 
 
+# ===========================================================================
+# organization_members
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.templates")
 async def test_members_page(mock_templates, web_client, mock_db):
     member = _make_mock_member()
@@ -1581,6 +1655,11 @@ async def test_members_page_non_admin(mock_templates, web_client_non_admin, mock
     assert response.status_code == 403
 
 
+# ===========================================================================
+# invite_form
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.templates")
 async def test_invite_form(mock_templates, web_client, mock_db):
     mock_db.execute = AsyncMock(return_value=_make_result(scalars_all=[]))
@@ -1601,6 +1680,11 @@ async def test_invite_form_non_admin(mock_templates, web_client_non_admin, mock_
     mock_templates.TemplateResponse.return_value = _html_response(403)
     response = await web_client_non_admin.get("/organizations/invite")
     assert response.status_code == 403
+
+
+# ===========================================================================
+# create_invitation
+# ===========================================================================
 
 
 @patch("knowledge.tasks.send_workspace_invitation_email")
@@ -1698,6 +1782,11 @@ async def test_create_invitation_owner_role_by_non_owner(
     assert response.status_code == 302
 
 
+# ===========================================================================
+# resend_invitation
+# ===========================================================================
+
+
 @patch("knowledge.tasks.send_workspace_invitation_email")
 @patch("knowledge.routes.web.organizations.get_settings")
 async def test_resend_invitation(mock_settings, mock_email, web_client, mock_db):
@@ -1736,6 +1825,11 @@ async def test_resend_invitation_no_tenant(web_client_no_tenant):
     assert response.headers["location"] == "/dashboard"
 
 
+# ===========================================================================
+# revoke_invitation
+# ===========================================================================
+
+
 async def test_revoke_invitation(web_client, mock_db):
     inv = _make_invitation()
     mock_db.execute = AsyncMock(return_value=_make_result(scalar_one_or_none=inv))
@@ -1764,6 +1858,11 @@ async def test_revoke_invitation_no_tenant(web_client_no_tenant):
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+# ===========================================================================
+# remove_member
+# ===========================================================================
 
 
 async def test_remove_member_success(web_client, mock_db):
@@ -1824,6 +1923,11 @@ async def test_remove_member_no_tenant(web_client_no_tenant):
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+# ===========================================================================
+# update_member_role
+# ===========================================================================
 
 
 async def test_update_member_role_success(web_client, mock_db):
@@ -1889,6 +1993,11 @@ async def test_update_member_role_not_found(web_client, mock_db):
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+# ===========================================================================
+# view_invitation (public)
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.templates")
@@ -2003,6 +2112,11 @@ async def test_view_invitation_logged_in_invalid_token(
         assert response.status_code == 200
         ctx = mock_templates.TemplateResponse.call_args[0][2]
         assert ctx["user"] is None
+
+
+# ===========================================================================
+# accept_invitation
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.get_token_from_cookie", new_callable=AsyncMock)
@@ -2145,6 +2259,463 @@ async def test_accept_invitation_expired(mock_cookie, web_client, mock_db):
         assert inv.status == InvitationStatus.EXPIRED
 
 
+# ===========================================================================
+# custom_domain_page
+# ===========================================================================
+
+
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.templates")
+async def test_custom_domain_page(mock_templates, mock_settings, mock_db):
+    tenant = _make_mock_tenant(can_use_custom_domain=True, plan=PlanType.ENTERPRISE)
+    auth = _build_auth(tenant=tenant)
+
+    settings = MagicMock()
+    settings.custom_domain_cname_target = "cname.example.com"
+    mock_settings.return_value = settings
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalars_all=[]))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    async with AsyncClient(transport=ASGITransport(app=internal_app), base_url="http://test") as ac:
+        response = await ac.get("/organizations/domain")
+
+    assert response.status_code == 200
+    assert mock_templates.TemplateResponse.call_args[0][1] == "tenants/domain.html"
+    # the page belongs to the settings: that sidebar item is the active one
+    assert mock_templates.TemplateResponse.call_args[0][2]["active_section"] == (
+        "organization_settings"
+    )
+    internal_app.dependency_overrides.clear()
+
+
+async def test_custom_domain_page_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.get("/organizations/domain", follow_redirects=False)
+    assert response.status_code == 302
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_custom_domain_page_non_admin(mock_templates, web_client_non_admin, mock_db):
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+    response = await web_client_non_admin.get("/organizations/domain")
+    assert response.status_code == 403
+
+
+async def test_custom_domain_page_not_enterprise(web_client, mock_db):
+    """Non-enterprise redirect to settings."""
+    response = await web_client.get("/organizations/domain", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/settings"
+
+
+# ===========================================================================
+# update_custom_domain (POST)
+# ===========================================================================
+
+
+def _service_client(**methods):
+    """A custom-domain client whose calls succeed unless a test says otherwise."""
+    client = MagicMock()
+    client.register = AsyncMock(
+        return_value=RegisteredDomain(
+            id="svc-1",
+            domain="custom.example.com",
+            status="pending",
+            cname_target="apps.example.test",
+        )
+    )
+    client.verify = AsyncMock(return_value="dns_verifying")
+    client.delete = AsyncMock(return_value=True)
+    for name, value in methods.items():
+        setattr(client, name, value)
+    return client
+
+
+async def _post_domain(tenant, mock_db, domain="custom.example.com", client=None, db_result=None):
+    auth = _build_auth(tenant=tenant)
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+    mock_db.execute = AsyncMock(return_value=db_result or _make_result(scalar_one_or_none=None))
+    settings = MagicMock(custom_domain_cname_target="cname.example.com")
+    try:
+        with (
+            patch("knowledge.routes.web.organizations.get_settings", return_value=settings),
+            patch(
+                "knowledge.routes.web.organizations.get_custom_domain_client",
+                return_value=client or _service_client(),
+            ),
+            patch("knowledge.routes.web.organizations.templates") as templates,
+        ):
+            templates.TemplateResponse.return_value = _html_response()
+            async with AsyncClient(
+                transport=ASGITransport(app=internal_app), base_url="http://test"
+            ) as ac:
+                response = await ac.post(
+                    "/organizations/domain", data={"domain": domain}, follow_redirects=False
+                )
+            context = (
+                templates.TemplateResponse.call_args[0][2]
+                if templates.TemplateResponse.called
+                else None
+            )
+    finally:
+        internal_app.dependency_overrides.clear()
+    return response, context
+
+
+async def test_update_custom_domain_success(mock_db):
+    tenant = _make_mock_tenant(can_use_custom_domain=True)
+    client = _service_client()
+
+    response, _ = await _post_domain(tenant, mock_db, client=client)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/domain"
+    client.register.assert_awaited_once_with("custom.example.com", str(tenant.id))
+    client.delete.assert_not_called()
+    assert tenant.custom_domain == "custom.example.com"
+    assert tenant.custom_domain_service_id == "svc-1"
+    assert tenant.custom_domain_cname_target == "apps.example.test"
+    assert tenant.custom_domain_status == CustomDomainStatus.PENDING
+    mock_db.commit.assert_awaited()
+
+
+async def test_update_custom_domain_replaces_the_previous_domain(mock_db):
+    tenant = _make_mock_tenant(
+        can_use_custom_domain=True,
+        custom_domain="old.example.com",
+        custom_domain_service_id="old-id",
+    )
+    client = _service_client()
+
+    await _post_domain(tenant, mock_db, client=client)
+
+    client.delete.assert_awaited_once_with("old-id")
+    assert tenant.custom_domain_service_id == "svc-1"
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (CustomDomainError("taken", status_code=409), "already registered"),
+        (CustomDomainError("Domain limit reached (5)", status_code=403), "Domain limit reached"),
+        (CustomDomainError("down", retryable=True), "not available right now"),
+    ],
+)
+async def test_update_custom_domain_refused_by_the_service(mock_db, error, message):
+    tenant = _make_mock_tenant(can_use_custom_domain=True)
+    client = _service_client(register=AsyncMock(side_effect=error))
+
+    response, context = await _post_domain(tenant, mock_db, client=client)
+
+    assert response.status_code == 200
+    assert message in context["error"]
+    assert tenant.custom_domain is None
+    mock_db.commit.assert_not_called()
+
+
+@patch("knowledge.routes.web.organizations.domain_service")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.templates")
+async def test_update_custom_domain_invalid(
+    mock_templates, mock_settings, mock_domain_svc, mock_db
+):
+    tenant = _make_mock_tenant(can_use_custom_domain=True)
+    auth = _build_auth(tenant=tenant)
+
+    settings = MagicMock()
+    settings.custom_domain_cname_target = "cname.example.com"
+    mock_settings.return_value = settings
+    mock_domain_svc.validate_domain.return_value = (False, "Invalid domain")
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+
+    mock_db.execute = AsyncMock(return_value=_make_result(scalars_all=[]))
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    async with AsyncClient(transport=ASGITransport(app=internal_app), base_url="http://test") as ac:
+        response = await ac.post("/organizations/domain", data={"domain": "bad"})
+
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert ctx["error"] == "Invalid domain"
+    internal_app.dependency_overrides.clear()
+
+
+@patch("knowledge.routes.web.organizations.domain_service")
+@patch("knowledge.routes.web.organizations.get_settings")
+@patch("knowledge.routes.web.organizations.templates")
+async def test_update_custom_domain_already_used(
+    mock_templates, mock_settings, mock_domain_svc, mock_db
+):
+    tenant = _make_mock_tenant(can_use_custom_domain=True)
+    auth = _build_auth(tenant=tenant)
+
+    settings = MagicMock()
+    settings.custom_domain_cname_target = "cname.example.com"
+    mock_settings.return_value = settings
+    mock_domain_svc.validate_domain.return_value = (True, "")
+
+    existing_org = _make_mock_tenant(id=uuid4())
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+
+    mock_db.execute = AsyncMock(
+        side_effect=[
+            _make_result(scalar_one_or_none=existing_org),
+            _make_result(scalars_all=[]),
+        ]
+    )
+    mock_templates.TemplateResponse.return_value = _html_response()
+
+    async with AsyncClient(transport=ASGITransport(app=internal_app), base_url="http://test") as ac:
+        response = await ac.post("/organizations/domain", data={"domain": "used.com"})
+
+    assert response.status_code == 200
+    ctx = mock_templates.TemplateResponse.call_args[0][2]
+    assert "already in use" in ctx["error"]
+    internal_app.dependency_overrides.clear()
+
+
+async def test_update_custom_domain_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        "/organizations/domain", data={"domain": "x.com"}, follow_redirects=False
+    )
+    assert response.status_code == 302
+
+
+async def test_update_custom_domain_not_enterprise(web_client, mock_db):
+    response = await web_client.post(
+        "/organizations/domain", data={"domain": "x.com"}, follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/settings"
+
+
+# ===========================================================================
+# retry_domain_verification
+# ===========================================================================
+
+
+async def _post_action(path, tenant, mock_db, client):
+    auth = _build_auth(tenant=tenant)
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+    try:
+        with (
+            patch(
+                "knowledge.routes.web.organizations.get_custom_domain_client", return_value=client
+            ),
+            patch("knowledge.routes.web.organizations.templates") as templates,
+            patch(
+                "knowledge.routes.web.organizations.get_settings",
+                return_value=MagicMock(custom_domain_cname_target=""),
+            ),
+        ):
+            templates.TemplateResponse.return_value = _html_response()
+            async with AsyncClient(
+                transport=ASGITransport(app=internal_app), base_url="http://test"
+            ) as ac:
+                response = await ac.post(path, follow_redirects=False)
+            context = (
+                templates.TemplateResponse.call_args[0][2]
+                if templates.TemplateResponse.called
+                else None
+            )
+    finally:
+        internal_app.dependency_overrides.clear()
+    return response, context
+
+
+async def test_retry_domain_verification(mock_db):
+    tenant = _make_mock_tenant(custom_domain="test.example.com", custom_domain_service_id="svc-9")
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/verify", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    client.verify.assert_awaited_once_with("svc-9")
+    client.register.assert_not_called()
+    assert tenant.custom_domain_status == CustomDomainStatus.DNS_VERIFYING
+    mock_db.commit.assert_awaited()
+
+
+async def test_retry_registers_a_domain_the_service_does_not_know(mock_db):
+    tenant = _make_mock_tenant(custom_domain="test.example.com")
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/verify", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    client.register.assert_awaited_once_with("test.example.com", str(tenant.id))
+    client.verify.assert_not_called()
+    assert tenant.custom_domain_service_id == "svc-1"
+    assert tenant.custom_domain_status == CustomDomainStatus.PENDING
+
+
+async def test_retry_domain_verification_service_error(mock_db):
+    tenant = _make_mock_tenant(custom_domain="test.example.com", custom_domain_service_id="svc-9")
+    client = _service_client(
+        verify=AsyncMock(side_effect=CustomDomainError("Cannot verify", status_code=400))
+    )
+
+    response, context = await _post_action("/organizations/domain/verify", tenant, mock_db, client)
+
+    assert response.status_code == 200
+    assert context["error"] == "Cannot verify"
+
+
+async def test_retry_domain_verification_no_domain(mock_db):
+    tenant = _make_mock_tenant(custom_domain=None)
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/verify", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    client.verify.assert_not_called()
+    client.register.assert_not_called()
+
+
+async def test_retry_domain_verification_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        "/organizations/domain/verify", follow_redirects=False
+    )
+    assert response.status_code == 302
+
+
+# ===========================================================================
+# domain_status (JSON)
+# ===========================================================================
+
+
+async def test_domain_status_success(mock_db):
+    tenant = _make_mock_tenant(
+        custom_domain="test.example.com",
+        custom_domain_status=CustomDomainStatus.ACTIVE,
+        custom_domain_error=None,
+    )
+    auth = _build_auth(tenant=tenant)
+
+    async def override_get_db():
+        yield mock_db
+
+    internal_app.dependency_overrides[get_db] = override_get_db
+    internal_app.dependency_overrides[get_web_auth_context] = lambda: auth
+
+    async with AsyncClient(transport=ASGITransport(app=internal_app), base_url="http://test") as ac:
+        response = await ac.get("/organizations/domain/status")
+
+    data = response.json()
+    assert data["has_domain"] is True
+    assert data["status"] == "active"
+    internal_app.dependency_overrides.clear()
+
+
+async def test_domain_status_no_domain(web_client, mock_db):
+    response = await web_client.get("/organizations/domain/status")
+    data = response.json()
+    assert data["has_domain"] is False
+
+
+async def test_domain_status_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.get("/organizations/domain/status")
+    data = response.json()
+    assert data["error"] == "No organization selected"
+
+
+# ===========================================================================
+# remove_custom_domain
+# ===========================================================================
+
+
+async def test_remove_custom_domain_success(mock_db):
+    tenant = _make_mock_tenant(
+        custom_domain="old.example.com",
+        custom_domain_service_id="svc-9",
+        custom_domain_status=CustomDomainStatus.ACTIVE,
+    )
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/remove", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/organizations/domain"
+    client.delete.assert_awaited_once_with("svc-9")
+    assert tenant.custom_domain is None
+    assert tenant.custom_domain_service_id is None
+    assert tenant.custom_domain_status is None
+    mock_db.commit.assert_awaited()
+
+
+async def test_remove_custom_domain_without_service_id_only_forgets_it(mock_db):
+    tenant = _make_mock_tenant(custom_domain="old.example.com")
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/remove", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    client.delete.assert_not_called()
+    assert tenant.custom_domain is None
+
+
+async def test_remove_custom_domain_kept_when_the_service_fails(mock_db):
+    tenant = _make_mock_tenant(custom_domain="old.example.com", custom_domain_service_id="svc-9")
+    client = _service_client(
+        delete=AsyncMock(side_effect=CustomDomainError("down", retryable=True))
+    )
+
+    response, context = await _post_action("/organizations/domain/remove", tenant, mock_db, client)
+
+    assert response.status_code == 200
+    assert "not available right now" in context["error"]
+    assert tenant.custom_domain == "old.example.com"
+    mock_db.commit.assert_not_called()
+
+
+async def test_remove_custom_domain_no_existing(mock_db):
+    tenant = _make_mock_tenant(custom_domain=None)
+    client = _service_client()
+
+    response, _ = await _post_action("/organizations/domain/remove", tenant, mock_db, client)
+
+    assert response.status_code == 302
+    client.delete.assert_not_called()
+
+
+async def test_remove_custom_domain_no_tenant(web_client_no_tenant):
+    response = await web_client_no_tenant.post(
+        "/organizations/domain/remove", follow_redirects=False
+    )
+    assert response.status_code == 302
+
+
+# ===========================================================================
+# Fixture: web_client_redirect (auth returns RedirectResponse)
+# ===========================================================================
+
+
 @pytest.fixture
 async def web_client_redirect(mock_db):
     """Client where get_web_auth_context returns a RedirectResponse (unauthenticated)."""
@@ -2165,6 +2736,11 @@ async def web_client_redirect(mock_db):
         yield ac
 
     internal_app.dependency_overrides.clear()
+
+
+# ===========================================================================
+# Auth redirect tests (isinstance(auth_result, RedirectResponse) branches)
+# ===========================================================================
 
 
 async def test_switch_organization_auth_redirect(web_client_redirect):
@@ -2344,6 +2920,56 @@ async def test_update_member_role_auth_redirect(web_client_redirect):
     assert "/auth/login" in response.headers["location"]
 
 
+async def test_custom_domain_page_auth_redirect(web_client_redirect):
+    """Line 1444: custom_domain_page returns auth redirect."""
+    response = await web_client_redirect.get("/organizations/domain", follow_redirects=False)
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_update_custom_domain_auth_redirect(web_client_redirect):
+    """Line 1487: update_custom_domain returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/domain",
+        data={"domain": "example.com"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_retry_domain_verification_auth_redirect(web_client_redirect):
+    """Line 1566: retry_domain_verification returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/domain/verify", follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+async def test_domain_status_auth_redirect(web_client_redirect):
+    """Line 1587: domain_status returns error dict when auth is RedirectResponse."""
+    response = await web_client_redirect.get("/organizations/domain/status", follow_redirects=False)
+    # This is a JSON endpoint that returns {"error": "Not authenticated"}
+    assert response.status_code == 200
+    data = response.json()
+    assert data["error"] == "Not authenticated"
+
+
+async def test_remove_custom_domain_auth_redirect(web_client_redirect):
+    """Line 1615: remove_custom_domain returns auth redirect."""
+    response = await web_client_redirect.post(
+        "/organizations/domain/remove", follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["location"]
+
+
+# ===========================================================================
+# Branch partial tests
+# ===========================================================================
+
+
 @patch("knowledge.routes.web.organizations.templates")
 @patch("knowledge.routes.web.organizations.get_billing_client")
 async def test_pricing_page_multiple_plans_match_second(
@@ -2387,6 +3013,18 @@ async def test_pricing_page_multiple_plans_match_second(
     ctx = mock_templates.TemplateResponse.call_args[0][2]
     assert ctx["current_billing_period"] == "yearly"
     assert ctx["current_price_id"] == "price_match"
+
+
+@patch("knowledge.routes.web.organizations.templates")
+async def test_update_custom_domain_non_admin(mock_templates, web_client_non_admin, mock_db):
+    """Line 1493: update_custom_domain returns 403 for non-admin."""
+    mock_templates.TemplateResponse.return_value = _html_response(403)
+
+    response = await web_client_non_admin.post(
+        "/organizations/domain",
+        data={"domain": "example.com"},
+    )
+    assert response.status_code == 403
 
 
 @patch("knowledge.routes.web.organizations.templates")
@@ -2528,6 +3166,11 @@ async def test_cancel_scheduled_deletion_no_subscription(
     assert ctx["subscription_reactivated"] is False
     dr.cancel.assert_called_once()
     billing.reactivate_subscription.assert_not_called()
+
+
+# ===========================================================================
+# Additional tests for remaining uncovered lines
+# ===========================================================================
 
 
 @patch("knowledge.routes.web.organizations.get_settings")

@@ -5,32 +5,57 @@ name: dependabot-rewrite
 
 # `pull_request_target` so the workflow can read GPG_PRIVATE_KEY /
 # GPG_PASSPHRASE (regular `pull_request` runs without secrets on bot events).
-# The workflow body is loaded from `main`, not the PR branch, so no untrusted
-# code runs. The actor gate restricts it to genuine Dependabot PRs.
+# The workflow body is loaded from `main`, not the PR branch, and so is the
+# rewrite script: it is run from a trusted checkout of the default branch
+# while the signing key is imported, and the pull request branch is only data
+# to rewrite. The pull request author gate restricts the job to genuine
+# Dependabot pull requests, which stays true when someone else re-runs it.
+#
+# The rewritten branch is pushed with AUTO_MERGE_PAT: a push made with the
+# workflow token starts no workflow, so ci would never run on the rewritten
+# head and dependabot-auto-merge would never queue it. That push starts this
+# workflow again; only a head commit still authored by Dependabot is
+# rewritten, which ends the loop.
 
-on:
+on:  # zizmor: ignore[dangerous-triggers]
   pull_request_target:
+    branches: [main]
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write # force-push the rewritten branch when AUTO_MERGE_PAT is unset
+  pull-requests: read
 
 jobs:
   rewrite:
     name: rewrite dependabot commits
-    if: github.actor == 'dependabot[bot]'
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     concurrency:
       group: dependabot-rewrite-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
-      - name: Check GPG availability
+      - name: Decide whether the branch needs rewriting
         id: gate
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
+          AUTHOR=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA" --jq '.author.login')
+          if [ "$AUTHOR" != "dependabot[bot]" ]; then
+            {
+              echo "## Dependabot rewrite: skipped"
+              echo ""
+              echo "The head commit is no longer authored by Dependabot: already rewritten."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$GPG_PASSPHRASE" ]; then
             {
               echo "## Dependabot rewrite: skipped"
@@ -42,16 +67,27 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Checkout trusted code
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
+          persist-credentials: false
+
       - name: Checkout PR head branch
         if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v6
         with:
+          path: pr
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          token: ${{ secrets.AUTO_MERGE_PAT || github.token }}
           persist-credentials: true
 
       - name: Configure GPG and git identity from the imported key
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -68,18 +104,23 @@ jobs:
           git config user.email "$EMAIL"
           git config user.signingkey "$KEY_ID"
           git config commit.gpgsign true
+          git config core.hooksPath /dev/null
 
       - name: Rewrite commits with scope-aware messages
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
-          git rebase "$BASE_SHA" --exec "scripts/rewrite-dependabot-commit.sh"
+          # The script comes from the trusted checkout, never from the branch
+          # it rewrites; it reads the pyproject files of the branch as data.
+          git rebase "$BASE_SHA" --exec "$GITHUB_WORKSPACE/trusted/scripts/rewrite-dependabot-commit.sh"
 
       - name: Force-push rewritten branch
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -87,6 +128,7 @@ jobs:
 
       - name: Write step summary
         if: steps.gate.outputs.skip != 'true' && success()
+        working-directory: pr
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |

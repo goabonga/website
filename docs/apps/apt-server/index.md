@@ -40,3 +40,4 @@ The browser itself is installed once with `uv run playwright install chromium`.
 - [Chunked upload](07-chunked-upload.md)
 - [User cache and webhooks](08-user-cache-webhooks.md)
 - [Web login sessions](09-web-sessions.md)
+- [Public web pages](10-web-ui.md)

@@ -30,6 +30,7 @@ tested.
 | 9 | [Subscriptions](09-subscriptions.md) | Lifecycle, sync and upgrades with proration |
 | 9a | [Subscription actions](09a-subscription-actions.md) | Cancel at period end or immediately, reactivate |
 | 10 | [Plans](10-plans.md) | Public pricing plans |
+| 11 | [Checkout](11-checkout.md) | Stripe Checkout sessions |
 
 ## Running the tests
 

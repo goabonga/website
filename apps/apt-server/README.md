@@ -8,6 +8,7 @@ access control.
 - Application foundation: settings from the environment, structured logging,
   `/health` endpoint, optional Swagger UI
 - OIDC bearer and personal access token authentication (`/me`)
+- Component visibility and `apt:*` scope hierarchy
 
 ## Routes and scopes
 

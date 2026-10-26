@@ -11,3 +11,4 @@ artifacts/
 *.retry
 .vault_pass
 site/
+/collections/

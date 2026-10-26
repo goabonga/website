@@ -107,12 +107,28 @@ that follow are described in the client partitioning page.
 
 ## Ansible
 
-The `ansible/` collection of this repository provisions hosts (users,
-security, PostgreSQL, Redis, nginx, certificates). It does not yet contain a
-role that deploys this application, so the three units above are currently
-installed by the production inventory outside this repository. Gunicorn is
-declared as a dependency of the package so that the deployment can run it
-from the application environment.
+The [python_app](../../ansible/roles/python_app.md) role deploys the three
+units from the catalog of the `apps` playbook
+([Deploying applications](../../ansible/05-deploying-apps.md)): enable
+`billing` in `website_apps_enabled` and it brings the components `billing`,
+`billing_worker` and `billing_beat`.
+
+- `billing` runs gunicorn on the socket `/run/billing/billing.sock`, with a
+  `/health` probe, a database `billing` migrated with Alembic on each
+  release, and an nginx virtual host on the internal listen address with a
+  certificate from the internal certificate authority.
+- `billing_worker` consumes the queue `website_billing_celery_queue`
+  (`billing` by default) and `billing_beat` publishes the periodic tasks.
+- The secrets to provide in `website_secrets` are `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET` and `OAUTH2_CLIENT_SECRET` for the API, and
+  `STRIPE_SECRET_KEY` for the worker ([Secrets](../../ansible/03-secrets.md)).
+- The settings of the table above are the `website_billing_*` variables
+  ([Billing](../../ansible/roles/python_app.md#billing)); the settings that
+  the three units must share go in `website_billing_shared_env`.
+- The SaaS applications and the client bindings can be declared in
+  `website_billing_saas_apps` and `website_billing_client_bindings`, which run
+  `billing-admin` after the migrations
+  ([Onboarding a SaaS application](../../ansible/07-saas-onboarding.md)).
 
 ## Verifying a deployment
 

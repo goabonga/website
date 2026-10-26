@@ -34,6 +34,8 @@ applications. It is a member of the `website` uv workspace.
 - Server-rendered signin, signup and account pages backed by the platform
   authentication service.
 - Landing page, pricing, legal pages, dashboard and MCP download page.
+- Collection and document management pages, with chunked and uploaded
+  documents.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 
@@ -81,6 +83,20 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/dashboard` | session | Main dashboard with stats and recent activity |
 | GET | `/mcp` | public | Public MCP downloads page |
 | GET | `/mcp/downloads` | public | Public MCP downloads page |
+| GET | `/collections` | session | List all collections for the current tenant |
+| GET | `/collections/new` | session | Show form to create a new collection |
+| POST | `/collections/new` | session | Create a new collection |
+| GET | `/collections/{collection_id}` | session | View a collection and its documents |
+| GET | `/collections/{collection_id}/edit` | session | Show form to edit a collection |
+| POST | `/collections/{collection_id}/edit` | session | Update a collection |
+| POST | `/collections/{collection_id}/delete` | session | Delete a collection |
+| POST | `/collections/{collection_id}/documents/delete` | session | Delete selected documents from a collection |
+| GET | `/documents/{document_id}` | session | View a document's details |
+| GET | `/documents/{collection_id}/new` | session | Show form to create a new document |
+| POST | `/documents/{collection_id}/new` | session | Create a new document with embedding generation via OpenAI |
+| GET | `/documents/{document_id}/edit` | session | Show form to edit a document |
+| POST | `/documents/{document_id}/edit` | session | Update a document and regenerate embedding if content changed |
+| POST | `/documents/{document_id}/delete` | session | Delete a document |
 | POST | `/api/v1/collections` | bearer token; scope `collections:write` | Create a new collection |
 | GET | `/api/v1/collections` | bearer token; scope `collections:read` | List all collections accessible to the authenticated user |
 | GET | `/api/v1/collections/{collection_id}` | bearer token; scope `collections:read` | Get a collection by ID or slug |

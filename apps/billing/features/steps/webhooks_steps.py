@@ -9,6 +9,7 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
+import httpx
 import stripe
 from behave import given, then, when
 from billing.config import settings
@@ -218,10 +219,15 @@ def step_first_saas_without_subscription(context):
 
 
 class _Recorder:
-    """Stands for the HTTP client that posts to the SaaS app webhook URL."""
+    """Stands for the HTTP client that posts to the SaaS app webhook URL.
 
-    def __init__(self):
+    ``statuses`` are the HTTP statuses answered to the successive posts; once
+    they are used up the receiver answers 200.
+    """
+
+    def __init__(self, statuses=None):
         self.posts = []
+        self.statuses = list(statuses or [])
 
     async def __aenter__(self):
         return self
@@ -231,8 +237,13 @@ class _Recorder:
 
     async def post(self, url, content, headers):
         self.posts.append({"url": url, "content": content, "headers": headers})
+        status_code = self.statuses.pop(0) if self.statuses else 200
         response = MagicMock()
-        response.status_code = 200
+        response.status_code = status_code
+        if status_code >= 400:
+            response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "error", request=MagicMock(), response=response
+            )
         return response
 
 

@@ -3,4 +3,4 @@
 
 """Celery tasks."""
 
-from auth.tasks import webhooks  # noqa: F401
+from auth.tasks import email, webhooks  # noqa: F401

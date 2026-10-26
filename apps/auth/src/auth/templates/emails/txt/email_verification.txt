@@ -1,0 +1,16 @@
+%display_name%
+====================
+
+Verify your email
+--------------------
+
+Your verification code is: %code%
+
+Or click this link to verify: %verify_url%
+
+This code expires in %verification_code_expiry_hours% hours.
+
+If you didn't request this, please ignore this email.
+
+---
+(c) %year% %display_name%. All rights reserved.

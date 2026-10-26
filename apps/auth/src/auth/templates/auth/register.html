@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Auth{% endblock %}
+
+{% block content %}
+<h1>Create Account</h1>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="{{ tenant_prefix }}/auth/register" enctype="multipart/form-data">
+    <input type="hidden" name="next" value="{{ next|default('', true) }}">
+
+    {% set rf = reg_fields|default({}) %}
+
+    <!-- Required Profile Fields -->
+    {% if rf.get('profile', true) %}
+    <fieldset>
+        <legend>Profile Information *</legend>
+
+        {% if rf.get('nickname', true) %}
+        <div class="form-group">
+            <label for="nickname">Nickname *</label>
+            <input type="text" id="nickname" name="nickname" value="{{ nickname|default('', true) }}" required autofocus maxlength="255">
+        </div>
+        {% endif %}
+
+        <div class="form-row">
+            {% if rf.get('firstname', true) %}
+            <div class="form-group">
+                <label for="firstname">First Name *</label>
+                <input type="text" id="firstname" name="firstname" value="{{ firstname|default('', true) }}" required maxlength="255">
+            </div>
+            {% endif %}
+
+            {% if rf.get('middle_name', true) %}
+            <div class="form-group">
+                <label for="middle_name">Middle Name</label>
+                <input type="text" id="middle_name" name="middle_name" value="{{ middle_name|default('', true) }}" maxlength="255">
+            </div>
+            {% endif %}
+
+            {% if rf.get('lastname', true) %}
+            <div class="form-group">
+                <label for="lastname">Last Name *</label>
+                <input type="text" id="lastname" name="lastname" value="{{ lastname|default('', true) }}" required maxlength="255">
+            </div>
+            {% endif %}
+        </div>
+
+        {% if rf.get('preferred_username', true) %}
+        <div class="form-group">
+            <label for="preferred_username">Preferred Username</label>
+            <input type="text" id="preferred_username" name="preferred_username" value="{{ preferred_username|default('', true) }}" maxlength="255" placeholder="Optional display name">
+        </div>
+        {% endif %}
+    </fieldset>
+    {% endif %}
+
+    <!-- Account Credentials -->
+    <fieldset>
+        <legend>Account Credentials *</legend>
+
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" value="{{ email|default('', true) }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" id="password" name="password" required minlength="8">
+            <ul id="password-requirements" class="password-requirements">
+                <li id="req-length" class="invalid">At least 8 characters</li>
+                <li id="req-uppercase" class="invalid">At least one uppercase letter</li>
+                <li id="req-digit" class="invalid">At least one digit</li>
+                <li id="req-special" class="invalid">At least one special character</li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="password_confirm">Confirm Password *</label>
+            <input type="password" id="password_confirm" name="password_confirm" required minlength="8">
+        </div>
+    </fieldset>
+
+    <!-- Optional: Personal Details -->
+    {% if rf.get('personal_details', true) %}
+    <details class="optional-section">
+        <summary>Personal Details (Optional)</summary>
+
+        <div class="form-row">
+            {% if rf.get('gender', true) %}
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="">-- Select --</option>
+                    <option value="male" {{ 'selected' if gender == 'male' else '' }}>Male</option>
+                    <option value="female" {{ 'selected' if gender == 'female' else '' }}>Female</option>
+                    <option value="other" {{ 'selected' if gender == 'other' else '' }}>Other</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {% if rf.get('birthdate', true) %}
+            <div class="form-group">
+                <label for="birthdate">Birthdate</label>
+                <input type="date" id="birthdate" name="birthdate" value="{{ birthdate|default('', true) }}">
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            {% if rf.get('locale', true) %}
+            <div class="form-group">
+                <label for="locale">Language</label>
+                <select id="locale" name="locale">
+                    <option value="">-- Select --</option>
+                    <option value="en-US" {{ 'selected' if locale == 'en-US' else '' }}>English (US)</option>
+                    <option value="en-GB" {{ 'selected' if locale == 'en-GB' else '' }}>English (UK)</option>
+                    <option value="fr-FR" {{ 'selected' if locale == 'fr-FR' else '' }}>French</option>
+                    <option value="de-DE" {{ 'selected' if locale == 'de-DE' else '' }}>German</option>
+                    <option value="es-ES" {{ 'selected' if locale == 'es-ES' else '' }}>Spanish</option>
+                    <option value="it-IT" {{ 'selected' if locale == 'it-IT' else '' }}>Italian</option>
+                    <option value="pt-BR" {{ 'selected' if locale == 'pt-BR' else '' }}>Portuguese (BR)</option>
+                    <option value="ja-JP" {{ 'selected' if locale == 'ja-JP' else '' }}>Japanese</option>
+                    <option value="zh-CN" {{ 'selected' if locale == 'zh-CN' else '' }}>Chinese (Simplified)</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {% if rf.get('zoneinfo', true) %}
+            <div class="form-group">
+                <label for="zoneinfo">Timezone</label>
+                <select id="zoneinfo" name="zoneinfo">
+                    <option value="">-- Select --</option>
+                    <option value="Europe/Paris" {{ 'selected' if zoneinfo == 'Europe/Paris' else '' }}>Europe/Paris</option>
+                    <option value="Europe/London" {{ 'selected' if zoneinfo == 'Europe/London' else '' }}>Europe/London</option>
+                    <option value="Europe/Berlin" {{ 'selected' if zoneinfo == 'Europe/Berlin' else '' }}>Europe/Berlin</option>
+                    <option value="America/New_York" {{ 'selected' if zoneinfo == 'America/New_York' else '' }}>America/New_York</option>
+                    <option value="America/Los_Angeles" {{ 'selected' if zoneinfo == 'America/Los_Angeles' else '' }}>America/Los_Angeles</option>
+                    <option value="America/Chicago" {{ 'selected' if zoneinfo == 'America/Chicago' else '' }}>America/Chicago</option>
+                    <option value="Asia/Tokyo" {{ 'selected' if zoneinfo == 'Asia/Tokyo' else '' }}>Asia/Tokyo</option>
+                    <option value="Asia/Shanghai" {{ 'selected' if zoneinfo == 'Asia/Shanghai' else '' }}>Asia/Shanghai</option>
+                    <option value="Australia/Sydney" {{ 'selected' if zoneinfo == 'Australia/Sydney' else '' }}>Australia/Sydney</option>
+                    <option value="UTC" {{ 'selected' if zoneinfo == 'UTC' else '' }}>UTC</option>
+                </select>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if rf.get('phone_number', true) %}
+        <div class="form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="tel" id="phone_number" name="phone_number" value="{{ phone_number|default('', true) }}" placeholder="+33 6 12 34 56 78" maxlength="50">
+        </div>
+        {% endif %}
+    </details>
+    {% endif %}
+
+    <!-- Optional: Address -->
+    {% if rf.get('address', true) %}
+    <details class="optional-section">
+        <summary>Address (Optional)</summary>
+
+        <div class="form-group">
+            <label for="address_street">Street Address</label>
+            <input type="text" id="address_street" name="address_street" value="{{ address_street|default('', true) }}" maxlength="500">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="address_locality">City</label>
+                <input type="text" id="address_locality" name="address_locality" value="{{ address_locality|default('', true) }}" maxlength="255">
+            </div>
+
+            <div class="form-group">
+                <label for="address_region">State/Region</label>
+                <input type="text" id="address_region" name="address_region" value="{{ address_region|default('', true) }}" maxlength="255">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="address_postal_code">Postal Code</label>
+                <input type="text" id="address_postal_code" name="address_postal_code" value="{{ address_postal_code|default('', true) }}" maxlength="50">
+            </div>
+
+            <div class="form-group">
+                <label for="address_country">Country</label>
+                <input type="text" id="address_country" name="address_country" value="{{ address_country|default('', true) }}" maxlength="100">
+            </div>
+        </div>
+    </details>
+    {% endif %}
+
+    <!-- Optional: Profile Picture -->
+    {% if rf.get('picture', true) %}
+    <details class="optional-section">
+        <summary>Profile Picture (Optional)</summary>
+
+        <div class="form-group">
+            <label for="avatar">Upload a photo</label>
+            <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p class="field-hint">Max 5MB. Supported: JPEG, PNG, GIF, WebP.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="picture_url">Or enter a Picture URL</label>
+            <input type="url" id="picture_url" name="picture_url" value="{{ picture_url|default('', true) }}" placeholder="https://example.com/avatar.jpg" maxlength="2048">
+            <p class="field-hint">Use a URL if you prefer to link to an external image.</p>
+        </div>
+    </details>
+    {% endif %}
+
+    <!-- Optional: Web Presence -->
+    {% if rf.get('web_presence', true) %}
+    <details class="optional-section">
+        <summary>Web Presence (Optional)</summary>
+
+        <div class="form-group">
+            <label for="website">Website</label>
+            <input type="url" id="website" name="website" value="{{ website|default('', true) }}" placeholder="https://example.com" maxlength="2048">
+        </div>
+
+        <div class="form-group">
+            <label for="profile_url">Profile URL</label>
+            <input type="url" id="profile_url" name="profile_url" value="{{ profile_url|default('', true) }}" placeholder="https://linkedin.com/in/username" maxlength="2048">
+        </div>
+    </details>
+    {% endif %}
+
+    <button type="submit">Register</button>
+</form>
+
+<p class="link">
+    Already have an account? <a href="{{ tenant_prefix }}/auth/login{% if next %}?next={{ next|urlencode }}{% endif %}">Sign in</a>
+</p>
+
+<style>
+fieldset {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+legend {
+    font-weight: bold;
+    padding: 0 10px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.form-row .form-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.optional-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+}
+
+.optional-section summary {
+    padding: 10px 15px;
+    cursor: pointer;
+    background-color: var(--background-color);
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.optional-section summary:hover {
+    background-color: var(--input-background);
+}
+
+.optional-section[open] summary {
+    border-bottom: 1px solid var(--input-border);
+    border-radius: 4px 4px 0 0;
+}
+
+.optional-section > *:not(summary) {
+    padding: 15px;
+}
+
+.password-requirements {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+    font-size: 0.85em;
+}
+
+.password-requirements li {
+    padding: 2px 0 2px 20px;
+    position: relative;
+}
+
+.password-requirements li::before {
+    content: "\2717";
+    position: absolute;
+    left: 0;
+}
+
+.password-requirements li.valid {
+    color: var(--success-color);
+}
+
+.password-requirements li.valid::before {
+    content: "\2713";
+}
+
+.password-requirements li.invalid {
+    color: var(--error-color);
+}
+
+select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted-color, #888);
+    margin-top: 0.25rem;
+}
+
+input[type="file"] {
+    padding: 8px 0;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('password');
+    const passwordConfirmInput = document.getElementById('password_confirm');
+    const form = document.querySelector('form');
+
+    const requirements = {
+        length: { element: document.getElementById('req-length'), regex: /.{8,}/ },
+        uppercase: { element: document.getElementById('req-uppercase'), regex: /[A-Z]/ },
+        digit: { element: document.getElementById('req-digit'), regex: /\d/ },
+        special: { element: document.getElementById('req-special'), regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/ }
+    };
+
+    function validatePassword() {
+        const password = passwordInput.value;
+        let allValid = true;
+
+        for (const [key, req] of Object.entries(requirements)) {
+            const isValid = req.regex.test(password);
+            req.element.classList.toggle('valid', isValid);
+            req.element.classList.toggle('invalid', !isValid);
+            if (!isValid) allValid = false;
+        }
+
+        return allValid;
+    }
+
+    function validatePasswordConfirm() {
+        return passwordInput.value === passwordConfirmInput.value;
+    }
+
+    passwordInput.addEventListener('input', validatePassword);
+
+    form.addEventListener('submit', function(e) {
+        if (!validatePassword()) {
+            e.preventDefault();
+            alert('Password does not meet all requirements.');
+            return false;
+        }
+
+        if (!validatePasswordConfirm()) {
+            e.preventDefault();
+            alert('Passwords do not match.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

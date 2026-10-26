@@ -1,0 +1,66 @@
+<mjml>
+  <mj-head>
+    <mj-title>Verify your email</mj-title>
+    <mj-preview>Your verification code: %code%</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="%font_family%" />
+      <mj-text font-size="14px" color="%text_color%" line-height="1.6" />
+      <mj-button background-color="%primary_color%" color="#ffffff" border-radius="6px" font-weight="600" />
+    </mj-attributes>
+  </mj-head>
+
+  <mj-body background-color="%background_color%">
+    <!-- Header -->
+    <mj-section background-color="%surface_color%" padding="32px 20px 20px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="%primary_color%" align="center">
+          %display_name%
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="%surface_color%" padding="0 20px 20px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold" padding-bottom="16px">
+          Verify your email
+        </mj-text>
+
+        <mj-text>
+          Your verification code is:
+        </mj-text>
+
+        <mj-text font-size="32px" font-weight="bold" color="%primary_color%" align="center" letter-spacing="8px" padding="20px 0">
+          %code%
+        </mj-text>
+
+        <mj-button href="%verify_url%" padding="16px 0">
+          Verify Email
+        </mj-button>
+
+        <mj-text font-size="12px" color="%text_muted_color%">
+          This code expires in %verification_code_expiry_hours% hours.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Safety Notice -->
+    <mj-section background-color="%surface_color%" padding="0 20px 32px">
+      <mj-column>
+        <mj-text background-color="%background_color%" padding="12px" border-radius="8px" color="%info_color%" font-size="13px">
+          If you didn't request this, please ignore this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px">
+      <mj-column>
+        <mj-divider border-color="%border_color%" border-width="1px" />
+        <mj-text font-size="12px" color="%text_muted_color%" align="center" padding-top="16px">
+          &copy; %year% %display_name%. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

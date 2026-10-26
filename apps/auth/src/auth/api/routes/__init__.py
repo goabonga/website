@@ -6,6 +6,7 @@
 from fastapi import APIRouter
 
 from auth.api.routes import discovery, health, jwks
+from auth.api.routes.auth import router as auth_router
 
 router = APIRouter()
 
@@ -13,3 +14,4 @@ router = APIRouter()
 router.include_router(health.router, tags=["health"])
 router.include_router(discovery.router, tags=["oidc"])
 router.include_router(jwks.router, tags=["oidc"])
+router.include_router(auth_router, include_in_schema=False)

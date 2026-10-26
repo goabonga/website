@@ -24,3 +24,9 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - "1080:1080"
+      - "1025:1025"

@@ -243,3 +243,19 @@ bump_files = [
 ]
 changelog = "apps/vpn-portal/CHANGELOG.md"
 post_bump = ["uv lock"]
+
+[components.team]
+tag_format = "team-v{version}"
+paths = [
+    "apps/team/src/**",
+    "apps/team/features/**",
+    "apps/team/tests/**",
+    "apps/team/alembic/**",
+    "apps/team/pyproject.toml",
+]
+bump_files = [
+    { file = "apps/team/pyproject.toml", key = "project.version" },
+    { file = "apps/team/src/team/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+]
+changelog = "apps/team/CHANGELOG.md"
+post_bump = ["uv lock"]

@@ -35,6 +35,7 @@ Options of `register` and `update` (`register` also takes `--inactive`):
 | `--allowed-provider PROVIDER` | Allowed provider; repeat the option for several |
 | `--default-provider` | Provider used when a request names none |
 | `--rate-limit-per-minute N`, `--daily-quota N` | [Sending limits](16-client-limits.md); `0` removes a limit |
+| `--callback-url`, `--callback-secret-file FILE` | [Status callback](20-status-callbacks.md); both together, empty values remove them |
 
 On `update`, `--allowed-sender` and `--allowed-provider` replace the whole
 list and an empty value (`--reply-to ""`) clears an optional field.

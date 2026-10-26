@@ -41,6 +41,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/contact-groups/{group_id}/available-contacts` | scope `mailler:read` | List contacts NOT in a group (available for adding) |
 | POST | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Add contacts to a group |
 | DELETE | `/api/v1/contact-groups/{group_id}/contacts` | scope `mailler:write` | Remove contacts from a group |
+| GET | `/api/v1/unsubscribe` | public; HMAC-signed link | Display unsubscribe confirmation page |
+| POST | `/api/v1/unsubscribe` | public; HMAC-signed link | Process unsubscribe request |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

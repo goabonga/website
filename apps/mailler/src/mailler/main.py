@@ -21,6 +21,7 @@ from mailler.routes import (
     send,
     stats,
     templates,
+    unsubscribe,
 )
 
 # Setup logging before anything else
@@ -126,3 +127,4 @@ app.include_router(providers.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(contacts.router, prefix="/api/v1")
 app.include_router(contact_groups.router, prefix="/api/v1")
+app.include_router(unsubscribe.router, prefix="/api/v1")

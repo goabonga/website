@@ -72,3 +72,17 @@ class TestSwaggerOAuth2Config:
             mock_settings.oauth2_issuer = ""
             mock_settings.oauth2_swagger_client_id = "swagger-client-id"
             assert get_swagger_ui_oauth2_config() == {}
+
+
+class TestChatRouter:
+    """Tests for the chat router registration."""
+
+    def test_chat_route_is_registered(self) -> None:
+        """POST /api/v1/chat is served by the application."""
+        paths = app.openapi()["paths"]
+        assert "post" in paths["/api/v1/chat"]
+
+    def test_description_lists_features(self) -> None:
+        """The OpenAPI description mentions the chat interface and OAuth2."""
+        assert "Chat interface" in app.description
+        assert "OAuth2" in app.description

@@ -137,6 +137,23 @@ class TestSettingsDefaults:
         monkeypatch.delenv("OPENAI_MODEL", raising=False)
         assert Settings(_env_file=None).openai_model == "gpt-4o-mini"
 
+    def test_session_cookie_defaults(self, monkeypatch):
+        """The session cookie is a secure, lax, 30 day cookie named session_id."""
+        for name in (
+            "SESSION_COOKIE_NAME",
+            "SESSION_COOKIE_MAX_AGE",
+            "SESSION_COOKIE_SECURE",
+            "SESSION_COOKIE_SAMESITE",
+            "SESSION_COOKIE_DOMAIN",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.session_cookie_name == "session_id"
+        assert s.session_cookie_max_age == 86400 * 30
+        assert s.session_cookie_secure is True
+        assert s.session_cookie_samesite == "lax"
+        assert s.session_cookie_domain == ""
+
 
 class TestGetCredential:
     """Tests for get_credential."""

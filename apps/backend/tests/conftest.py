@@ -5,10 +5,13 @@
 
 import os
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 
 # Set OAUTH2_ISSUER before any app import so that the OAuth2 scheme is a
 # callable object rather than None.  Python 3.13 + FastAPI raises TypeError
@@ -17,6 +20,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
 os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.example.com")
 
 from backend.auth.models import User
+from backend.main import app
 
 
 @pytest.fixture
@@ -165,3 +169,83 @@ def machine_user() -> User:
         is_machine_client=True,
         client_id="api-service",
     )
+
+
+def _create_jwt_claims(user: User) -> dict:
+    """Create JWT claims dict from a User instance."""
+    return {
+        "sub": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "scope": " ".join(user.scopes) if user.scopes else "",
+        "client_id": user.client_id,
+    }
+
+
+def _setup_auth_mocks(user: User):
+    """Set up authentication mocks for a given user."""
+    claims = _create_jwt_claims(user)
+
+    jwks_patcher = patch("backend.auth.dependencies.jwks_manager")
+    introspection_patcher = patch("backend.auth.dependencies.introspection_client")
+    exchange_patcher = patch("backend.auth.dependencies.token_exchange_client")
+
+    mock_jwks = jwks_patcher.start()
+    mock_introspection = introspection_patcher.start()
+    mock_exchange = exchange_patcher.start()
+
+    mock_jwks.is_configured = True
+    mock_jwks.validate_token = AsyncMock(return_value=claims)
+
+    mock_introspection.validate_token_with_introspection = AsyncMock(return_value=claims)
+    mock_introspection.validate_opaque_token = AsyncMock(return_value=claims)
+
+    mock_exchange.is_configured = False
+
+    return jwks_patcher, introspection_patcher, exchange_patcher
+
+
+@pytest_asyncio.fixture
+async def auth_client(mock_db_session, test_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client with standard user scopes."""
+    from backend.database import get_db
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(test_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer header.payload.signature"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client with admin (wildcard) scopes."""
+    from backend.database import get_db
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(admin_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer header.payload.signature"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()

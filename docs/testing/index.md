@@ -22,3 +22,5 @@ one feature as it exists in the code.
    page-error capture, screenshot, trace and HTML of failed scenarios.
 5. [Behave hooks](05-behave-hooks.md) - `context.page`, `context.base_url`
    and clean skipping for `@browser` scenarios.
+6. [Generic steps](06-steps.md) - navigate, click, fill and expect, in the
+   vocabulary of a user.

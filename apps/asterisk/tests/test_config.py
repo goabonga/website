@@ -100,6 +100,27 @@ class TestConfig:
         module = reload_config()
         assert module.Config.OPENAI_API_KEY == "sk-test-from-creds"
 
+    def test_rag_and_database_defaults(self, reload_config):
+        module = reload_config()
+        assert module.Config.DATABASE_URL == ""
+        assert module.Config.RAG_ENABLED is False
+        assert module.Config.RAG_EMBEDDING_MODEL == "text-embedding-3-small"
+        assert module.Config.RAG_SIMILARITY_THRESHOLD == 0.7
+        assert module.Config.RAG_MAX_RESULTS == 3
+
+    def test_rag_environment_overrides(self, reload_config, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
+        monkeypatch.setenv("RAG_ENABLED", "TRUE")
+        monkeypatch.setenv("RAG_EMBEDDING_MODEL", "other-embedding")
+        monkeypatch.setenv("RAG_SIMILARITY_THRESHOLD", "0.9")
+        monkeypatch.setenv("RAG_MAX_RESULTS", "5")
+        module = reload_config()
+        assert module.Config.DATABASE_URL == "postgresql://u:p@localhost/db"
+        assert module.Config.RAG_ENABLED is True
+        assert module.Config.RAG_EMBEDDING_MODEL == "other-embedding"
+        assert module.Config.RAG_SIMILARITY_THRESHOLD == 0.9
+        assert module.Config.RAG_MAX_RESULTS == 5
+
     def test_port_is_int(self):
         assert isinstance(config_module.Config.AUDIOSOCKET_PORT, int)
 

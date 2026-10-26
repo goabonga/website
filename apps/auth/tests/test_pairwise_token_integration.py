@@ -299,3 +299,104 @@ class TestResolvePairwiseSubject:
 # ---------------------------------------------------------------------------
 # get_current_user_bearer — pairwise_sub on request.state
 # ---------------------------------------------------------------------------
+
+
+class TestGetCurrentUserBearerPairwiseSub:
+    """Verify that get_current_user_bearer stores original JWT sub on request.state."""
+
+    @pytest.mark.asyncio
+    @patch("auth.api.routes.api.deps.validate_bearer_token")
+    @patch("auth.api.routes.api.deps.pyjwt")
+    async def test_stores_original_jwt_sub_on_request_state(self, mock_pyjwt, mock_validate_bearer):
+        """Bearer JWT auth should store the original (pre-resolution) JWT sub."""
+        from auth.api.routes.api.deps import get_current_user_bearer
+
+        real_user_id = uuid.uuid4()
+        pairwise_sub = str(uuid.uuid4())
+
+        # pyjwt.decode returns the original pairwise sub
+        mock_pyjwt.decode.return_value = {"sub": pairwise_sub}
+        mock_pyjwt.DecodeError = Exception
+
+        # validate_bearer_token returns the resolved (real) user_id
+        mock_bearer_auth = MagicMock()
+        mock_bearer_auth.subject = str(real_user_id)
+        mock_bearer_auth.scopes = ["openid"]
+        mock_validate_bearer.return_value = mock_bearer_auth
+
+        # Mock user
+        mock_user = MagicMock()
+        mock_user.id = real_user_id
+        mock_user.is_active = True
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=make_execute_result(scalar_value=mock_user))
+
+        mock_request = MagicMock()
+        mock_request.state = MagicMock(spec=[])
+
+        user = await get_current_user_bearer(mock_request, mock_db, "valid.jwt.token")
+        assert user is mock_user
+        # The original JWT sub (pairwise) should be stored, not the resolved one
+        assert mock_request.state.pairwise_sub == pairwise_sub
+
+    @pytest.mark.asyncio
+    @patch("auth.api.routes.api.deps.validate_pat_token")
+    async def test_pat_stores_real_user_id(self, mock_validate_pat):
+        """PAT auth should store str(user.id) as pairwise_sub."""
+        from auth.api.routes.api.deps import get_current_user_bearer
+
+        user_id = uuid.uuid4()
+
+        mock_pat_auth = MagicMock()
+        mock_pat_auth.user_id = str(user_id)
+        mock_pat_auth.scopes = ["openid"]
+        mock_validate_pat.return_value = mock_pat_auth
+
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.is_active = True
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=make_execute_result(scalar_value=mock_user))
+
+        mock_request = MagicMock()
+        mock_request.state = MagicMock(spec=[])
+
+        pat_token = "gab_pat_abc123"
+        user = await get_current_user_bearer(mock_request, mock_db, pat_token)
+        assert user is mock_user
+        assert mock_request.state.pairwise_sub == str(user_id)
+
+    @pytest.mark.asyncio
+    @patch("auth.api.routes.api.deps.validate_bearer_token")
+    @patch("auth.api.routes.api.deps.pyjwt")
+    async def test_falls_back_to_user_id_on_jwt_decode_failure(
+        self, mock_pyjwt, mock_validate_bearer
+    ):
+        """When JWT decode fails, pairwise_sub should fall back to str(user.id)."""
+        from auth.api.routes.api.deps import get_current_user_bearer
+
+        real_user_id = uuid.uuid4()
+
+        mock_pyjwt.decode.side_effect = Exception("bad jwt")
+        mock_pyjwt.DecodeError = Exception
+
+        mock_bearer_auth = MagicMock()
+        mock_bearer_auth.subject = str(real_user_id)
+        mock_bearer_auth.scopes = ["openid"]
+        mock_validate_bearer.return_value = mock_bearer_auth
+
+        mock_user = MagicMock()
+        mock_user.id = real_user_id
+        mock_user.is_active = True
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=make_execute_result(scalar_value=mock_user))
+
+        mock_request = MagicMock()
+        mock_request.state = MagicMock(spec=[])
+
+        user = await get_current_user_bearer(mock_request, mock_db, "bad.token")
+        assert user is mock_user
+        assert mock_request.state.pairwise_sub == str(real_user_id)

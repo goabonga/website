@@ -13,6 +13,7 @@ from analytics import __version__
 from analytics.config import settings
 from analytics.logging import setup_logging
 from analytics.routes.health import router as health_router
+from analytics.routes.security_txt import router as security_txt_router
 
 # Configure logging before anything else
 setup_logging(settings.log_level)
@@ -52,3 +53,4 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health_router)
+app.include_router(security_txt_router)

@@ -25,6 +25,11 @@ Processing order of `webhooks.routes.stripe.stripe_webhook`:
 
 The gateway has no Stripe secret: no signature is verified here.
 
+The signature is the only authentication of the endpoint at billing: it
+ignores the bearer token the gateway sends, unless billing sets
+`STRIPE_WEBHOOK_REQUIRED_SCOPE`, in which case the token must carry that
+scope (see the [billing deployment](../billing/15-deployment.md)).
+
 ## Enabling the route
 
 The router is registered with the prefix `/webhooks/stripe` and the tag

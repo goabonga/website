@@ -27,6 +27,10 @@ If the token endpoint answers with an error status or fails, a previously
 cached token that has not expired yet is reused (with a warning); otherwise
 the static token is the fallback. Failures are logged and never raised.
 
+Not every service relies on the token: billing authenticates the Stripe
+webhook with the Stripe signature and ignores the bearer token unless its
+`STRIPE_WEBHOOK_REQUIRED_SCOPE` is set ([Stripe webhook proxy](06-stripe.md)).
+
 OAuth2 is considered configured only when `OAUTH2_TOKEN_URL`,
 `OAUTH2_CLIENT_ID` and `OAUTH2_CLIENT_SECRET` are all set.
 

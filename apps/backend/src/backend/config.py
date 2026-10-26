@@ -5,6 +5,7 @@
 
 import os
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -86,6 +87,13 @@ class Settings(BaseSettings):
     session_redis_ttl: int = 3600  # 1 hour TTL for session data
     conversation_cache_ttl: int = 1800  # 30 minutes TTL for conversation cache
     conversation_sync_interval: int = 30  # sync dirty conversations every N seconds
+
+    # Session cookie configuration
+    session_cookie_name: str = "session_id"
+    session_cookie_max_age: int = 86400 * 30  # 30 days
+    session_cookie_secure: bool = True  # Set to False for local development
+    session_cookie_samesite: Literal["strict", "lax", "none"] = "lax"
+    session_cookie_domain: str = ""  # Empty = current domain only
 
     # Session creation rate limiting (anti-abuse)
     session_create_limit: int = 3  # max new sessions per IP per window

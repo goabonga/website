@@ -13,6 +13,7 @@ from backend import __version__
 from backend.auth import introspection_client, jwks_manager, token_exchange_client
 from backend.config import settings
 from backend.logging import setup_logging
+from backend.routes.chat import router as chat_router
 from backend.routes.security_txt import router as security_txt_router
 
 
@@ -45,7 +46,23 @@ swagger_config = get_swagger_ui_oauth2_config()
 
 app = FastAPI(
     title=settings.app_name,
-    description="Main API service of the platform.",
+    description="""
+Conversational AI API with RAG-powered responses.
+
+## Features
+
+- **Chat interface**: Conversational AI with context-aware responses
+- **RAG integration**: Retrieval-Augmented Generation for knowledge-grounded answers
+- **Session management**: Persistent conversation history with Redis
+- **Rate limiting**: Per-user and anonymous rate limiting
+- **OAuth2 authentication**: PKCE-based authentication with scope validation
+
+## Authentication
+
+This API uses OAuth2 with PKCE for authentication. The Swagger UI requests
+only `openid`, `profile`, and `email` scopes. The server validates that
+the user has the required scopes via token exchange.
+    """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
     redoc_url="/redoc" if settings.docs_enabled else None,
@@ -76,3 +93,4 @@ async def health_check() -> HealthResponse:
 
 
 app.include_router(security_txt_router)
+app.include_router(chat_router)

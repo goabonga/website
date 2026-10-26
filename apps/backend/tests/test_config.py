@@ -94,6 +94,21 @@ class TestSettingsDefaults:
         assert s.session_redis_url == "redis://localhost:6379/2"
         assert s.session_redis_ttl == 3600
 
+    def test_conversation_cache_and_celery_defaults(self, monkeypatch):
+        """Conversations are cached 30 minutes and synced every 30 seconds."""
+        for name in (
+            "CELERY_BROKER_URL",
+            "CELERY_RESULT_BACKEND",
+            "CONVERSATION_CACHE_TTL",
+            "CONVERSATION_SYNC_INTERVAL",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        s = Settings(_env_file=None)
+        assert s.celery_broker_url == "redis://localhost:6379/0"
+        assert s.celery_result_backend == "redis://localhost:6379/0"
+        assert s.conversation_cache_ttl == 1800
+        assert s.conversation_sync_interval == 30
+
 
 class TestGetCredential:
     """Tests for get_credential."""

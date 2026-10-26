@@ -69,3 +69,25 @@ class TestMtaStsPolicyEndpoint:
         assert response.headers["content-type"].startswith("text/plain")
         assert response.text.startswith("version: STSv1\nmode: ")
         assert response.text.splitlines()[-1].startswith("max_age: ")
+
+
+class TestPolicyCaching:
+    """Tests for the Cache-Control header of the policy endpoint."""
+
+    @patch("mta_sts.mta_sts.settings")
+    @patch("mta_sts.mta_sts.render_mta_sts_policy", return_value="policy")
+    async def test_sets_cache_control_header(self, mock_render, mock_settings):
+        mock_settings.mta_sts_max_age = 3600
+
+        response = await mta_sts_policy()
+
+        assert response.headers["cache-control"] == "max-age=3600"
+
+    async def test_http_response_matches_configured_max_age(self):
+        from mta_sts.config import settings
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/.well-known/mta-sts.txt")
+
+        assert response.headers["cache-control"] == f"max-age={settings.mta_sts_max_age}"

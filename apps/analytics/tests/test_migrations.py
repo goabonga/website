@@ -59,7 +59,7 @@ class TestOfflineUpgrade:
 
     def test_stamps_head_version(self, sql):
         assert "alembic_version" in sql
-        assert "'002'" in sql
+        assert "'003'" in sql
 
     def test_creates_campaign_and_pixel_tables(self, sql):
         assert "CREATE TABLE analytics_campaigns" in sql
@@ -69,6 +69,10 @@ class TestOfflineUpgrade:
     def test_campaign_and_pixel_keys_are_unique(self, sql):
         assert "CREATE UNIQUE INDEX ix_analytics_campaigns_tracking_key" in sql
         assert "CREATE UNIQUE INDEX ix_analytics_pixels_pixel_key" in sql
+
+    def test_creates_campaign_clicks_table(self, sql):
+        assert "CREATE TABLE analytics_campaign_clicks" in sql
+        assert "REFERENCES analytics_campaigns (id) ON DELETE CASCADE" in sql
 
 
 class TestExistingTables:

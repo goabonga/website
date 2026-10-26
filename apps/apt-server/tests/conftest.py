@@ -8,9 +8,11 @@ from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
+from apt_server.database import get_db
 from apt_server.db.models import Base
 from apt_server.main import app
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -108,3 +110,17 @@ async def session_maker(tmp_path) -> AsyncIterator[async_sessionmaker[AsyncSessi
 async def db(session_maker) -> AsyncIterator[AsyncSession]:
     async with session_maker() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def http(session_maker) -> AsyncIterator[AsyncClient]:
+    """Async HTTP client on the application, wired to the SQLite test database."""
+
+    async def override_get_db() -> AsyncIterator[AsyncSession]:
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()

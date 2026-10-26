@@ -1,0 +1,81 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+argument_specs:
+  main:
+    short_description: Connect a host to an OpenVPN server with a client profile
+    description:
+    - Installs OpenVPN, deploys a client profile from the controller with optional systemd-resolved DNS
+      integration and runs it as an openvpn@ service with a restart policy.
+    options:
+      openvpn_client_enabled:
+        type: bool
+        description: Master toggle. When false the role does nothing.
+        default: true
+      openvpn_client_apt_update_cache:
+        type: bool
+        description: Refresh the apt cache before installing packages.
+        default: true
+      openvpn_client_apt_cache_valid_time:
+        type: int
+        description: Seconds the apt cache is considered fresh.
+        default: 3600
+      openvpn_client_packages:
+        type: list
+        description: Packages to install.
+        elements: str
+      openvpn_client_dns_integration:
+        type: bool
+        description: Update the DNS settings of the host through systemd-resolved while the tunnel is
+          up.
+        default: true
+      openvpn_client_dns_packages:
+        type: list
+        description: Packages providing the DNS update script, installed with dns_integration.
+        elements: str
+      openvpn_client_dns_script:
+        type: path
+        description: DNS update script run on tunnel up and down.
+        default: /etc/openvpn/update-systemd-resolved
+      openvpn_client_manage_resolved:
+        type: bool
+        description: Start and enable systemd-resolved when DNS integration is on.
+        default: true
+      openvpn_client_config_file:
+        type: path
+        description: Client profile (.ovpn) on the controller. Empty installs OpenVPN without a profile
+          and without starting the tunnel.
+        default: ''
+      openvpn_client_config_name:
+        type: str
+        description: 'Name of the tunnel: the profile is installed as /etc/openvpn/<name>.conf and run
+          by openvpn@<name>.'
+        default: client
+      openvpn_client_config_dir:
+        type: path
+        description: Directory receiving the profile.
+        default: /etc/openvpn
+      openvpn_client_extra_config:
+        type: list
+        description: Additional directives appended to the profile, one per entry.
+        elements: str
+      openvpn_client_service_state:
+        type: str
+        description: State of the tunnel service.
+        choices:
+        - started
+        - stopped
+        default: started
+      openvpn_client_autostart:
+        type: bool
+        description: Enable the tunnel at boot.
+        default: true
+      openvpn_client_restart_on_failure:
+        type: bool
+        description: Add a systemd drop-in restarting the tunnel when it fails. When false the drop-in
+          is removed.
+        default: true
+      openvpn_client_restart_sec:
+        type: int
+        description: RestartSec= of the drop-in.
+        default: 10

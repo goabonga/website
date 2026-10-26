@@ -1,0 +1,72 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+# Default variables of the openvpn_client role. Every knob is prefixed with `openvpn_client_`.
+
+# ======================================================================
+# Role control
+# ======================================================================
+# Master toggle. When false the role does nothing.
+openvpn_client_enabled: true
+
+# Refresh the apt cache before installing packages.
+openvpn_client_apt_update_cache: true
+
+# Seconds the apt cache is considered fresh.
+openvpn_client_apt_cache_valid_time: 3600
+
+
+# ======================================================================
+# Installation
+# ======================================================================
+# Packages to install.
+openvpn_client_packages:
+- openvpn
+
+# Update the DNS settings of the host through systemd-resolved while the tunnel is up.
+openvpn_client_dns_integration: true
+
+# Packages providing the DNS update script, installed with dns_integration.
+openvpn_client_dns_packages:
+- openvpn-systemd-resolved
+
+# DNS update script run on tunnel up and down.
+openvpn_client_dns_script: /etc/openvpn/update-systemd-resolved
+
+# Start and enable systemd-resolved when DNS integration is on.
+openvpn_client_manage_resolved: true
+
+
+# ======================================================================
+# Profile
+# ======================================================================
+# Client profile (.ovpn) on the controller. Empty installs OpenVPN without a profile and
+# without starting the tunnel.
+openvpn_client_config_file: ''
+
+# Name of the tunnel: the profile is installed as /etc/openvpn/<name>.conf and run by
+# openvpn@<name>.
+openvpn_client_config_name: client
+
+# Directory receiving the profile.
+openvpn_client_config_dir: /etc/openvpn
+
+# Additional directives appended to the profile, one per entry.
+openvpn_client_extra_config: []
+
+
+# ======================================================================
+# Service
+# ======================================================================
+# State of the tunnel service.
+openvpn_client_service_state: started
+
+# Enable the tunnel at boot.
+openvpn_client_autostart: true
+
+# Add a systemd drop-in restarting the tunnel when it fails. When false the drop-in is
+# removed.
+openvpn_client_restart_on_failure: true
+
+# RestartSec= of the drop-in.
+openvpn_client_restart_sec: 10

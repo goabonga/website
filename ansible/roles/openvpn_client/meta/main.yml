@@ -1,0 +1,23 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+galaxy_info:
+  role_name: openvpn_client
+  author: Chris
+  description: Connect a host to an OpenVPN server with a client profile
+  license: MIT
+  min_ansible_version: '2.16'
+  platforms:
+  - name: Debian
+    versions:
+    - bookworm
+    - trixie
+  - name: Ubuntu
+    versions:
+    - jammy
+    - noble
+  galaxy_tags:
+  - openvpn
+  - vpn
+  - client
+dependencies: []

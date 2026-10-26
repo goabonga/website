@@ -1,0 +1,19 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Install OpenVPN
+  ansible.builtin.apt:
+    name: "{{ openvpn_client_packages + (openvpn_client_dns_packages if openvpn_client_dns_integration | bool else []) }}"
+    state: present
+    update_cache: "{{ openvpn_client_apt_update_cache }}"
+    cache_valid_time: "{{ openvpn_client_apt_cache_valid_time }}"
+
+- name: Run systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: started
+    enabled: true
+  when:
+    - openvpn_client_dns_integration | bool
+    - openvpn_client_manage_resolved | bool

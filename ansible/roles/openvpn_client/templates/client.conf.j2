@@ -1,0 +1,13 @@
+{{ openvpn_client_profile.content | b64decode | trim }}
+
+{{ ansible_managed | comment }}
+{% if openvpn_client_dns_integration | bool %}
+# DNS integration with systemd-resolved
+script-security 2
+up {{ openvpn_client_dns_script }}
+down {{ openvpn_client_dns_script }}
+down-pre
+{% endif %}
+{% for line in openvpn_client_extra_config %}
+{{ line }}
+{% endfor %}

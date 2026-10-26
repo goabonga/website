@@ -1,0 +1,23 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+- name: Validate the openvpn_client configuration
+  ansible.builtin.import_tasks: validate.yml
+  when: openvpn_client_enabled | bool
+  tags: [openvpn_client]
+
+- name: Install OpenVPN
+  ansible.builtin.import_tasks: install.yml
+  when: openvpn_client_enabled | bool
+  tags: [openvpn_client]
+
+- name: Deploy the client profile
+  ansible.builtin.import_tasks: profile.yml
+  when: openvpn_client_enabled | bool
+  tags: [openvpn_client]
+
+- name: Run the tunnel
+  ansible.builtin.import_tasks: service.yml
+  when: openvpn_client_enabled | bool
+  tags: [openvpn_client]

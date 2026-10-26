@@ -58,3 +58,8 @@ if settings.ses_enabled:
     from webhooks.routes.ses import router as ses_router
 
     app.include_router(ses_router, prefix="/webhooks/ses", tags=["ses"])
+
+if settings.stripe_enabled:
+    from webhooks.routes.stripe import router as stripe_router
+
+    app.include_router(stripe_router, prefix="/webhooks/stripe", tags=["stripe"])

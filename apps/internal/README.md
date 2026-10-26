@@ -32,6 +32,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/billing/saas/new` | session; scope `billing:write` | New SaaS app form |
 | POST | `/billing/saas/new` | session; scope `billing:write` | Create a new SaaS app |
 | GET | `/billing/saas/{saas_id}` | session; scope `billing:read` | SaaS app detail view with products and customers |
+| POST | `/billing/saas/{saas_id}/clients` | session; scope `billing:admin` | Bind an OAuth client to a SaaS app: it may then act on that app's data |
+| POST | `/billing/saas/{saas_id}/clients/unbind` | session; scope `billing:admin` | Remove the binding of an OAuth client to a SaaS app |
 | GET | `/billing/saas/{saas_id}/edit` | session; scope `billing:write` | Edit SaaS app form |
 | POST | `/billing/saas/{saas_id}/edit` | session; scope `billing:write` | Update a SaaS app (an unchecked "Active" box is not submitted: it deactivates) |
 | GET | `/billing/saas/{saas_id}/products` | session; scope `billing:read` | List all products for a SaaS app |
@@ -66,3 +68,4 @@ The application defines no scope, it only checks the ones carried by the access 
 - `vpn:admin` - checked by 2 routes
 - `billing:read` - checked by 9 routes
 - `billing:write` - checked by 14 routes
+- `billing:admin` - checked by 2 routes

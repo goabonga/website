@@ -177,6 +177,7 @@ class TestSaasAppDetail:
         mock_client.list_products = AsyncMock(return_value=[])
         mock_client.list_customers = AsyncMock(return_value=[])
         mock_client.list_subscriptions = AsyncMock(return_value=[])
+        mock_client.list_saas_clients = AsyncMock(return_value=[])
         user = _make_user()
         request = _make_request(query_params={"success": "ok", "error": None})
 
@@ -1685,6 +1686,7 @@ class TestAdminView:
         mock_client.list_products = AsyncMock(return_value=[])
         mock_client.list_customers = AsyncMock(return_value=[])
         mock_client.list_subscriptions = AsyncMock(return_value=[])
+        mock_client.list_saas_clients = AsyncMock(return_value=[])
 
         with patch("internal.routes.billing.settings") as s:
             s.billing_recent_limit = 3

@@ -6,6 +6,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
+from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel
@@ -95,6 +96,15 @@ class Subscription(BaseModel):
     canceled_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ClientBinding(BaseModel):
+    """An OAuth client allowed to act on a SaaS application."""
+
+    id: str
+    saas_app_id: str
+    client_id: str
+    created_at: datetime
 
 
 class CustomerPortal(BaseModel):
@@ -303,6 +313,45 @@ class BillingClient:
         except Exception as e:
             logger.exception("Failed to update SaaS app: %s", e)
             return None
+
+    # =========================================================================
+    # OAuth client bindings (admin scope)
+    # =========================================================================
+
+    async def list_saas_clients(self, saas_id: str) -> list[ClientBinding]:
+        """List the OAuth clients bound to a SaaS application."""
+        try:
+            data = await self._request("GET", f"/platform/saas/{saas_id}/clients", access="admin")
+            return [ClientBinding(**item) for item in data]
+        except Exception as e:
+            logger.exception("Failed to fetch client bindings: %s", e)
+            return []
+
+    async def bind_client(self, saas_id: str, client_id: str) -> ClientBinding | None:
+        """Bind an OAuth client to a SaaS application (idempotent)."""
+        try:
+            data = await self._request(
+                "PUT",
+                f"/platform/saas/{saas_id}/clients/{quote(client_id, safe='')}",
+                access="admin",
+            )
+            return ClientBinding(**data)
+        except Exception as e:
+            logger.exception("Failed to bind client: %s", e)
+            return None
+
+    async def unbind_client(self, saas_id: str, client_id: str) -> bool:
+        """Remove the binding of an OAuth client to a SaaS application."""
+        try:
+            await self._request(
+                "DELETE",
+                f"/platform/saas/{saas_id}/clients/{quote(client_id, safe='')}",
+                access="admin",
+            )
+            return True
+        except Exception as e:
+            logger.exception("Failed to unbind client: %s", e)
+            return False
 
     # =========================================================================
     # Products

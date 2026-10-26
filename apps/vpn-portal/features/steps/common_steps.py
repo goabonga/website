@@ -75,3 +75,10 @@ def step_check_response_not_null(context, key):
     body = context.response.json()
     assert key in body, f"Response missing key '{key}'. Body: {body}"
     assert body[key] is not None, f"Expected {key} to not be null"
+
+
+@then('the response "{key}" list should have {count:d} items')
+def step_check_list_count(context, key, count):
+    body = context.response.json()
+    assert key in body, f"Response missing key '{key}'. Body: {body}"
+    assert len(body[key]) == count, f"Expected {count} items in {key}, got {len(body[key])}"

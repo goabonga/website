@@ -3,7 +3,7 @@
 
 """API routes."""
 
-from billing.routes import checkout, health, plans, usage
+from billing.routes import checkout, health, plans, usage, webhooks
 from billing.routes.platform import clients, customers, prices, products, saas, subscriptions
 
 __all__ = [
@@ -17,4 +17,5 @@ __all__ = [
     "plans",
     "checkout",
     "usage",
+    "webhooks",
 ]

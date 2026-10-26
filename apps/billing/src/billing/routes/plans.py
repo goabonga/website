@@ -19,36 +19,14 @@ from billing.models import BillingProduct, SaasApp
 from billing.partition import Guard
 from billing.schemas.plan import (
     PlanFeature,
-    PlanLimits,
     PlanPrice,
     PlanResponse,
     PlansResponse,
+    parse_limits,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/plans", tags=["Plans (Public)"])
-
-
-def parse_limits(raw: object) -> PlanLimits | None:
-    """Read the ``limits`` document of a plan.
-
-    The document is a mapping of limit names to integers, whatever the names
-    are. Entries that are not integers (``null``, text, booleans) are left
-    out: a limit that is absent or ``null`` means the plan declares no limit.
-
-    Returns:
-        The limits, or None if the plan has no limits document.
-    """
-    if not isinstance(raw, dict):
-        return None
-    limits: PlanLimits = {}
-    for name, value in raw.items():
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            continue
-        if isinstance(value, float) and not value.is_integer():
-            continue
-        limits[str(name)] = int(value)
-    return limits
 
 
 async def plans_auth(

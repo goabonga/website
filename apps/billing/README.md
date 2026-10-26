@@ -24,6 +24,7 @@ Full documentation lives in `docs/apps/billing/`.
 - Stripe Checkout sessions
 - Metered usage events
 - Partitioning of the API per SaaS application: OAuth clients are bound to the applications they may act on, with an admin API and the `billing-admin` command
+- Stripe webhook processing and subscription events pushed to each SaaS application
 
 ## Routes and scopes
 
@@ -70,6 +71,7 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/usage/{saas_id}/batch` | scope `billing:usage:write`; client bound to the app | Report multiple usage events in a batch |
 | GET | `/plans/{app_slug}` | scope `billing:platform:read` and client bound to the app; public when `PLANS_PUBLIC` is enabled | List all plans for a SaaS application |
 | POST | `/checkout/session` | scope `billing:checkout:write`; client bound to the requested app | Create a Stripe Checkout Session |
+| POST | `/webhooks/stripe` | public; `Stripe-Signature` checked (`STRIPE_WEBHOOK_SECRET`), plus the scope of `STRIPE_WEBHOOK_REQUIRED_SCOPE` when set | Receive and process Stripe webhook events |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 

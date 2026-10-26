@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # Serve /plans/{app_slug} without a token; otherwise a bound client is required
     plans_public: bool = False
 
+    # Notifications sent to the webhook URL of each SaaS application
+    saas_webhook_timeout: float = 30.0  # seconds
+
     # Redis
     redis_url: str = "redis://localhost:6379/10"
     redis_key_prefix: str = "billing"  # Cache key prefix for auth tokens
@@ -83,6 +86,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
+    # Scope a bearer token must carry to post a Stripe event, on top of the signature.
+    # Empty: the Stripe signature is the only authentication of /webhooks/stripe.
+    stripe_webhook_required_scope: str = ""
     default_recurring_interval: str = "month"  # Interval of a recurring price that gives none
 
     # OAuth2/OIDC (via auth service)

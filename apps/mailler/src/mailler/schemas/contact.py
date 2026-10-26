@@ -124,7 +124,7 @@ class ContactGroupCreate(BaseModel):
         min_length=1,
         max_length=100,
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
-        description="Unique group identifier (lowercase, hyphens allowed)",
+        description="Group identifier, unique per client (lowercase, hyphens allowed)",
     )
     name: str = Field(..., min_length=1, max_length=255, description="Group name")
     description: str | None = Field(None, description="Group description")
@@ -169,6 +169,7 @@ class ContactGroupResponse(BaseModel):
     """Response schema for a contact group."""
 
     id: int
+    client_id: str
     slug: str
     name: str
     description: str | None

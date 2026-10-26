@@ -211,6 +211,16 @@ website_aws_route53_access_key_id: ""
 website_aws_route53_secret_access_key: ""
 
 # ---------------------------------------------------------------------------
+# AWS SES
+# ---------------------------------------------------------------------------
+
+# AWS credentials for the SES/SNS webhook configuration of the components that
+# set ses_webhook. When empty the AWS CLI uses its own credential chain.
+website_aws_ses_access_key_id: ""
+website_aws_ses_secret_access_key: ""
+website_aws_ses_region: ""
+
+# ---------------------------------------------------------------------------
 # OpenVPN hooks
 # ---------------------------------------------------------------------------
 

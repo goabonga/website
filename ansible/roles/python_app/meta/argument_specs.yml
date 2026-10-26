@@ -8,9 +8,9 @@ argument_specs:
     - Checks out the monorepo, installs each selected application into its own virtualenv
       with uv and renders its environment file, encrypted credentials and systemd units, and
       optionally sets up the PostgreSQL database and migrations, an nginx virtual host with
-      its certificate, fail2ban rate limits, the Asterisk dialplan and wrapper scripts and
-      OpenVPN hooks. Applications are described by a catalog of components that is merged
-      with the user overrides.
+      its certificate, fail2ban rate limits, the Asterisk dialplan, wrapper scripts and OpenVPN
+      hooks and AWS SES notifications. Applications are described by a catalog of components
+      that is merged with the user overrides.
     author: Chris
     options:
       website_apps_catalog:
@@ -138,6 +138,7 @@ argument_specs:
             delay_compress: true
             missing_ok: true
             not_if_empty: true
+          ses_webhook: {}
       website_domain:
         type: str
         description:
@@ -510,6 +511,22 @@ argument_specs:
         type: str
         description:
         - website_aws_route53_secret_access_key
+        default: ''
+      website_aws_ses_access_key_id:
+        type: str
+        description:
+        - AWS credentials for the SES/SNS webhook configuration of the components that set
+          ses_webhook. When empty the AWS CLI uses its own credential chain.
+        default: ''
+      website_aws_ses_secret_access_key:
+        type: str
+        description:
+        - website_aws_ses_secret_access_key
+        default: ''
+      website_aws_ses_region:
+        type: str
+        description:
+        - website_aws_ses_region
         default: ''
       website_openvpn_server_conf:
         type: str

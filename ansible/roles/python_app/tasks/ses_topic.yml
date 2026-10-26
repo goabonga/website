@@ -1,0 +1,64 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# One SNS topic subscribed to the webhook endpoint (loop item: topic suffix).
+
+- name: Create the SNS topic {{ python_app__ses.topic_prefix }}-{{ python_app__topic }}
+  ansible.builtin.command:
+    argv:
+      - aws
+      - sns
+      - create-topic
+      - --name
+      - "{{ python_app__ses.topic_prefix }}-{{ python_app__topic }}"
+      - --region
+      - "{{ python_app__ses.region }}"
+      - --output
+      - text
+      - --query
+      - TopicArn
+  environment: "{{ python_app__aws_env }}"
+  register: python_app__topic_arn
+  changed_when: false
+
+- name: Look for the subscription of the endpoint
+  ansible.builtin.command:
+    argv:
+      - aws
+      - sns
+      - list-subscriptions-by-topic
+      - --topic-arn
+      - "{{ python_app__topic_arn.stdout }}"
+      - --region
+      - "{{ python_app__ses.region }}"
+      - --output
+      - text
+      - --query
+      - "Subscriptions[?Endpoint=='{{ python_app__ses.endpoint }}'].SubscriptionArn"
+  environment: "{{ python_app__aws_env }}"
+  register: python_app__subscription
+  changed_when: false
+
+- name: Subscribe the endpoint to the topic
+  ansible.builtin.command:
+    argv:
+      - aws
+      - sns
+      - subscribe
+      - --topic-arn
+      - "{{ python_app__topic_arn.stdout }}"
+      - --protocol
+      - https
+      - --notification-endpoint
+      - "{{ python_app__ses.endpoint }}"
+      - --region
+      - "{{ python_app__ses.region }}"
+      - --return-subscription-arn
+  environment: "{{ python_app__aws_env }}"
+  when: python_app__subscription.stdout | trim in ['', 'None']
+  changed_when: true
+
+- name: Remember the topic
+  ansible.builtin.set_fact:
+    python_app__topics: "{{ python_app__topics | default({}) | combine({python_app__topic: python_app__topic_arn.stdout}) }}"

@@ -91,6 +91,7 @@ paths = [
     "apps/backend/src/**",
     "apps/backend/features/**",
     "apps/backend/tests/**",
+    "apps/backend/alembic/**",
     "apps/backend/pyproject.toml",
 ]
 bump_files = [

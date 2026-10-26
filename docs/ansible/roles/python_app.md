@@ -464,7 +464,7 @@ finishes.
 
 After the migrations the role also seeds the default nginx template and
 creates the missing entries of `website_custom_domain_clients` with the
-`custom-domain` command.
+`custom-domain` command (see [Onboarding a SaaS application](../07-saas-onboarding.md)).
 
 ### Mailler data
 

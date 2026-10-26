@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from analytics import __version__
 from analytics.config import settings
 from analytics.logging import setup_logging
+from analytics.routes.collect import router as collect_router
 from analytics.routes.health import router as health_router
 from analytics.routes.security_txt import router as security_txt_router
 
@@ -33,7 +34,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="""
-Analytics tracking service.
+Analytics tracking service for event collection.
+
+## Features
+
+- **Event collection**: Track custom events via JavaScript SDK
     """,
     version=__version__,
     docs_url="/docs" if settings.docs_enabled else None,
@@ -54,3 +59,4 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router)
 app.include_router(security_txt_router)
+app.include_router(collect_router)

@@ -3,7 +3,31 @@
 
 """Application configuration."""
 
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_credential(name: str, default: str = "") -> str:
+    """Read a secret from systemd credentials or environment.
+
+    Args:
+        name: Credential name (e.g., OPENAI_API_KEY).
+        default: Default value if not found.
+
+    Returns:
+        The credential value.
+    """
+    # First check systemd credentials directory
+    creds_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    if creds_dir:
+        cred_file = Path(creds_dir) / name
+        if cred_file.exists():
+            return cred_file.read_text().strip()
+
+    # Fall back to environment variable
+    return os.environ.get(name, default)
 
 
 class Settings(BaseSettings):
@@ -30,6 +54,20 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://localhost/app"
 
+    # Redis
+    redis_url: str = ""  # Uses prompt_cache_redis_url if empty
+    redis_key_prefix: str = "fastapi"
+
+    # OAuth2 / OIDC
+    oauth2_issuer: str = ""
+    oauth2_swagger_client_id: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+    oauth2_trusted_issuers: str = ""
+    oauth2_client_cache_ttl: int = 300  # Cache exchanged scopes (seconds)
+    token_introspection_cache_ttl: int = 60  # Cache introspection results (seconds)
+    jwks_cache_ttl: int = 3600
+
     # security.txt (RFC 9116)
     security_contact: str = ""
     security_expires: str = ""
@@ -42,4 +80,10 @@ class Settings(BaseSettings):
     security_csaf: str = ""
 
 
-settings = Settings()
+# Load settings with credential overrides for secrets
+settings = Settings(
+    oauth2_client_secret=get_credential(
+        "OAUTH2_CLIENT_SECRET",
+        os.environ.get("OAUTH2_CLIENT_SECRET", ""),
+    ),
+)

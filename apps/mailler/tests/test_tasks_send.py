@@ -1319,3 +1319,161 @@ class TestUnrecognisedStatusBranches:
         # campaign counters unchanged
         assert campaign.sent_count == 0
         assert campaign.failed_count == 0
+
+
+class TestRegistryInTasks:
+    """The registry record of the client is honoured by the workers."""
+
+    @staticmethod
+    def _client(**fields):
+        record = MagicMock()
+        record.is_active = fields.get("is_active", True)
+        record.from_email = fields.get("from_email", "app@client.example")
+        record.from_name = fields.get("from_name", "Client App")
+        record.reply_to = fields.get("reply_to", "support@client.example")
+        record.default_provider = fields.get("default_provider", "client-provider")
+        return record
+
+    def test_email_of_a_deactivated_client_is_not_sent(self):
+        email = MagicMock()
+        email.status = EmailStatus.PENDING.value
+        email.client_id = "app-one"
+        email.provider = "brevo"
+        email.metadata_ = None
+        session = MagicMock()
+        session.get.return_value = email
+        provider = MagicMock()
+
+        with (
+            patch("mailler.tasks.send.get_sync_db", return_value=_make_sync_db_ctx(session)),
+            patch("mailler.tasks.send._load_client", return_value=self._client(is_active=False)),
+            patch("mailler.tasks.send.get_provider", return_value=provider),
+            patch("mailler.tasks.send._update_provider_stats") as stats,
+        ):
+            result = send_email_task(str(uuid.uuid4()))
+
+        assert result == {"status": EmailStatus.FAILED.value, "error": "Client is deactivated"}
+        assert email.status == EmailStatus.FAILED.value
+        provider.send_email.assert_not_called()
+        stats.assert_called_once_with(session, "brevo", "failed")
+
+    def test_email_of_an_active_client_is_sent(self):
+        email = MagicMock()
+        email.status = EmailStatus.PENDING.value
+        email.client_id = "app-one"
+        email.provider = "brevo"
+        email.metadata_ = None
+        session = MagicMock()
+        session.get.return_value = email
+        provider = MagicMock()
+        provider.send_email.return_value = MagicMock(success=True, provider_message_id="m-1")
+
+        with (
+            patch("mailler.tasks.send.get_sync_db", return_value=_make_sync_db_ctx(session)),
+            patch("mailler.tasks.send._load_client", return_value=self._client()),
+            patch("mailler.tasks.send.get_provider", return_value=provider),
+            patch("mailler.tasks.send._update_provider_stats"),
+        ):
+            result = send_email_task(str(uuid.uuid4()))
+
+        assert result["status"] == EmailStatus.SENT.value
+
+    def test_load_client_without_client_id_does_not_query(self):
+        from mailler.tasks.send import _load_client
+
+        session = MagicMock()
+        assert _load_client(session, None) is None
+        session.execute.assert_not_called()
+
+    def test_load_client_queries_the_registry(self):
+        from mailler.tasks.send import _load_client
+
+        session = MagicMock()
+        session.execute.return_value.scalar_one_or_none.return_value = "record"
+        assert _load_client(session, "app-one") == "record"
+        assert session.execute.call_args.args[0].compile().params["client_id_1"] == "app-one"
+
+    def _run_campaign(self, campaign, client):
+        template = MagicMock(html_compiled="<p>x</p>", subject_template="Hi", plain_text=None)
+        campaign.template = template
+        campaign.id = 1
+        campaign.client_id = "app-one"
+        campaign.status = CampaignStatus.SENDING.value
+        campaign.group_id = 10
+        campaign.subject_override = None
+        campaign.total_recipients = 1
+
+        contact = MagicMock()
+        contact.id = uuid.uuid4()
+        contact.email = "user@test.com"
+        contact.first_name = "Ann"
+        contact.last_name = ""
+        contact.full_name = "Ann"
+        contact.custom_fields = None
+
+        session = MagicMock()
+        campaign_result = MagicMock()
+        campaign_result.scalar_one_or_none.return_value = campaign
+        existing = MagicMock()
+        existing.fetchall.return_value = []
+        contacts = MagicMock()
+        contacts.scalars.return_value.all.return_value = [contact]
+        count = MagicMock()
+        count.scalar.return_value = 1
+        session.execute.side_effect = [campaign_result, existing, contacts, count, count]
+
+        with (
+            patch("mailler.tasks.send.get_sync_db", return_value=_make_sync_db_ctx(session)),
+            patch("mailler.tasks.send._load_client", return_value=client),
+            patch("mailler.tasks.send.send_email_task"),
+            patch("mailler.tasks.send.build_unsubscribe_url", return_value=""),
+            patch("mailler.tasks.send.settings") as mock_settings,
+        ):
+            mock_settings.default_from = "platform@example.test"
+            mock_settings.default_from_name = "Platform"
+            mock_settings.default_provider = "platform-provider"
+            mock_settings.campaign_batch_size = 50
+            result = send_campaign_task(1)
+        emails = [c.args[0] for c in session.add.call_args_list if hasattr(c.args[0], "provider")]
+        return result, emails
+
+    def test_campaign_takes_the_identity_of_its_client(self):
+        campaign = MagicMock(from_email=None, from_name=None, reply_to=None, provider=None)
+
+        result, emails = self._run_campaign(campaign, self._client())
+
+        assert result["queued"] == 1
+        assert emails[0].from_email == "app@client.example"
+        assert emails[0].from_name == "Client App"
+        assert emails[0].reply_to == "support@client.example"
+        assert emails[0].provider == "client-provider"
+
+    def test_campaign_values_win_over_the_client_defaults(self):
+        campaign = MagicMock(
+            from_email="alerts@client.example",
+            from_name="Alerts",
+            reply_to="alerts@client.example",
+            provider="other-provider",
+        )
+
+        _, emails = self._run_campaign(campaign, self._client())
+
+        assert emails[0].from_email == "alerts@client.example"
+        assert emails[0].provider == "other-provider"
+
+    def test_registered_client_never_falls_back_to_the_platform_sender(self):
+        campaign = MagicMock(from_email=None, from_name=None, reply_to=None, provider=None)
+
+        result, emails = self._run_campaign(campaign, self._client(from_email=None))
+
+        assert result == {"error": "No sender or provider"}
+        assert emails == []
+
+    def test_campaign_of_a_deactivated_client_fails(self):
+        campaign = MagicMock(from_email=None, from_name=None, reply_to=None, provider=None)
+
+        result, emails = self._run_campaign(campaign, self._client(is_active=False))
+
+        assert result == {"error": "Client is deactivated"}
+        assert campaign.status == CampaignStatus.FAILED.value
+        assert emails == []

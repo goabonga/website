@@ -6,15 +6,20 @@
 The application talks to a temporary SQLite database through aiosqlite instead of
 PostgreSQL. The PostgreSQL-only column types (JSONB, INET) are rendered as JSON and
 VARCHAR for SQLite.
+PostgreSQL array_agg() is emulated with json_group_array() and decoded as a list.
 """
 
 import asyncio
+import json
 import os
 import tempfile
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import INET, JSONB
+from sqlalchemy.dialects.sqlite.aiosqlite import SQLiteDialect_aiosqlite
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql.functions import array_agg
 
 
 @compiles(JSONB, "sqlite")
@@ -25,6 +30,27 @@ def _compile_jsonb_for_sqlite(element, compiler, **kw):
 @compiles(INET, "sqlite")
 def _compile_inet_for_sqlite(element, compiler, **kw):
     return "VARCHAR(45)"
+
+
+@compiles(array_agg, "sqlite")
+def _compile_array_agg_for_sqlite(element, compiler, **kw):
+    return f"json_group_array({compiler.process(element.clauses, **kw)})"
+
+
+class _SQLiteArray(sqltypes.ARRAY):
+    """ARRAY results come back from json_group_array as JSON text."""
+
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            return None if value is None else json.loads(value)
+
+        return process
+
+
+SQLiteDialect_aiosqlite.colspecs = {
+    **SQLiteDialect_aiosqlite.colspecs,
+    sqltypes.ARRAY: _SQLiteArray,
+}
 
 
 # Settings are resolved when the application modules are imported, which happens

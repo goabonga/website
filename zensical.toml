@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+[project]
+site_name = "website"
+site_description = "Platform services and the Ansible collection that deploys them."
+site_author = "Chris"
+site_url = "https://goabonga.github.io/website/"
+repo_url = "https://github.com/goabonga/website"
+repo_name = "goabonga/website"
+
+nav = [
+    { "Introduction" = "index.md" },
+    { "Applications" = [
+        { "Overview" = "apps/index.md" },
+    ] },
+]

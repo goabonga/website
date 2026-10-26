@@ -4,9 +4,12 @@
 """Behave environment: everything runs in-process, no external service is needed."""
 
 import asyncio
+import shutil
+import tempfile
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+from custom_domain.config import settings
 from custom_domain.main import app
 from fakes import FakeDatabase
 from httpx import ASGITransport, AsyncClient
@@ -32,6 +35,23 @@ def before_scenario(context, scenario):
     context.db.install(app)
     context.patchers = []
     context.cleanups = []
+    # Values a deployment provides; only the staging directory is ever touched.
+    context.staging_dir = tempfile.mkdtemp(prefix="custom-domain-staging-")
+    deployment = patch.multiple(
+        settings,
+        nginx_sites_dir="/srv/nginx-sites",
+        nginx_config_prefix="custom-domain-",
+        nginx_bin="/opt/nginx/sbin/nginx",
+        nginx_service="nginx",
+        systemctl_bin="/opt/systemd/systemctl",
+        certbot_webroot="/srv/acme",
+        letsencrypt_dir="/srv/letsencrypt",
+        sudo_bin="sudo",
+        privileged_helper="/opt/custom-domain/privileged-helper",
+        privileged_staging_dir=context.staging_dir,
+    )
+    deployment.start()
+    context.patchers.append(deployment)
 
 
 def after_scenario(context, scenario):
@@ -41,6 +61,7 @@ def after_scenario(context, scenario):
     for cleanup in reversed(context.cleanups):
         cleanup()
     app.dependency_overrides.clear()
+    shutil.rmtree(context.staging_dir, ignore_errors=True)
 
 
 def http_request(context, method, path, **kwargs):

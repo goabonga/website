@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     Form,
     HTTPException,
@@ -235,6 +236,7 @@ async def share_action(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     caller: Caller_,
+    background_tasks: BackgroundTasks,
     package_id: uuid.UUID,
     grantee: Annotated[str, Form()],
     grantee_type: Annotated[str, Form()] = "user",
@@ -267,6 +269,24 @@ async def share_action(
         )
     await invalidate_index_cache(db)
     await db.commit()
+
+    # Send notification email to the grantee (if it's a user with an email-like id)
+    if grantee_type == "user" and "@" in grantee_value:
+        from apt_server.services.email import send_package_shared
+
+        host = request.url.hostname or "apt.example.com"
+        background_tasks.add_task(
+            send_package_shared,
+            to_email=grantee_value,
+            to_name=grantee_value.split("@")[0],
+            sharer=user.display_name or user.sub,
+            role=acl_role.value,
+            package_name=package.name,
+            package_version=package.version,
+            package_arch=package.architecture,
+            package_component=package.component,
+            package_url=f"https://{host}/packages/{package.id}",
+        )
 
     return RedirectResponse(
         url=f"/dashboard/{package_id}/share", status_code=status.HTTP_303_SEE_OTHER

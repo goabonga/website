@@ -135,6 +135,17 @@ class Settings(BaseSettings):
     session_cookie_name: str = "apt_session"
     session_max_age: int = 86400  # 24 hours
 
+    # Email (mailler service)
+    email_backend: str = ""  # "mailler" or empty to disable
+    mailler_url: str = "http://localhost"
+    mailler_unix_socket: str = ""
+    mailler_client_id: str = ""
+    mailler_client_secret: str = ""
+    mailler_auth_url: str = ""
+    mailler_provider: str = "brevo"
+    email_from: str = "noreply@goabonga.com"
+    email_from_name: str = "APT Server"
+
     # Webhook (receive events from auth service)
     webhook_secret: str = ""
 
@@ -163,6 +174,7 @@ def get_settings() -> Settings:
     overrides = {}
     for env_name, field_name in [
         ("OAUTH2_CLIENT_SECRET", "oauth2_client_secret"),
+        ("MAILLER_CLIENT_SECRET", "mailler_client_secret"),
         ("SESSION_SECRET", "session_secret"),
         ("WEBHOOK_SECRET", "webhook_secret"),
     ]:

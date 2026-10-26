@@ -18,6 +18,7 @@ access control.
 - Web login with OAuth2 Authorization Code and PKCE
 - Web pages: package list, client setup instructions, package detail
 - Dashboard to upload, share, change visibility and delete packages
+- Share notification emails sent through the mailler service
 
 ## Routes and scopes
 

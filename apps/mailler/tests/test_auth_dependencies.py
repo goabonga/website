@@ -956,3 +956,59 @@ class TestModuleLevelOAuth2Scheme:
         from mailler.auth.dependencies import oauth2_scheme
 
         assert callable(oauth2_scheme)
+
+
+class TestRegistryGate:
+    """Regular clients must be registered and active; administrators are not checked."""
+
+    @staticmethod
+    def _patches(claims):
+        return (
+            patch("mailler.auth.dependencies.settings"),
+            patch("mailler.auth.dependencies.jwks_manager"),
+            patch("mailler.auth.dependencies.token_exchange_client"),
+            patch("mailler.auth.dependencies.introspection_client"),
+            patch("mailler.auth.dependencies.set_request_context"),
+        )
+
+    async def _call(self, dependency, claims, gate):
+        p_set, p_jwks, p_tex, p_intro, p_ctx = self._patches(claims)
+        with p_set as settings_, p_jwks as jwks, p_tex as tex, p_intro as intro, p_ctx:
+            settings_.admin_scope = "mailler:admin"
+            jwks.is_configured = True
+            tex.is_configured = False
+            intro.validate_token_with_introspection = AsyncMock(return_value=claims)
+            with patch("mailler.auth.dependencies.ensure_authorized", gate):
+                if dependency is get_auth_context:
+                    return await dependency(request=MagicMock(), token="header.payload.signature")
+                return await dependency(request=MagicMock(), token="header.payload.signature")
+
+    async def test_regular_client_is_checked(self):
+        gate = AsyncMock()
+        claims = {"sub": str(uuid4()), "scope": "resource:read", "client_id": "app-one"}
+        await self._call(require_scopes("resource:read"), claims, gate)
+        gate.assert_awaited_once_with("app-one")
+
+    async def test_get_auth_context_checks_the_client_too(self):
+        gate = AsyncMock()
+        claims = {"sub": str(uuid4()), "scope": "resource:read", "client_id": "app-one"}
+        await self._call(get_auth_context, claims, gate)
+        gate.assert_awaited_once_with("app-one")
+
+    async def test_refusal_is_returned_to_the_caller(self):
+        gate = AsyncMock(
+            side_effect=HTTPException(status_code=403, detail="Client is not registered")
+        )
+        claims = {"sub": str(uuid4()), "scope": "resource:read", "client_id": "app-one"}
+        for dependency in (require_scopes("resource:read"), get_auth_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await self._call(dependency, claims, gate)
+            assert exc_info.value.status_code == 403
+            assert exc_info.value.detail == "Client is not registered"
+
+    async def test_administrator_is_not_checked(self):
+        gate = AsyncMock(side_effect=HTTPException(status_code=403, detail="never"))
+        claims = {"sub": str(uuid4()), "scope": "mailler:admin", "client_id": "ops"}
+        auth = await self._call(require_scopes("mailler:admin"), claims, gate)
+        assert auth.is_admin is True
+        gate.assert_not_awaited()

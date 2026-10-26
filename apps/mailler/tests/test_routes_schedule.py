@@ -89,3 +89,41 @@ class TestScheduleEmail:
 
         assert response.status_code == 422
         mock_db_session.add.assert_not_called()
+
+
+class TestScheduleUsesTheClientRecord:
+    """Scheduled emails follow the same sender and provider rules as immediate ones."""
+
+    _BODY = {
+        "to_email": "recipient@example.com",
+        "subject": "Scheduled",
+        "html_content": "<p>Hello</p>",
+        "scheduled_at": "2026-06-01T10:00:00Z",
+    }
+
+    async def test_defaults_and_choices(self, auth_client: AsyncClient, mock_db_session):
+        response = await auth_client.post("/api/v1/schedule", json=self._BODY)
+        assert response.status_code == 200
+        email = mock_db_session.add.call_args[0][0]
+        assert (email.from_email, email.provider) == ("app@client.example", "brevo")
+
+        response = await auth_client.post(
+            "/api/v1/schedule",
+            json={**self._BODY, "from_email": "alerts@client.example", "provider": "ses"},
+        )
+        assert response.status_code == 200
+        email = mock_db_session.add.call_args[0][0]
+        assert (email.from_email, email.provider) == ("alerts@client.example", "ses")
+
+    async def test_arbitrary_sender_and_provider_are_refused(
+        self, auth_client: AsyncClient, mock_db_session
+    ):
+        response = await auth_client.post(
+            "/api/v1/schedule", json={**self._BODY, "from_email": "ceo@bank.example"}
+        )
+        assert response.status_code == 403
+        response = await auth_client.post(
+            "/api/v1/schedule", json={**self._BODY, "provider": "sendgrid"}
+        )
+        assert response.status_code == 403
+        mock_db_session.add.assert_not_called()

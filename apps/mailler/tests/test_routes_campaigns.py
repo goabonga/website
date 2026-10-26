@@ -809,3 +809,44 @@ class TestCampaignsBelongToTheirClient:
         response = await admin_client.get("/api/v1/campaigns/1")
         assert response.status_code == 200
         assert response.json()["client_id"] == "other"
+
+
+class TestCampaignOverridesFollowTheClientRecord:
+    async def test_allowed_overrides_are_stored(self, writer_client, mock_db_session):
+        reload_result = MagicMock()
+        reload_result.scalar_one_or_none.return_value = _make_campaign_mock()
+        mock_db_session.execute = AsyncMock(return_value=reload_result)
+        response = await writer_client.post(
+            "/api/v1/campaigns",
+            json={"name": "C", "from_email": "alerts@client.example", "provider": "ses"},
+        )
+        assert response.status_code == 201
+        stored = mock_db_session.add.call_args[0][0]
+        assert (stored.from_email, stored.provider) == ("alerts@client.example", "ses")
+
+    async def test_arbitrary_overrides_are_refused(self, writer_client, mock_db_session):
+        for override in (
+            {"from_email": "ceo@bank.example"},
+            {"from_name": "Your Bank"},
+            {"provider": "sendgrid"},
+        ):
+            response = await writer_client.post("/api/v1/campaigns", json={"name": "C", **override})
+            assert response.status_code == 403, override
+        mock_db_session.add.assert_not_called()
+
+    async def test_update_checks_the_overrides_too(self, writer_client, mock_db_session):
+        mock_db_session.get = AsyncMock(return_value=_make_campaign_mock(status="draft"))
+        response = await writer_client.put(
+            "/api/v1/campaigns/1", json={"from_email": "ceo@bank.example"}
+        )
+        assert response.status_code == 403
+
+    async def test_administrators_are_not_bound_by_a_record(self, admin_client, mock_db_session):
+        reload_result = MagicMock()
+        reload_result.scalar_one_or_none.return_value = _make_campaign_mock()
+        mock_db_session.execute = AsyncMock(return_value=reload_result)
+        response = await admin_client.post(
+            "/api/v1/campaigns",
+            json={"name": "C", "from_email": "ops@platform.example", "provider": "sendgrid"},
+        )
+        assert response.status_code == 201

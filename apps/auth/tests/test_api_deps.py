@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from tests.conftest import (
     make_access_token,
@@ -340,6 +341,42 @@ class TestGetCurrentUser:
 # ---------------------------------------------------------------------------
 # get_current_user_with_roles
 # ---------------------------------------------------------------------------
+
+
+class TestGetCurrentUserWithRoles:
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user", new_callable=AsyncMock, return_value=None)
+    async def test_no_user_returns_none(self, mock_get_user):
+        from auth.api.deps import get_current_user_with_roles
+
+        request = MagicMock()
+        db = AsyncMock()
+
+        result = await get_current_user_with_roles(request, db)
+        assert result is None
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user", new_callable=AsyncMock)
+    async def test_returns_user_and_roles(self, mock_get_user):
+        from auth.api.deps import get_current_user_with_roles
+
+        user = make_user()
+        mock_get_user.return_value = user
+
+        role1 = MagicMock()
+        role2 = MagicMock()
+
+        request = MagicMock()
+        db = AsyncMock()
+
+        scalars_mock = MagicMock()
+        scalars_mock.all.return_value = [role1, role2]
+        roles_result = MagicMock()
+        roles_result.scalars.return_value = scalars_mock
+        db.execute = AsyncMock(return_value=roles_result)
+
+        result = await get_current_user_with_roles(request, db)
+        assert result == (user, [role1, role2])
 
 
 # ---------------------------------------------------------------------------
@@ -682,9 +719,413 @@ class TestUserHasScope:
 # ---------------------------------------------------------------------------
 
 
+class TestRequireScope:
+    """Tests for require_scope dependency factory."""
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_auth_with_scope(self, mock_validate_pat):
+        from auth.api.deps import PATAuth, require_scope
+        from auth.services.pat import PAT_PREFIX
+
+        pat_auth = PATAuth(user_id="u1", pat_id="p1", scopes=["users:read"])
+        mock_validate_pat.return_value = pat_auth
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}token"
+
+        result = await dep(request, db, creds)
+        assert result is pat_auth
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_auth_missing_scope_raises_403(self, mock_validate_pat):
+        from auth.api.deps import PATAuth, require_scope
+        from auth.services.pat import PAT_PREFIX
+
+        pat_auth = PATAuth(user_id="u1", pat_id="p1", scopes=["users:read"])
+        mock_validate_pat.return_value = pat_auth
+
+        dep = require_scope("users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}token"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_prefix_but_invalid_raises_401(self, mock_validate_pat):
+        from auth.api.deps import require_scope
+        from auth.services.pat import PAT_PREFIX
+
+        mock_validate_pat.return_value = None
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}badtoken"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_bearer_auth_with_scope(self, mock_validate_bearer):
+        from auth.api.deps import BearerTokenAuth, require_scope
+
+        bearer_auth = BearerTokenAuth(client_id="c1", scopes=["users:read"])
+        mock_validate_bearer.return_value = bearer_auth
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "jwt.token.here"
+
+        result = await dep(request, db, creds)
+        assert result is bearer_auth
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_bearer_auth_missing_scope_raises_403(self, mock_validate_bearer):
+        from auth.api.deps import BearerTokenAuth, require_scope
+
+        bearer_auth = BearerTokenAuth(client_id="c1", scopes=["users:read"])
+        mock_validate_bearer.return_value = bearer_auth
+
+        dep = require_scope("users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "jwt.token.here"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_session_auth_with_scope(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+
+        user = make_user()
+        role = MagicMock()
+        role.has_scope.return_value = True
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+
+        result = await dep(request, db, None)
+        assert result == (user, [role])
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_no_auth_raises_401(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+        mock_user_roles.return_value = None
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_no_auth_redirect_to_login(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+        mock_user_roles.return_value = None
+
+        dep = require_scope("users:read", redirect_to_login=True)
+        request = MagicMock()
+        request.url = "https://example.com/admin"
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 303
+        assert "/auth/login" in exc_info.value.headers["Location"]
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_inactive_user_raises_403(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+        user = make_user(is_active=False)
+        role = MagicMock()
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 403
+        assert "disabled" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_user_missing_scope_raises_403(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+        user = make_user()
+        role = MagicMock()
+        role.has_scope.return_value = False
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_scope("users:write")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_bearer_invalid_falls_through_to_session(self, mock_bearer):
+        """When bearer returns None (non-PAT creds), fall through to session."""
+        from auth.api.deps import require_scope
+
+        mock_bearer.return_value = None
+
+        dep = require_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "bad.jwt"
+
+        # No session either
+        with patch(
+            "auth.api.deps.get_current_user_with_roles",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await dep(request, db, creds)
+            assert exc_info.value.status_code == 401
+
+
 # ---------------------------------------------------------------------------
 # require_any_scope
 # ---------------------------------------------------------------------------
+
+
+class TestRequireAnyScope:
+    """Tests for require_any_scope dependency factory."""
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_has_any_scope(self, mock_validate_pat):
+        from auth.api.deps import PATAuth, require_any_scope
+        from auth.services.pat import PAT_PREFIX
+
+        pat_auth = PATAuth(user_id="u1", pat_id="p1", scopes=["users:write"])
+        mock_validate_pat.return_value = pat_auth
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}token"
+
+        result = await dep(request, db, creds)
+        assert result is pat_auth
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_missing_all_scopes_raises_403(self, mock_validate_pat):
+        from auth.api.deps import PATAuth, require_any_scope
+        from auth.services.pat import PAT_PREFIX
+
+        pat_auth = PATAuth(user_id="u1", pat_id="p1", scopes=["clients:read"])
+        mock_validate_pat.return_value = pat_auth
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}token"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_pat_token", new_callable=AsyncMock)
+    async def test_pat_prefix_invalid_raises_401(self, mock_validate_pat):
+        from auth.api.deps import require_any_scope
+        from auth.services.pat import PAT_PREFIX
+
+        mock_validate_pat.return_value = None
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = f"{PAT_PREFIX}bad"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_bearer_has_any_scope(self, mock_bearer):
+        from auth.api.deps import BearerTokenAuth, require_any_scope
+
+        bearer_auth = BearerTokenAuth(client_id="c1", scopes=["users:write"])
+        mock_bearer.return_value = bearer_auth
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "jwt.token"
+
+        result = await dep(request, db, creds)
+        assert result is bearer_auth
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_bearer_missing_all_scopes_raises_403(self, mock_bearer):
+        from auth.api.deps import BearerTokenAuth, require_any_scope
+
+        bearer_auth = BearerTokenAuth(client_id="c1", scopes=["clients:read"])
+        mock_bearer.return_value = bearer_auth
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "jwt.token"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, creds)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_session_user_has_any_scope(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        user = make_user()
+        role = MagicMock()
+        # has_scope returns True for "users:write" only
+        role.has_scope.side_effect = lambda s: s == "users:write"
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+
+        result = await dep(request, db, None)
+        assert result == (user, [role])
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_session_user_missing_all_scopes_raises_403(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        user = make_user()
+        role = MagicMock()
+        role.has_scope.return_value = False
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_no_auth_raises_401(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        mock_user_roles.return_value = None
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_no_auth_redirect_to_login(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        mock_user_roles.return_value = None
+
+        dep = require_any_scope("users:read", "users:write", redirect_to_login=True)
+        request = MagicMock()
+        request.url = "https://example.com/admin"
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 303
+        assert "/auth/login" in exc_info.value.headers["Location"]
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_inactive_user_raises_403(self, mock_bearer, mock_user_roles):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        user = make_user(is_active=False)
+        role = MagicMock()
+        mock_user_roles.return_value = (user, [role])
+
+        dep = require_any_scope("users:read", "users:write")
+        request = MagicMock()
+        db = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(request, db, None)
+        assert exc_info.value.status_code == 403
+        assert "disabled" in exc_info.value.detail.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -773,3 +1214,30 @@ class TestServiceFactoriesExtra:
         from auth.services.pairwise import PairwiseSubjectService
 
         assert isinstance(get_pairwise_service(), PairwiseSubjectService)
+
+
+class TestRequireAnyScopeBearerFallthrough:
+    """Bearer credentials that fail validation fall back to session cookie auth."""
+
+    @pytest.mark.asyncio
+    @patch("auth.api.deps.get_current_user_with_roles", new_callable=AsyncMock)
+    @patch("auth.api.deps.validate_bearer_token", new_callable=AsyncMock)
+    async def test_invalid_bearer_falls_back_to_session(self, mock_bearer, mock_session_user):
+        from auth.api.deps import require_any_scope
+
+        mock_bearer.return_value = None
+        user = make_user()
+        role = MagicMock()
+        role.has_scope.side_effect = lambda s: s == "users:read"
+        mock_session_user.return_value = (user, [role])
+
+        dep = require_any_scope("users:read")
+        request = MagicMock()
+        db = AsyncMock()
+        creds = MagicMock()
+        creds.credentials = "not.a.pat"
+
+        result = await dep(request, db, creds)
+        assert result[0] is user
+        mock_bearer.assert_awaited_once()
+        mock_session_user.assert_awaited_once()

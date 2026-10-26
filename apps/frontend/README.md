@@ -1,7 +1,8 @@
 # frontend
 
 Frontend application server (FastAPI) for the website. It currently exposes
-a health endpoint and a configurable CORS policy.
+a health endpoint, a configurable CORS policy and logging split between
+stdout and stderr.
 
 ## Routes and scopes
 

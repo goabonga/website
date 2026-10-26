@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from frontend import __version__
 
 from .config import Settings, settings
+from .logging import get_logger, setup_logging
+
+logger = get_logger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -30,6 +33,7 @@ Frontend application server.
 ## Features
 
 - **Health check**: liveness endpoint for monitoring
+- **Logging**: INFO/DEBUG to stdout, WARNING and above to stderr
 - **CORS**: configurable cross-origin policy
         """,
         version=__version__,
@@ -51,9 +55,12 @@ Frontend application server.
     @app.get("/health", response_model=HealthResponse, include_in_schema=False)
     async def health() -> HealthResponse:
         """Health check endpoint for monitoring."""
+        logger.info("Health check requested")
         return HealthResponse(status="healthy")
 
+    logger.info("Application %s started", cfg.app_name)
     return app
 
 
+setup_logging(level=settings.log_level)
 app = create_app()

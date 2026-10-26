@@ -113,6 +113,19 @@ def machine_user() -> User:
     )
 
 
+@pytest.fixture
+def webhook_user() -> User:
+    """Create a machine client user with webhook scope."""
+    return User(
+        id="webhooks-api",
+        email=None,
+        name=None,
+        scopes=["billing:webhooks"],
+        is_machine_client=True,
+        client_id="webhooks-api",
+    )
+
+
 def _create_jwt_claims(user: User) -> dict:
     """Create JWT claims dict from a User instance."""
     return {
@@ -274,6 +287,28 @@ async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[Asyn
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_partition_guard] = AllowAllGuard
     patchers = _setup_auth_mocks(admin_user)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer mock.jwt.token"},
+        ) as test_client:
+            yield test_client
+    finally:
+        for p in patchers:
+            p.stop()
+        app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def webhook_client(mock_db_session, webhook_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create an authenticated test client with webhook scope (machine client)."""
+
+    async def override_get_db():
+        yield mock_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    patchers = _setup_auth_mocks(webhook_user)
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),

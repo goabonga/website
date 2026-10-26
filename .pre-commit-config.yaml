@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Local gates mirroring the CI lint, license-headers and multicz jobs.
+#
+# Install once:  uv run pre-commit install -t pre-commit -t commit-msg
+
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run ruff format --check
+        language: system
+        types_or: [python, pyi]
+
+      - id: license-headers
+        name: SPDX license headers
+        entry: >-
+          bash -c 'python3 scripts/add_license_header.py --path apps --types py --check
+          && python3 scripts/add_license_header.py --path scripts --types py,sh --check
+          && python3 scripts/add_license_header.py --path .github --types yml --check
+          && python3 scripts/add_license_header.py --path . --types toml --check'
+        language: system
+        files: \.(py|sh|toml|yml)$
+        pass_filenames: false
+
+      - id: check-yaml
+        name: check yaml
+        entry: uv run python -c "import sys, yaml; [list(yaml.safe_load_all(open(f))) for f in sys.argv[1:]]"
+        language: system
+        types: [yaml]
+
+      - id: check-toml
+        name: check toml
+        entry: uv run python -c "import sys, tomllib; [tomllib.load(open(f, 'rb')) for f in sys.argv[1:]]"
+        language: system
+        types: [toml]
+
+      - id: multicz-check
+        name: multicz commit message
+        entry: uvx multicz check
+        language: system
+        stages: [commit-msg]

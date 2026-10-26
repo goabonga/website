@@ -6,6 +6,8 @@
 Scenarios run fully in-process, without any external infrastructure:
 
 - the FastAPI application is driven through an ASGI transport;
+- the database is a throw-away SQLite file (PostgreSQL-only column types
+  are mapped to JSON for the occasion);
 - the OAuth2 token validation is mocked;
 - every outbound service client is mocked.
 """
@@ -13,6 +15,8 @@ Scenarios run fully in-process, without any external infrastructure:
 import asyncio
 import contextlib
 import os
+import shutil
+import tempfile
 import uuid
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -25,7 +29,11 @@ os.environ.setdefault("APP_BASE_URL", "http://test")
 os.environ.setdefault("COOKIE_SECURE", "false")
 os.environ.setdefault("APP_NAME", "Internal Test")
 
+from internal.database import Base, get_db
 from internal.main import app
+from sqlalchemy import JSON, Uuid, event
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Test user defaults
 TEST_USER_ID = str(uuid.UUID("00000000-0000-0000-0000-000000000001"))
@@ -82,11 +90,58 @@ def _configure_auth(context):
         context.mock_exchange_configured.return_value = False
 
 
+def _adapt_metadata_for_sqlite() -> None:
+    """Map the PostgreSQL-only column types of the models to portable ones.
+
+    Arrays, JSONB and pgvector columns become JSON; the PostgreSQL UUID type
+    (whose SQLite name has numeric affinity) becomes the generic ``Uuid``.
+    """
+    from sqlalchemy.dialects.postgresql import JSONB
+
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            if isinstance(column.type, ARRAY | JSONB) or type(column.type).__name__ == "Vector":
+                column.type = JSON()
+            elif isinstance(column.type, Uuid) and type(column.type) is not Uuid:
+                column.type = Uuid(as_uuid=True)
+
+
 def before_all(context):
     """Set up test infrastructure."""
     context.loop = asyncio.new_event_loop()
     context.app = app
     context._patchers = []
+
+    # Database: throw-away SQLite file, one engine for the whole run
+    context.db_dir = tempfile.mkdtemp(prefix="internal-behave-")
+    _adapt_metadata_for_sqlite()
+    context.engine = create_async_engine(
+        f"sqlite+aiosqlite:///{context.db_dir}/internal.db", echo=False
+    )
+
+    @event.listens_for(context.engine.sync_engine, "connect")
+    def _enable_foreign_keys(dbapi_connection, _record):
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+    context.session_maker = async_sessionmaker(
+        context.engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async def _create_tables():
+        async with context.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    context.loop.run_until_complete(_create_tables())
+
+    # Override get_db dependency to use the test session
+    async def _override_get_db():
+        async with context.session_maker() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
 
     # --- Auth mocking ---
     context.user_scopes = DEFAULT_SCOPES
@@ -133,6 +188,16 @@ def before_all(context):
     context.mock_analytics = p.start()
     context._patchers.append(p)
 
+    # Analytics client used by the dashboard statistics
+    p = patch("internal.routes.admin.analytics_client", new_callable=AsyncMock)
+    context.mock_analytics_admin = p.start()
+    context._patchers.append(p)
+
+    # Auth client (for conversation owner info)
+    p = patch("internal.routes.admin.auth_client", new_callable=AsyncMock)
+    context.mock_auth_client = p.start()
+    context._patchers.append(p)
+
 
 def before_scenario(context, scenario):
     """Reset state before each scenario."""
@@ -151,8 +216,18 @@ def before_scenario(context, scenario):
     # Reset all service mocks
     for p_mock in [
         context.mock_analytics,
+        context.mock_analytics_admin,
+        context.mock_auth_client,
     ]:
         p_mock.reset_mock()
+
+    # Clean database tables (children first)
+    async def _clean_db():
+        async with context.engine.begin() as conn:
+            for table in reversed(Base.metadata.sorted_tables):
+                await conn.execute(table.delete())
+
+    context.loop.run_until_complete(_clean_db())
 
 
 def after_scenario(context, scenario):
@@ -184,6 +259,11 @@ def after_all(context):
     for p in getattr(context, "_patchers", []):
         with contextlib.suppress(RuntimeError):
             p.stop()
+
+    # Close the engine and delete the SQLite file
+    if hasattr(context, "engine"):
+        context.loop.run_until_complete(context.engine.dispose())
+        shutil.rmtree(context.db_dir, ignore_errors=True)
 
     if hasattr(context, "loop") and not context.loop.is_closed():
         context.loop.close()

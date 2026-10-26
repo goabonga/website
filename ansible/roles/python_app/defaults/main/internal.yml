@@ -9,8 +9,13 @@
 #             (website_billing_partition_admin_scope), otherwise it only sees the SaaS
 #             applications it is bound to and cannot create one or manage bindings;
 #   mailler   mailler:read, mailler:write, mailler:send, mailler:stats and the admin scope of
-#             mailler (ADMIN_SCOPE, mailler:admin by default), otherwise it only sees its own
-#             data. The client must also be registered in mailler (website_mailler_clients).
+#             mailler (website_mailler_admin_scope), otherwise it only sees its own data and
+#             the pages of the mailler clients answer 403. The client must also be registered
+#             in mailler (website_mailler_clients), the records it creates (templates,
+#             contacts, groups, campaigns) belong to it.
+# The users who manage the bindings and the mailler client registry hold the same
+# two admin scopes (billing:admin and mailler:admin by default) at the authentication
+# server.
 
 # Base URL of the billing API (BILLING_API_URL), required. The application
 # reaches the service through its socket when BILLING_SOCKET_PATH is set, and
@@ -19,3 +24,29 @@ website_internal_billing_api_url: "https://{{ website_hostnames.billing }}"
 
 # Base URL of the mailler API (MAILLER_API_URL), required.
 website_internal_mailler_api_url: "https://{{ website_hostnames.mailler }}"
+
+# Scopes requested by the client credentials of the calls to billing
+# (BILLING_READ_SCOPE, BILLING_WRITE_SCOPE, BILLING_ADMIN_SCOPE). The admin scope
+# must be the one billing names in PARTITION_ADMIN_SCOPE, which is why it follows
+# website_billing_partition_admin_scope; the deployment fails when the two differ.
+website_internal_billing_read_scope: "billing:platform:read"
+website_internal_billing_write_scope: "billing:platform:write"
+website_internal_billing_admin_scope: "{{ website_billing_partition_admin_scope }}"
+
+# Seconds allowed to one request to billing (BILLING_TIMEOUT), rows per page of
+# the customer and subscription lists (BILLING_PAGE_SIZE) and rows of the
+# "recent" tables of a SaaS application page (BILLING_RECENT_LIMIT).
+website_internal_billing_timeout: 30
+website_internal_billing_page_size: 20
+website_internal_billing_recent_limit: 10
+
+# Scope requested with every call to mailler to see and manage every client
+# (MAILLER_ADMIN_SCOPE). It must be the one mailler names in ADMIN_SCOPE, which
+# is why it follows website_mailler_admin_scope. Empty: internal only acts as an
+# ordinary registered client of mailler.
+website_internal_mailler_admin_scope: "{{ website_mailler_admin_scope }}"
+
+# Seconds allowed to one request to mailler (MAILLER_TIMEOUT) and rows per page
+# of the list of mailler clients (MAILLER_CLIENTS_PAGE_SIZE).
+website_internal_mailler_timeout: 30
+website_internal_mailler_clients_page_size: 20

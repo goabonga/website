@@ -880,3 +880,58 @@ argument_specs:
         description:
         - Where the customers of a deleted workspace can get help (SUPPORT_URL).
         default: ''
+      website_internal_billing_read_scope:
+        type: str
+        description:
+        - Scope of the calls of internal to billing that read (BILLING_READ_SCOPE).
+        default: billing:platform:read
+      website_internal_billing_write_scope:
+        type: str
+        description:
+        - Scope of the calls of internal to billing that write (BILLING_WRITE_SCOPE).
+        default: billing:platform:write
+      website_internal_billing_admin_scope:
+        type: str
+        description:
+        - Admin scope internal requests from billing (BILLING_ADMIN_SCOPE); must be the
+          PARTITION_ADMIN_SCOPE of billing, which it follows by default.
+      website_internal_billing_timeout:
+        type: int
+        description:
+        - Seconds allowed to one request of internal to billing (BILLING_TIMEOUT).
+        default: 30
+      website_internal_billing_page_size:
+        type: int
+        description:
+        - Rows per page of the customer and subscription lists of internal
+          (BILLING_PAGE_SIZE).
+        default: 20
+      website_internal_billing_recent_limit:
+        type: int
+        description:
+        - Rows of the recent tables of a SaaS application page of internal
+          (BILLING_RECENT_LIMIT).
+        default: 10
+      website_internal_mailler_admin_scope:
+        type: str
+        description:
+        - Admin scope internal requests from mailler (MAILLER_ADMIN_SCOPE); must be the
+          ADMIN_SCOPE of mailler, which it follows by default. Empty makes internal an
+          ordinary client of mailler.
+      website_internal_mailler_timeout:
+        type: int
+        description:
+        - Seconds allowed to one request of internal to mailler (MAILLER_TIMEOUT).
+        default: 30
+      website_internal_mailler_clients_page_size:
+        type: int
+        description:
+        - Rows per page of the list of mailler clients of internal
+          (MAILLER_CLIENTS_PAGE_SIZE).
+        default: 20
+      website_mailler_admin_scope:
+        type: str
+        description:
+        - Scope that lets a caller cross the client boundary and register clients in mailler
+          (ADMIN_SCOPE).
+        default: mailler:admin

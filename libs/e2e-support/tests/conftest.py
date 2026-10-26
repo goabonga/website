@@ -7,30 +7,7 @@ import pytest
 from e2e_support.browser import BrowserSession, BrowserUnavailable
 from e2e_support.server import LiveServer
 from e2e_support.settings import E2ESettings
-
-
-async def _site(scope, receive, send):
-    """A tiny ASGI site: HTML pages that set and echo a cookie."""
-    if scope["type"] == "lifespan":
-        while True:
-            message = await receive()
-            if message["type"] == "lifespan.startup":
-                await send({"type": "lifespan.startup.complete"})
-            elif message["type"] == "lifespan.shutdown":
-                await send({"type": "lifespan.shutdown.complete"})
-                return
-    path = scope["path"]
-    headers = [(b"content-type", b"text/html; charset=utf-8")]
-    if path == "/set-cookie":
-        headers.append((b"set-cookie", b"visited=yes; Path=/"))
-    cookie = dict(scope["headers"]).get(b"cookie", b"").decode()
-    body = f"<title>Page {path}</title><h1>Hello {path}</h1><p id='cookie'>{cookie}</p>"
-    if path == "/console":
-        body += "<script>console.log('fine'); console.error('boom from console')</script>"
-    if path == "/crash":
-        body += "<script>setTimeout(() => { throw new Error('kaput') }, 0)</script>"
-    await send({"type": "http.response.start", "status": 200, "headers": headers})
-    await send({"type": "http.response.body", "body": body.encode()})
+from toy_site import site as toy_site
 
 
 @pytest.fixture(scope="session")
@@ -55,5 +32,5 @@ def browser_session(e2e_settings):
 @pytest.fixture(scope="session")
 def site():
     """The tiny ASGI site served on a real port."""
-    with LiveServer(_site) as server:
+    with LiveServer(toy_site) as server:
         yield server

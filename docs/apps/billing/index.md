@@ -28,6 +28,7 @@ tested.
 | 7 | [Prices](07-prices.md) | One-time, recurring and metered prices |
 | 8 | [Customers](08-customers.md) | Customers synchronized with Stripe |
 | 9 | [Subscriptions](09-subscriptions.md) | Lifecycle, sync and upgrades with proration |
+| 9a | [Subscription actions](09a-subscription-actions.md) | Cancel at period end or immediately, reactivate |
 
 ## Running the tests
 

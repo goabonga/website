@@ -28,6 +28,12 @@ Read from the environment (a `.env` file is loaded when present).
 | `CORS_METHODS` | Allowed HTTP methods (JSON list) | `["*"]` |
 | `CORS_HEADERS` | Allowed headers (JSON list) | `["*"]` |
 
+## Logging
+
+Records are split over two streams for systemd: `DEBUG` and `INFO` go to
+stdout, `WARNING`, `ERROR` and `CRITICAL` go to stderr. The level comes from
+`LOG_LEVEL` and logging is configured when the application starts.
+
 ## Development
 
 ```bash

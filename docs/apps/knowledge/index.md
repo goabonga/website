@@ -41,6 +41,8 @@ how it is tested with pytest and behave.
     registered in the custom-domain service, status webhooks and reconciliation.
 16. [Web authentication](14-web-authentication.md): browser signin, signup and
     account pages.
+16. [Landing and dashboard](15-web-dashboard.md): public pages, dashboard and
+    MCP download page.
 
 ## Running the tests
 

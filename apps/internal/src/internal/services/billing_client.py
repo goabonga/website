@@ -42,6 +42,7 @@ class BillingProduct(BaseModel):
     id: str
     saas_app_id: str
     stripe_product_id: str
+    slug: str
     name: str
     description: str | None = None
     extra_data: dict | None = None
@@ -413,13 +414,20 @@ class BillingClient:
         name: str,
         description: str | None = None,
         metadata: dict | None = None,
+        slug: str | None = None,
     ) -> BillingProduct | None:
-        """Create a new product in Stripe."""
+        """Create a new product in Stripe.
+
+        ``slug`` identifies the plan within the SaaS app; when it is left out the billing
+        service derives it from ``metadata["slug"]``, then from the name.
+        """
         try:
             json_data: dict[str, Any] = {
                 "name": name,
                 "description": description,
             }
+            if slug is not None:
+                json_data["slug"] = slug
             if metadata is not None:
                 json_data["metadata"] = metadata
 
@@ -442,12 +450,15 @@ class BillingClient:
         description: str | None = None,
         metadata: dict | None = None,
         is_active: bool | None = None,
+        slug: str | None = None,
     ) -> BillingProduct | None:
-        """Update a product with name, description, metadata (features/limits), or status."""
+        """Update a product with name, slug, description, metadata (features/limits), or status."""
         try:
             update_data: dict[str, Any] = {}
             if name is not None:
                 update_data["name"] = name
+            if slug is not None:
+                update_data["slug"] = slug
             if description is not None:
                 update_data["description"] = description
             if metadata is not None:

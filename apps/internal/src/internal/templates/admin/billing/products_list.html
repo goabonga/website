@@ -27,6 +27,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Slug</th>
                 <th>Stripe Product ID</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -44,6 +45,7 @@
                     <div class="text-muted" style="font-size: 0.8rem;">{{ product.description[:50] }}{% if product.description | length > 50 %}...{% endif %}</div>
                     {% endif %}
                 </td>
+                <td><code class="mono">{{ product.slug }}</code></td>
                 <td><code class="mono" style="font-size: 0.8rem;">{{ product.stripe_product_id }}</code></td>
                 <td>
                     {% if product.is_active %}

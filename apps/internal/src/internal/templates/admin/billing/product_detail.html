@@ -32,12 +32,10 @@
             <th>Description</th>
             <td>{{ product.description or '-' }}</td>
         </tr>
-        {% if product.extra_data and product.extra_data.slug %}
         <tr>
             <th>Slug</th>
-            <td><code class="mono">{{ product.extra_data.slug }}</code></td>
+            <td><code class="mono">{{ product.slug }}</code></td>
         </tr>
-        {% endif %}
         <tr>
             <th>Status</th>
             <td>
@@ -102,13 +100,7 @@
         <tr>
             <th style="width: 250px;"><code class="mono">{{ key }}</code></th>
             <td>
-                {% if value == -1 %}
-                <span class="badge badge-info">Unlimited</span>
-                {% elif key.endswith('_bytes') and value >= 1073741824 %}
-                {{ '{:,}'.format(value) }} <span class="text-muted">({{ (value / 1073741824) | round(1) }} GB)</span>
-                {% elif key.endswith('_bytes') and value >= 1048576 %}
-                {{ '{:,}'.format(value) }} <span class="text-muted">({{ (value / 1048576) | round(1) }} MB)</span>
-                {% elif value is number %}
+                {% if value is number %}
                 {{ '{:,}'.format(value) }}
                 {% else %}
                 {{ value }}

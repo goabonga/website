@@ -52,9 +52,11 @@
                        id="slug"
                        name="slug"
                        class="form-control"
-                       placeholder="pro"
-                       value="{{ product.extra_data.slug if is_edit and product.extra_data and product.extra_data.slug else '' }}">
-                <small class="text-muted">Identifier used in API (e.g., free, starter, pro)</small>
+                       maxlength="100"
+                       pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                       placeholder="Derived from the name"
+                       value="{{ product.slug if is_edit else '' }}">
+                <small class="text-muted">Identifier of the plan in the API, unique within {{ saas_app.name }}: lowercase letters, digits and hyphens. Left empty, it is derived from the name.</small>
             </div>
 
             <div class="form-group">
@@ -74,7 +76,6 @@
                        name="default_trial_days"
                        class="form-control"
                        min="0"
-                       max="730"
                        placeholder="0"
                        value="{{ product.extra_data.default_trial_days if is_edit and product.extra_data and product.extra_data.default_trial_days else '' }}">
                 <small class="text-muted">Trial days for new subscriptions (0 = no trial)</small>
@@ -246,15 +247,24 @@
         });
         featuresJsonInput.value = JSON.stringify(features);
 
-        // Collect limits
+        // Collect limits (names are free, values are whole numbers)
         const limits = {};
+        let invalidLimit = null;
         document.querySelectorAll('.limit-row').forEach(function(row) {
             const key = row.querySelector('.limit-key').value.trim();
             const value = row.querySelector('.limit-value').value.trim();
             if (key && value !== '') {
-                limits[key] = parseInt(value, 10);
+                if (!/^-?\d+$/.test(value)) {
+                    invalidLimit = key;
+                }
+                limits[key] = Number(value);
             }
         });
+        if (invalidLimit !== null) {
+            e.preventDefault();
+            alert('The limit "' + invalidLimit + '" must be a whole number.');
+            return;
+        }
         limitsJsonInput.value = JSON.stringify(limits);
     });
 })();

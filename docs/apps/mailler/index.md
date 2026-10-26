@@ -20,6 +20,7 @@ documented on its own page.
 | [Listing and reading emails](05-emails.md) | Paginated list and detail of stored emails |
 | [Sending statistics](06-stats.md) | Totals, per-provider and per-day counters |
 | [Scheduling and periodic tasks](07-schedule.md) | `POST /schedule`, beat tasks |
+| [MJML email templates](08-templates.md) | Template CRUD, compilation and rendering |
 
 ## Running the tests
 

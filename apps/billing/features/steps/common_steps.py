@@ -39,6 +39,8 @@ def step_not_authenticated(context):
 def _get_client(context):
     """Return the appropriate client based on auth state."""
     auth = getattr(context, "use_auth", True)
+    if isinstance(auth, tuple) and auth[0] == "client":
+        return context.oauth_clients[auth[1]]
     if auth:
         return context.client
     return context.anon_client

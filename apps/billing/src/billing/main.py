@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from billing import __version__
 from billing.auth import introspection_client, jwks_manager, token_exchange_client
 from billing.config import get_settings
-from billing.routes import checkout, health, plans, usage
+from billing.routes import checkout, health, plans, usage, webhooks
 from billing.routes.platform import clients, customers, prices, products, saas, subscriptions
 
 settings = get_settings()
@@ -76,6 +76,7 @@ Multi-SaaS Stripe Billing Platform.
 - **Stripe integration**: Products, prices, customers, subscriptions
 - **Usage-based billing**: Track and report usage metrics
 - **Checkout sessions**: Hosted checkout flow
+- **Webhook processing**: Handle Stripe webhooks
 - **OAuth2 authentication**: PKCE-based authentication with scope validation
 
 ## Authentication
@@ -90,8 +91,9 @@ the user has the required `billing:*` scopes via token exchange.
 - `billing:platform:write` - Manage products, prices, customers, subscriptions
 - `billing:usage:write` - Report usage metrics
 - `billing:checkout:write` - Create checkout sessions
-- `billing:webhooks` - Process webhooks
 - `billing:admin` - Act on every SaaS application and manage the client bindings (name set by `PARTITION_ADMIN_SCOPE`)
+
+The Stripe endpoint `/webhooks/stripe` is authenticated by the Stripe signature, not by a token.
 
 Every other route only serves the SaaS applications the calling OAuth client is bound to.
     """,
@@ -129,3 +131,6 @@ app.include_router(usage.router)
 # Public routes (no auth required)
 app.include_router(plans.router)
 app.include_router(checkout.router)
+
+# Webhook routes (internal - Unix socket from webhooks service)
+app.include_router(webhooks.router)

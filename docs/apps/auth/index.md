@@ -23,6 +23,7 @@ The application is documented feature by feature, in the order in which each fea
 8. [Multi-factor authentication](08-mfa.md): TOTP, email codes and backup codes.
 9. [Login and password reset](09-login.md): Login form and API, password recovery.
 10. [OAuth2 and OIDC authorization server](10-oauth2-server.md): Clients, authorization code with PKCE, token grants, revocation, introspection and userinfo.
+11. [Device authorization and pushed authorization requests](11-device-par.md): RFC 8628 device flow and RFC 9126 pushed authorization requests.
 
 ## Testing
 

@@ -35,6 +35,7 @@ tested.
 | 12a | [Client partitioning](12a-client-partitioning.md) | OAuth client to SaaS bindings, admin scope, onboarding |
 | 13 | [Webhooks](13-webhooks.md) | Stripe events and tenant notifications |
 | 14 | [Background tasks](14-background-tasks.md) | Celery tasks and beat schedule |
+| 14a | [Notification delivery](14a-webhook-delivery.md) | Queued, retried and idempotent notifications to tenants |
 
 ## Running the tests
 

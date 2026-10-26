@@ -97,9 +97,9 @@ Events are handled in their own database session, committed once per event.
   HMAC-SHA256 and the hex digest is sent in the `X-Billing-Signature`
   header. Receivers must compute the same HMAC over the raw body.
 - The request timeout is `SAAS_WEBHOOK_TIMEOUT`. A failure (HTTP error,
-  network error) is logged and never fails the Stripe event; at this stage
-  the notification is sent once and not retried (the background tasks
-  feature adds retries). Applications without a webhook URL are skipped.
+  network error) is logged and never fails the Stripe event. The
+  notifications are queued and retried by a Celery task, see the
+  notification delivery page. Applications without a webhook URL are skipped.
 - A delivery failure is classified: network errors, timeouts, `5xx`, `408`,
   `425` and `429` are retryable, any other refusal of the receiver is not.
 

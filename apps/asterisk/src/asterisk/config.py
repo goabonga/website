@@ -42,6 +42,15 @@ class Config:
         "You are a helpful phone assistant. Keep responses brief and conversational. Speak in French.",
     )
 
+    # Database (PostgreSQL with pgvector)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+    # RAG (Retrieval-Augmented Generation) settings
+    RAG_ENABLED: bool = os.getenv("RAG_ENABLED", "false").lower() == "true"
+    RAG_EMBEDDING_MODEL: str = os.getenv("RAG_EMBEDDING_MODEL", "text-embedding-3-small")
+    RAG_SIMILARITY_THRESHOLD: float = float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7"))
+    RAG_MAX_RESULTS: int = int(os.getenv("RAG_MAX_RESULTS", "3"))
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 

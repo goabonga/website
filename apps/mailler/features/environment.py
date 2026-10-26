@@ -19,6 +19,7 @@ from mailler.auth import AuthContext, require_scopes
 from mailler.auth.introspection import TokenRevokedError
 from mailler.config import settings
 from mailler.main import app
+from mailler.services.providers import factory
 
 # Probe routes protected by scopes, so authentication can be exercised before
 # the feature routes exist and independently of them.
@@ -91,6 +92,15 @@ def before_scenario(context, scenario):
     context.revoked_tokens.clear()
     context.jwks.is_configured = True
     context.client.headers.pop("Authorization", None)
+    context.settings_backup = {}
+    factory._providers.clear()
+
+
+def after_scenario(context, scenario):
+    """Restore the settings overridden by the scenario."""
+    for name, value in context.settings_backup.items():
+        setattr(settings, name, value)
+    factory._providers.clear()
 
 
 def after_all(context):

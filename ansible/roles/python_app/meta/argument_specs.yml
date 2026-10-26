@@ -6,8 +6,9 @@ argument_specs:
     short_description: Deploy the platform applications from the monorepo with uv and systemd.
     description:
     - Checks out the monorepo, installs each selected application into its own virtualenv
-      with uv and renders its environment file, encrypted credentials and systemd units. Applications
-      are described by a catalog of components that is merged with the user overrides.
+      with uv and renders its environment file, encrypted credentials and systemd units, and
+      optionally sets up the PostgreSQL database and migrations. Applications are described
+      by a catalog of components that is merged with the user overrides.
     author: Chris
     options:
       website_apps_catalog:
@@ -61,6 +62,20 @@ argument_specs:
           build_commands: []
           build_chdir: ''
           build_node: false
+          postgres:
+            database: ''
+            shared: false
+            pgvector: false
+            async_db: false
+          alembic:
+            enabled: false
+          pg_backup:
+            enabled: true
+            dir: ''
+            hour: '2'
+            minute: '0'
+            retention: 7
+            format: custom
           oauth2:
             enabled: false
           env_vars: {}
@@ -350,3 +365,23 @@ argument_specs:
         - 'OAuth2 client identifiers, keyed by application, for the components that set oauth2.enabled:
           website_oauth2_clients: backend: {client_id: "...", swagger_client_id: "..."}'
         default: {}
+      website_postgres_group:
+        type: str
+        description:
+        - Name of the group that owns the PostgreSQL socket.
+        default: postgres
+      website_postgres_socket_dir:
+        type: str
+        description:
+        - Directory of the PostgreSQL Unix socket (follows the postgres role).
+      website_manage_databases:
+        type: bool
+        description:
+        - Create the PostgreSQL roles and databases declared by the components. The postgres
+          role (or an existing server) must be in place.
+        default: true
+      website_run_migrations:
+        type: bool
+        description:
+        - Run `alembic upgrade head` for the components that enable alembic.
+        default: true

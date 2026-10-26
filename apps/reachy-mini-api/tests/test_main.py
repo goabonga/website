@@ -86,14 +86,17 @@ class TestLifespan:
             patch("reachy_mini_api.main.setup_logging") as mock_setup,
             patch("reachy_mini_api.main.logger") as mock_logger,
             patch("reachy_mini_api.main.jwks_manager") as mock_jwks,
+            patch("reachy_mini_api.main.introspection_client") as mock_intro,
         ):
             mock_jwks.close = AsyncMock()
+            mock_intro.close = AsyncMock()
             async with lifespan(MagicMock()):
                 mock_setup.assert_called_once_with(level="INFO")
                 assert mock_logger.info.call_count == 1
                 mock_jwks.close.assert_not_awaited()
             assert mock_logger.info.call_count == 2
             mock_jwks.close.assert_awaited_once()
+            mock_intro.close.assert_awaited_once()
 
     def test_request_logging_middleware_registered(self):
         """The request logging middleware wraps the application."""

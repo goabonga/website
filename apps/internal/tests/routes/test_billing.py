@@ -684,6 +684,7 @@ class TestProductUpdate:
         from internal.routes.billing import product_update
 
         mock_client.update_product = AsyncMock(return_value=MagicMock(id="p1"))
+        mock_client.get_product = AsyncMock(return_value=MagicMock(extra_data={}))
         user = _make_user()
         request = _make_request()
 
@@ -711,6 +712,7 @@ class TestProductUpdate:
         from internal.routes.billing import product_update
 
         mock_client.update_product = AsyncMock(return_value=None)
+        mock_client.get_product = AsyncMock(return_value=MagicMock(extra_data={}))
         user = _make_user()
         request = _make_request()
 
@@ -757,6 +759,7 @@ class TestProductUpdate:
         from internal.routes.billing import product_update
 
         mock_client.update_product = AsyncMock(return_value=MagicMock(id="p1"))
+        mock_client.get_product = AsyncMock(return_value=MagicMock(extra_data={}))
         user = _make_user()
         request = _make_request()
 

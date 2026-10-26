@@ -12,6 +12,7 @@ Scopes required:
 """
 
 import json
+import re
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
@@ -86,6 +87,52 @@ def parse_branding(text: str) -> dict | None:
     if not isinstance(branding, dict):
         raise ValueError("Branding must be a JSON object")
     return branding
+
+
+# Shape of a plan slug, as the billing service checks it (letters, digits and single hyphens)
+SLUG_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
+def parse_plan_slug(text: str) -> str | None:
+    """Read the slug of a product form: empty means "let the billing service derive it".
+
+    Raises:
+        ValueError: If the slug is not made of lowercase letters, digits and single hyphens.
+    """
+    slug = text.strip()
+    if not slug:
+        return None
+    if len(slug) > 100 or not SLUG_PATTERN.match(slug):
+        raise ValueError(
+            "A slug has at most 100 lowercase letters, digits and single hyphens (a-z, 0-9, -)"
+        )
+    return slug
+
+
+def parse_plan_limits(text: str) -> dict[str, int]:
+    """Read the limits of a product form: a JSON object of limit names to whole numbers.
+
+    The names are free: they are the ones the SaaS app reads from its plan. The billing service
+    leaves out any limit that is not a whole number, so such values are refused here instead of
+    being lost silently.
+
+    Raises:
+        ValueError: If the text is not a JSON object of whole numbers with non-empty names.
+    """
+    if not text.strip():
+        return {}
+    try:
+        limits = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Limits are not valid JSON: {error.msg}") from error
+    if not isinstance(limits, dict):
+        raise ValueError("Limits must be a JSON object")
+    for name, value in limits.items():
+        if not name.strip():
+            raise ValueError("A limit needs a name")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"The limit '{name}' must be a whole number")
+    return {name.strip(): value for name, value in limits.items()}
 
 
 def _error_redirect(url: str, message: str) -> RedirectResponse:
@@ -495,7 +542,7 @@ async def product_create(
     saas_id: str,
     name: str = Form(...),
     description: str = Form(None),
-    slug: str = Form(None),
+    slug: str = Form(""),
     sort_order: int = Form(0),
     default_trial_days: int = Form(0),
     is_recommended: bool = Form(False),
@@ -512,17 +559,19 @@ async def product_create(
     # Parse features and limits from JSON
     try:
         features = json.loads(features_json) if features_json else []
-        limits = json.loads(limits_json) if limits_json else {}
+        limits = parse_plan_limits(limits_json)
+        plan_slug = parse_plan_slug(slug)
     except json.JSONDecodeError as e:
         logger.warning("Invalid JSON in product create: %s", e)
         return RedirectResponse(
             url=f"/billing/saas/{saas_id}/products/new?error=Invalid+JSON+format",
             status_code=303,
         )
+    except ValueError as e:
+        return _error_redirect(f"/billing/saas/{saas_id}/products/new", str(e))
 
-    # Build metadata dict
+    # Build metadata dict (the plan slug travels as its own field)
     metadata: dict[str, Any] = {
-        "slug": slug or "",
         "sort_order": sort_order,
         "default_trial_days": default_trial_days if default_trial_days > 0 else None,
         "is_recommended": is_recommended,
@@ -535,6 +584,7 @@ async def product_create(
         name=name,
         description=description or None,
         metadata=metadata,
+        slug=plan_slug,
     )
 
     if product:
@@ -648,7 +698,7 @@ async def product_update(
     product_id: str,
     name: str = Form(...),
     description: str = Form(None),
-    slug: str = Form(None),
+    slug: str = Form(""),
     sort_order: int = Form(0),
     default_trial_days: int = Form(0),
     is_recommended: bool = Form(False),
@@ -663,20 +713,29 @@ async def product_update(
 
     user = auth_result
 
+    edit_url = f"/billing/saas/{saas_id}/products/{product_id}/edit"
+
     # Parse features and limits from JSON
     try:
         features = json.loads(features_json) if features_json else []
-        limits = json.loads(limits_json) if limits_json else {}
+        limits = parse_plan_limits(limits_json)
+        plan_slug = parse_plan_slug(slug)
     except json.JSONDecodeError as e:
         logger.warning("Invalid JSON in product update: %s", e)
+        return RedirectResponse(url=f"{edit_url}?error=Invalid+JSON+format", status_code=303)
+    except ValueError as e:
+        return _error_redirect(edit_url, str(e))
+
+    existing = await billing_client.get_product(saas_id, product_id)
+    if not existing:
         return RedirectResponse(
-            url=f"/billing/saas/{saas_id}/products/{product_id}/edit?error=Invalid+JSON+format",
+            url=f"/billing/saas/{saas_id}/products?error=Product+not+found",
             status_code=303,
         )
 
-    # Build metadata dict
+    # The form only knows some keys of the metadata: keep the others as they are
     metadata: dict[str, Any] = {
-        "slug": slug or "",
+        **(existing.extra_data or {}),
         "sort_order": sort_order,
         "default_trial_days": default_trial_days if default_trial_days > 0 else None,
         "is_recommended": is_recommended,
@@ -691,6 +750,7 @@ async def product_update(
         description=description or None,
         metadata=metadata,
         is_active=is_active,
+        slug=plan_slug,
     )
 
     if product:

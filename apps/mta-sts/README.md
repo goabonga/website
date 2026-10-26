@@ -33,6 +33,7 @@ Read from the environment (a `.env` file is loaded when present).
 
 ```bash
 uv sync --package mta-sts
+uv run --package mta-sts uvicorn mta_sts.main:app --reload --port 8000
 uv run --package mta-sts pytest apps/mta-sts
 uv run --package mta-sts behave apps/mta-sts/features
 ```

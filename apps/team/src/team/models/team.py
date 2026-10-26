@@ -29,3 +29,4 @@ class Team(Base):
 
     agents = relationship("Agent", back_populates="team")
     workflows = relationship("Workflow", back_populates="team")
+    tasks = relationship("Task", back_populates="team")

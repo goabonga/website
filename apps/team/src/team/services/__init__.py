@@ -5,8 +5,10 @@
 
 from team.services.agent_service import AgentService
 from team.services.memory_service import MemoryService
+from team.services.orchestrator_service import OrchestratorService
 
 __all__ = [
     "AgentService",
     "MemoryService",
+    "OrchestratorService",
 ]

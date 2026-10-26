@@ -18,12 +18,15 @@ from team.config import get_settings
 # This avoids importing the async engine from database.py
 from team.models import (  # noqa: F401
     Agent,
+    AgentState,
     Base,
     Conversation,
     ConversationParticipant,
+    ExecutionLog,
     MemoryEntry,
     Message,
     Skill,
+    Task,
     Team,
     Workflow,
 )

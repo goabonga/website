@@ -27,3 +27,5 @@ documents one feature as it exists in the code.
    verification.
 8. [GitHub webhook proxy](08-github.md) - raw proxy with optional HMAC
    verification.
+9. [Running and deployment](09-deployment.md) - local development and
+   deployment.

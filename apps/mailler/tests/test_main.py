@@ -160,3 +160,12 @@ class TestLifespanAuthCleanup:
             mock_jwks.close.assert_awaited_once()
             mock_te.close.assert_awaited_once()
             mock_introspection.close.assert_awaited_once()
+
+
+class TestProvidersRoute:
+    """Providers router registration."""
+
+    def test_providers_route_registered(self):
+        from mailler.main import app
+
+        assert app.url_path_for("list_providers") == "/api/v1/providers"

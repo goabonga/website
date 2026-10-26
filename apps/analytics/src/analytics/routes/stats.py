@@ -881,3 +881,188 @@ async def get_campaign_pixels(
         )
         for pixel in result.scalars().all()
     ]
+
+
+class CampaignCreate(BaseModel):
+    """Request model for creating a campaign."""
+
+    name: str
+    description: str | None = None
+    destination_url: str | None = None
+    extra_data: dict | None = None
+
+
+class CampaignResponse(BaseModel):
+    """Response model for created campaign."""
+
+    id: UUID
+    name: str
+    description: str | None
+    tracking_key: str
+    destination_url: str | None
+    is_active: bool
+    created_at: datetime
+
+
+class PixelCreate(BaseModel):
+    """Request model for creating a pixel."""
+
+    recipient_email: str | None = None
+    recipient_id: str | None = None
+    extra_data: dict | None = None
+
+
+class PixelResponse(BaseModel):
+    """Response model for created pixel."""
+
+    id: UUID
+    pixel_key: str
+    campaign_id: UUID
+    recipient_email: str | None
+    recipient_id: str | None
+    created_at: datetime
+
+
+class PixelBatchCreate(BaseModel):
+    """Request model for creating multiple pixels at once."""
+
+    pixels: list[PixelCreate]
+
+
+class PixelBatchResponse(BaseModel):
+    """Response model for batch pixel creation."""
+
+    campaign_id: UUID
+    created_count: int
+    pixels: list[PixelResponse]
+
+
+@router.post("/campaigns", response_model=CampaignResponse, status_code=201)
+async def create_campaign(
+    data: CampaignCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:write")),
+) -> CampaignResponse:
+    """Create a new analytics campaign for email tracking."""
+    from analytics.services.collector import collector_service
+
+    campaign = await collector_service.create_campaign(
+        db=db,
+        name=data.name,
+        description=data.description,
+        destination_url=data.destination_url,
+        extra_data=data.extra_data,
+    )
+
+    return CampaignResponse(
+        id=campaign.id,
+        name=campaign.name,
+        description=campaign.description,
+        tracking_key=campaign.tracking_key,
+        destination_url=campaign.destination_url,
+        is_active=campaign.is_active,
+        created_at=campaign.created_at,
+    )
+
+
+@router.post("/campaigns/{campaign_id}/pixels", response_model=PixelResponse, status_code=201)
+async def create_pixel(
+    campaign_id: UUID,
+    data: PixelCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:write")),
+) -> PixelResponse:
+    """Create a tracking pixel for an email recipient."""
+    from fastapi import HTTPException
+
+    from analytics.services.collector import collector_service
+
+    # Verify campaign exists
+    campaign_result = await db.execute(select(Campaign.id).where(Campaign.id == campaign_id))
+    if not campaign_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    pixel = await collector_service.create_pixel(
+        db=db,
+        campaign_id=campaign_id,
+        recipient_email=data.recipient_email,
+        recipient_id=data.recipient_id,
+        extra_data=data.extra_data,
+    )
+
+    return PixelResponse(
+        id=pixel.id,
+        pixel_key=pixel.pixel_key,
+        campaign_id=pixel.campaign_id,
+        recipient_email=pixel.recipient_email,
+        recipient_id=pixel.recipient_id,
+        created_at=pixel.created_at,
+    )
+
+
+@router.delete("/campaigns/{campaign_id}", status_code=204)
+async def delete_campaign(
+    campaign_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:write")),
+) -> None:
+    """Delete an analytics campaign and all its associated data.
+
+    This will cascade delete all pixels and clicks associated with the campaign.
+    """
+    from fastapi import HTTPException
+
+    campaign = await db.get(Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    await db.delete(campaign)
+    await db.commit()
+
+
+@router.post(
+    "/campaigns/{campaign_id}/pixels/batch",
+    response_model=PixelBatchResponse,
+    status_code=201,
+)
+async def create_pixels_batch(
+    campaign_id: UUID,
+    data: PixelBatchCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_scopes("analytics:write")),
+) -> PixelBatchResponse:
+    """Create multiple tracking pixels at once for email campaign recipients."""
+    from fastapi import HTTPException
+
+    from analytics.services.collector import collector_service
+
+    # Verify campaign exists
+    campaign_result = await db.execute(select(Campaign.id).where(Campaign.id == campaign_id))
+    if not campaign_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    pixels_response = []
+    for pixel_data in data.pixels:
+        pixel = await collector_service.create_pixel(
+            db=db,
+            campaign_id=campaign_id,
+            recipient_email=pixel_data.recipient_email,
+            recipient_id=pixel_data.recipient_id,
+            extra_data=pixel_data.extra_data,
+        )
+        pixels_response.append(
+            PixelResponse(
+                id=pixel.id,
+                pixel_key=pixel.pixel_key,
+                campaign_id=pixel.campaign_id,
+                recipient_email=pixel.recipient_email,
+                recipient_id=pixel.recipient_id,
+                created_at=pixel.created_at,
+            )
+        )
+
+    return PixelBatchResponse(
+        campaign_id=campaign_id,
+        created_count=len(pixels_response),
+        pixels=pixels_response,
+    )

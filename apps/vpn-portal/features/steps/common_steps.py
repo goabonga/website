@@ -5,19 +5,18 @@
 
 from behave import then, when
 from httpx import ASGITransport, AsyncClient
-from vpn_portal.main import app
 
 
-async def _request(method, url, headers=None):
+async def _request(app, method, url, headers):
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", headers=headers or {}
+        transport=ASGITransport(app=app), base_url="http://test", headers=headers
     ) as client:
         return await client.request(method, url)
 
 
 @when('I send a GET request to "{url}"')
 def step_send_get(context, url):
-    context.response = context.run(_request("GET", url, getattr(context, "headers", None)))
+    context.response = context.run(_request(context.app, "GET", url, context.headers))
 
 
 @then("the response status code should be {code:d}")

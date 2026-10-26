@@ -8,6 +8,12 @@ Step-CA and no OpenVPN server.
 """
 
 import asyncio
+import os
+
+# The OAuth2 scheme is built when the application is imported.
+os.environ.setdefault("OAUTH2_ISSUER", "https://auth.test.example.com")
+
+from vpn_portal.main import app  # noqa: E402
 
 
 def before_scenario(context, scenario):
@@ -15,6 +21,8 @@ def before_scenario(context, scenario):
     context.loop = asyncio.new_event_loop()
     asyncio.set_event_loop(context.loop)
     context.run = context.loop.run_until_complete
+    context.app = app
+    context.headers = {}
     context.response = None
 
 

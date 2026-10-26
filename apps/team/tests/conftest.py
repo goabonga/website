@@ -196,3 +196,14 @@ async def admin_client(mock_db_session, admin_user: User) -> AsyncGenerator[Asyn
         for p in patchers:
             p.stop()
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_team_data():
+    """Sample team data for testing."""
+    return {
+        "name": "Engineering",
+        "slug": "engineering",
+        "description": "Engineering team",
+        "config": {},
+    }

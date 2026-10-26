@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     github_token: str = ""
     github_owner: str = ""
 
+    # LLM API keys (Anthropic; the OpenAI key is declared with the memory feature)
+    anthropic_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -99,6 +102,10 @@ def get_settings() -> Settings:
         openai_api_key=get_credential(
             "OPENAI_API_KEY",
             os.environ.get("OPENAI_API_KEY", ""),
+        ),
+        anthropic_api_key=get_credential(
+            "ANTHROPIC_API_KEY",
+            os.environ.get("ANTHROPIC_API_KEY", ""),
         ),
         github_token=get_credential(
             "GITHUB_TOKEN",

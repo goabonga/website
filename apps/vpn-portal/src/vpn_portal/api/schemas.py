@@ -106,3 +106,40 @@ class InternalStatusResponse(BaseModel):
     """Generic status response."""
 
     status: str = Field(description="Operation status")
+
+
+# ============================================================================
+# Admin API Schemas
+# ============================================================================
+
+
+class AdminSessionResponse(BaseModel):
+    """VPN session information for admin."""
+
+    id: str = Field(description="Session ID")
+    user_id: str = Field(description="User ID")
+    username: str = Field(description="Username")
+    device_name: str | None = Field(description="Device name")
+    connected_at: datetime = Field(description="Connection timestamp")
+    assigned_ip: str = Field(description="Assigned VPN IP")
+    certificate_serial: str = Field(description="Certificate serial number")
+    expires_at: datetime = Field(description="Certificate expiration")
+    scopes: list[str] = Field(description="User scopes")
+    routes: list[str] = Field(description="Assigned routes")
+
+
+class AdminSessionsResponse(BaseModel):
+    """List of active VPN sessions."""
+
+    sessions: list[AdminSessionResponse] = Field(description="Active sessions")
+    total: int = Field(description="Total number of sessions")
+    page: int = Field(description="Current page")
+    per_page: int = Field(description="Items per page")
+
+
+class AdminRevokeResponse(BaseModel):
+    """Response after admin revocation."""
+
+    status: str = Field(description="Revocation status")
+    serial_number: str = Field(description="Revoked certificate serial")
+    revoked_at: datetime | None = Field(description="Revocation timestamp")

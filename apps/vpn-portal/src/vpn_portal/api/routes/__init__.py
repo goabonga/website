@@ -5,9 +5,10 @@
 
 from fastapi import APIRouter
 
-from vpn_portal.api.routes import health, internal, vpn
+from vpn_portal.api.routes import admin, health, internal, vpn
 
 router = APIRouter()
 router.include_router(health.router)
 router.include_router(vpn.router, prefix="/api/v1/vpn", tags=["vpn"])
 router.include_router(internal.router, prefix="/api/v1/internal", tags=["internal"])
+router.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])

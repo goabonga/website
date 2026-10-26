@@ -406,3 +406,77 @@ class TestKnowledgeModelsImport:
         from internal.models.knowledge import KnowledgeEntry
 
         assert "namespace" in KnowledgeEntry.__mapper__.relationships
+
+
+class TestSystemPromptMethods:
+    """Test SystemPrompt methods without database.
+
+    Uses SimpleNamespace to simulate model instances with required attributes.
+    """
+
+    def test_get_current_version_found(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        v1 = SimpleNamespace(version=1, is_current=False, content="old")
+        v2 = SimpleNamespace(version=2, is_current=True, content="current")
+        v3 = SimpleNamespace(version=3, is_current=False, content="draft")
+        ns = SimpleNamespace(versions=[v1, v2, v3])
+        result = SystemPrompt.get_current_version(ns)
+        assert result is v2
+
+    def test_get_current_version_none(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        v1 = SimpleNamespace(version=1, is_current=False, content="old")
+        ns = SimpleNamespace(versions=[v1])
+        result = SystemPrompt.get_current_version(ns)
+        assert result is None
+
+    def test_get_current_version_empty_versions(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        ns = SimpleNamespace(versions=[])
+        result = SystemPrompt.get_current_version(ns)
+        assert result is None
+
+    def test_get_specificity_with_scopes(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        ns = SimpleNamespace(required_scopes=["knowledge:read", "prompts:write"])
+        result = SystemPrompt.get_specificity(ns)
+        assert result == 2
+
+    def test_get_specificity_single_scope(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        ns = SimpleNamespace(required_scopes=["knowledge:read"])
+        result = SystemPrompt.get_specificity(ns)
+        assert result == 1
+
+    def test_get_specificity_no_scopes(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        ns = SimpleNamespace(required_scopes=None)
+        result = SystemPrompt.get_specificity(ns)
+        assert result == 0
+
+    def test_get_specificity_empty_list(self):
+        from types import SimpleNamespace
+
+        from internal.models.prompt import SystemPrompt
+
+        ns = SimpleNamespace(required_scopes=[])
+        result = SystemPrompt.get_specificity(ns)
+        assert result == 0

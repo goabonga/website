@@ -16,7 +16,13 @@ def clean_env(monkeypatch):
     env_vars = [
         "AUDIOSOCKET_HOST",
         "AUDIOSOCKET_PORT",
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "OPENAI_VOICE",
+        "OPENAI_SYSTEM_PROMPT",
         "LOG_LEVEL",
+        "CREDENTIALS_DIRECTORY",
+        "GREETING_MESSAGE",
     ]
     for var in env_vars:
         monkeypatch.delenv(var, raising=False)
@@ -84,3 +90,12 @@ def mock_websocket():
     ws.close = AsyncMock()
     ws.recv = AsyncMock()
     return ws
+
+
+@pytest.fixture
+def mock_credentials_dir(tmp_path, monkeypatch):
+    """Set up a temp CREDENTIALS_DIRECTORY with a fake OPENAI_API_KEY file."""
+    cred_file = tmp_path / "OPENAI_API_KEY"
+    cred_file.write_text("sk-test-from-creds\n")
+    monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
+    return tmp_path

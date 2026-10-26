@@ -33,6 +33,26 @@ def _flag(environ: Mapping[str, str], name: str, default: bool) -> bool:
     raise SettingsError(f"{name}={raw!r} is not a boolean (use 1/0, true/false, yes/no, on/off)")
 
 
+#: What ``E2E_SCREENSHOTS`` can keep for the scenarios that passed.
+SCREENSHOT_MODES = ("off", "scenario", "steps")
+
+
+def _screenshots(environ: Mapping[str, str], name: str, default: str) -> str:
+    raw = environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in _FALSE:
+        return "off"
+    if value in _TRUE:
+        return "scenario"
+    if value in SCREENSHOT_MODES:
+        return value
+    raise SettingsError(
+        f"{name}={raw!r} is not a screenshot mode (use off, scenario or steps, or a boolean)"
+    )
+
+
 def _integer(environ: Mapping[str, str], name: str, default: int, minimum: int = 0) -> int:
     raw = environ.get(name)
     if raw is None or not raw.strip():
@@ -60,6 +80,7 @@ class E2ESettings:
     skip_browser: bool = False
     timeout: int = 10_000
     trace: bool = True
+    screenshots: str = "off"
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> E2ESettings:
@@ -81,4 +102,5 @@ class E2ESettings:
             skip_browser=_flag(env, "E2E_SKIP_BROWSER", defaults.skip_browser),
             timeout=_integer(env, "E2E_TIMEOUT", defaults.timeout, minimum=1),
             trace=_flag(env, "E2E_TRACE", defaults.trace),
+            screenshots=_screenshots(env, "E2E_SCREENSHOTS", defaults.screenshots),
         )

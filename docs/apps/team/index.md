@@ -11,6 +11,7 @@ is tested with pytest and behave.
 | Page | Feature |
 |------|---------|
 | [Foundation](01-foundation.md) | settings, logging, database session, health check, CORS |
+| [OAuth2 authentication](02-authentication.md) | bearer token validation, scopes and token exchange |
 
 ## Running the tests
 

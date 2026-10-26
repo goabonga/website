@@ -207,6 +207,11 @@ them against `meta/argument_specs.yml` before running.
 | `website_openvpn_service` | `openvpn-server@{{ openvpn_server_name \| default('server') }}` | systemd unit of that server. |
 | `website_apparmor_local_dir` | `"/etc/apparmor.d/local"` | Directory of the AppArmor local overrides. |
 
+The OAuth client the hook scripts authenticate with is not a catalog value:
+set `website_oauth2_clients.vpn_portal.openvpn_client_id`. The deployment fails
+when `vpn_portal` is enabled with the `vpn_portal_openvpn` component and no
+client id.
+
 ### Asterisk
 
 | Variable | Default | Description |
@@ -254,6 +259,33 @@ Settings of the `mailler` application. Its defaults describe no deployment: noth
 | `website_mailler_provider` | `"brevo"` | Provider the applications that send through mailler ask for (MAILLER_PROVIDER of auth, apt_server and knowledge, MAILLER_DEFAULT_PROVIDER of internal). It must be one the registered client of the application may use. |
 | `website_mailler_clients` | `[]` | Applications allowed to send through mailler, registered after the migrations when missing and never modified afterwards. Each entry has client_id (required) and optionally name, from_email, from_name, reply_to, allowed_senders (email or email=Name), allowed_providers, default_provider, rate_limit_per_minute, daily_quota, callback_url and callback_secret (required with callback_url). |
 | `website_mailler_template_dirs` | `[]` | Directories of <slug>.mjml and <slug>.json files imported as the templates of a client on every run. Each entry has client_id and directory (a path on the host) and optionally status. |
+
+### Billing
+
+Settings of the `billing` application. They are the values the service uses when a variable is not set, exposed so that a deployment states them. The API, worker and beat units must agree on the Celery and schedule settings: put them in `website_billing_shared_env`, which is applied to the three units.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_billing_celery_queue` | `"billing"` | Celery queue of the three billing processes (CELERY_QUEUE); the worker consumes it (--queues), the API and beat publish to it. |
+| `website_billing_shared_env` | `{}` | Settings the API, worker and beat units of billing must share (CELERY_TIMEZONE, CELERY_TASK_TIME_LIMIT, USAGE_REPORT_INTERVAL, USAGE_REPORT_BATCH_SIZE, USAGE_CLEANUP_INTERVAL, USAGE_RETENTION_DAYS, STRIPE_SYNC_INTERVAL and the SAAS_WEBHOOK_* delivery settings). The worker delivers the notifications to the webhook URL of each SaaS application, so its host must be able to reach them. |
+| `website_billing_partition_admin_scope` | `"billing:admin"` | Scope that lets a client act on every SaaS application and manage the bindings (PARTITION_ADMIN_SCOPE). Give it only to the operator clients. |
+| `website_billing_partition_allow_unbound` | `false` | Let an OAuth client without any binding act on every SaaS application (PARTITION_ALLOW_UNBOUND). Transition aid for the first deployment only. |
+| `website_billing_plans_public` | `false` | Serve GET /plans/<slug> without a token (PLANS_PUBLIC). |
+| `website_billing_redirect_allowlist_required` | `true` | Refuse checkout and portal redirect URLs while a SaaS application lists no allowed prefix (REDIRECT_ALLOWLIST_REQUIRED). |
+| `website_billing_stripe_webhook_required_scope` | `""` | Scope a bearer token must also carry to post a Stripe event (STRIPE_WEBHOOK_REQUIRED_SCOPE). Empty: the Stripe signature is the only authentication of /webhooks/stripe. |
+| `website_billing_stripe_publishable_key` | `""` | Stripe publishable key (STRIPE_PUBLISHABLE_KEY). Public, not a secret. |
+| `website_billing_cors_origins` | `[]` | Browser origins allowed to call the API (CORS_ORIGINS). Empty allows none. |
+| `website_billing_saas_apps` | `[]` | SaaS applications created in the database after the migrations when missing, never modified afterwards. Each entry has slug and name (required) and optionally description, webhook_url and checkout_urls (allowed redirect prefixes). |
+| `website_billing_client_bindings` | `[]` | Bindings of existing OAuth clients to SaaS applications, created when missing. Each entry has saas (slug of an existing application) and client_id. |
+
+### Internal
+
+Settings of the `internal` application. The scopes its OAuth client needs are listed in `defaults/main/internal.yml`: the admin scopes of billing and mailler must exist at the authentication server (`billing:admin` is created by its migrations, `mailler:write` and `mailler:admin` are not) and be granted to the operators and to this client. The deployment fails when a URL is not absolute.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_internal_billing_api_url` | `https://{{ website_hostnames.billing }}` | Base URL of the billing API (BILLING_API_URL of internal), required; the host name of billing by default. |
+| `website_internal_mailler_api_url` | `https://{{ website_hostnames.mailler }}` | Base URL of the mailler API (MAILLER_API_URL of internal), required; the host name of mailler by default. |
 
 ### Host names
 
@@ -453,6 +485,40 @@ migrations the role fills the registry from the inventory:
 
 Every OAuth client an application sends with must be registered: the web
 client and the backend client of an application are two clients for mailler.
+
+### Billing data
+
+After `alembic upgrade head` every OAuth client is unbound and therefore
+refused (unless `website_billing_partition_allow_unbound` is set). The role
+creates what the clients need, with `billing-admin`, after the migrations:
+
+- each entry of `website_billing_saas_apps` is created when its `slug` does not
+  exist, with its webhook URL and its `checkout_urls`: a SaaS application with
+  no allowed prefix cannot start a checkout or open the customer portal while
+  `website_billing_redirect_allowlist_required` is true;
+- each entry of `website_billing_client_bindings` binds an existing OAuth
+  client to a SaaS application unless the binding exists. The application must
+  exist (created by the list above, the admin API or the internal UI).
+
+Existing applications and bindings are never modified. Give the admin scope
+(`website_billing_partition_admin_scope`) only to the operator clients, such as
+the one of `internal`; each SaaS application keeps its own client with the
+`billing:platform:*`, `billing:checkout:write` and `billing:usage:write` scopes
+it needs, bound to its application.
+
+**Stripe events.** Stripe posts to the `webhooks` gateway, which forwards the
+raw body and the `Stripe-Signature` header to billing through its socket.
+billing checks the signature (`STRIPE_WEBHOOK_SECRET`, a required secret of the
+catalog) and ignores any bearer token, so a gateway that only forwards Stripe
+events needs no OAuth client: `OAUTH2_CLIENT_ID` comes from
+`website_oauth2_clients.webhooks` and the `OAUTH2_CLIENT_SECRET` secret is
+deployed when provided, both only for the events forwarded to mailler. Set
+`website_billing_stripe_webhook_required_scope` to also require a scope.
+
+**Worker network.** The worker also posts the notifications to the
+`webhook_url` of each SaaS application. Nothing in its unit restricts the
+network, so the host only needs a route to those URLs; the secrets of those
+webhooks are read from the database, never from the queue.
 
 ## Tags
 

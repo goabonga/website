@@ -1,0 +1,5 @@
+# Managed by Ansible (goabonga.website.python_app)
+# Requests of {{ item.method | default('POST') }} {{ item.path }} on {{ python_app__unit }}.
+[Definition]
+failregex = ^<HOST> - \S+ \[[^\]]+\] "{{ item.method | default('POST') }} {{ item.path | regex_escape }}[^"]*"
+ignoreregex =

@@ -1,0 +1,14 @@
+# Managed by Ansible (goabonga.website.python_app)
+# Rate limiting of the routes of {{ python_app__unit }}.
+{% for route in python_app__c.fail2ban.routes %}
+{% set slug = route.path | regex_replace('[^A-Za-z0-9]+', '-') | regex_replace('^-|-$', '') %}
+
+[{{ python_app__unit }}-{{ slug }}]
+enabled = true
+port = http,https
+filter = {{ python_app__unit }}-{{ slug }}
+logpath = {{ python_app__logs_dir }}/nginx/{{ python_app__unit }}-access.log
+maxretry = {{ route.maxretry | default(5) }}
+findtime = {{ route.findtime | default('10m') }}
+bantime = {{ route.bantime | default('1h') }}
+{% endfor %}

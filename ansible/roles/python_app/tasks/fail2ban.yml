@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# One jail per rate-limited route, fed by the nginx access log of the component.
+
+- name: Look for fail2ban
+  ansible.builtin.stat:
+    path: /etc/fail2ban/jail.d
+  register: python_app__f2b
+
+- name: Check that fail2ban is installed
+  ansible.builtin.assert:
+    that:
+      - python_app__f2b.stat.isdir | default(false)
+    fail_msg: "fail2ban is not installed (no /etc/fail2ban/jail.d). Run the fail2ban role first."
+    quiet: true
+
+- name: Deploy the filters of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: fail2ban-filter.conf.j2
+    dest: "/etc/fail2ban/filter.d/{{ python_app__unit }}-{{ item.path | regex_replace('[^A-Za-z0-9]+', '-') | regex_replace('^-|-$', '') }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ python_app__c.fail2ban.routes }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: python_app | reload fail2ban
+
+- name: Deploy the jails of {{ python_app__unit }}
+  ansible.builtin.template:
+    src: fail2ban-jail.conf.j2
+    dest: "/etc/fail2ban/jail.d/{{ python_app__unit }}-routes.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: python_app | reload fail2ban

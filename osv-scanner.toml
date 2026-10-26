@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# OSV-Scanner ignore list (auto-discovered next to uv.lock). Only for
+# advisories that cannot be acted on yet: each entry carries a justification
+# and an `ignoreUntil` review date so the suppression is revisited.
+
+[[IgnoredVulns]]
+id = "GHSA-3qf3-8w2g-rqmx"
+ignoreUntil = 2027-01-26
+# python-jose (analytics, internal): the HS256 algorithm-confusion guard can be
+# bypassed with DER-encoded public keys, but only when the verifier accepts an
+# HMAC algorithm. Both services call jwt.decode(..., algorithms=["RS256",
+# "ES256"]), so HS256 tokens are rejected. No fixed release exists yet.
+reason = "Both services restrict jwt.decode to RS256/ES256; HMAC is never accepted. No upstream fix."
+
+[[IgnoredVulns]]
+id = "GHSA-wj6h-64fc-37mp"
+ignoreUntil = 2027-01-26
+# ecdsa (transitive dependency of python-jose): Minerva timing side channel on
+# P-256 signing. The services only verify tokens issued by the auth service
+# and never sign with ecdsa; verification is unaffected. The project considers
+# side channels out of scope and plans no fix.
+reason = "Signing-only timing attack; the services only verify signatures. No upstream fix planned."

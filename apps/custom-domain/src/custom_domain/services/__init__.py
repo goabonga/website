@@ -5,6 +5,11 @@
 
 from custom_domain.services.certbot import CertbotResult, CertificateInfo, certbot_service
 from custom_domain.services.dns import DNSCheckResult, dns_service
+from custom_domain.services.domain import (
+    DomainService,
+    VerificationResult,
+    domain_service,
+)
 from custom_domain.services.nginx import nginx_manager
 from custom_domain.services.template import TemplateValidationResult, template_service
 
@@ -14,7 +19,10 @@ __all__ = [
     "CertificateInfo",
     "dns_service",
     "DNSCheckResult",
+    "domain_service",
+    "DomainService",
     "nginx_manager",
     "template_service",
     "TemplateValidationResult",
+    "VerificationResult",
 ]

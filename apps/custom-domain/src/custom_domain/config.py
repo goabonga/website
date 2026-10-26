@@ -126,6 +126,9 @@ class Settings(BaseSettings):
     dns_verification_max_retries: int = 3
     dns_verification_retry_delay_seconds: int = 300
 
+    # Domain defaults (used when neither the request nor the client provides a value)
+    default_cname_target: str = ""
+
     # Templates
     templates_dir: str = "custom_domain/templates"
 

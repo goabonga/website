@@ -10,6 +10,16 @@ from custom_domain.schemas.client import (
     ClientResponse,
     ClientUpdate,
 )
+from custom_domain.schemas.domain import (
+    DomainActionResponse,
+    DomainCreate,
+    DomainCreateResponse,
+    DomainListItem,
+    DomainListResponse,
+    DomainLookupResponse,
+    DomainResponse,
+    DomainUpdate,
+)
 from custom_domain.schemas.template import (
     ReprovisionError,
     TemplateCreate,
@@ -29,6 +39,14 @@ __all__ = [
     "ClientListResponse",
     "ClientResponse",
     "ClientUpdate",
+    "DomainActionResponse",
+    "DomainCreate",
+    "DomainCreateResponse",
+    "DomainListItem",
+    "DomainListResponse",
+    "DomainLookupResponse",
+    "DomainResponse",
+    "DomainUpdate",
     "ReprovisionError",
     "TemplateCreate",
     "TemplateListItem",

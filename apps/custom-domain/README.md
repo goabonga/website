@@ -10,6 +10,14 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/` | public | Root endpoint |
 | GET | `/health` | public | Health check endpoint |
+| GET | `/api/v1/domains` | scope `custom-domain:read`; client registered and active | List domains for the authenticated client |
+| POST | `/api/v1/domains` | scope `custom-domain:write`; client registered and active | Register a new custom domain |
+| GET | `/api/v1/domains/lookup/{domain_name}` | scope `custom-domain:lookup`; client registered and active | Lookup an active domain by name (for middleware) |
+| GET | `/api/v1/domains/{domain_id}` | scope `custom-domain:read`; client registered and active | Get domain details |
+| PUT | `/api/v1/domains/{domain_id}` | scope `custom-domain:write`; client registered and active | Update a domain |
+| DELETE | `/api/v1/domains/{domain_id}` | scope `custom-domain:write`; client registered and active | Delete a domain |
+| POST | `/api/v1/domains/{domain_id}/verify` | scope `custom-domain:write`; client registered and active | Trigger DNS verification for a domain |
+| POST | `/api/v1/domains/{domain_id}/provision` | scope `custom-domain:write`; client registered and active | Trigger SSL provisioning for a domain |
 | GET | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | List all authorized clients |
 | POST | `/api/v1/admin/clients` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Create a new authorized client |
 | GET | `/api/v1/admin/clients/{client_id}` | scopes `custom-domain:admin`, `custom-domain:admin:clients` (all) (`ADMIN_SCOPE` setting) | Get client details |
@@ -28,10 +36,15 @@ HTTP routes served by the application and what each one requires. `public` route
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
+Client-scoped routes also require the caller's client to be registered and active; holders of the `ADMIN_SCOPE` setting scope (default `custom-domain:admin`) are exempt.
+
 ### Scopes
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
+- `custom-domain:read` - checked by 2 routes
+- `custom-domain:write` - checked by 5 routes
+- `custom-domain:lookup` - checked by 1 route
 - `custom-domain:admin` - checked by 15 routes
 - `custom-domain:admin:clients` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 7 routes
 - `custom-domain:admin:templates` - required together with `custom-domain:admin` by the administration routes (derived from the `ADMIN_SCOPE` setting); checked by 8 routes

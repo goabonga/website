@@ -207,3 +207,16 @@ def sample_team_data():
         "description": "Engineering team",
         "config": {},
     }
+
+
+@pytest.fixture
+def sample_agent_data():
+    """Sample agent data for testing."""
+    return {
+        "name": "DevAgent",
+        "role": "developer",
+        "description": "A developer agent",
+        "system_prompt": "You are a developer.",
+        "model": "gpt-4o",
+        "config": {},
+    }

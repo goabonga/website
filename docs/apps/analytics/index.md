@@ -20,3 +20,4 @@ file and the page listed below.
 - [Campaign links](06-links.md): redirects with click tracking.
 - [Authentication](07-auth.md): OAuth2/OIDC bearer tokens and scopes.
 - [Traffic statistics](08-stats-traffic.md): overview, daily, countries, devices, browsers, referrers, pages, events.
+- [IP statistics](09-stats-ips.md): most active IPs and per-IP detail.

@@ -23,6 +23,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | GET | `/api/v1/stats/countries` | scope `analytics:read` | Get statistics by country |
 | GET | `/api/v1/stats/devices` | scope `analytics:read` | Get statistics by device type |
 | GET | `/api/v1/stats/browsers` | scope `analytics:read` | Get statistics by browser |
+| GET | `/api/v1/stats/ips` | scope `analytics:read` | Get statistics by IP address (most active IPs) |
+| GET | `/api/v1/stats/ips/{ip_address:path}` | scope `analytics:read` | Get detailed statistics for a specific IP address |
 | GET | `/api/v1/stats/referrers` | scope `analytics:read` | Get statistics by referrer |
 | GET | `/api/v1/stats/pages` | scope `analytics:read` | Get statistics by page |
 | GET | `/api/v1/stats/events` | scope `analytics:read` | Get statistics by event type |
@@ -33,7 +35,7 @@ Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when 
 
 The application defines no scope, it only checks the ones carried by the access tokens issued by the `auth` application, which grants them through its catalog of scopes and roles.
 
-- `analytics:read` - checked by 8 routes
+- `analytics:read` - checked by 10 routes
 
 ## Run
 
@@ -56,6 +58,7 @@ directory; see `.env.example`.
 - Campaign link redirects with click tracking (`/t/{key}`).
 - OAuth2/OIDC bearer authentication with scope checks (token introspection, token exchange).
 - Secured traffic statistics under `/api/v1/stats`.
+- Per-IP statistics.
 
 Each feature has a page in `docs/apps/analytics/`.
 

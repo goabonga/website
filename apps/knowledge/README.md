@@ -18,6 +18,7 @@ applications. It is a member of the `website` uv workspace.
 - Semantic similarity search (cosine, L2 and inner product) over
   collections.
 - Collection sharing with collaborators and email invitations.
+- Plan-based quotas and per-tenant API call tracking.
 
 The documentation of every feature lives in `docs/apps/knowledge/`.
 

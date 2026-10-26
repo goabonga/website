@@ -38,3 +38,4 @@ class Agent(Base):
 
     team = relationship("Team", back_populates="agents")
     messages = relationship("Message", back_populates="agent")
+    skills = relationship("Skill", back_populates="agent", cascade="all, delete-orphan")

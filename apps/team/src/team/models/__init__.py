@@ -9,6 +9,7 @@ from team.models.conversation import Conversation
 from team.models.memory import MemoryEntry
 from team.models.message import Message
 from team.models.participants import ConversationParticipant
+from team.models.skill import Skill
 from team.models.team import Team
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "MemoryEntry",
     "Message",
     "ConversationParticipant",
+    "Skill",
     "Team",
 ]

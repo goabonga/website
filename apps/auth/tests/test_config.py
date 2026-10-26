@@ -83,3 +83,19 @@ class TestApiDocumentationSettings:
         assert configured.app_title == "Example Auth"
         assert configured.swagger_client_id == "docs-client"
         assert configured.swagger_scopes == "openid *"
+
+
+class TestScopeGroupsSetting:
+    def test_empty_by_default(self):
+        from auth.config import Settings
+
+        with patch.dict(os.environ, {}, clear=True):
+            assert Settings(_env_file=None).scope_groups == {}
+
+    def test_read_from_json(self):
+        from auth.config import Settings
+
+        env = {"SCOPE_GROUPS": '{"suite:*": ["notes", "tasks"]}'}
+        with patch.dict(os.environ, env, clear=True):
+            configured = Settings(_env_file=None)
+        assert configured.scope_groups == {"suite:*": ["notes", "tasks"]}

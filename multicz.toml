@@ -216,6 +216,7 @@ paths = [
     "apps/custom-domain/src/**",
     "apps/custom-domain/features/**",
     "apps/custom-domain/tests/**",
+    "apps/custom-domain/alembic/**",
     "apps/custom-domain/pyproject.toml",
 ]
 bump_files = [

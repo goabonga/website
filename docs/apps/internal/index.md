@@ -20,6 +20,7 @@ feature, in the order they were introduced.
    - [SaaS client bindings](06a-billing-client-bindings.md)
    - [Checkout URL allow-list and branding](06b-billing-checkout-urls.md)
    - [Plan slug and free-form limits](06c-billing-plans.md)
+7. [Team AI administration](07-team.md)
 
 ## Running locally
 

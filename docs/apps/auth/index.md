@@ -21,6 +21,7 @@ The application is documented feature by feature, in the order in which each fea
 6. [Registration and email verification](06-registration.md): User accounts, password hashing, email delivery and verification.
 7. [Sessions and logout](07-sessions.md): Cookie sessions, sliding expiry middleware and logout.
 8. [Multi-factor authentication](08-mfa.md): TOTP, email codes and backup codes.
+9. [Login and password reset](09-login.md): Login form and API, password recovery.
 
 ## Testing
 

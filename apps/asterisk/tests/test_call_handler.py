@@ -10,9 +10,56 @@ import numpy as np
 import pytest
 from asterisk.call_handler import (
     FRAME_SIZE,
+    _build_rag_system_prompt,
+    _build_rag_tools,
     _send_audio_loop,
     handle_call,
 )
+
+# --- Build RAG Tools ---
+
+
+class TestBuildRagTools:
+    @patch("asterisk.call_handler.config")
+    def test_returns_empty_when_rag_disabled(self, mock_config):
+        mock_config.RAG_ENABLED = False
+        assert _build_rag_tools() == []
+
+    @patch("asterisk.call_handler.config")
+    def test_returns_tool_when_rag_enabled(self, mock_config):
+        mock_config.RAG_ENABLED = True
+        tools = _build_rag_tools()
+        assert len(tools) == 1
+        assert tools[0]["name"] == "search_knowledge"
+        assert tools[0]["type"] == "function"
+
+    @patch("asterisk.call_handler.config")
+    def test_tool_has_query_parameter(self, mock_config):
+        mock_config.RAG_ENABLED = True
+        tools = _build_rag_tools()
+        params = tools[0]["parameters"]
+        assert "query" in params["properties"]
+        assert "query" in params["required"]
+
+
+# --- Build RAG System Prompt ---
+
+
+class TestBuildRagSystemPrompt:
+    @patch("asterisk.call_handler.config")
+    def test_returns_base_prompt_when_disabled(self, mock_config):
+        mock_config.RAG_ENABLED = False
+        mock_config.OPENAI_SYSTEM_PROMPT = "Base prompt"
+        assert _build_rag_system_prompt() == "Base prompt"
+
+    @patch("asterisk.call_handler.config")
+    def test_appends_rag_instructions_when_enabled(self, mock_config):
+        mock_config.RAG_ENABLED = True
+        mock_config.OPENAI_SYSTEM_PROMPT = "Base prompt"
+        result = _build_rag_system_prompt()
+        assert result.startswith("Base prompt")
+        assert "KNOWLEDGE BASE INSTRUCTIONS" in result
+
 
 # --- Handle Call ---
 
@@ -57,6 +104,17 @@ def mock_config():
         mock_config.RAG_ENABLED = False
         mock_config.OPENAI_API_KEY = "sk-test"
         mock_config.OPENAI_MODEL = "test-model"
+        mock_config.OPENAI_VOICE = "alloy"
+        mock_config.OPENAI_SYSTEM_PROMPT = "Test prompt"
+        yield mock_config
+
+
+@pytest.fixture
+def mock_config_rag_enabled():
+    """Patch config with RAG enabled."""
+    with patch("asterisk.call_handler.config") as mock_config:
+        mock_config.RAG_ENABLED = True
+        mock_config.OPENAI_API_KEY = "sk-test"
         mock_config.OPENAI_VOICE = "alloy"
         mock_config.OPENAI_SYSTEM_PROMPT = "Test prompt"
         yield mock_config
@@ -127,6 +185,19 @@ class TestHandleCall:
 
         await handle_call(mock_session)
         mock_instance.disconnect.assert_called_once()
+
+    @patch("asterisk.knowledge_base.get_knowledge_base", new_callable=AsyncMock)
+    async def test_rag_enabled_imports_knowledge_base(
+        self, mock_get_kb, mock_session, mock_openai_client_class, mock_config_rag_enabled
+    ):
+        """Lines 89-92: RAG enabled path."""
+        _, mock_instance = mock_openai_client_class
+        mock_session.is_active = False
+        mock_kb = AsyncMock()
+        mock_get_kb.return_value = mock_kb
+
+        await handle_call(mock_session)
+        mock_get_kb.assert_called_once()
 
     @patch("asterisk.call_handler.asyncio.sleep", new_callable=AsyncMock)
     async def test_hangup_flow(
@@ -246,6 +317,75 @@ class TestOnToolCall:
         on_tool_call = mock_instance.set_tool_call_callback.call_args[0][0]
         result = on_tool_call("unknown_tool", {})
         assert result is None
+
+    @patch("asterisk.knowledge_base.get_knowledge_base", new_callable=AsyncMock)
+    async def test_search_knowledge_returns_future(
+        self, mock_get_kb, mock_session, mock_openai_client_class, mock_config_rag_enabled
+    ):
+        """Lines 226-229: search_knowledge tool call returns a future."""
+        _, mock_instance = mock_openai_client_class
+        mock_session.is_active = False
+
+        mock_kb = AsyncMock()
+        mock_kb.search = AsyncMock(return_value=[])
+        mock_kb.get_sample_questions = AsyncMock(return_value=["Q1?", "Q2?"])
+        mock_get_kb.return_value = mock_kb
+
+        await handle_call(mock_session)
+
+        on_tool_call = mock_instance.set_tool_call_callback.call_args[0][0]
+        result = on_tool_call("search_knowledge", {"query": "test"})
+        # Result should be a future/awaitable
+        assert asyncio.isfuture(result) or asyncio.iscoroutine(result)
+        # Await it to avoid warnings
+        if asyncio.isfuture(result):
+            resolved = await result
+        else:
+            resolved = await result
+        assert resolved["found"] is False
+
+    @patch("asterisk.knowledge_base.get_knowledge_base", new_callable=AsyncMock)
+    async def test_search_knowledge_with_results(
+        self, mock_get_kb, mock_session, mock_openai_client_class, mock_config_rag_enabled
+    ):
+        """Lines 194-205: handle_search_knowledge with matching results."""
+        _, mock_instance = mock_openai_client_class
+        mock_session.is_active = False
+
+        # Create mock knowledge entry
+        mock_entry = MagicMock()
+        mock_entry.question = "What is X?"
+        mock_entry.answer = "X is Y."
+        mock_entry.similarity = 0.95
+
+        mock_kb = AsyncMock()
+        mock_kb.search = AsyncMock(return_value=[mock_entry])
+        mock_get_kb.return_value = mock_kb
+
+        await handle_call(mock_session)
+
+        on_tool_call = mock_instance.set_tool_call_callback.call_args[0][0]
+        result = on_tool_call("search_knowledge", {"query": "What is X?"})
+        resolved = await result
+        assert resolved["found"] is True
+        assert len(resolved["results"]) == 1
+        assert resolved["results"][0]["question"] == "What is X?"
+        assert resolved["results"][0]["confidence"] == 0.95
+
+    async def test_search_knowledge_no_kb_returns_error(
+        self, mock_session, mock_openai_client_class, mock_config
+    ):
+        """Lines 189-190: handle_search_knowledge when knowledge_base is None."""
+        _, mock_instance = mock_openai_client_class
+        mock_session.is_active = False
+
+        await handle_call(mock_session)
+
+        on_tool_call = mock_instance.set_tool_call_callback.call_args[0][0]
+        # search_knowledge without RAG enabled - kb is None
+        result = on_tool_call("search_knowledge", {"query": "test"})
+        resolved = await result
+        assert "error" in resolved
 
 
 class TestOnTranscript:

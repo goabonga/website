@@ -52,13 +52,41 @@ class TestLogConfiguration:
 
 
 class TestShutdown:
-    async def test_stops_server(self):
+    @patch("asterisk.main.config")
+    async def test_stops_server(self, mock_config):
         from asterisk.main import shutdown
 
+        mock_config.RAG_ENABLED = False
         server = AsyncMock()
 
         await shutdown(server, signal.SIGTERM)
         server.stop.assert_called_once()
+
+    @patch("asterisk.main.config")
+    async def test_closes_kb_when_rag_enabled(self, mock_config):
+        from asterisk.main import shutdown
+
+        mock_config.RAG_ENABLED = True
+        server = AsyncMock()
+
+        with patch(
+            "asterisk.knowledge_base.close_knowledge_base", new_callable=AsyncMock
+        ) as mock_close:
+            await shutdown(server, signal.SIGTERM)
+            mock_close.assert_called_once()
+
+    @patch("asterisk.main.config")
+    async def test_skips_kb_when_rag_disabled(self, mock_config):
+        from asterisk.main import shutdown
+
+        mock_config.RAG_ENABLED = False
+        server = AsyncMock()
+
+        with patch(
+            "asterisk.knowledge_base.close_knowledge_base", new_callable=AsyncMock
+        ) as mock_close:
+            await shutdown(server, signal.SIGTERM)
+            mock_close.assert_not_called()
 
 
 class TestMain:

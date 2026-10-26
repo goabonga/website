@@ -13,6 +13,8 @@ HTTP routes served by the application and what each one requires. `public` route
 | --- | --- | --- | --- |
 | GET | `/health` | public | Health check endpoint for monitoring and load balancer probes |
 | GET | `/.well-known/security.txt` | public | Return security.txt content (RFC 9116) |
+| POST | `/collect` | public | Collect analytics events |
+| GET | `/collect` | public | Lightweight GET endpoint for beacon/pixel tracking |
 
 Swagger UI (`/docs`), ReDoc (`/redoc`) and `/openapi.json` are served only when `DOCS_ENABLED` is true.
 
@@ -32,6 +34,7 @@ directory; see `.env.example`.
 - `/.well-known/security.txt` (RFC 9116).
 - PostgreSQL storage for sessions and events (SQLAlchemy models, Alembic revision `001`).
 - User agent parsing and optional MaxMind GeoIP lookups.
+- Event collection: `POST /collect` and the `GET /collect` beacon with session cookies.
 
 Each feature has a page in `docs/apps/analytics/`.
 

@@ -12,9 +12,16 @@ from knowledge.auth.dependencies import get_auth_context
 from knowledge.database import get_db
 
 
+def _install_auth(context):
+    context.app.dependency_overrides[get_auth_context] = lambda: make_auth_context(
+        context.user_id, context.scopes, getattr(context, "tenant_id", None)
+    )
+
+
 @given('I am authenticated as user "{user_id}" with scopes "{scopes}"')
 def step_authenticated(context, user_id, scopes):
     context.user_id = user_id
+    context.scopes = scopes
     context.store = getattr(context, "store", None) or Store()
     session = FakeSession(context.store)
     context.session = session
@@ -22,8 +29,14 @@ def step_authenticated(context, user_id, scopes):
     async def fake_db():
         yield session
 
-    context.app.dependency_overrides[get_auth_context] = lambda: make_auth_context(user_id, scopes)
+    _install_auth(context)
     context.app.dependency_overrides[get_db] = fake_db
+
+
+@given('my tenant is "{tenant_id}"')
+def step_tenant(context, tenant_id):
+    context.tenant_id = tenant_id
+    _install_auth(context)
 
 
 @when('I send a {method} request to "{path}" with JSON')

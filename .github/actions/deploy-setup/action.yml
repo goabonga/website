@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: deploy-setup
+description: >-
+  Prepare a runner to run the playbooks of a deploy environment: ansible,
+  the collection of this checkout, the SSH identity and the vault password.
+
+inputs:
+  ssh-private-key:
+    description: Private key of the account that connects to the host.
+    required: true
+  ssh-known-hosts:
+    description: known_hosts line(s) of the host (host key checking is on).
+    required: true
+  vault-password:
+    description: Password of the ansible vault of the environment.
+    required: true
+
+outputs:
+  vault-password-file:
+    description: Path of the file holding the vault password.
+    value: ${{ steps.credentials.outputs.vault-password-file }}
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: ${{ github.job }}
+        python-version: "3.12"
+    - name: Install ansible
+      shell: bash
+      run: uv sync --frozen --only-group dev
+    - name: Install the collection of this checkout
+      shell: bash
+      run: uv run --no-sync ansible-galaxy collection install ansible --path collections --force
+    - name: Install the SSH identity and the vault password
+      id: credentials
+      shell: bash
+      env:
+        SSH_PRIVATE_KEY: ${{ inputs.ssh-private-key }}
+        SSH_KNOWN_HOSTS: ${{ inputs.ssh-known-hosts }}
+        VAULT_PASSWORD: ${{ inputs.vault-password }}
+      run: |
+        set -euo pipefail
+        install -d -m 700 "$HOME/.ssh"
+        umask 077
+        printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_deploy"
+        printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+        printf '%s\n' "$VAULT_PASSWORD" > "$RUNNER_TEMP/vault-pass"
+        {
+          echo "ANSIBLE_PRIVATE_KEY_FILE=$HOME/.ssh/id_deploy"
+          echo "ANSIBLE_VAULT_PASSWORD_FILE=$RUNNER_TEMP/vault-pass"
+        } >> "$GITHUB_ENV"
+        echo "vault-password-file=$RUNNER_TEMP/vault-pass" >> "$GITHUB_OUTPUT"

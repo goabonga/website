@@ -22,6 +22,7 @@ application are issued to (the `client_id` claim, or `azp`, see
 | `reply_to` | When set, emails of the client can only use this reply-to address |
 | `allowed_providers` | Providers the client may use |
 | `default_provider` | Provider used when the request names none (always allowed) |
+| `rate_limit_per_minute`, `daily_quota` | Optional [sending limits](16-client-limits.md) |
 
 Provider names must be adapters of the service (`brevo`, `sendgrid`, `ses`,
 `protonmail`, see [providers](03-providers.md)); the registry rejects any other

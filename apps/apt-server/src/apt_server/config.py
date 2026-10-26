@@ -97,6 +97,20 @@ class Settings(BaseSettings):
     redis_url: str = ""
     redis_key_prefix: str = "apt_server"
 
+    # APT repository
+    apt_components: str = "main"
+    apt_public_components: str = "main"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def apt_components_list(self) -> list[str]:
+        return [s.strip() for s in self.apt_components.split(",") if s.strip()]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def apt_public_components_list(self) -> list[str]:
+        return [s.strip() for s in self.apt_public_components.split(",") if s.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,0 +1,49 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Nightly pg_dump of the database of an application. Databases shared with
+# other applications are not saved: the application does not own them.
+
+- name: Work out the backup settings of {{ python_app__app }}
+  ansible.builtin.set_fact:
+    python_app__backup_enabled: "{{ python_app__p.pg_backup.enabled | bool and not (python_app__p.postgres.shared | bool) }}"
+    python_app__backup_dir: "{{ python_app__p.pg_backup.dir | default('', true) or (python_app__dir ~ '/backups') }}"
+
+- name: Install cron
+  ansible.builtin.apt:
+    name: cron
+    state: present
+    cache_valid_time: 3600
+  when: python_app__backup_enabled | bool
+
+- name: Create the backup directory of {{ python_app__app }}
+  ansible.builtin.file:
+    path: "{{ python_app__backup_dir }}"
+    state: directory
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0750"
+  when: python_app__backup_enabled | bool
+
+- name: Schedule the backup of {{ python_app__p.postgres.database }}
+  ansible.builtin.cron:
+    name: "pg_dump {{ python_app__p.postgres.database }}"
+    user: "{{ python_app__user }}"
+    hour: "{{ python_app__p.pg_backup.hour }}"
+    minute: "{{ python_app__p.pg_backup.minute }}"
+    job: >-
+      pg_dump -h {{ website_postgres_socket_dir }}
+      {{ {'custom': '-Fc', 'plain': '-Fp', 'tar': '-Ft'}[python_app__p.pg_backup.format] }}
+      {{ python_app__p.postgres.database }}
+      > "{{ python_app__backup_dir }}/{{ python_app__p.postgres.database }}_$(date +\%Y\%m\%d_\%H\%M\%S).{{ {'custom': 'dump', 'plain': 'sql', 'tar': 'tar'}[python_app__p.pg_backup.format] }}"
+      && find "{{ python_app__backup_dir }}" -name "{{ python_app__p.postgres.database }}_*" -mtime +{{ python_app__p.pg_backup.retention }} -delete
+    state: present
+  when: python_app__backup_enabled | bool
+
+- name: Remove the backup of {{ python_app__p.postgres.database }}
+  ansible.builtin.cron:
+    name: "pg_dump {{ python_app__p.postgres.database }}"
+    user: "{{ python_app__user }}"
+    state: absent
+  when: not (python_app__backup_enabled | bool)

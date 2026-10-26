@@ -82,6 +82,27 @@ python_app_component_defaults:
   build_node: false
 
 
+  postgres:
+    # Database name; the section is ignored when empty.
+    database: ""
+    # Several applications share a database owned by a group role.
+    shared: false
+    pgvector: false
+    # Use the postgresql+asyncpg driver in DATABASE_URL.
+    async_db: false
+  alembic:
+    # Run the migrations of apps/<package>/alembic.ini on every deployment.
+    enabled: false
+  pg_backup:
+    enabled: true
+    # Backup directory, <app dir>/backups when empty.
+    dir: ""
+    hour: "2"
+    minute: "0"
+    # Days a backup is kept.
+    retention: 7
+    # custom, plain or tar.
+    format: custom
 
   # Generate OAUTH2_ISSUER, OAUTH2_CLIENT_ID, OAUTH2_SWAGGER_CLIENT_ID and
   # OAUTH2_FRONTEND_CLIENT_ID from website_oauth2_issuer and

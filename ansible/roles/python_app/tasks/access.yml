@@ -14,6 +14,7 @@
     python_app__groups_wanted: >-
       {{ ((['step'] if python_app__comps | selectattr('stepca_group_member') | list | length > 0 else [])
          + ([website_redis_group] if website_redis_socket | length > 0 else [])
+         + ([website_postgres_group] if website_manage_databases | bool and python_app__comps | map(attribute='postgres.database') | select | list | length > 0 else [])
          + (python_app__comps | map(attribute='extra_groups') | flatten | list)) | unique | list }}
 
 - name: Keep the groups that exist

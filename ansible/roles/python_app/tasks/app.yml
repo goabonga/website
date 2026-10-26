@@ -19,6 +19,12 @@
   loop_control:
     label: "{{ item.path }}"
 
+- name: Provision the database of {{ python_app__app }}
+  ansible.builtin.include_tasks: database.yml
+  when:
+    - website_manage_databases | bool
+    - python_app__p.postgres.database | length > 0
+
 - name: Deploy the release of {{ python_app__app }}
   ansible.builtin.import_tasks: release.yml
 
@@ -44,4 +50,10 @@
     path: "/etc/logrotate.d/{{ python_app__p.name }}"
     state: absent
   when: not (python_app__p.logrotate.enabled | bool)
+
+- name: Schedule the database backups of {{ python_app__app }}
+  ansible.builtin.include_tasks: backup.yml
+  when:
+    - website_manage_databases | bool
+    - python_app__p.postgres.database | length > 0
 

@@ -146,3 +146,20 @@ website_oauth2_issuer: "https://{{ website_hostnames.auth }}"
 #     backend: {client_id: "...", swagger_client_id: "..."}
 website_oauth2_clients: {}
 
+# ---------------------------------------------------------------------------
+# Databases and migrations
+# ---------------------------------------------------------------------------
+
+# Name of the group that owns the PostgreSQL socket.
+website_postgres_group: postgres
+
+# Directory of the PostgreSQL Unix socket (follows the postgres role).
+website_postgres_socket_dir: "{{ postgres_socket_dir | default('/var/run/postgresql') }}"
+
+# Create the PostgreSQL roles and databases declared by the components. The
+# postgres role (or an existing server) must be in place.
+website_manage_databases: true
+
+# Run `alembic upgrade head` for the components that enable alembic.
+website_run_migrations: true
+

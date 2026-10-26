@@ -47,6 +47,30 @@
     - python_app__c.build_commands | length > 0
     - not (python_app__built.stat.exists | default(false))
 
+- name: Run the database migrations of {{ python_app__unit }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      exec "$VENV/bin/alembic" -c "apps/$PACKAGE/alembic.ini" upgrade head
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    PACKAGE: "{{ python_app__package }}"
+    HOME: "{{ python_app__dir }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  register: python_app__migration
+  changed_when: "'Running upgrade' in python_app__migration.stderr or 'Running upgrade' in python_app__migration.stdout"
+  when:
+    - website_run_migrations | bool
+    - python_app__c.alembic.enabled | bool
+    - not ansible_check_mode
+
 - name: Deploy the gunicorn configuration of {{ python_app__unit }}
   ansible.builtin.template:
     src: gunicorn.conf.py.j2

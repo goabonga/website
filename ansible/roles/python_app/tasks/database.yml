@@ -1,0 +1,77 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# PostgreSQL objects of an application. The account connects through the Unix
+# socket with peer authentication, so the database role has the name of the
+# account. With postgres.shared several applications use one database owned by
+# a group role.
+
+- name: Provision the PostgreSQL objects of {{ python_app__app }}
+  become: true
+  become_user: postgres
+  module_defaults:
+    group/community.postgresql.postgresql:
+      login_unix_socket: "{{ website_postgres_socket_dir }}"
+  vars:
+    python_app__db: "{{ python_app__p.postgres.database }}"
+    python_app__db_shared: "{{ python_app__p.postgres.shared | bool }}"
+    python_app__db_owner: "{{ python_app__p.postgres.database if python_app__p.postgres.shared | bool else python_app__user }}"
+  block:
+    - name: Create the database role {{ python_app__user }}
+      community.postgresql.postgresql_user:
+        name: "{{ python_app__user }}"
+        state: present
+
+    - name: Create the group role {{ python_app__db }}
+      community.postgresql.postgresql_user:
+        name: "{{ python_app__db }}"
+        role_attr_flags: NOLOGIN
+        state: present
+      when: python_app__db_shared | bool
+
+    - name: Add {{ python_app__user }} to the group role {{ python_app__db }}
+      community.postgresql.postgresql_membership:
+        group: "{{ python_app__db }}"
+        target_role: "{{ python_app__user }}"
+        state: present
+      when: python_app__db_shared | bool
+
+    - name: Create the database {{ python_app__db }}
+      community.postgresql.postgresql_db:
+        name: "{{ python_app__db }}"
+        owner: "{{ python_app__db_owner }}"
+        state: present
+
+    - name: Grant the privileges on the database {{ python_app__db }}
+      community.postgresql.postgresql_privs:
+        login_db: "{{ python_app__db }}"
+        type: database
+        privs: ALL
+        role: "{{ python_app__db_owner }}"
+        state: present
+
+    - name: Enable the vector extension in {{ python_app__db }}
+      community.postgresql.postgresql_ext:
+        name: vector
+        login_db: "{{ python_app__db }}"
+        state: present
+      when: python_app__p.postgres.pgvector | bool
+
+    - name: Grant the privileges on the existing objects of {{ python_app__db }}
+      community.postgresql.postgresql_privs:
+        login_db: "{{ python_app__db }}"
+        schema: public
+        type: "{{ item.type }}"
+        objs: "{{ item.objs }}"
+        privs: "{{ item.privs }}"
+        role: "{{ python_app__db }}"
+        state: present
+      loop:
+        - { type: table, objs: ALL_IN_SCHEMA, privs: "SELECT,INSERT,UPDATE,DELETE" }
+        - { type: sequence, objs: ALL_IN_SCHEMA, privs: "USAGE,SELECT" }
+        - { type: default_privs, objs: TABLES, privs: "SELECT,INSERT,UPDATE,DELETE" }
+        - { type: default_privs, objs: SEQUENCES, privs: "USAGE,SELECT" }
+      loop_control:
+        label: "{{ item.type }} {{ item.objs }}"
+      when: python_app__db_shared | bool

@@ -36,6 +36,7 @@ tested.
 | 13 | [Webhooks](13-webhooks.md) | Stripe events and tenant notifications |
 | 14 | [Background tasks](14-background-tasks.md) | Celery tasks and beat schedule |
 | 14a | [Notification delivery](14a-webhook-delivery.md) | Queued, retried and idempotent notifications to tenants |
+| 15 | [Deployment](15-deployment.md) | Ansible deployment, secrets and dependencies |
 
 ## Running the tests
 

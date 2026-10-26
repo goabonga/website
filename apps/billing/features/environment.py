@@ -12,11 +12,13 @@ a set of claims registered in ``context.token_claims``.
 
 The database is an in-memory SQLite engine that replaces the PostgreSQL one
 (PostgreSQL ``JSONB`` columns are rendered as plain ``JSON``).
+
+The Stripe service is replaced by a mock that returns unique identifiers.
 """
 
 import asyncio
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import httpx
@@ -67,6 +69,100 @@ def _create_jwt_claims(user):
 def register_token(context, token, scopes):
     """Make the fake token validation accept ``token`` with the given scopes."""
     context.token_claims[token] = _create_jwt_claims(_create_test_user(scopes))
+
+
+_counter = 0
+
+
+def _unique_id(prefix):
+    """Generate a unique mock Stripe ID."""
+    global _counter
+    _counter += 1
+    return f"{prefix}_{_counter}"
+
+
+def _build_stripe_mock():
+    """Build a comprehensive Stripe service mock with unique IDs per call."""
+    mock = MagicMock()
+
+    # Customer - unique ID per call (DB has unique constraint on saas+stripe_id)
+    mock.create_customer.side_effect = lambda **kw: MagicMock(id=_unique_id("cus_bdd"))
+    mock.update_customer.return_value = MagicMock(id="cus_bdd_updated")
+    mock.create_customer_portal_session.return_value = MagicMock(
+        url="https://billing.stripe.com/session/bdd_test"
+    )
+
+    # Product - unique ID per call
+    mock.create_product.side_effect = lambda **kw: MagicMock(id=_unique_id("prod_bdd"))
+    mock.update_product.return_value = MagicMock(id="prod_bdd_updated")
+
+    # Price - unique ID per call
+    mock.create_price.side_effect = lambda **kw: MagicMock(id=_unique_id("price_bdd"))
+    mock.update_price.return_value = MagicMock(id="price_bdd_updated")
+
+    # Subscription - unique IDs, with real Python values (not MagicMock)
+    mock.create_subscription.side_effect = lambda **kw: MagicMock(
+        id=_unique_id("sub_bdd"),
+        status="active",
+        current_period_start=1704067200,
+        current_period_end=1706745600,
+        items=MagicMock(data=[MagicMock(id=_unique_id("si_bdd"))]),
+    )
+    mock.update_subscription.return_value = MagicMock(id="sub_bdd_updated")
+    mock.cancel_subscription.return_value = MagicMock(
+        id="sub_bdd_canceled",
+        status="canceled",
+        cancel_at_period_end=True,
+        canceled_at="2026-01-15T00:00:00Z",
+    )
+
+    # Checkout
+    mock.create_checkout_session.return_value = MagicMock(
+        id="cs_bdd_test",
+        url="https://checkout.stripe.com/bdd_test",
+    )
+
+    # Get subscription (for sync) - supports both attribute and bracket notation
+    def _make_stripe_subscription(*a, **kw):
+        item_mock = MagicMock()
+        item_data = {
+            "id": _unique_id("si_bdd"),
+            "current_period_start": 1704067200,
+            "current_period_end": 1706745600,
+        }
+        item_mock.__getitem__ = lambda self, key: item_data[key]
+        items_mock = MagicMock()
+        items_mock.data = [item_mock]
+        sub_mock = MagicMock()
+        sub_mock.status = "active"
+        sub_mock.cancel_at_period_end = False
+        sub_mock.canceled_at = None
+        sub_mock.__getitem__ = lambda self, key: items_mock if key == "items" else None
+        return sub_mock
+
+    mock.get_subscription.side_effect = _make_stripe_subscription
+
+    # Upgrade subscription - returns (stripe_sub, invoice) tuple
+    mock.upgrade_subscription.side_effect = lambda **kw: (
+        MagicMock(
+            status="active",
+            items=MagicMock(data=[MagicMock(id=_unique_id("si_bdd"))]),
+        ),
+        MagicMock(id="inv_bdd_upgrade", amount_due=500),
+    )
+
+    # Invoice preview (for subscription upgrades)
+    mock.preview_subscription_upgrade.return_value = MagicMock(
+        lines=MagicMock(data=[]),
+        subtotal=0,
+        total=0,
+        currency="usd",
+    )
+
+    # Webhook event verification
+    mock.verify_webhook_signature.return_value = None
+
+    return mock
 
 
 async def _create_schema(engine):
@@ -140,6 +236,12 @@ def before_all(context):
     for name, module in list(sys.modules.items()):
         if name.startswith("billing.") and hasattr(module, "async_session_factory"):
             patch.object(module, "async_session_factory", context.session_factory).start()
+
+    # Mocked Stripe service, patched wherever it was imported.
+    context.stripe_mock = _build_stripe_mock()
+    for name, module in list(sys.modules.items()):
+        if name.startswith("billing.") and hasattr(module, "get_stripe_service"):
+            patch.object(module, "get_stripe_service", return_value=context.stripe_mock).start()
 
     context.anon_client = context.loop.run_until_complete(_create_async_client())
     context.client = context.loop.run_until_complete(

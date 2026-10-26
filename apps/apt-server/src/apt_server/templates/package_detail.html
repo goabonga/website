@@ -19,6 +19,14 @@
     {% endif %}
 </p>
 
+{% if caller and (caller.sub == package.owner_id or caller.is_admin) %}
+<div style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem;">
+    <a href="/dashboard/{{ package.id }}/share" class="btn btn-secondary btn-sm">Share / Manage access</a>
+    <form method="post" action="/dashboard/{{ package.id }}/delete" style="display:inline" onsubmit="return confirm('Delete {{ package.name }} {{ package.version }}?')">
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+    </form>
+</div>
+{% endif %}
 
 <div class="admin-card">
     <h2>Install</h2>

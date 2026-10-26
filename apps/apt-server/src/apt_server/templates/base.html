@@ -203,6 +203,10 @@
             <ul class="admin-nav">
                 <li><a href="/" class="{% if active_section == 'home' %}active{% endif %}"><span class="nav-icon">&#128230;</span>Packages</a></li>
                 <li><a href="/setup" class="{% if active_section == 'setup' %}active{% endif %}"><span class="nav-icon">&#128214;</span>Setup</a></li>
+                {% if caller %}
+                <li><a href="/dashboard" class="{% if active_section == 'dashboard' %}active{% endif %}"><span class="nav-icon">&#128188;</span>My Packages</a></li>
+                <li><a href="/dashboard/upload" class="{% if active_section == 'upload' %}active{% endif %}"><span class="nav-icon">&#11014;</span>Upload</a></li>
+                {% endif %}
             </ul>
             {% if caller %}
             <div class="sidebar-user">

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Package · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Upload a Package</h1>
+    <a href="/dashboard" class="btn btn-secondary btn-sm">Back to dashboard</a>
+</div>
+
+<div class="admin-card">
+    <p style="margin-bottom: 1rem; color: #a0a0a0;">Upload a <span class="mono">.deb</span> file. Large files are uploaded in 5 MB chunks with automatic resume.</p>
+
+    <div id="upload-error" class="alert alert-error" style="display: none;"></div>
+    <div id="upload-success" class="alert alert-success" style="display: none;"></div>
+
+    <form id="upload-form">
+        <div class="form-group">
+            <label for="deb-file">.deb file</label>
+            <input type="file" id="deb-file" accept=".deb" required class="form-control">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="suite">Suite</label>
+                <select id="suite" class="form-control" required>
+                    {% for s in suites %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="component">Component</label>
+                <select id="component" class="form-control" required>
+                    {% for c in components %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="visibility">Visibility</label>
+                <select id="visibility" class="form-control">
+                    <option value="private" selected>Private</option>
+                    <option value="public">Public</option>
+                    <option value="shared">Shared</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="progress-section" style="display: none; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <span id="progress-label" class="text-muted" style="font-size: 0.85rem;">Uploading...</span>
+                <span id="progress-percent" class="mono" style="font-size: 0.85rem;">0%</span>
+            </div>
+            <div style="background: #0f3460; border-radius: 8px; height: 8px; overflow: hidden;">
+                <div id="progress-bar" style="background: #e94560; height: 100%; width: 0%; transition: width 0.2s;"></div>
+            </div>
+            <p id="progress-detail" class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;"></p>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary">Upload</button>
+        <button type="button" id="cancel-btn" class="btn btn-danger" style="display: none;" onclick="cancelUpload()">Cancel</button>
+    </form>
+</div>
+
+<script>
+const CHUNK_SIZE = {{ chunk_size }};
+let currentUploadId = null;
+let aborted = false;
+
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    aborted = false;
+
+    const fileInput = document.getElementById('deb-file');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const suite = document.getElementById('suite').value;
+    const component = document.getElementById('component').value;
+    const visibility = document.getElementById('visibility').value;
+
+    hideMessages();
+    setUploading(true);
+
+    try {
+        // 1. Init session
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const initResp = await apiPost('/api/upload/init', {
+            filename: file.name,
+            total_size: file.size,
+            total_chunks: totalChunks,
+            suite, component, visibility,
+        });
+        currentUploadId = initResp.upload_id;
+
+        // 2. Send chunks
+        for (let i = 0; i < totalChunks; i++) {
+            if (aborted) throw new Error('Upload cancelled');
+
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const blob = file.slice(start, end);
+
+            const form = new FormData();
+            form.append('chunk', blob, `chunk_${i}`);
+
+            const resp = await fetch(`/api/upload/${currentUploadId}/chunk?index=${i}`, {
+                method: 'POST',
+                body: form,
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || `chunk ${i} failed: ${resp.status}`);
+            }
+
+            const pct = Math.round(((i + 1) / totalChunks) * 100);
+            updateProgress(pct, `Chunk ${i + 1} / ${totalChunks} (${formatBytes(end)} / ${formatBytes(file.size)})`);
+        }
+
+        // 3. Complete
+        updateProgress(100, 'Assembling and processing...');
+        const result = await apiPost(`/api/upload/${currentUploadId}/complete`, null);
+
+        currentUploadId = null;
+        setUploading(false);
+        showSuccess(`Package <strong>${result.name} ${result.version}</strong> (${result.architecture}) uploaded successfully.`);
+        setTimeout(() => window.location.href = '/dashboard', 1500);
+
+    } catch (err) {
+        setUploading(false);
+        if (currentUploadId && !aborted) {
+            // Try to clean up server-side
+            fetch(`/api/upload/${currentUploadId}`, { method: 'DELETE' }).catch(() => {});
+        }
+        currentUploadId = null;
+        if (!aborted) showError(err.message);
+    }
+});
+
+function cancelUpload() {
+    aborted = true;
+    if (currentUploadId) {
+        fetch(`/api/upload/${currentUploadId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    setUploading(false);
+    showError('Upload cancelled.');
+}
+
+async function apiPost(url, body) {
+    const opts = { method: 'POST' };
+    if (body !== null) {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify(body);
+    }
+    const resp = await fetch(url, opts);
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || `request failed: ${resp.status}`);
+    }
+    return resp.json();
+}
+
+function setUploading(active) {
+    document.getElementById('submit-btn').style.display = active ? 'none' : '';
+    document.getElementById('cancel-btn').style.display = active ? '' : 'none';
+    document.getElementById('progress-section').style.display = active ? '' : 'none';
+    document.getElementById('deb-file').disabled = active;
+    document.getElementById('suite').disabled = active;
+    document.getElementById('component').disabled = active;
+    document.getElementById('visibility').disabled = active;
+    if (!active) {
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-percent').textContent = '0%';
+        document.getElementById('progress-detail').textContent = '';
+        document.getElementById('progress-label').textContent = 'Uploading...';
+    }
+}
+
+function updateProgress(pct, detail) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-percent').textContent = pct + '%';
+    if (detail) document.getElementById('progress-detail').textContent = detail;
+}
+
+function hideMessages() {
+    document.getElementById('upload-error').style.display = 'none';
+    document.getElementById('upload-success').style.display = 'none';
+}
+function showError(msg) {
+    const el = document.getElementById('upload-error');
+    el.innerHTML = '<strong>Upload failed:</strong> ' + msg;
+    el.style.display = '';
+}
+function showSuccess(msg) {
+    const el = document.getElementById('upload-success');
+    el.innerHTML = msg;
+    el.style.display = '';
+}
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+}
+</script>
+{% endblock %}

@@ -30,6 +30,7 @@ from apt_server.logging import get_logger, setup_logging
 from apt_server.routes.api import router as api_router
 from apt_server.routes.apt import router as apt_router
 from apt_server.routes.auth import router as auth_router
+from apt_server.routes.dashboard import router as dashboard_router
 from apt_server.routes.web import router as web_router
 from apt_server.routes.webhooks import router as webhooks_router
 
@@ -155,5 +156,6 @@ async def me(auth: Auth, token: str = Depends(oauth2_scheme)) -> dict:
 app.include_router(api_router)
 app.include_router(apt_router)
 app.include_router(auth_router)
+app.include_router(dashboard_router)
 app.include_router(webhooks_router)
 app.include_router(web_router)

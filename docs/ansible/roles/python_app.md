@@ -568,6 +568,16 @@ application defines group scopes, and the `PLATFORM_TENANT_*`, `SWAGGER_*` and
 when they are set). The file is a template, so a run in check mode
 shows the difference.
 
+After the migrations the role then runs, as the account of `auth` with its
+environment file, `auth bootstrap` and `auth catalog sync`. Both are
+idempotent; their JSON report decides whether the task is reported as changed.
+In check mode they run with `--dry-run` (nothing is written) and a failure is
+ignored, since the migrations may not have been applied. For a database that
+already holds the rows of the original migrations they find them and create only
+what is missing; set `website_auth_swagger_scopes` to the scopes the
+`swagger-ui` client had before the first run, because the bootstrap makes the
+client match the variable.
+
 ### Billing data
 
 After `alembic upgrade head` every OAuth client is unbound and therefore

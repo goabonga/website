@@ -14,9 +14,11 @@ the SQLite stand-in are patched on the module objects, so the server thread
 sees them as the in-process client does.
 """
 
+import asyncio
 import os
 import tempfile
-from unittest.mock import AsyncMock, MagicMock
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from e2e_support import behave_hooks as e2e
 
@@ -24,6 +26,26 @@ from e2e_support import behave_hooks as e2e
 # before ``auth.config`` reads the environment.
 UPLOAD_DIR = tempfile.TemporaryDirectory(prefix="auth-behave-")
 os.environ.setdefault("UPLOAD_DIRECTORY", UPLOAD_DIR.name)
+
+
+def _run_outside_the_browser_loop(real_run):
+    """Wrap ``asyncio.run`` so that it also works while Playwright's loop is running.
+
+    The synchronous Playwright API keeps an event loop running in the thread that
+    executes the steps, where ``asyncio.run`` refuses to start. The steps written for
+    the in-process scenarios call it to run a service coroutine: in a browser scenario
+    the coroutine is run in a worker thread instead.
+    """
+
+    def run(coroutine, **kwargs):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return real_run(coroutine, **kwargs)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(real_run, coroutine, **kwargs).result()
+
+    return run
 
 
 def before_all(context):
@@ -52,6 +74,10 @@ def before_scenario(context, scenario):
     e2e.before_scenario(
         context, scenario, base_url=lambda: e2e.live_server(context, "auth", context.app).url
     )
+    if e2e.is_browser_scenario(scenario):
+        patcher = patch.object(asyncio, "run", _run_outside_the_browser_loop(asyncio.run))
+        patcher.start()
+        context.add_cleanup(patcher.stop)
 
 
 def after_scenario(context, scenario):

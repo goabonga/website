@@ -20,3 +20,29 @@ website_auth_catalog_file: "{{ website_base_dir }}/auth/catalog.json"
 #                  clients (an entry with an empty client_id is ignored)
 #   scope_groups   {"<group scope>": [resources]} (SCOPE_GROUPS of auth)
 website_auth_catalog: {}
+
+# Platform tenant of auth, the tenant of the main domain, created by `auth
+# bootstrap` when the database has none (an existing one is adopted as it is).
+# The defaults are the neutral ones of the application; give a deployment its own.
+website_auth_platform_tenant_slug: platform
+website_auth_platform_tenant_display_name: Platform
+
+# UUID of the platform tenant to create (PLATFORM_TENANT_ID). Empty generates one.
+website_auth_platform_tenant_id: ""
+
+# Branding of the platform tenant, set once when it has none (PLATFORM_TENANT_BRANDING):
+# fields of tenant_branding such as primary_color, logo_url or favicon_url.
+website_auth_platform_tenant_branding: {}
+
+# OAuth2 client of the Swagger UI of /docs (SWAGGER_CLIENT_ID, SWAGGER_SCOPES and
+# SWAGGER_REDIRECT_URIS). The scopes it may request: add "*" to let /docs call the admin
+# API with the scopes of the signed-in administrator. A redirect URI is the path of the
+# redirect page of auth, or an absolute URL.
+website_auth_swagger_client_id: swagger-ui
+website_auth_swagger_scopes: "openid profile email"
+website_auth_swagger_redirect_uris:
+  - /docs/oauth2-redirect
+
+# Title of the OpenAPI document and of the /docs page (APP_TITLE). Empty keeps the
+# default of the application.
+website_auth_app_title: ""

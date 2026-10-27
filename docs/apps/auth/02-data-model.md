@@ -126,6 +126,10 @@ tables and none inserts a row:
 - `045_add_platform_tenant` adds the `tenants.is_platform` flag; the platform
   tenant is a row like any other tenant.
 
+The scopes and roles of the other applications of the platform are not
+migrated: a deployment declares them in a catalog applied by `auth catalog
+sync` (see [Catalog of scopes and roles](19-catalog.md)).
+
 The revision ids are those of the original chain (the ids of the revisions that
 only inserted rows are simply absent), and the head is `060`.
 

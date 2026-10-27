@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from auth import cli
+from auth.services.bootstrap import BootstrapError
 from auth.services.catalog import CatalogError, SyncReport
 
 
@@ -123,3 +124,48 @@ class TestCatalogSync:
         with patch.object(cli, "sync_catalog", AsyncMock(side_effect=RuntimeError("down"))):
             assert run("catalog", "sync", "--file", catalog_file) == 1
         assert "RuntimeError: down" in capsys.readouterr().err
+
+
+class TestBootstrap:
+    def test_commits_the_changes(self, session, capsys):
+        report = SyncReport(created=["platform tenant main"])
+        with patch.object(cli, "bootstrap", AsyncMock(return_value=report)):
+            assert run("bootstrap") == 0
+        session.commit.assert_awaited_once()
+        out = capsys.readouterr().out
+        assert "created platform tenant main" in out
+        assert "bootstrap: changed 1 item(s)" in out
+
+    def test_dry_run_rolls_back(self, session, capsys):
+        report = SyncReport(created=["platform tenant main"])
+        with patch.object(cli, "bootstrap", AsyncMock(return_value=report)):
+            assert run("bootstrap", "--dry-run") == 0
+        session.commit.assert_not_awaited()
+        session.rollback.assert_awaited_once()
+        assert "would create platform tenant main" in capsys.readouterr().out
+
+    def test_json_report(self, capsys):
+        with patch.object(cli, "bootstrap", AsyncMock(return_value=SyncReport())):
+            assert run("bootstrap", "--json") == 0
+        assert json.loads(capsys.readouterr().out)["changed"] is False
+
+    def test_the_options_come_from_the_settings(self):
+        with (
+            patch.object(cli, "bootstrap", AsyncMock(return_value=SyncReport())) as boot,
+            patch.object(cli.settings, "platform_tenant_slug", "main-site"),
+        ):
+            assert run("bootstrap") == 0
+        assert boot.await_args.args[1].slug == "main-site"
+
+    def test_invalid_settings_exit_with_2_before_touching_the_database(self, session, capsys):
+        with patch.object(cli.settings, "platform_tenant_slug", "Not A Slug"):
+            assert run("bootstrap") == 2
+        assert "not a valid slug" in capsys.readouterr().err
+        session.commit.assert_not_awaited()
+
+    def test_a_slug_conflict_exits_with_2(self, session, capsys):
+        error = BootstrapError("the slug 'main' belongs to a tenant that is not the platform")
+        with patch.object(cli, "bootstrap", AsyncMock(side_effect=error)):
+            assert run("bootstrap") == 2
+        session.rollback.assert_awaited()
+        assert "not the platform" in capsys.readouterr().err

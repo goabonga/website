@@ -961,3 +961,51 @@ argument_specs:
           component: scopes, roles, clients (added to existing clients; an entry with an empty
           client_id is ignored) and scope_groups (SCOPE_GROUPS of auth). Every key is optional.'
         default: {}
+      website_auth_platform_tenant_slug:
+        type: str
+        description:
+        - Slug of the platform tenant of auth, the tenant of the main domain, used when `auth
+          bootstrap` has to create it (PLATFORM_TENANT_SLUG). Lower case letters, digits and hyphens.
+        default: platform
+      website_auth_platform_tenant_display_name:
+        type: str
+        description:
+        - Display name of the platform tenant, used when it has to be created
+          (PLATFORM_TENANT_DISPLAY_NAME).
+        default: Platform
+      website_auth_platform_tenant_id:
+        type: str
+        description:
+        - UUID of the platform tenant to create (PLATFORM_TENANT_ID). Empty generates one.
+        default: ''
+      website_auth_platform_tenant_branding:
+        type: dict
+        description:
+        - Branding of the platform tenant, set once when it has none (PLATFORM_TENANT_BRANDING), keyed
+          by the columns of tenant_branding such as primary_color, logo_url or favicon_url.
+        default: {}
+      website_auth_swagger_client_id:
+        type: str
+        description:
+        - OAuth2 client of the Swagger UI of /docs (SWAGGER_CLIENT_ID).
+        default: swagger-ui
+      website_auth_swagger_scopes:
+        type: str
+        description:
+        - Space-separated scopes the Swagger UI client may request (SWAGGER_SCOPES). Add * to let /docs
+          call the admin API with the scopes of the signed-in administrator.
+        default: openid profile email
+      website_auth_swagger_redirect_uris:
+        type: list
+        description:
+        - Redirect URIs of the Swagger UI client (SWAGGER_REDIRECT_URIS), the path of the redirect page of
+          auth or absolute URLs.
+        default:
+        - /docs/oauth2-redirect
+        elements: str
+      website_auth_app_title:
+        type: str
+        description:
+        - Title of the OpenAPI document and of the /docs page (APP_TITLE). Empty keeps the default
+          of the application.
+        default: ''

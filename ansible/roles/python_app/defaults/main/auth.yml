@@ -1,0 +1,22 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Settings of the auth application that are deployment choices. The scopes and
+# roles of the other applications are declared by their catalog entries (the
+# auth_catalog key of a component) and merged into one catalog file.
+
+# Path of the catalog file the role renders for auth (CATALOG_FILE). Its
+# directory must exist and belong to the account of auth.
+website_auth_catalog_file: "{{ website_base_dir }}/auth/catalog.json"
+
+# Scopes, roles and client allowances added to what the enabled applications
+# declare, or that replace the fields of a scope declared by one of them. Same
+# shape as the auth_catalog key of a component; every key is optional:
+#   scopes         [{name, description, category, resource, action, is_system, is_active}]
+#   roles          [{name, description, scopes, is_system}]; the scopes of a role named by
+#                  several sources are added together
+#   clients        [{client_id, allowed_scopes, allowed_grant_types}], added to existing
+#                  clients (an entry with an empty client_id is ignored)
+#   scope_groups   {"<group scope>": [resources]} (SCOPE_GROUPS of auth)
+website_auth_catalog: {}

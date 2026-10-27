@@ -135,3 +135,23 @@
   when:
     - "'vpn_portal' in python_app__apps"
     - python_app__all | selectattr('id', 'equalto', 'vpn_portal_openvpn') | selectattr('enabled') | list | length > 0
+
+- name: Check what the components declare for the catalog of auth
+  ansible.builtin.assert:
+    that:
+      - item.auth_catalog.scopes is sequence and item.auth_catalog.scopes is not string
+      - item.auth_catalog.roles is sequence and item.auth_catalog.roles is not string
+      - item.auth_catalog.clients is sequence and item.auth_catalog.clients is not string
+      - item.auth_catalog.scope_groups is mapping
+      - item.auth_catalog.scopes | rejectattr('name', 'defined') | list | length == 0
+      - item.auth_catalog.roles | rejectattr('name', 'defined') | list | length == 0
+      - item.auth_catalog.roles | map(attribute='scopes', default=[]) | map('type_debug') | unique | difference(['list']) | length == 0
+      - item.auth_catalog.clients | rejectattr('client_id', 'defined') | list | length == 0
+    fail_msg: >-
+      auth_catalog of {{ item.id }}: scopes, roles and clients are lists, scope_groups is a
+      dictionary, every scope and role has a name (roles list their scopes in a list) and every
+      client has a client_id.
+    quiet: true
+  loop: "{{ python_app__all | selectattr('enabled') | selectattr('app', 'in', website_apps_enabled) | list }}"
+  loop_control:
+    label: "{{ item.id }}"

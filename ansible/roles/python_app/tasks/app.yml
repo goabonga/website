@@ -41,7 +41,7 @@
   vars:
     python_app__c: "{{ python_app__p }}"
   when:
-    - python_app__app in ['custom_domain', 'mailler', 'billing']
+    - python_app__app in ['custom_domain', 'mailler', 'billing', 'auth']
     - python_app__sha | length > 0
 
 - name: Configure the log rotation of {{ python_app__app }}

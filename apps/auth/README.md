@@ -617,6 +617,8 @@ Built-in protocol scopes (`BUILTIN_SCOPES`), always listed next to the stored sc
 
 The scopes and roles of the services that rely on auth are deployment data. `auth catalog sync [--file PATH] [--dry-run] [--json]` applies a JSON catalog (the `--file` option or the `CATALOG_FILE` setting) idempotently: it creates the missing scopes and roles, updates descriptions, adds the listed scopes to existing roles and the listed allowances to existing OAuth2 clients, and deletes nothing.
 
+`auth bootstrap [--dry-run] [--json]` idempotently creates what auth needs before it can serve: the platform scopes and roles above, the platform tenant (`PLATFORM_TENANT_*` settings), the registration of the users without a tenant on it and the public Swagger UI OAuth2 client (`SWAGGER_*` settings). Run it after the database migrations.
+
 ## Development
 
 From the repository root:

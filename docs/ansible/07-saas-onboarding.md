@@ -32,8 +32,11 @@ applications that validate tokens (`website_oauth2_clients`).
 | `billing` | `billing:platform:read`, `billing:platform:write`, `billing:checkout:write`, `billing:usage:write`, as the application needs | `billing:admin` (`website_billing_partition_admin_scope`): act on every SaaS application and manage the bindings |
 
 The scopes of `custom_domain`, `billing` and `mailler:send`/`read`/`stats` are
-created by the migrations of the authentication server; `mailler:write` and
-`mailler:admin` are not, and must be created there before they can be granted.
+declared by the catalog of the collection and created in the authentication
+server by `auth catalog sync` (see
+[Scopes and roles of the platform services](09-auth-catalog.md)); `mailler:write`
+and `mailler:admin` are not, and must be declared in `website_auth_catalog` (or
+created at the authentication server) before they can be granted.
 The operator client of the `internal` application needs the platform scopes and
 the admin scopes of billing and mailler (see
 [python_app](roles/python_app.md#internal)), and the operators who manage the

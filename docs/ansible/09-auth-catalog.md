@@ -96,8 +96,15 @@ for what the inventory adds:
 The file is written to `website_auth_catalog_file` (`/opt/auth/catalog.json` by
 default, mode `0640`, owned by the account of `auth`) and the environment file of
 `auth` points to it with `CATALOG_FILE`; the group scopes go to `SCOPE_GROUPS`.
-To apply it to the database, run `auth catalog sync` after the migrations (see
-[the catalog of auth](../apps/auth/19-catalog.md)).
+The role then applies it: after the migrations it runs, as the account of `auth`,
+`auth bootstrap` (the built-in roles, the platform tenant and the Swagger UI
+client, see [the bootstrap of auth](../apps/auth/20-bootstrap.md)) and `auth catalog
+sync` (see [the catalog of auth](../apps/auth/19-catalog.md)). Both are
+idempotent and print a JSON report; a run is reported as changed only when the
+report says so. In check mode they run with `--dry-run`, which writes nothing, so
+the plan shows what would be created; a failure is then ignored, since the
+migrations may not have been applied. Nothing is ever deleted: a scope removed
+from a declaration stays in the database until it is deleted from `auth`.
 
 A role may only list scopes that exist: declare a scope in the application that
 owns the role, even when another application declares it too (identical

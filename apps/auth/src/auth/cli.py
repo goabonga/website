@@ -3,6 +3,7 @@
 
 """The ``auth`` command line: deployment commands to run after the database migrations.
 
+    auth bootstrap [--dry-run] [--json]
     auth catalog sync [--file PATH] [--dry-run] [--json]
 
 Every command is idempotent and safe to run at each deployment. ``--dry-run`` does all the
@@ -23,6 +24,7 @@ from collections.abc import Sequence
 
 from auth.config import settings
 from auth.core.database import async_session_factory, close_database
+from auth.services.bootstrap import BootstrapError, BootstrapOptions, bootstrap
 from auth.services.catalog import CatalogError, SyncReport, load_catalog, sync_catalog
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,12 @@ async def run_catalog_sync(path: str, *, dry_run: bool) -> SyncReport:
     return await _in_transaction(lambda db: sync_catalog(db, catalog), dry_run=dry_run)
 
 
+async def run_bootstrap(*, dry_run: bool) -> SyncReport:
+    """Bootstrap the database from the settings in one transaction."""
+    options = BootstrapOptions.from_settings(settings)
+    return await _in_transaction(lambda db: bootstrap(db, options), dry_run=dry_run)
+
+
 def _print_report(report: SyncReport, *, as_json: bool, dry_run: bool, title: str) -> None:
     if as_json:
         print(json.dumps({**report.to_dict(), "dry_run": dry_run}, indent=2))
@@ -69,6 +77,18 @@ def build_parser() -> argparse.ArgumentParser:
     """The argument parser of the ``auth`` command."""
     parser = argparse.ArgumentParser(prog="auth", description="Deployment commands of auth.")
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
+
+    boot = commands.add_parser(
+        "bootstrap",
+        help="create the built-in scopes and roles, the platform tenant and the Swagger UI client",
+        description=(
+            "Idempotently create what auth needs before it can serve: its built-in scopes and "
+            "roles, the platform tenant (PLATFORM_TENANT_*), the registration of existing users "
+            "on it and the Swagger UI OAuth2 client (SWAGGER_*). Run it after the migrations."
+        ),
+    )
+    boot.add_argument("--dry-run", action="store_true", help="report the changes, apply none")
+    boot.add_argument("--json", action="store_true", dest="as_json", help="print a JSON report")
 
     catalog = commands.add_parser("catalog", help="manage the catalog of scopes and roles")
     catalog_commands = catalog.add_subparsers(dest="catalog_command", required=True)
@@ -95,6 +115,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Entry point of the ``auth`` command; returns the exit status."""
     args = build_parser().parse_args(argv)
     try:
+        if args.command == "bootstrap":
+            report = asyncio.run(run_bootstrap(dry_run=args.dry_run))
+            _print_report(report, as_json=args.as_json, dry_run=args.dry_run, title="bootstrap")
+            return 0
         if args.command == "catalog" and args.catalog_command == "sync":
             path = args.file or settings.catalog_file
             if not path:
@@ -103,7 +127,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             report = asyncio.run(run_catalog_sync(path, dry_run=args.dry_run))
             _print_report(report, as_json=args.as_json, dry_run=args.dry_run, title="catalog")
             return 0
-    except CatalogError as exc:
+    except (CatalogError, BootstrapError) as exc:
         print(f"auth: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:

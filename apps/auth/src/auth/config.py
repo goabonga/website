@@ -157,6 +157,17 @@ class Settings(BaseSettings):
     # Catalog of the scopes, roles and client grants of the other services (`auth catalog sync`)
     catalog_file: str = ""  # Path of the JSON catalog file (empty = pass --file to the command)
 
+    # Platform bootstrap (`auth bootstrap`): the tenant of the main domain and the Swagger UI client
+    platform_tenant_slug: str = "platform"  # Slug of the platform tenant, when it must be created
+    platform_tenant_display_name: str = "Platform"  # Display name of the platform tenant
+    platform_tenant_id: str = ""  # UUID of the platform tenant to create (empty = generated)
+    # Branding of the platform tenant, created once (JSON object keyed by TenantBranding columns,
+    # e.g. {"primary_color": "#0055aa", "logo_url": "https://..."}). Empty = no branding row.
+    platform_tenant_branding: dict[str, str] = {}
+    # Redirect URIs of the Swagger UI client: the path of the docs redirect page of this service,
+    # or absolute URLs when the service is reached through another origin.
+    swagger_redirect_uris: list[str] = ["/docs/oauth2-redirect"]
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

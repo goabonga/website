@@ -332,6 +332,17 @@ Secrets (see [Secrets](../03-secrets.md)): `OPENAI_API_KEY`, `OAUTH2_CLIENT_SECR
 | `website_knowledge_privacy_email` | `""` | Address of the privacy policy and of the data subject requests (PRIVACY_EMAIL). |
 | `website_knowledge_support_url` | `""` | Where the customers of a deleted workspace can get help (SUPPORT_URL). |
 
+### Auth
+
+Deployment choices of the `auth` application. The scopes and roles of the other
+applications are not variables: each application declares its own (see
+[Scopes and roles of the platform services](../09-auth-catalog.md)).
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `website_auth_catalog_file` | `{{ website_base_dir }}/auth/catalog.json` | Path of the catalog file rendered for auth (CATALOG_FILE). Its directory must exist and belong to the account of auth. |
+| `website_auth_catalog` | `{}` | Scopes, roles and client allowances added to what the enabled applications declare, or that replace the fields of a scope they declare. Same shape as the `auth_catalog` key of a component; every key is optional. |
+
 ### Host names
 
 | Variable | Default | Description |
@@ -445,6 +456,7 @@ application has the name of the application; the others set `app`.
 | `nginx.client_max_body_size`, `nginx.csp`, `nginx.headers` | `""`, `""`, `[]` | Upload limit, Content-Security-Policy and extra `add_header` lines. |
 | `nginx.static.*` | disabled | Serve a directory of the release: `enabled`, `location`, `alias` (relative to the release), `expires`. |
 | `fail2ban.enabled`, `fail2ban.routes` | `false`, `[]` | One jail per route: `path`, `method` (POST), `maxretry` (5), `findtime` (10m), `bantime` (1h). |
+| `auth_catalog` | `scopes: []`, `roles: []`, `clients: []`, `scope_groups: {}` | What the application declares for auth, the authentication server: the scopes it checks, the roles that hold them, allowances to add to existing OAuth2 clients and group scopes. Declared on the primary component, merged with the other applications into the catalog file of auth (see [Scopes and roles of the platform services](../09-auth-catalog.md)). |
 | `ses_webhook` | `{}` | SES and SNS wiring: `region`, `topic_prefix` and `endpoint` (required), `identity`, `track_deliveries`, `configuration_set`, `event_types`. |
 
 ## Behavior
@@ -535,6 +547,16 @@ migrations the role fills the registry from the inventory:
 
 Every OAuth client an application sends with must be registered: the web
 client and the backend client of an application are two clients for mailler.
+
+### Auth data
+
+When `auth` is deployed the role renders its catalog of scopes and roles: the
+`auth_catalog` of the components of every enabled application and
+`website_auth_catalog`, merged and sorted, are written to
+`website_auth_catalog_file` (`0640`, owned by the account of `auth`). The
+environment file of `auth` gets `CATALOG_FILE` and, when an application defines
+group scopes, `SCOPE_GROUPS`. The file is a template, so a run in check mode
+shows the difference.
 
 ### Billing data
 

@@ -50,7 +50,10 @@ secrets from `website_secrets`. For every component the catalog also sets the
 database, the Alembic migrations, the unit type, the queues, the groups needed
 to reach other applications' sockets, the fail2ban routes of `auth` and the
 environment variables the application documents as having a sensible default.
-Read `defaults/main/catalog.yml` of the role for the exact content.
+Read `defaults/main/catalog.yml` of the role for the exact content. An
+application also declares there the scopes and roles that the other services
+check at `auth` (the `auth_catalog` key, see
+[Scopes and roles of the platform services](09-auth-catalog.md)).
 
 Dependencies between applications are not resolved for you. `auth` sends mail
 through `mailler`, `internal` and `webhooks` call `mailler` and `billing`

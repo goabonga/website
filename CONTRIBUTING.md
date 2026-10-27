@@ -59,6 +59,12 @@ uv run --package <app> --group dev behave apps/<app>/features
 Both suites mock the database, Redis and SMTP, so they need no
 infrastructure.
 
+In CI, the `test` and `libs` jobs only run for what a pull request changes:
+`multicz changed` lists the changed components, and the tests, scenarios
+and sources of an application all belong to its component. A change to
+`uv.lock`, the root `pyproject.toml`, `libs/` or `ci.yml` runs every
+application.
+
 Changes under `ansible/` are checked with `ansible-playbook --syntax-check`
 on the playbooks in `ansible/playbooks/`.
 

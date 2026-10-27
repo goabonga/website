@@ -40,6 +40,7 @@ service under systemd. Each application can be pinned to one of its releases
 | [Deploying applications](05-deploying-apps.md) | The catalog, the overrides, releases and rollbacks. |
 | [Playbooks](06-playbooks.md) | What `bootstrap`, `site` and `apps` run, and their switches. |
 | [Onboarding a SaaS application](07-saas-onboarding.md) | Registering the clients of custom-domain, mailler and billing. |
+| [Scopes and roles of the platform services](09-auth-catalog.md) | What each application declares for `auth` and how the catalog file is made. |
 | [Roles](roles/index.md) | One page per role, with every variable. |
 
 ## Requirements

@@ -12,3 +12,8 @@ website_domain: example.com
 certbot_email: ops@example.com
 certbot_agree_tos: true
 website_certbot_email: "{{ certbot_email }}"
+
+# Platform tenant of auth, the tenant of the main domain: created on an empty
+# database, an existing one is adopted as it is. Placeholders: set your own.
+website_auth_platform_tenant_slug: main
+website_auth_platform_tenant_display_name: Example

@@ -45,6 +45,17 @@ website_apps_catalog:
     optional_secret_names: ["OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "analytics:read", description: "Read analytics data including sessions, events, and campaigns"}
+        - {name: "analytics:write", description: "Create and manage analytics campaigns and tracking pixels", category: admin}
+        - {name: "analytics:delete", description: "Delete and reset all analytics data (dangerous - super_admin only)", category: admin}
+      roles:
+        - name: analytics_user
+          description: "User with access to Analytics API endpoints and dashboard"
+          scopes: ["analytics:read"]
+        - name: super_admin
+          scopes: ["analytics:delete"]
 
   apt_server:
     extra_groups: ["mailler"]
@@ -88,6 +99,13 @@ website_apps_catalog:
     secret_names: ["OAUTH2_CLIENT_SECRET", "SESSION_SECRET", "MAILLER_CLIENT_SECRET", "WEBHOOK_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "apt:read", description: "Authenticate as an apt-server user; per-package ACL determines visible packages"}
+        - {name: "apt:write", description: "Upload and delete packages across all components"}
+        - {name: "apt:admin", description: "Full admin: bypass ownership and ACL checks, force reindex"}
+        - {name: "apt:write:main", description: "Upload and delete packages in the main component only", action: "write:main"}
+        - {name: "apt:write:private", description: "Upload and delete packages in the private component only", action: "write:private"}
 
   asterisk:
     name: asterisk-bot
@@ -324,6 +342,27 @@ website_apps_catalog:
     secret_names: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "billing:*", description: "Full access to all Billing API operations"}
+        - {name: "billing:read", description: "Read billing information (subscriptions, customers, invoices)"}
+        - {name: "billing:write", description: "Create and update subscriptions, products, and prices"}
+        - {name: "billing:admin", description: "Full administrative access including SaaS app management"}
+        - {name: "billing:checkout:write", description: "Create Stripe checkout sessions for customers"}
+        - {name: "billing:usage:write", description: "Report usage events for metered billing"}
+        - {name: "billing:platform:read", description: "Read platform resources (SaaS apps, customers, products, prices, subscriptions)"}
+        - {name: "billing:platform:write", description: "Create and update platform resources (SaaS apps, customers, products, prices, subscriptions)"}
+        - {name: "billing:webhooks", description: "Receive and process Stripe webhook events"}
+      roles:
+        - name: billing_user
+          description: "User with read-only access to billing information"
+          scopes: ["billing:platform:read", "billing:read"]
+        - name: billing_manager
+          description: "Manager with access to create and manage subscriptions"
+          scopes: ["billing:checkout:write", "billing:platform:read", "billing:platform:write", "billing:read", "billing:usage:write", "billing:write"]
+        - name: billing_admin
+          description: "Administrator with full access to the Billing platform"
+          scopes: ["billing:*"]
 
   billing_beat:
     app: billing
@@ -386,6 +425,22 @@ website_apps_catalog:
     secret_names: ["OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "custom-domain:read", description: "Read custom domain configurations and status"}
+        - {name: "custom-domain:write", description: "Create, update, and manage custom domains"}
+        - {name: "custom-domain:admin", description: "Full administrative access (delete, force operations)"}
+        - {name: "custom-domain:lookup", description: "DNS verification and domain lookup operations"}
+      roles:
+        - name: custom_domain_user
+          description: "User with read and lookup access to Custom Domain Service"
+          scopes: ["custom-domain:lookup", "custom-domain:read"]
+        - name: custom_domain_manager
+          description: "Manager with read, write, and lookup access to Custom Domain Service"
+          scopes: ["custom-domain:lookup", "custom-domain:read", "custom-domain:write"]
+        - name: custom_domain_admin
+          description: "Administrator with full access to Custom Domain Service"
+          scopes: ["custom-domain:admin", "custom-domain:lookup", "custom-domain:read", "custom-domain:write"]
 
   custom_domain_beat:
     app: custom_domain
@@ -520,6 +575,56 @@ website_apps_catalog:
     secret_names: ["SECRET_KEY", "OAUTH2_CLIENT_SECRET", "OPENAI_API_KEY"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "internal:*", description: "All internal admin operations"}
+        - {name: "namespaces:*", description: "All namespace operations"}
+        - {name: "namespaces:read", description: "View knowledge namespaces"}
+        - {name: "namespaces:write", description: "Create and update knowledge namespaces"}
+        - {name: "namespaces:delete", description: "Delete knowledge namespaces"}
+        - {name: "prompts:*", description: "All prompt operations"}
+        - {name: "prompts:read", description: "View system prompts"}
+        - {name: "prompts:write", description: "Create and update system prompts"}
+        - {name: "prompts:delete", description: "Delete system prompts"}
+        - {name: "knowledge:*", description: "All knowledge operations"}
+        - {name: "knowledge:read", description: "View knowledge base entries"}
+        - {name: "knowledge:write", description: "Create and update knowledge base entries"}
+        - {name: "knowledge:delete", description: "Delete knowledge base entries"}
+        - {name: "conversations:*", description: "All conversation operations"}
+        - {name: "conversations:read", description: "View chat conversations and dashboard"}
+        - {name: "conversations:delete", description: "Delete chat conversations"}
+        - {name: "email_templates:read", description: "View email templates and preview compiled HTML", category: admin}
+        - {name: "email_templates:write", description: "Create and update email templates with MJML editor", category: admin}
+        - {name: "email_templates:delete", description: "Delete email templates", category: admin}
+        - {name: "contacts:read", description: "View contacts, contact groups, and export CSV", category: admin}
+        - {name: "contacts:write", description: "Create and update contacts, import CSV, manage group membership", category: admin}
+        - {name: "contacts:delete", description: "Delete contacts and contact groups", category: admin}
+        - {name: "email_campaigns:read", description: "View email campaigns, statistics and send history", category: admin}
+        - {name: "email_campaigns:write", description: "Create and update email campaigns", category: admin}
+        - {name: "email_campaigns:send", description: "Send, pause and resume email campaigns", category: admin}
+        - {name: "email_campaigns:delete", description: "Delete email campaigns", category: admin}
+        - {name: "analytics:write", description: "Create and manage analytics campaigns and tracking pixels", category: admin}
+      roles:
+        - name: internal_admin
+          description: "Full access to all internal admin resources"
+          scopes: ["analytics:write", "contacts:delete", "contacts:read", "contacts:write", "email_campaigns:delete", "email_campaigns:read", "email_campaigns:send", "email_campaigns:write", "email_templates:delete", "email_templates:read", "email_templates:write", "internal:*"]
+        - name: internal_editor
+          description: "Read and write access to internal resources (no delete)"
+          scopes: ["conversations:read", "knowledge:read", "knowledge:write", "namespaces:read", "namespaces:write", "prompts:read", "prompts:write"]
+        - name: internal_viewer
+          description: "Read-only access to all internal resources"
+          scopes: ["conversations:read", "knowledge:read", "namespaces:read", "prompts:read"]
+        - name: knowledge_manager
+          description: "Full access to knowledge base and namespaces"
+          scopes: ["knowledge:*", "namespaces:*"]
+        - name: prompt_manager
+          description: "Full access to system prompts"
+          scopes: ["prompts:*"]
+        - name: conversation_viewer
+          description: "Read-only access to chat conversations"
+          scopes: ["conversations:read"]
+      scope_groups:
+        "internal:*": [namespaces, prompts, knowledge, conversations]
 
   internal_worker:
     app: internal
@@ -599,6 +704,27 @@ website_apps_catalog:
     optional_secret_names: ["BILLING_CLIENT_SECRET", "CUSTOM_DOMAIN_CLIENT_SECRET", "GITHUB_WEBHOOK_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "knowledge:read", description: "View knowledge base entries"}
+        - {name: "knowledge:write", description: "Create and update knowledge base entries"}
+        - {name: "knowledge:search", description: "Perform semantic searches across collections and documents"}
+        - {name: "collections:read", description: "Read collections"}
+        - {name: "collections:write", description: "Create, update, and delete collections"}
+        - {name: "collections:search", description: "Perform semantic searches across collections and documents"}
+        - {name: "documents:read", description: "Read documents"}
+        - {name: "documents:write", description: "Create, update, and delete documents"}
+      roles:
+        - name: knowledge_reader
+          description: "Read-only access to Knowledge API (view collections, documents, search)"
+          scopes: ["collections:read", "collections:search", "documents:read", "knowledge:read", "knowledge:search"]
+        - name: knowledge_user
+          description: "Full access to Knowledge API (create, read, update, delete)"
+          scopes: ["collections:read", "collections:search", "collections:write", "documents:read", "documents:write", "knowledge:read", "knowledge:search", "knowledge:write"]
+      clients:
+        - client_id: "{{ (website_oauth2_clients.get('knowledge') or {}).get('client_id', '') }}"
+          allowed_scopes: ["billing:checkout:write"]
+          allowed_grant_types: [client_credentials]
 
   knowledge_beat:
     app: knowledge
@@ -671,6 +797,20 @@ website_apps_catalog:
     optional_secret_names: ["SENDGRID_API_KEY", "SES_ACCESS_KEY", "SES_SECRET_KEY", "PROTONMAIL_PASSWORD"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "mailler:*", description: "Full access to all Mailler API operations"}
+        - {name: "mailler:send", description: "Send and schedule emails via the Mailler API"}
+        - {name: "mailler:read", description: "Read email details and list emails"}
+        - {name: "mailler:stats", description: "View email sending statistics"}
+        - {name: "mailler:webhooks", description: "Receive and process email provider webhook events (Brevo, SES, SendGrid)"}
+      roles:
+        - name: mailler_user
+          description: "User with access to send emails and read email status via Mailler API"
+          scopes: ["mailler:read", "mailler:send"]
+        - name: mailler_admin
+          description: "Administrator with full access to Mailler API"
+          scopes: ["mailler:*"]
 
   mailler_beat:
     app: mailler
@@ -734,6 +874,15 @@ website_apps_catalog:
     secret_names: ["OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "reachy:reports:read", description: "Read Reachy robot reports and daily summaries"}
+        - {name: "reachy:notifications:read", description: "Read Reachy notifications"}
+        - {name: "reachy:status:read", description: "Read Reachy robot status information"}
+      roles:
+        - name: reachy_user
+          description: "User with access to Reachy Mini API endpoints"
+          scopes: ["reachy:notifications:read", "reachy:reports:read", "reachy:status:read"]
 
   team:
     extra_groups: ["mailler", "analytics", "auth"]
@@ -764,6 +913,20 @@ website_apps_catalog:
     optional_secret_names: ["ANTHROPIC_API_KEY", "OAUTH2_CLIENT_SECRET", "GITHUB_TOKEN"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "team:*", description: "Full access to all Team API operations"}
+        - {name: "team:read", description: "Read messages and conversation state during runtime"}
+        - {name: "team:write", description: "Post messages and report usage events"}
+        - {name: "team:platform:read", description: "Read teams, agents, workflows, conversations, and memory"}
+        - {name: "team:platform:write", description: "Create, update, and delete teams, agents, workflows, and conversations"}
+      roles:
+        - name: team_user
+          description: "User with runtime access to Team API (read and write messages)"
+          scopes: ["team:read", "team:write"]
+        - name: team_admin
+          description: "Administrator with full access to Team API"
+          scopes: ["team:*"]
 
   team_beat:
     app: team
@@ -827,6 +990,28 @@ website_apps_catalog:
     secret_names: ["STEPCA_PROVISIONER_PASSWORD", "OAUTH2_CLIENT_SECRET"]
     oauth2:
       enabled: true
+    auth_catalog:
+      scopes:
+        - {name: "vpn:connect", description: "Basic VPN connection - required for all VPN users", category: vpn}
+        - {name: "vpn:admin", description: "VPN administration - view sessions, revoke certificates, manage users", category: vpn}
+        - {name: "vpn:internal", description: "Access to internal services network (10.8.0.0/24, 10.0.0.0/8)", category: vpn}
+        - {name: "vpn:infrastructure", description: "Access to infrastructure network (192.168.0.0/16)", category: vpn}
+        - {name: "vpn:development", description: "Access to development environment", category: vpn}
+        - {name: "vpn:production", description: "Access to production environment", category: vpn}
+        - {name: "vpn:server", description: "OpenVPN server hook scripts - validate certificates, record connections", category: vpn}
+      roles:
+        - name: vpn_user
+          description: "Basic VPN user with access to internal services"
+          scopes: ["vpn:connect", "vpn:internal"]
+        - name: vpn_admin
+          description: "VPN administrator with full access and management capabilities"
+          scopes: ["vpn:admin", "vpn:connect", "vpn:infrastructure", "vpn:internal"]
+        - name: vpn_developer
+          description: "Developer with VPN access to development environment"
+          scopes: ["vpn:connect", "vpn:development", "vpn:internal"]
+        - name: vpn_operator
+          description: "Operator with VPN access to production environment"
+          scopes: ["vpn:connect", "vpn:internal", "vpn:production"]
 
   vpn_portal_openvpn:
     app: vpn_portal
@@ -879,3 +1064,11 @@ website_apps_catalog:
     # the Stripe signature and ignores the token, so a gateway that only forwards
     # Stripe events needs neither.
     optional_secret_names: ["OAUTH2_CLIENT_SECRET"]
+    auth_catalog:
+      scopes:
+        - {name: "mailler:webhooks", description: "Receive and process email provider webhook events (Brevo, SES, SendGrid)"}
+        - {name: "billing:webhooks", description: "Receive and process Stripe webhook events"}
+      roles:
+        - name: webhooks_gateway
+          description: "Machine-to-machine role for the webhooks proxy service"
+          scopes: ["billing:webhooks", "mailler:webhooks"]

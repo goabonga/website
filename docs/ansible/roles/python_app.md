@@ -341,6 +341,14 @@ applications are not variables: each application declares its own (see
 | Variable | Default | Description |
 | --- | --- | --- |
 | `website_auth_catalog_file` | `{{ website_base_dir }}/auth/catalog.json` | Path of the catalog file rendered for auth (CATALOG_FILE). Its directory must exist and belong to the account of auth. |
+| `website_auth_platform_tenant_slug` | `platform` | Slug of the platform tenant, the tenant of the main domain, used when `auth bootstrap` has to create it (PLATFORM_TENANT_SLUG). Lower case letters, digits and hyphens. |
+| `website_auth_platform_tenant_display_name` | `Platform` | Display name of the platform tenant, used when it has to be created (PLATFORM_TENANT_DISPLAY_NAME). |
+| `website_auth_platform_tenant_id` | `""` | UUID of the platform tenant to create (PLATFORM_TENANT_ID). Empty generates one. |
+| `website_auth_platform_tenant_branding` | `{}` | Branding of the platform tenant, set once when it has none (PLATFORM_TENANT_BRANDING): fields of `tenant_branding` such as `primary_color`, `logo_url` or `favicon_url`. |
+| `website_auth_swagger_client_id` | `swagger-ui` | OAuth2 client of the Swagger UI of `/docs` (SWAGGER_CLIENT_ID). |
+| `website_auth_swagger_scopes` | `openid profile email` | Space-separated scopes the Swagger UI client may request (SWAGGER_SCOPES). Add `*` to let `/docs` call the admin API with the scopes of the signed-in administrator; the original data of `auth` had it. |
+| `website_auth_swagger_redirect_uris` | `["/docs/oauth2-redirect"]` | Redirect URIs of the Swagger UI client (SWAGGER_REDIRECT_URIS): the path of the redirect page of `auth`, or absolute URLs. |
+| `website_auth_app_title` | `""` | Title of the OpenAPI document and of the `/docs` page (APP_TITLE). Empty keeps the default of the application. |
 | `website_auth_catalog` | `{}` | Scopes, roles and client allowances added to what the enabled applications declare, or that replace the fields of a scope they declare. Same shape as the `auth_catalog` key of a component; every key is optional. |
 
 ### Host names
@@ -554,8 +562,10 @@ When `auth` is deployed the role renders its catalog of scopes and roles: the
 `auth_catalog` of the components of every enabled application and
 `website_auth_catalog`, merged and sorted, are written to
 `website_auth_catalog_file` (`0640`, owned by the account of `auth`). The
-environment file of `auth` gets `CATALOG_FILE` and, when an application defines
-group scopes, `SCOPE_GROUPS`. The file is a template, so a run in check mode
+environment file of `auth` gets `CATALOG_FILE`, `SCOPE_GROUPS` when an
+application defines group scopes, and the `PLATFORM_TENANT_*`, `SWAGGER_*` and
+`APP_TITLE` settings of the `website_auth_*` variables (the optional ones only
+when they are set). The file is a template, so a run in check mode
 shows the difference.
 
 ### Billing data

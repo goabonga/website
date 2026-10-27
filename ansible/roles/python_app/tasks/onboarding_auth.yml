@@ -1,0 +1,16 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Data of auth that lives in its database and that the other applications need: the
+# scopes and roles they check. Each application declares its own in the auth_catalog
+# key of its catalog entry; the declarations of the enabled applications are merged
+# into one JSON file that auth reads (CATALOG_FILE).
+
+- name: Render the catalog of scopes and roles of {{ python_app__app }}
+  ansible.builtin.template:
+    src: auth_catalog.json.j2
+    dest: "{{ website_auth_catalog_file }}"
+    owner: "{{ python_app__user }}"
+    group: "{{ python_app__group }}"
+    mode: "0640"

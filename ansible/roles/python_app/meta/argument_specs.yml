@@ -144,6 +144,11 @@ argument_specs:
             missing_ok: true
             not_if_empty: true
           ses_webhook: {}
+          auth_catalog:
+            scopes: []
+            roles: []
+            clients: []
+            scope_groups: {}
       website_domain:
         type: str
         description:
@@ -942,3 +947,17 @@ argument_specs:
         - Scope that lets a caller cross the client boundary and register clients in mailler
           (ADMIN_SCOPE).
         default: mailler:admin
+      website_auth_catalog_file:
+        type: str
+        description:
+        - Path of the catalog file rendered for auth from the auth_catalog declarations of the
+          enabled applications (CATALOG_FILE). Its directory must exist and belong to the account
+          of auth.
+      website_auth_catalog:
+        type: dict
+        description:
+        - 'Scopes, roles and client allowances added to what the enabled applications declare, or
+          that replace the fields of a scope they declare. Same shape as the auth_catalog key of a
+          component: scopes, roles, clients (added to existing clients; an entry with an empty
+          client_id is ignored) and scope_groups (SCOPE_GROUPS of auth). Every key is optional.'
+        default: {}

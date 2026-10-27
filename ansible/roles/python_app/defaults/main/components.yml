@@ -217,3 +217,22 @@ python_app_component_defaults:
   # {region, identity, topic_prefix, endpoint, track_deliveries,
   #  configuration_set, event_types}. The section is ignored when empty.
   ses_webhook: {}
+
+  # What the application adds to the catalog of auth, the authentication server:
+  # the scopes it checks, the roles that hold them, the allowances to add to its
+  # OAuth2 clients and the group scopes it defines. Declare it on the primary
+  # component. The auth role merges the declarations of every enabled application
+  # into one catalog file and applies it (auth catalog sync).
+  #   scopes   [{name, description, category, resource, action, is_system, is_active}],
+  #            name required; category is api by default
+  #   roles    [{name, description, scopes: [names], is_system}], name required; a role
+  #            may add scopes to a role of another application (or to a built-in one)
+  #   clients  [{client_id, allowed_scopes, allowed_grant_types}]: added to an existing
+  #            client, skipped (never created) when it does not exist or client_id is empty
+  #   scope_groups  {"<group scope>": [resources]}: a client allowed the group scope may
+  #            request any scope of these resources (SCOPE_GROUPS of auth)
+  auth_catalog:
+    scopes: []
+    roles: []
+    clients: []
+    scope_groups: {}

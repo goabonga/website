@@ -154,3 +154,45 @@ python_app__mailler_protonmail: >-
 python_app__mailler_ses: >-
   {{ ((website_secrets.get('mailler', {}).get('SES_ACCESS_KEY', '') | string)
       ~ (website_secrets.get('mailler_worker', {}).get('SES_ACCESS_KEY', '') | string)) | length > 0 }}
+
+# Catalog of auth: what the enabled applications declare (auth_catalog of their
+# components, in the order of the catalog), then website_auth_catalog. A scope
+# is declared once, a later declaration of the same name overrides its fields; the
+# scopes of a role, and the allowances of a client, named by several sources are
+# added together. An allowance for a client whose id is empty is dropped (the id
+# comes from the inventory).
+python_app__auth_sources: >-
+  {{ (python_app__all | selectattr('enabled') | selectattr('app', 'in', website_apps_enabled)
+      | map(attribute='auth_catalog') | list) + [website_auth_catalog] }}
+python_app__auth_catalog: >-
+  {%- set ns = namespace(scopes={}, roles={}, clients={}) -%}
+  {%- for source in python_app__auth_sources -%}
+  {%- for scope in source.scopes | default([]) -%}
+  {%- set ns.scopes = ns.scopes | combine({scope.name: ns.scopes.get(scope.name, {}) | combine(scope)}) -%}
+  {%- endfor -%}
+  {%- for role in source.roles | default([]) -%}
+  {%- set known = ns.roles.get(role.name, {}) -%}
+  {%- set ns.roles = ns.roles | combine({role.name: known | combine(role) | combine({'scopes': ((known.scopes | default([])) + (role.scopes | default([]))) | unique | sort | list})}) -%}
+  {%- endfor -%}
+  {%- for client in source.clients | default([]) if client.client_id | default('') | string | length > 0 -%}
+  {%- set known = ns.clients.get(client.client_id, {}) -%}
+  {%- set ns.clients = ns.clients | combine({client.client_id: known | combine(client) | combine({
+        'allowed_scopes': ((known.allowed_scopes | default([])) + (client.allowed_scopes | default([]))) | unique | sort | list,
+        'allowed_grant_types': ((known.allowed_grant_types | default([])) + (client.allowed_grant_types | default([]))) | unique | sort | list})}) -%}
+  {%- endfor -%}
+  {%- endfor -%}
+  {{ {'version': 1,
+      'scopes': ns.scopes.values() | sort(attribute='name') | list,
+      'roles': ns.roles.values() | sort(attribute='name') | list,
+      'clients': ns.clients.values() | sort(attribute='client_id') | list} }}
+
+# Group scopes (SCOPE_GROUPS of auth): the resources of a group declared by several
+# sources are added together.
+python_app__auth_scope_groups: >-
+  {%- set ns = namespace(groups={}) -%}
+  {%- for source in python_app__auth_sources -%}
+  {%- for group, resources in (source.scope_groups | default({})).items() -%}
+  {%- set ns.groups = ns.groups | combine({group: ((ns.groups.get(group, [])) + resources) | unique | sort | list}) -%}
+  {%- endfor -%}
+  {%- endfor -%}
+  {{ ns.groups }}

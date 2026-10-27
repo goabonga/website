@@ -110,31 +110,76 @@ jobs:
               || { echo "::error::argument spec missing or invalid for role ${role}"; exit 1; }
           done
 
-  apps:
-    name: apps
+  # Selects what the per-application and per-library jobs have to run. An
+  # application is tested when multicz reports its component as changed since
+  # the base of the pull request (or the previous tip of main); a change to
+  # anything shared (lock file, root configuration, libraries, this workflow)
+  # selects everything. The release commits of multicz select nothing.
+  detect:
+    name: detect
     runs-on: ubuntu-24.04
     outputs:
-      matrix: ${{ steps.list.outputs.matrix }}
-      libs: ${{ steps.list.outputs.libs }}
+      matrix: ${{ steps.select.outputs.matrix }}
+      has_apps: ${{ steps.select.outputs.has_apps }}
+      libs: ${{ steps.select.outputs.libs }}
+      has_libs: ${{ steps.select.outputs.has_libs }}
     steps:
       - uses: actions/checkout@v6
-      - name: List the applications and the libraries
-        id: list
+        with:
+          fetch-depth: 0
+      # NOTE: no python-version pin here - multicz needs Python >=3.12.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: ${{ github.job }}
+      - name: Select the applications and the libraries
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE_REF: ${{ github.base_ref }}
+          ALL_PATTERN: ^(uv\.lock|pyproject\.toml|libs/|\.github/workflows/ci\.yml|\.github/actions/)
         run: |
-          matrix=$(find apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -sc '{app: .}')
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          echo "${matrix}"
-          libs=$(find libs -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort | jq -R . | jq -sc '{lib: .}')
-          echo "libs=${libs}" >> "$GITHUB_OUTPUT"
-          echo "${libs}"
+          set -euo pipefail
+          all_apps=$(find apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          all_libs=$(find libs -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort || true)
+
+          if [ "$EVENT" = "pull_request" ]; then
+            since="origin/${BASE_REF}"
+          elif git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            since="$BEFORE"
+          else
+            since=""
+          fi
+
+          if [ "$EVENT" = "push" ] && [[ "$(git log -1 --format=%s)" == "chore(release):"* ]]; then
+            apps=""; libs=""
+          elif [ -z "$since" ] || git diff --name-only "$since" HEAD | grep -Eq "$ALL_PATTERN"; then
+            apps="$all_apps"; libs="$all_libs"
+          else
+            changed=$(uv tool run multicz changed --since "$since" --output json | jq -r '.changed[]')
+            apps=$(comm -12 <(echo "$all_apps") <(echo "$changed" | sort))
+            libs=$(git diff --name-only "$since" HEAD | sed -n 's|^libs/\([^/]*\)/.*|\1|p' | sort -u)
+          fi
+
+          to_json() { jq -R -s -c --arg key "$1" '{($key): (split("\n") | map(select(. != "")))}'; }
+          matrix=$(printf '%s\n' "$apps" | to_json app)
+          libs_json=$(printf '%s\n' "$libs" | to_json lib)
+          {
+            echo "matrix=${matrix}"
+            echo "libs=${libs_json}"
+            echo "has_apps=$([ -n "$apps" ] && echo true || echo false)"
+            echo "has_libs=$([ -n "$libs" ] && echo true || echo false)"
+          } | tee -a "$GITHUB_OUTPUT"
 
   test:
     name: test (${{ matrix.app }})
-    needs: [apps]
+    needs: [detect]
+    if: needs.detect.outputs.has_apps == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.apps.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -203,11 +248,12 @@ jobs:
 
   libs:
     name: libs (${{ matrix.lib }})
-    needs: [apps]
+    needs: [detect]
+    if: needs.detect.outputs.has_libs == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.apps.outputs.libs) }}
+      matrix: ${{ fromJSON(needs.detect.outputs.libs) }}
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -295,7 +341,11 @@ jobs:
   release:
     name: release
     needs: [lint, license-headers, multicz, docs, ansible, test, libs, scripts, bandit, pip-audit, osv-scanner]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # test and libs are skipped when nothing they cover changed: a skipped gate
+    # does not block the release, a failed one does.
+    if: >-
+      !cancelled() && !contains(needs.*.result, 'failure')
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

@@ -40,6 +40,45 @@ website_apps_overrides:
 
 Every key is optional. An application that declares nothing adds nothing.
 
+## What the catalog declares
+
+The catalog of the collection (`defaults/main/catalog.yml`) carries the scopes
+and roles that the original `auth` migrations used to insert, one revision per
+service. They moved here unchanged: names, descriptions, categories and the
+scopes of each role.
+
+| Application | Scopes | Roles |
+| --- | --- | --- |
+| `reachy_mini_api` | `reachy:reports:read`, `reachy:notifications:read`, `reachy:status:read` | `reachy_user` |
+| `internal` | `internal:*`, `namespaces:*`, `prompts:*`, `knowledge:*`, `conversations:*` (each with `read`, `write` and `delete` as applicable), `email_templates:*`, `contacts:*` and `email_campaigns:*` (`read`, `write`, `delete`, `send`), `analytics:write` | `internal_admin`, `internal_editor`, `internal_viewer`, `knowledge_manager`, `prompt_manager`, `conversation_viewer`; the group scope `internal:*` stands for `namespaces`, `prompts`, `knowledge` and `conversations` |
+| `analytics` | `analytics:read`, `analytics:write`, `analytics:delete` | `analytics_user`, and `analytics:delete` for the built-in `super_admin` |
+| `vpn_portal` | `vpn:connect`, `vpn:admin`, `vpn:internal`, `vpn:infrastructure`, `vpn:development`, `vpn:production`, `vpn:server` | `vpn_user`, `vpn_admin`, `vpn_developer`, `vpn_operator` |
+| `knowledge` | `knowledge:read`, `knowledge:write`, `knowledge:search`, `collections:read`, `collections:write`, `collections:search`, `documents:read`, `documents:write` | `knowledge_reader`, `knowledge_user`; `billing:checkout:write` and the `client_credentials` grant for the OAuth2 client `website_oauth2_clients.knowledge.client_id` |
+| `mailler` | `mailler:*`, `mailler:send`, `mailler:read`, `mailler:stats`, `mailler:webhooks` | `mailler_user`, `mailler_admin` |
+| `billing` | `billing:*`, `billing:read`, `billing:write`, `billing:admin`, `billing:checkout:write`, `billing:usage:write`, `billing:platform:read`, `billing:platform:write`, `billing:webhooks` | `billing_user`, `billing_manager`, `billing_admin` |
+| `webhooks` | `mailler:webhooks`, `billing:webhooks` | `webhooks_gateway` |
+| `team` | `team:*`, `team:read`, `team:write`, `team:platform:read`, `team:platform:write` | `team_user`, `team_admin` |
+| `custom_domain` | `custom-domain:read`, `custom-domain:write`, `custom-domain:admin`, `custom-domain:lookup` | `custom_domain_user`, `custom_domain_manager`, `custom_domain_admin` |
+| `apt_server` | `apt:read`, `apt:write`, `apt:admin`, `apt:write:main`, `apt:write:private` | - |
+
+`asterisk`, `backend`, `frontend`, `mta_sts` and `auth` itself
+declare nothing. The built-in scopes and roles of `auth` (users, clients,
+sessions, keys, roles, scopes, organisations and personal access tokens) are in
+its code, not here.
+
+A scope that a role of one application uses and another declares (for example
+`knowledge:read`, used by the roles of `internal` and `knowledge`, or
+`billing:webhooks`, used by `webhooks_gateway`) is declared by each of the two:
+identical declarations merge into one.
+
+The identifier of the OAuth2 client of `knowledge` is not in the catalog: it is
+read from `website_oauth2_clients`, and the allowance is skipped while it is
+empty or the client does not exist.
+
+Applying a catalog to the database that already holds these rows changes
+nothing: the rendered catalog and the original migrations give the same scopes
+(names, descriptions, categories, resources and actions), roles and role scopes.
+
 ## How the file is made
 
 When `auth` is deployed, the role merges, in the order of the catalog, the

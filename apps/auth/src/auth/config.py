@@ -154,6 +154,9 @@ class Settings(BaseSettings):
     webhook_response_body_max_bytes: int = 8192  # Truncate captured response body
     webhook_allow_private_networks: bool = False  # SSRF escape hatch (dev only)
 
+    # Catalog of the scopes, roles and client grants of the other services (`auth catalog sync`)
+    catalog_file: str = ""  # Path of the JSON catalog file (empty = pass --file to the command)
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

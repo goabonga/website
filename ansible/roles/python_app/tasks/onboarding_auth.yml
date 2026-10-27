@@ -14,3 +14,52 @@
     owner: "{{ python_app__user }}"
     group: "{{ python_app__group }}"
     mode: "0640"
+
+# `auth bootstrap` and `auth catalog sync` are idempotent and print a JSON report whose
+# `changed` key says whether they changed anything. In check mode they still run, with
+# --dry-run (a transaction that is rolled back), so that the plan shows what a run would
+# create; a failure is then tolerated, since the migrations may not have been applied.
+
+- name: Create the built-in roles, the platform tenant and the Swagger UI client of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      exec "$VENV/bin/auth" bootstrap --json $DRY_RUN
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    DRY_RUN: "{{ '--dry-run' if ansible_check_mode else '' }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  register: python_app__bootstrap
+  check_mode: false
+  changed_when: python_app__bootstrap.rc == 0 and (python_app__bootstrap.stdout | from_json).changed
+  failed_when: python_app__bootstrap.rc != 0 and not ansible_check_mode
+
+- name: Apply the catalog of scopes and roles of {{ python_app__app }}
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      exec "$VENV/bin/auth" catalog sync --json $DRY_RUN
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    DRY_RUN: "{{ '--dry-run' if ansible_check_mode else '' }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  register: python_app__catalog_sync
+  check_mode: false
+  changed_when: python_app__catalog_sync.rc == 0 and (python_app__catalog_sync.stdout | from_json).changed
+  failed_when: python_app__catalog_sync.rc != 0 and not ansible_check_mode

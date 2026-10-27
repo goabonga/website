@@ -21,6 +21,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Background maintenance and operations scripts: Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
 - Administration console: Server-rendered admin pages.
 - Account and organisation settings pages: Self-service settings, personal access tokens and organisation settings.
+- Catalog of scopes and roles: The `auth catalog sync` command and the JSON catalog of the scopes, roles and client grants of a deployment.
 
 ## Routes and scopes
 
@@ -613,6 +614,8 @@ Default organisation roles (`DEFAULT_TENANT_ROLES`):
 | `member` | Basic access to organization resources | `members:read` |
 
 Built-in protocol scopes (`BUILTIN_SCOPES`), always listed next to the stored scopes by the scope selectors: `openid` - OpenID Connect authentication; `profile` - User profile information (name, picture, etc.); `email` - User email address and verification status; `offline_access` - Refresh tokens for offline access; `introspect` - Introspect tokens (RFC 7662).
+
+The scopes and roles of the services that rely on auth are deployment data. `auth catalog sync [--file PATH] [--dry-run] [--json]` applies a JSON catalog (the `--file` option or the `CATALOG_FILE` setting) idempotently: it creates the missing scopes and roles, updates descriptions, adds the listed scopes to existing roles and the listed allowances to existing OAuth2 clients, and deletes nothing.
 
 ## Development
 

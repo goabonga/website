@@ -75,7 +75,10 @@ python apps/auth/scripts/promote_user.py --email <address> --role super_admin
 ```
 
 The default roles and scopes are created by the seed actions of the
-[administration console](16-admin-ui.md) or `POST /api/v1/roles/seed`.
+[administration console](16-admin-ui.md) or `POST /api/v1/roles/seed`. The
+scopes and roles of the other services are declared in a catalog file and
+applied, after the migrations of every release, with
+[`auth catalog sync`](19-catalog.md), which is idempotent.
 
 ## Settings in production
 
@@ -94,6 +97,7 @@ pages:
 | [Multi-factor authentication](08-mfa.md) | `MFA_ISSUER_NAME`, `MFA_EMAIL_CODE_EXPIRY_MINUTES` |
 | [OAuth2 server](10-oauth2-server.md) | `AUTHORIZATION_CODE_EXPIRY_MINUTES`, `ACCESS_TOKEN_EXPIRY_MINUTES`, `REFRESH_TOKEN_EXPIRY_DAYS`, `ID_TOKEN_EXPIRY_MINUTES`, `DEVICE_CODE_EXPIRY_MINUTES`, `DEVICE_CODE_INTERVAL`, `PAR_REQUEST_EXPIRY_SECONDS` |
 | [Maintenance](15-maintenance.md) | `CUSTOM_DOMAIN_*`, `UNVERIFIED_USER_EXPIRY_DAYS`, `ORPHAN_AVATAR_CLEANUP_ENABLED` |
+| [Catalog](19-catalog.md) | `CATALOG_FILE` |
 
 Set `SESSION_COOKIE_SECURE` to `true` and `ISSUER` to the public HTTPS URL of
 the service: the issuer is written into every token and the discovery document.

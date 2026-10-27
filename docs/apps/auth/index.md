@@ -31,6 +31,7 @@ The application is documented feature by feature, in the order in which each fea
 16. [Administration console](16-admin-ui.md): Server-rendered admin pages.
 17. [Account and organisation settings pages](17-settings-ui.md): Self-service settings, personal access tokens and organisation settings.
 18. [Deployment](18-deployment.md): Processes, data stores, settings and secrets of a production deployment.
+19. [Catalog of scopes and roles](19-catalog.md): The `auth catalog sync` command and the JSON catalog of the scopes, roles and client grants of a deployment.
 
 ## Testing
 

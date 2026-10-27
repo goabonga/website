@@ -103,9 +103,30 @@ A role may only list scopes that exist: declare a scope in the application that
 owns the role, even when another application declares it too (identical
 declarations are merged).
 
+## Platform tenant and Swagger UI client
+
+Three more settings of `auth` are deployment choices and are variables, with the
+neutral defaults of the application (no domain, no brand):
+
+| Variable | Setting of `auth` | Default |
+| --- | --- | --- |
+| `website_auth_platform_tenant_slug`, `_display_name`, `_id`, `_branding` | `PLATFORM_TENANT_SLUG`, `PLATFORM_TENANT_DISPLAY_NAME`, `PLATFORM_TENANT_ID`, `PLATFORM_TENANT_BRANDING` | `platform`, `Platform`, generated, none |
+| `website_auth_swagger_client_id`, `_scopes`, `_redirect_uris` | `SWAGGER_CLIENT_ID`, `SWAGGER_SCOPES`, `SWAGGER_REDIRECT_URIS` | `swagger-ui`, `openid profile email`, `["/docs/oauth2-redirect"]` |
+| `website_auth_app_title` | `APP_TITLE` | the title of the application |
+
+The platform tenant is the tenant of the main domain. `auth bootstrap` creates it
+from these settings when the database has none; an existing one is adopted as it
+is, whatever its slug. The Swagger UI client is the one the Authorize button of
+`/docs` uses. **The original data allowed it the scope `*`**, which lets `/docs`
+call the admin API with the scopes of the signed-in administrator; the default
+no longer includes it, so a deployment that relies on it sets
+`website_auth_swagger_scopes: "openid profile email *"`.
+
 ## Checks
 
 The role stops before changing anything when an `auth_catalog` is malformed: the
 scopes, roles and clients must be lists, `scope_groups` a dictionary, every scope
 and role needs a `name`, the scopes of a role must be a list and every client
-needs a `client_id` key.
+needs a `client_id` key. The platform tenant slug must be a valid slug (lower
+case letters, digits and hyphens), its id empty or a UUID, and the Swagger UI
+client needs an id, scopes and at least one redirect URI.

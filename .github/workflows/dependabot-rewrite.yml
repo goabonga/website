@@ -24,7 +24,7 @@ on:  # zizmor: ignore[dangerous-triggers]
 
 permissions:
   contents: write # force-push the rewritten branch when AUTO_MERGE_PAT is unset
-  pull-requests: read
+  pull-requests: write # retitle the pull request after its commits
 
 jobs:
   rewrite:
@@ -127,6 +127,26 @@ jobs:
         run: |
           git push --force-with-lease origin "HEAD:${HEAD_REF}"
 
+      - name: Retitle the pull request after its commits
+        # The title Dependabot chose carries its own type and no scope, which
+        # the rewrite changed on the commits. The title goes through the REST
+        # API: `gh pr edit` needs a token scope the workflow token lacks.
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          TITLE=$(python3 "$GITHUB_WORKSPACE/trusted/scripts/rewrite_dependabot_commit.py" \
+            title "origin/${BASE_REF}..HEAD")
+          if [ "$TITLE" != "$PR_TITLE" ]; then
+            gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}" --method PATCH --field title="$TITLE"
+          fi
+
       - name: Write step summary
         if: steps.gate.outputs.skip != 'true' && success()
         working-directory: pr
@@ -139,5 +159,6 @@ jobs:
             echo "PR branch \`${HEAD_REF}\` rewritten:"
             echo ""
             echo "- Conventional-commits type and scope inferred from the declaring app and dev-group membership"
+            echo "- The pull request title follows the rewritten commits"
             echo "- Authored and GPG-signed as \`$(git config user.name) <$(git config user.email)>\`"
           } >> "$GITHUB_STEP_SUMMARY"

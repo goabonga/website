@@ -23,12 +23,18 @@ branch of this repository, and is skipped when:
    into `pr/`. The signing key is never imported next to code taken from the
    branch.
 2. Imports the key, and takes the git name, email and signing key from it.
-3. Replays the commits of the branch on the merge base with
+3. Splits a group that only touches `uv.lock`, before the key is imported
+   (see below).
+4. Replays the commits of the branch on the merge base with
    `git rebase --exec`, running `scripts/rewrite_dependabot_commit.py` from
    `trusted/` after each pick. The script reads the `pyproject.toml` files of
-   the branch as data.
-4. Force-pushes the branch with `--force-with-lease`, using `AUTO_MERGE_PAT`
+   the branch as data. A split group is committed instead, one commit per
+   dependency.
+5. Force-pushes the branch with `--force-with-lease`, using `AUTO_MERGE_PAT`
    (or the workflow token when it is not set, see below).
+6. Retitles the pull request after its commits: a single commit gives its
+   subject, a group keeps its title under the type and scope of its first
+   commit (`python3 scripts/rewrite_dependabot_commit.py title BASE..HEAD`).
 
 Each commit is re-authored with `--reset-author`, signed, and its
 `Co-authored-by` trailers are dropped.
@@ -51,10 +57,27 @@ A runtime dependency is one listed in `[project].dependencies` or
 with the application, so the bump must release it (`fix`). Dev groups do not
 ship (`chore`).
 
-The grouped update is kept as one commit. Splitting a grouped `uv.lock` update
-into one commit per dependency is not done: the workspace declares its
-dependencies in the `pyproject.toml` of each application, and the only group
-(`dev-tools`) is meant to be a single `chore(workspace)` change.
+## Grouped updates
+
+A group such as `dev-tools` bumps several dependencies in one commit that only
+touches `uv.lock`, which would give all of them one type and one scope.
+`scripts/split_dependabot_lock.py prepare` regenerates the lock one dependency
+at a time with `uv lock --upgrade-package`, and `commit` replays the stored
+states on the merge base, one commit per dependency, typed and scoped like a
+single bump of the table above. The dependencies are those declared by the root
+`pyproject.toml`, an application or a library. Runtime dependencies come first,
+so the title of the pull request, which follows the first commit, carries the
+type that triggers a release.
+
+The group stays a single commit, rewritten as `chore(workspace)`, when the head
+changes more than `uv.lock`, when fewer than two declared dependencies moved,
+when a package is locked in several versions, when `uv` fails, or when the
+lock regenerated one dependency at a time differs from the one Dependabot
+proposed (a transitive dependency moved too).
+
+`uv lock` runs in the checkout of the pull request before the signing key is
+imported, but after the checkout that holds `AUTO_MERGE_PAT` in its git
+configuration: it resolves the lock, and Dependabot only changes versions.
 
 ## Why the push uses the merge token
 

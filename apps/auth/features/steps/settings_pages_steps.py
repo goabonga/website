@@ -162,3 +162,9 @@ def step_lists_token(context, name):
     payload = context.response.json()
     items = payload["tokens"] if isinstance(payload, dict) else payload
     assert name in [item["name"] for item in items], payload
+
+
+@then("the removal of the custom domain configuration is queued")
+def step_removal_queued(context):
+    """The last task sent is the removal of the configuration: (domain, slug), no tenant id."""
+    assert len(context.domain_tasks.call_args.args) == 2, context.domain_tasks.call_args

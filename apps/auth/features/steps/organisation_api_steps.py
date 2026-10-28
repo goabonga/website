@@ -5,9 +5,10 @@
 
 import asyncio
 import json
+from unittest.mock import MagicMock, patch
 
 from api_support import _send, _user
-from auth.db.models.tenant import Tenant, TenantCustomRole, TenantMember
+from auth.db.models.tenant import Tenant, TenantCustomRole, TenantMember, WebhookDelivery
 from auth.services.pat import PersonalAccessTokenService
 from auth.services.tenant import tenant_service
 from behave import given, then, when
@@ -90,6 +91,21 @@ def step_is_member_given(context, email, slug, role):
     context.database.commit()
 
 
+@given('the organisation "{slug}" has the custom domain "{domain}"')
+def step_org_has_domain(context, slug, domain):
+    _tenant(context, slug).custom_domain = domain
+    context.database.commit()
+
+
+@given("webhook deliveries are not sent to a broker")
+def step_deliveries_not_queued(context):
+    from auth.tasks import webhooks as webhook_tasks
+
+    patcher = patch.object(webhook_tasks.deliver_webhook, "delay", MagicMock())
+    patcher.start()
+    context.add_cleanup(patcher.stop)
+
+
 @given("webhook targets may be private")
 def step_private_targets(context):
     patch_setting(context, "webhook_allow_private_networks", True)
@@ -120,6 +136,24 @@ def step_get_sub_path(context, slug, suffix):
 @when('I {method} the organisation "{slug}" sub-path "{suffix}" with the JSON body')
 def step_send_sub_path(context, method, slug, suffix):
     _send(context, method, _org_path(context, slug, suffix), body=json.loads(context.text))
+
+
+def _prefixed_path(context, slug, suffix, prefix):
+    return f"/api/v1/{prefix}/{_tenant(context, slug).id}{suffix}"
+
+
+@when('I {method:Method} the sub-path "{suffix}" of the organisation "{slug}" under "{prefix}"')
+def step_send_prefixed(context, method, suffix, slug, prefix):
+    _send(context, method, _prefixed_path(context, slug, suffix, prefix))
+
+
+@when(
+    'I {method:Method} the sub-path "{suffix}" of the organisation "{slug}" under "{prefix}" '
+    "with the JSON body"
+)
+def step_send_prefixed_body(context, method, suffix, slug, prefix):
+    body = json.loads(context.text)
+    _send(context, method, _prefixed_path(context, slug, suffix, prefix), body=body)
 
 
 # ---------------------------------------------------------------- assertions
@@ -185,3 +219,20 @@ def step_events_catalog(context, event):
 @then("the response contains a webhook secret")
 def step_webhook_secret(context):
     assert context.response.json()["secret"], context.response.text[:200]
+
+
+@then('a "{event}" webhook delivery is queued for the organisation "{slug}"')
+def step_delivery_queued(context, event, slug):
+    context.database.sync_session.expire_all()
+    deliveries = (
+        _session(context)
+        .scalars(
+            select(WebhookDelivery).where(
+                WebhookDelivery.tenant_id == _tenant(context, slug).id,
+                WebhookDelivery.event == event,
+            )
+        )
+        .all()
+    )
+    assert len(deliveries) == 1, deliveries
+    assert deliveries[0].request_body["data"]["custom_domain"], deliveries[0].request_body

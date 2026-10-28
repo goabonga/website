@@ -230,3 +230,42 @@ class TestClearDefaultFlag:
         await repo.clear_default_flag(db, uuid.uuid4(), except_role_id=uuid.uuid4())
 
         db.execute.assert_awaited_once()
+
+
+# ── sync helpers ─────────────────────────────────────────────────────────────
+
+
+class TestListTenantRefs:
+    @pytest.mark.asyncio
+    async def test_returns_id_and_slug_pairs(self, db, repo):
+        first, second = MagicMock(slug="acme"), MagicMock(slug="beta")
+        first.id, second.id = uuid.uuid4(), uuid.uuid4()
+        result = MagicMock()
+        result.all.return_value = [first, second]
+        db.execute = AsyncMock(return_value=result)
+
+        assert await repo.list_tenant_refs(db) == [(first.id, "acme"), (second.id, "beta")]
+        assert "ORDER BY tenants.slug" in str(db.execute.await_args.args[0])
+
+
+class TestListRolesNamed:
+    @pytest.mark.asyncio
+    async def test_returns_the_roles_of_every_tenant(self, db, repo):
+        roles = [MagicMock(), MagicMock()]
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = roles
+        db.execute = AsyncMock(return_value=result)
+
+        assert await repo.list_roles_named(db, ["owner", "admin"]) == roles
+        assert "tenant_roles.name IN" in str(db.execute.await_args.args[0])
+
+
+class TestListTenantIdsWithDefaultRole:
+    @pytest.mark.asyncio
+    async def test_returns_a_set_of_tenant_ids(self, db, repo):
+        tenant = uuid.uuid4()
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [tenant, tenant]
+        db.execute = AsyncMock(return_value=result)
+
+        assert await repo.list_tenant_ids_with_default_role(db) == {tenant}

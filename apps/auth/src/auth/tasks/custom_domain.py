@@ -5,7 +5,6 @@
 
 import logging
 import os
-import re
 import socket
 import subprocess
 from datetime import UTC, datetime
@@ -17,6 +16,7 @@ from sqlalchemy import select, update
 from auth.celery import celery_app
 from auth.config import settings
 from auth.db.models.tenant import CustomDomainStatus
+from auth.services.custom_domain import DOMAIN_PATTERN
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +120,7 @@ def _validate_domain(domain: str) -> bool:
     Returns:
         True if valid, False otherwise.
     """
-    # Basic domain validation regex
-    pattern = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,}$"
-    return bool(re.match(pattern, domain))
+    return bool(DOMAIN_PATTERN.match(domain))
 
 
 def _check_dns_cname(domain: str, expected_target: str) -> tuple[bool, str]:

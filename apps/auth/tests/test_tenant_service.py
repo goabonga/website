@@ -346,3 +346,13 @@ class TestScopedLookups:
         await service.get_member_in_tenant(db, uuid.uuid4(), uuid.uuid4(), eager_role=False)
 
         assert repo.find_member_in_tenant.await_args.kwargs["eager_role"] is False
+
+
+class TestGetByCustomDomain:
+    @pytest.mark.asyncio
+    async def test_delegates_to_the_repository(self, db, repo, service):
+        tenant = _tenant()
+        repo.find_by_custom_domain.return_value = tenant
+
+        assert await service.get_by_custom_domain(db, "auth.acme.example") is tenant
+        repo.find_by_custom_domain.assert_awaited_once_with(db, "auth.acme.example")

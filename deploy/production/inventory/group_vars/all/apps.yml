@@ -200,6 +200,48 @@ website_apps_overrides:
 # The customers of knowledge point their CNAME at its own host name.
 website_knowledge_custom_domain_cname_target: "{{ website_hostnames.knowledge }}"
 
+# knowledge is a client of the three shared services. Each one registers it
+# after its migrations (see "Onboarding a SaaS application"), and a registered
+# client is never modified by a later run.
+website_custom_domain_clients:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    name: Knowledge
+    upstream: /run/knowledge/knowledge.sock
+    cname: "{{ website_hostnames.knowledge }}"
+    webhook_url: "https://{{ website_hostnames.knowledge }}/webhooks/custom-domain"
+    webhook_secret: "{{ vault_knowledge_custom_domain_webhook_secret }}"
+
+website_mailler_clients:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    name: Knowledge
+    from_email: "contact@{{ website_domain }}"
+    from_name: Knowledge
+    allowed_providers: ["{{ website_mailler_provider }}"]
+    default_provider: "{{ website_mailler_provider }}"
+
+website_mailler_template_dirs:
+  - client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+    app: knowledge
+    module: knowledge.email_templates
+
+website_billing_saas_apps:
+  - slug: knowledge
+    name: Knowledge
+    checkout_urls: ["https://{{ website_hostnames.knowledge }}/"]
+    webhook_url: "https://{{ website_hostnames.knowledge }}/webhooks/billing"
+
+website_billing_client_bindings:
+  - saas: knowledge
+    client_id: "{{ website_oauth2_clients.knowledge.client_id }}"
+
+# The settings of knowledge itself. The identifier of its SaaS application is
+# known once billing has created it (`billing-admin saas list`): put it in the
+# vault and run again; knowledge does not use billing until then.
+website_knowledge_billing_app_slug: knowledge
+website_knowledge_billing_saas_id: "{{ vault_knowledge_billing_saas_id | default('') }}"
+website_knowledge_billing_checkout_success_url: "https://{{ website_hostnames.knowledge }}/checkout/success"
+website_knowledge_billing_checkout_cancel_url: "https://{{ website_hostnames.knowledge }}/checkout/cancel"
+
 # Secrets, stored as encrypted systemd credentials. Application-level entries
 # are shared by the components that declare the name; component-level entries
 # win. The values live in the encrypted file vault.yml of this directory

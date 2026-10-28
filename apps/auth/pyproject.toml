@@ -29,7 +29,7 @@ dependencies = [
     "pyotp>=2.9.0",
     "python-multipart>=0.0.7",
     "qrcode[pil]>=7.4.0",
-    "sqlalchemy[asyncio]>=2.0.0,<2.1",
+    "sqlalchemy[asyncio]>=2.1.6,<2.2",
     "uvicorn[standard]>=0.27.0",
 ]
 

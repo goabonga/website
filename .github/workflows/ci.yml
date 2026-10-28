@@ -22,6 +22,28 @@ permissions:
   contents: read
 
 jobs:
+  # The signed merge replays the commits through sign_commit.py, which refuses
+  # an invalid subject; fail here, before the label is added. Pull requests
+  # only: the commits of main were checked when they were merged. The deploy/
+  # branches are left out: their commit is the `chore(release)` bump that
+  # multicz writes, and their pull request is approved through the production
+  # environment.
+  commit-messages:
+    name: commit-messages
+    if: >-
+      github.event_name == 'pull_request'
+      && !startsWith(github.event.pull_request.head.ref, 'deploy/')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check the commit messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/check_commit_subject.py --range "$BASE_SHA..$HEAD_SHA"
+
   lint:
     name: lint
     runs-on: ubuntu-24.04

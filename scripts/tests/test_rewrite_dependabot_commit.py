@@ -148,3 +148,43 @@ def test_rewritten_subjects_are_valid_commit_messages() -> None:
     check = load("check_commit_subject")
     for prefix in ("ci", "fix", "chore", "fix(auth)", "chore(workspace)"):
         assert check.problem(f"{prefix}: bump some-lib from 1 to 2") is None
+
+
+def test_a_single_commit_gives_its_subject_to_the_pull_request() -> None:
+    title = rewrite.pull_request_title(
+        "chore: bump some-lib from 1 to 2", ["fix(auth): bump some-lib from 1 to 2"]
+    )
+    assert title == "fix(auth): bump some-lib from 1 to 2"
+
+
+def test_a_group_keeps_its_title_under_the_type_of_the_first_commit() -> None:
+    title = rewrite.pull_request_title(
+        "bump the dev-tools group with 2 updates",
+        ["chore(workspace): bump ruff from 1 to 2", "chore(workspace): bump pytest from 1 to 2"],
+    )
+    assert title == "chore(workspace): bump the dev-tools group with 2 updates"
+
+
+def test_a_group_title_loses_the_type_dependabot_gave_it() -> None:
+    title = rewrite.pull_request_title(
+        "chore: bump the group with 2 updates",
+        ["fix(auth): bump some-lib from 1 to 2", "chore: bump httpx from 1 to 2"],
+    )
+    assert title == "fix(auth): bump the group with 2 updates"
+
+
+@pytest.mark.parametrize("subjects", [[], ["not conventional", "still not"]])
+def test_without_a_typed_commit_the_title_is_unchanged(subjects: list[str]) -> None:
+    title = "chore: bump the group"
+    assert rewrite.pull_request_title(title, subjects) == title
+
+
+def test_print_title_reads_the_range_and_the_environment(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("PR_TITLE", "bump the ci-actions group with 2 updates")
+    monkeypatch.setattr(
+        rewrite, "git", lambda *args: "ci: bump a from 1 to 2\nci: bump b from 1 to 2"
+    )
+    rewrite.print_title("origin/main..HEAD")
+    assert capsys.readouterr().out == "ci: bump the ci-actions group with 2 updates\n"

@@ -11,6 +11,7 @@ import pytest
 from auth import cli
 from auth.services.bootstrap import BootstrapError
 from auth.services.catalog import CatalogError, SyncReport
+from auth.services.tenant_role import TenantRoleSyncReport
 
 
 @pytest.fixture
@@ -169,3 +170,65 @@ class TestBootstrap:
             assert run("bootstrap") == 2
         session.rollback.assert_awaited()
         assert "not the platform" in capsys.readouterr().err
+
+
+class TestTenantRolesSync:
+    def sync(self, report):
+        return patch.object(
+            cli.tenant_role_service, "sync_default_roles", AsyncMock(return_value=report)
+        )
+
+    def test_the_subcommand_is_required(self):
+        with pytest.raises(SystemExit):
+            run("tenant-roles")
+
+    def test_options(self):
+        args = cli.build_parser().parse_args(["tenant-roles", "sync", "--dry-run", "--json"])
+        assert (args.dry_run, args.as_json) == (True, True)
+
+    def test_commits_the_changes(self, session, capsys):
+        report = TenantRoleSyncReport(updated=["organisation acme role admin (+domain:read)"])
+        with self.sync(report):
+            assert run("tenant-roles", "sync") == 0
+        session.commit.assert_awaited_once()
+        session.rollback.assert_not_awaited()
+        out = capsys.readouterr().out
+        assert "updated organisation acme role admin (+domain:read)" in out
+        assert "tenant roles: changed 1 item(s)" in out
+
+    def test_dry_run_rolls_back(self, session, capsys):
+        report = TenantRoleSyncReport(updated=["organisation acme role admin (+domain:read)"])
+        with self.sync(report):
+            assert run("tenant-roles", "sync", "--dry-run") == 0
+        session.commit.assert_not_awaited()
+        session.rollback.assert_awaited_once()
+        out = capsys.readouterr().out
+        assert "would update organisation acme role admin (+domain:read)" in out
+        assert "tenant roles: would change 1 item(s)" in out
+
+    def test_nothing_to_change(self, capsys):
+        with self.sync(TenantRoleSyncReport()):
+            assert run("tenant-roles", "sync") == 0
+        assert "tenant roles: nothing to change" in capsys.readouterr().out
+
+    def test_json_report_lists_the_organisations(self, capsys):
+        report = TenantRoleSyncReport(
+            updated=["organisation acme role admin (+domain:read)"],
+            tenants={"acme": {"created": [], "added": {"admin": ["domain:read"]}}},
+        )
+        with self.sync(report):
+            assert run("tenant-roles", "sync", "--json") == 0
+        document = json.loads(capsys.readouterr().out)
+        assert document["changed"] is True and document["dry_run"] is False
+        assert document["tenants"] == {"acme": {"created": [], "added": {"admin": ["domain:read"]}}}
+
+    def test_a_failure_rolls_back_and_exits_with_1(self, session, capsys):
+        with patch.object(
+            cli.tenant_role_service,
+            "sync_default_roles",
+            AsyncMock(side_effect=RuntimeError("down")),
+        ):
+            assert run("tenant-roles", "sync") == 1
+        session.rollback.assert_awaited()
+        session.commit.assert_not_awaited()
+        assert "RuntimeError: down" in capsys.readouterr().err

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Local gates mirroring the CI lint, license-headers and multicz jobs.
+# Local gates mirroring the CI lint, license-headers, multicz and
+# commit-messages jobs.
 #
 # Install once:  uv run pre-commit install -t pre-commit -t commit-msg
 
@@ -49,5 +50,13 @@ repos:
       - id: multicz-check
         name: multicz commit message
         entry: uvx multicz check
+        language: system
+        stages: [commit-msg]
+
+      # The rule of the commit-messages job of ci: type and scope from the
+      # closed lists of CLAUDE.md, no Co-Authored-By trailer, no emoji.
+      - id: commit-subject
+        name: commit message
+        entry: python3 scripts/check_commit_subject.py
         language: system
         stages: [commit-msg]

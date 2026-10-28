@@ -133,6 +133,25 @@ website_apps_overrides:
       APT_ORIGIN: goabonga
       APT_LABEL: goabonga
       OAUTH2_ISSUER: "https://auth.{{ website_hostnames.apt_server }}"
+  # knowledge has a tenant of its own in auth: its users sign in at the
+  # authentication sub-domain of the application, and billing trusts it.
+  knowledge:
+    nginx:
+      ssl_wildcard: true
+      ssl_wildcard_domains: ["*.{{ website_hostnames.knowledge }}"]
+      ssl_dns_provider: route53
+      dns_wildcard_cname_target: "{{ website_domain }}"
+    env_vars:
+      APP_NAME: Knowledge
+      DOCS_ENABLED: "true"
+      OAUTH2_ISSUER: "https://auth.{{ website_hostnames.knowledge }}"
+  billing:
+    env_vars:
+      DOCS_ENABLED: "true"
+      OAUTH2_TRUSTED_ISSUERS: "https://auth.{{ website_hostnames.knowledge }}"
+
+# The customers of knowledge point their CNAME at its own host name.
+website_knowledge_custom_domain_cname_target: "{{ website_hostnames.knowledge }}"
 
 # Secrets, stored as encrypted systemd credentials. Application-level entries
 # are shared by the components that declare the name; component-level entries

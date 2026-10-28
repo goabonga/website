@@ -3,7 +3,7 @@
 JSON endpoints to manage organisations (tenants) and everything that belongs
 to one: members, roles, branding, e-mail templates, trust policy, settings,
 OAuth2 clients, identity providers, registration and profile fields, e-mail
-sender, allowed scopes and outbound webhooks.
+sender, allowed scopes, custom domain and outbound webhooks.
 
 ## What it does
 
@@ -36,12 +36,12 @@ required permission: <scope>`). The organisation scopes are `members:read`,
 `clients:read/write/delete/rotate`, `trust:read/write`, `billing:read/write`
 and `webhooks:read/write/delete`. The default `owner` role holds all of them.
 
-The `domain` scopes guard the custom domain of the organisation. This API
-only reports it (`custom_domain` of an organisation) and has no operation that
-sets, removes or verifies it: `PATCH .../settings/` merges keys into the JSON
-`settings` of the organisation and never touches the domain, so `settings:write`
-does not give access to it. The domain is changed from the settings pages of
-the organisation, see [settings pages](17-settings-ui.md).
+The `domain` scopes guard the custom domain of the organisation: `domain:read`
+for its state, `domain:write` to set, remove and verify it (see
+[custom domain](#custom-domain)). `PATCH .../settings/` merges keys into the
+JSON `settings` of the organisation and never touches the domain, so
+`settings:write` does not give access to it. The default `admin` role holds
+`domain:read` only; the `owner` holds all of them through `*`.
 
 ### Sub-resources
 
@@ -62,10 +62,40 @@ the organisation, see [settings pages](17-settings-ui.md).
   as for the global API but limited to the tenant.
 - **Identity providers**: list, create, update and delete the providers used by
   the federation feature. Client secrets are stored encrypted.
+- **Custom domain**: read the state, set, remove and verify the custom domain
+  of the organisation.
 - **Webhooks**: the catalog of subscribable events (`/webhooks/events`), CRUD
   of the subscriptions (the signing secret is returned once, on creation and on
   `rotate-secret`; the target URL goes through the SSRF check of the webhook
   service), a test delivery, the delivery log and the replay of a delivery.
+
+### Custom domain
+
+The custom domain decides where the sign-in pages of the organisation are
+served and what its issuer is. `GET .../domain/` (`domain:read`) returns
+`custom_domain`, `status` (`pending`, `dns_verifying`, `dns_verified`,
+`ssl_provisioning`, `active` or `failed`, `null` without a domain), `error` and
+the `verified_at`, `ssl_at` and `checked_at` dates; poll it after a change.
+
+- `PUT .../domain/` (`domain:write`) with `{"custom_domain": "auth.acme.example"}`
+  sets or changes the domain (trimmed and lower-cased). The state becomes
+  `pending`, a `tenant.updated` webhook event is dispatched and the DNS
+  verification is queued as a Celery task once the change is committed. Setting
+  the current domain again changes nothing. `422` for a name that is not a well
+  formed host name, `409` when another organisation uses the domain.
+- `DELETE .../domain/` (`domain:write`) clears the domain and its state,
+  dispatches `tenant.updated` and queues the removal of the configuration of the
+  domain (`204`; nothing happens when no domain is set).
+- `POST .../domain/verify` (`domain:write`) resets the state to `pending` and
+  queues the DNS verification: `202`; `200` with the state when the domain is
+  already `active`; `400` without a domain; `409` while a verification or the
+  SSL provisioning is running.
+
+The routes and the settings pages call the same service
+(`auth.services.custom_domain`), so the state changes, the webhook event and the
+tasks are the same whichever entry point is used. The pages do not check the
+format of the name that is typed (the DNS verification task does), the API
+does.
 
 ## Endpoints
 
@@ -175,6 +205,15 @@ the organisation, see [settings pages](17-settings-ui.md).
 | --- | --- | --- | --- |
 | GET | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | `get_allowed_scopes` | Return the allowed-scopes configuration for an organisation. |
 | PATCH | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | `update_allowed_scopes` | Update the allowed-scopes configuration for an organisation. |
+
+### `api.me.organisations.domain`
+
+| Method | Path | Handler | Summary |
+| --- | --- | --- | --- |
+| GET | `/api/v1/me/organisations/{org_id}/domain/` | `get_custom_domain` | Get the custom domain of an organisation and the state of its verification. |
+| PUT | `/api/v1/me/organisations/{org_id}/domain/` | `set_custom_domain` | Set or change the custom domain of an organisation. |
+| DELETE | `/api/v1/me/organisations/{org_id}/domain/` | `remove_custom_domain` | Remove the custom domain of an organisation. |
+| POST | `/api/v1/me/organisations/{org_id}/domain/verify` | `verify_custom_domain` | Ask for the DNS verification of the custom domain of an organisation. |
 
 ### `api.organisations`
 
@@ -288,6 +327,15 @@ the organisation, see [settings pages](17-settings-ui.md).
 | GET | `/api/v1/organisations/{org_id}/allowed-scopes/` | `get_allowed_scopes` | Return the allowed-scopes configuration for an organisation. |
 | PATCH | `/api/v1/organisations/{org_id}/allowed-scopes/` | `update_allowed_scopes` | Update the allowed-scopes configuration for an organisation. |
 
+### `api.organisations.domain`
+
+| Method | Path | Handler | Summary |
+| --- | --- | --- | --- |
+| GET | `/api/v1/organisations/{org_id}/domain/` | `get_custom_domain` | Return the custom domain of an organisation and the state of its verification. |
+| PUT | `/api/v1/organisations/{org_id}/domain/` | `set_custom_domain` | Set or change the custom domain of an organisation. |
+| DELETE | `/api/v1/organisations/{org_id}/domain/` | `remove_custom_domain` | Remove the custom domain of an organisation. |
+| POST | `/api/v1/organisations/{org_id}/domain/verify` | `verify_custom_domain` | Ask for the DNS verification of the custom domain of an organisation. |
+
 ### `api.organisations.webhooks`
 
 | Method | Path | Handler | Summary |
@@ -318,6 +366,9 @@ multi-tenancy, the webhook tables and the identity provider tables.
   New modules: `tests/api/v1/test_me_organisations.py`, `tests/api/v1/test_me_organisations_allowed_scopes.py`, `tests/api/v1/test_me_organisations_branding.py`, `tests/api/v1/test_me_organisations_clients.py`, `tests/api/v1/test_me_organisations_email_sender.py`, `tests/api/v1/test_me_organisations_idps.py`, `tests/api/v1/test_me_organisations_members.py`, `tests/api/v1/test_me_organisations_profile_fields.py`, `tests/api/v1/test_me_organisations_registration_fields.py`, `tests/api/v1/test_me_organisations_roles.py`, `tests/api/v1/test_me_organisations_settings.py`, `tests/api/v1/test_me_organisations_templates.py`, `tests/api/v1/test_me_organisations_trust.py`, `tests/api/v1/test_organisations.py`, `tests/api/v1/test_organisations_allowed_scopes.py`, `tests/api/v1/test_organisations_branding.py`, `tests/api/v1/test_organisations_clients.py`, `tests/api/v1/test_organisations_email_sender.py`, `tests/api/v1/test_organisations_idps.py`, `tests/api/v1/test_organisations_members.py`, `tests/api/v1/test_organisations_profile_fields.py`, `tests/api/v1/test_organisations_registration_fields.py`, `tests/api/v1/test_organisations_roles.py`, `tests/api/v1/test_organisations_settings.py`, `tests/api/v1/test_organisations_templates.py`, `tests/api/v1/test_organisations_trust.py`, `tests/api/v1/test_organisations_webhooks.py`.
   Extended: `tests/test_routes_api_organisations_branches.py`.
 - behave: `features/organisation_api.feature` with the scenarios *A platform administrator needs an organisation scope*, *A platform administrator manages an organisation*, *A user creates an organisation and becomes its owner*, *An owner invites and removes a member*, *A member without the permission cannot invite*, *A stranger cannot read an organisation*, *An owner defines a custom role*, *An owner customises the branding*, *An owner registers a webhook*.
+
+- pytest (custom domain): `tests/api/v1/test_organisations_domain.py` runs every operation under both prefixes, with the real membership guard for the scopes, and `tests/test_custom_domain_service.py` covers the service. `tests/test_tenant_service.py` and `tests/test_tenant_repository.py` are extended with the lookup by custom domain.
+- behave (custom domain): the scenarios *An owner sets, verifies and removes the custom domain*, *The custom domain is also served under the platform prefix*, *A domain is refused when it is malformed or used by another organisation*, *The admin role follows the custom domain but cannot change it* and *A member without a domain scope sees nothing of the domain*.
 
 The behave scenarios create organisations through both prefixes, check the
 membership rules with an owner, a plain member and a stranger, and register a

@@ -15,7 +15,7 @@
     group: "{{ python_app__group }}"
     mode: "0640"
 
-# `auth bootstrap` and `auth catalog sync` are idempotent and print a JSON report whose
+# `auth bootstrap`, `auth catalog sync` and `auth tenant-roles sync` are idempotent and print a JSON report whose
 # `changed` key says whether they changed anything. In check mode they still run, with
 # --dry-run (a transaction that is rolled back), so that the plan shows what a run would
 # create; a failure is then tolerated, since the migrations may not have been applied.
@@ -63,3 +63,29 @@
   check_mode: false
   changed_when: python_app__catalog_sync.rc == 0 and (python_app__catalog_sync.stdout | from_json).changed
   failed_when: python_app__catalog_sync.rc != 0 and not ansible_check_mode
+
+# Adds the scopes that a release put in the default owner, admin and member roles to the
+# organisations created before it (it removes nothing, see docs/apps/auth/21-tenant-roles.md).
+# It runs after the catalog so that the scopes the roles may hold exist.
+
+- name: Bring the system roles of the organisations of {{ python_app__app }} up to the defaults
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      set -a
+      . "$ENV_FILE"
+      set +a
+      exec "$VENV/bin/auth" tenant-roles sync --json $DRY_RUN
+    executable: /bin/bash
+    chdir: "{{ python_app__current }}"
+  environment:
+    ENV_FILE: "{{ python_app__env_file }}"
+    VENV: "{{ python_app__venv }}"
+    HOME: "{{ python_app__dir }}"
+    DRY_RUN: "{{ '--dry-run' if ansible_check_mode else '' }}"
+  become: true
+  become_user: "{{ python_app__user }}"
+  register: python_app__tenant_roles_sync
+  check_mode: false
+  changed_when: python_app__tenant_roles_sync.rc == 0 and (python_app__tenant_roles_sync.stdout | from_json).changed
+  failed_when: python_app__tenant_roles_sync.rc != 0 and not ansible_check_mode

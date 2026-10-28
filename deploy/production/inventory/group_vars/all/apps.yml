@@ -149,6 +149,53 @@ website_apps_overrides:
     env_vars:
       DOCS_ENABLED: "true"
       OAUTH2_TRUSTED_ISSUERS: "https://auth.{{ website_hostnames.knowledge }}"
+  # Mail sent without a sender of its own comes from the platform address.
+  mailler:
+    env_vars:
+      DOCS_ENABLED: "true"
+      DEFAULT_FROM: "contact@{{ website_domain }}"
+      DEFAULT_FROM_NAME: GOABONGA
+  mailler_worker:
+    env_vars:
+      DEFAULT_FROM: "contact@{{ website_domain }}"
+      DEFAULT_FROM_NAME: Mailler
+  custom_domain:
+    env_vars:
+      DOCS_ENABLED: "true"
+  internal:
+    env_vars:
+      APP_NAME: Internal Admin
+  # The robot reaches its API from the local network as well as from the VPN.
+  reachy_mini_api:
+    nginx:
+      allowed_hosts:
+        - 192.168.1.0/24
+        - 10.0.0.0/8
+  team:
+    env_vars:
+      DOCS_ENABLED: "true"
+      WORKSPACE_DIR: "{{ website_base_dir }}/team/workspace"
+      GITHUB_OWNER: goabonga
+  team_worker:
+    env_vars:
+      WORKSPACE_DIR: "{{ website_base_dir }}/team/workspace"
+      GITHUB_OWNER: goabonga
+  # The voice of the telephone assistant.
+  asterisk:
+    env_vars:
+      OPENAI_SYSTEM_PROMPT: >-
+        Tu es Chris, un assistant téléphonique serviable. Réponds de manière
+        brève et conversationnelle. Parle en français. Quand l'utilisateur dit
+        au revoir, veut raccrocher, ou indique qu'il a terminé, utilise la
+        fonction hangup() pour terminer l'appel après avoir dit au revoir. Tu
+        traduira les questions en anglais pour que le RAG puisse effectuer une
+        recherche et tu repondra dans la langue de l'interlocuteur. Si tu ne
+        connais pas la réponse à une question, dis que tu ne sais pas et propose
+        d'aider avec autre chose. Si l'utilisateur demande de l'aide,
+        propose-lui de parler à un humain en transférant l'appel vers le numéro
+        +0670810201.
+      GREETING_MESSAGE: >-
+        Dis bonjour, présente-toi comme Chris, et demande comment tu peux aider.
 
 # The customers of knowledge point their CNAME at its own host name.
 website_knowledge_custom_domain_cname_target: "{{ website_hostnames.knowledge }}"

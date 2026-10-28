@@ -424,6 +424,7 @@ from auth.api.routes.api.organisations.allowed_scopes import (  # noqa: E402
 )
 from auth.api.routes.api.organisations.branding import router as branding_router  # noqa: E402
 from auth.api.routes.api.organisations.clients import router as clients_router  # noqa: E402
+from auth.api.routes.api.organisations.domain import router as domain_router  # noqa: E402
 from auth.api.routes.api.organisations.email_sender import (  # noqa: E402
     router as email_sender_router,
 )
@@ -454,3 +455,4 @@ router.include_router(profile_fields_router, prefix="/{org_id}")
 router.include_router(email_sender_router, prefix="/{org_id}")
 router.include_router(allowed_scopes_router, prefix="/{org_id}")
 router.include_router(webhooks_router, prefix="/{org_id}")
+router.include_router(domain_router, prefix="/{org_id}")

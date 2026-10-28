@@ -411,6 +411,28 @@ class UpdateEmailSenderRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Custom Domain
+# ---------------------------------------------------------------------------
+
+
+class CustomDomainResponse(BaseModel):
+    """Custom domain of an organisation and the state of its verification."""
+
+    custom_domain: str | None = None
+    status: str | None = None
+    error: str | None = None
+    verified_at: datetime | None = None
+    ssl_at: datetime | None = None
+    checked_at: datetime | None = None
+
+
+class SetCustomDomainRequest(BaseModel):
+    """Request body for setting the custom domain of an organisation."""
+
+    custom_domain: str = Field(..., min_length=1, max_length=253)
+
+
+# ---------------------------------------------------------------------------
 # Allowed Scopes
 # ---------------------------------------------------------------------------
 

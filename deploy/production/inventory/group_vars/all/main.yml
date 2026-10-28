@@ -117,3 +117,31 @@ openvpn_clients:
       - minus.internal
   - name: robot
     ip: 10.8.0.52
+
+# ---------------------------------------------------------------------------
+# Settings shared by the applications
+# ---------------------------------------------------------------------------
+# The internal applications listen on the address of the VPN server and only
+# answer the VPN.
+website_internal_listen: 10.8.0.1
+website_internal_allowed_hosts:
+  - 10.8.0.0/24
+
+# Wildcard certificates of auth and knowledge are requested through Route 53.
+website_aws_route53_access_key_id: "{{ vault_aws_route53_access_key_id }}"
+website_aws_route53_secret_access_key: "{{ vault_aws_route53_secret_access_key }}"
+
+# What the customers of the custom domain service point their CNAME at.
+website_custom_domain_cname_target: "apps.{{ website_domain }}"
+
+# Mail: SMTP fallback of auth, regions and accounts of the mailler providers.
+website_smtp_host: email-smtp.us-east-1.amazonaws.com
+website_mailler_ses_region: eu-west-1
+website_mailler_protonmail_host: 127.0.0.1
+website_mailler_protonmail_port: 1025
+website_mailler_protonmail_user: "contact@{{ website_domain }}"
+
+# The host already runs Node.js 20 from NodeSource: the distribution's npm depends on the
+# distribution's own nodejs and cannot be installed next to it.
+website_node_install_method: nodesource
+website_node_version: "20"

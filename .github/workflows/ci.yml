@@ -35,7 +35,7 @@ jobs:
       && !startsWith(github.event.pull_request.head.ref, 'deploy/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check the commit messages
@@ -48,7 +48,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -73,7 +73,7 @@ jobs:
     name: license-headers
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -97,7 +97,7 @@ jobs:
     name: multicz
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # NOTE: no python-version pin here - multicz needs Python >=3.12.
@@ -111,7 +111,7 @@ jobs:
     name: docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -126,7 +126,7 @@ jobs:
     env:
       ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -163,7 +163,7 @@ jobs:
       libs: ${{ steps.select.outputs.libs }}
       has_libs: ${{ steps.select.outputs.has_libs }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # NOTE: no python-version pin here - multicz needs Python >=3.12.
@@ -220,7 +220,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -241,7 +241,7 @@ jobs:
         run: uv sync --frozen --package "${{ matrix.app }}" --group dev
       - name: Cache the Playwright browsers
         if: steps.browser.outputs.needed == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -263,14 +263,14 @@ jobs:
         run: uv run --frozen --package "${{ matrix.app }}" --group dev behave "apps/${{ matrix.app }}/features"
       - name: Upload the artifacts of failed browser scenarios
         if: ${{ failure() && steps.browser.outputs.needed == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-artifacts-${{ matrix.app }}
           path: artifacts/
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
           flags: ${{ matrix.app }}
@@ -279,7 +279,7 @@ jobs:
           disable_search: true
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: junit.xml
           flags: ${{ matrix.app }}
@@ -297,7 +297,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect.outputs.libs) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -306,7 +306,7 @@ jobs:
       - run: uv sync --frozen --package "${{ matrix.lib }}" --group dev
       # The browser tests of the libraries launch Chromium.
       - name: Cache the Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -317,7 +317,7 @@ jobs:
     name: scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -330,7 +330,7 @@ jobs:
     name: bandit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -346,7 +346,7 @@ jobs:
     name: pip-audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -379,7 +379,7 @@ jobs:
       OSV_SCANNER_VERSION: v2.7.0
       OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install OSV-Scanner
         run: |
           mkdir -p "$HOME/.local/bin"
@@ -414,7 +414,7 @@ jobs:
       # Space-separated "<component>=<version>" pairs, one per bumped component.
       bumped: ${{ steps.bump.outputs.bumped }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -505,7 +505,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: main
@@ -562,7 +562,7 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
       - uses: actions/configure-pages@v6

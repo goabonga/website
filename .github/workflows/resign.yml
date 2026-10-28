@@ -32,7 +32,7 @@ jobs:
       LABELLER: ${{ github.event.workflow_run.triggering_actor.login }}
     steps:
       - name: Checkout trusted code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: trusted
@@ -46,7 +46,7 @@ jobs:
         run: python3 trusted/scripts/ci_automation.py validate-resign
       - name: Checkout the pushed commit
         if: steps.pr.outputs.needed == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           path: pr

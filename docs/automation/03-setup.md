@@ -62,3 +62,11 @@ unverified:
   `ci`;
 - GitHub's verification of the signed commits, and the rewrite scopes on a real
   Dependabot pull request.
+- the split of a grouped lock update: `uv lock --upgrade-package` on the
+  runner, and that the lock regenerated one dependency at a time equals the one
+  Dependabot proposes for the groups of `dependabot.yml`;
+- the retitle and the issue tracking: that the workflow token of a run started
+  on behalf of Dependabot may write pull requests and issues, and that the
+  `dependencies` label exists;
+- the `commit-messages` job against the ruleset: it only runs on pull
+  requests, so it must not be listed among the checks required on pushes.

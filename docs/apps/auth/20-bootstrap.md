@@ -11,6 +11,11 @@ Run it after the migrations of every release, before
 [`auth catalog sync`](19-catalog.md) (the catalog may extend the built-in
 roles that the bootstrap creates).
 
+The bootstrap does not touch the system roles (`owner`, `admin`, `member`) of
+the organisations that already exist: it only gives them to the platform tenant
+when it creates it. To bring those roles up to the defaults of a release, run
+[`auth tenant-roles sync`](21-tenant-roles.md).
+
 ## What it does
 
 ```bash

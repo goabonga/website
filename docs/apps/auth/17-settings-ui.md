@@ -121,9 +121,10 @@ scopes. Only the owner (`*`) holds `domain:write` by default, and the `admin`
 role holds `domain:read` (the status polling): grant `domain:write` to a custom
 role when an administrator has to manage the domain. The default roles are
 created from the code constants when an organisation is created and are not
-synchronised afterwards, so the owners of existing organisations hold the new
-scopes through `*` and the role editor lists them, while the admin roles
-already stored are unchanged (no `domain:read` for them). The same scopes guard
+updated by themselves afterwards, so the owners of existing organisations hold
+the new scopes through `*` and the role editor lists them, while the admin roles
+already stored have no `domain:read` until `auth tenant-roles sync` adds it (see
+[the synchronisation of the system roles](21-tenant-roles.md)). The same scopes guard
 the REST operations on the custom domain (`.../organisations/{org_id}/domain/`,
 see [organisation API](14-organisation-api.md#custom-domain)); the settings
 `PATCH` of the REST API only merges the JSON `settings` and never touches the

@@ -33,6 +33,7 @@ The application is documented feature by feature, in the order in which each fea
 18. [Deployment](18-deployment.md): Processes, data stores, settings and secrets of a production deployment.
 19. [Catalog of scopes and roles](19-catalog.md): The `auth catalog sync` command and the JSON catalog of the scopes, roles and client grants of a deployment.
 20. [Platform bootstrap](20-bootstrap.md): The `auth bootstrap` command that creates the platform organisation and the Swagger UI client from the settings.
+21. [Organisation system roles](21-tenant-roles.md): The `auth tenant-roles sync` command that brings the system roles of existing organisations up to date.
 
 ## Testing
 

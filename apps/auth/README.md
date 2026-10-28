@@ -22,6 +22,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Administration console: Server-rendered admin pages.
 - Account and organisation settings pages: Self-service settings, personal access tokens and organisation settings.
 - Catalog of scopes and roles: The `auth catalog sync` command and the JSON catalog of the scopes, roles and client grants of a deployment.
+- Synchronisation of the system roles of the organisations: The `auth tenant-roles sync` command, which adds the default scopes that the owner, admin and member roles of existing organisations lack.
 
 ## Routes and scopes
 
@@ -618,6 +619,8 @@ Built-in protocol scopes (`BUILTIN_SCOPES`), always listed next to the stored sc
 The scopes and roles of the services that rely on auth are deployment data. `auth catalog sync [--file PATH] [--dry-run] [--json]` applies a JSON catalog (the `--file` option or the `CATALOG_FILE` setting) idempotently: it creates the missing scopes and roles, updates descriptions, adds the listed scopes to existing roles and the listed allowances to existing OAuth2 clients, and deletes nothing.
 
 `auth bootstrap [--dry-run] [--json]` idempotently creates what auth needs before it can serve: the platform scopes and roles above, the platform tenant (`PLATFORM_TENANT_*` settings), the registration of the users without a tenant on it and the public Swagger UI OAuth2 client (`SWAGGER_*` settings). Run it after the database migrations.
+
+`auth tenant-roles sync [--dry-run] [--json]` brings the system roles (`owner`, `admin`, `member`) of the existing organisations up to `DEFAULT_TENANT_ROLES`: it creates a missing system role and adds the default scopes that a role does not grant, and removes nothing (the scopes an organisation added and its custom roles are kept). It is separate from `auth bootstrap`; run it after `auth catalog sync`.
 
 ## Development
 

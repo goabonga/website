@@ -71,10 +71,12 @@ role can follow the status of the domain but not change it), and
 where the sign-in pages of the organisation are served, so changing it is
 granted on purpose.
 The system roles are created from these constants when an organisation is
-created (`create_default_roles`) and are not synchronised afterwards: a scope
-added to the constants reaches the owners of existing organisations through
-`*`, and appears in the role editor, but is not added to the roles already
-stored.
+created (`create_default_roles`) and are not updated by themselves afterwards: a
+scope added to the constants reaches the owners of existing organisations
+through `*`, and appears in the role editor, but is not added to the roles
+already stored. `auth tenant-roles sync` (see
+[the synchronisation of the system roles](21-tenant-roles.md)) adds the missing
+scopes to the stored system roles on demand.
 
 ## Tables
 

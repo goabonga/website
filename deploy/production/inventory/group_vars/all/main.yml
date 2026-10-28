@@ -7,13 +7,22 @@
 # set here.
 
 # DNS zone the applications are served under.
-website_domain: example.com
+website_domain: goabonga.com
 
-certbot_email: ops@example.com
+# Let's Encrypt contact, and the service reloaded after each renewal.
+certbot_email: contact@goabonga.com
 certbot_agree_tos: true
+certbot_reload_service: nginx
 website_certbot_email: "{{ certbot_email }}"
 
 # Platform tenant of auth, the tenant of the main domain: created on an empty
-# database, an existing one is adopted as it is. Placeholders: set your own.
-website_auth_platform_tenant_slug: main
-website_auth_platform_tenant_display_name: Example
+# database, an existing one is adopted as it is.
+website_auth_platform_tenant_slug: goabonga
+website_auth_platform_tenant_display_name: GOABONGA
+# The Swagger UI of auth calls the admin API with the scopes of the signed-in
+# administrator (`*`), as the client of the previous deployment did.
+website_auth_swagger_scopes: "openid profile email *"
+
+# Time zone and locale of the host.
+common_timezone: Europe/Paris
+common_locale: fr_FR.UTF-8

@@ -5,6 +5,7 @@
 
     auth bootstrap [--dry-run] [--json]
     auth catalog sync [--file PATH] [--dry-run] [--json]
+    auth tenant-roles sync [--dry-run] [--json]
 
 Every command is idempotent and safe to run at each deployment. ``--dry-run`` does all the
 work in a transaction that is rolled back, so that the report shows what would change. With
@@ -26,6 +27,7 @@ from auth.config import settings
 from auth.core.database import async_session_factory, close_database
 from auth.services.bootstrap import BootstrapError, BootstrapOptions, bootstrap
 from auth.services.catalog import CatalogError, SyncReport, load_catalog, sync_catalog
+from auth.services.tenant_role import tenant_role_service
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,11 @@ async def run_bootstrap(*, dry_run: bool) -> SyncReport:
     """Bootstrap the database from the settings in one transaction."""
     options = BootstrapOptions.from_settings(settings)
     return await _in_transaction(lambda db: bootstrap(db, options), dry_run=dry_run)
+
+
+async def run_tenant_roles_sync(*, dry_run: bool) -> SyncReport:
+    """Add the missing scopes of the system roles to every organisation in one transaction."""
+    return await _in_transaction(tenant_role_service.sync_default_roles, dry_run=dry_run)
 
 
 def _print_report(report: SyncReport, *, as_json: bool, dry_run: bool, title: str) -> None:
@@ -108,6 +115,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sync.add_argument("--dry-run", action="store_true", help="report the changes, apply none")
     sync.add_argument("--json", action="store_true", dest="as_json", help="print a JSON report")
+
+    tenant_roles = commands.add_parser(
+        "tenant-roles", help="manage the system roles of the organisations"
+    )
+    tenant_roles_commands = tenant_roles.add_subparsers(dest="tenant_roles_command", required=True)
+    roles_sync = tenant_roles_commands.add_parser(
+        "sync",
+        help="add the scopes that the owner, admin and member roles lack to every organisation",
+        description=(
+            "Bring the system roles (owner, admin, member) of every organisation up to the "
+            "defaults of the code: create a missing role and add the default scopes that a "
+            "role does not grant. Scopes an organisation added, its custom roles and its "
+            "wording are left alone; a scope removed from a system role comes back."
+        ),
+    )
+    roles_sync.add_argument("--dry-run", action="store_true", help="report the changes, apply none")
+    roles_sync.add_argument(
+        "--json", action="store_true", dest="as_json", help="print a JSON report"
+    )
     return parser
 
 
@@ -126,6 +152,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 2
             report = asyncio.run(run_catalog_sync(path, dry_run=args.dry_run))
             _print_report(report, as_json=args.as_json, dry_run=args.dry_run, title="catalog")
+            return 0
+        if args.command == "tenant-roles" and args.tenant_roles_command == "sync":
+            report = asyncio.run(run_tenant_roles_sync(dry_run=args.dry_run))
+            _print_report(report, as_json=args.as_json, dry_run=args.dry_run, title="tenant roles")
             return 0
     except (CatalogError, BootstrapError) as exc:
         print(f"auth: {exc}", file=sys.stderr)

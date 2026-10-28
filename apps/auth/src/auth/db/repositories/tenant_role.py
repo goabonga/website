@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.db.models.rbac import Scope
-from auth.db.models.tenant import TenantCustomRole, TenantMember
+from auth.db.models.tenant import Tenant, TenantCustomRole, TenantMember
 
 
 class TenantRoleRepository:
@@ -64,6 +64,27 @@ class TenantRoleRepository:
             .order_by(TenantCustomRole.display_order, TenantCustomRole.name)
         )
         return list(result.scalars().all())
+
+    async def list_tenant_refs(self, db: AsyncSession) -> list[tuple[uuid.UUID, str]]:
+        """Every tenant as ``(id, slug)``, ordered by slug."""
+        result = await db.execute(select(Tenant.id, Tenant.slug).order_by(Tenant.slug))
+        return [(row.id, row.slug) for row in result.all()]
+
+    async def list_roles_named(
+        self,
+        db: AsyncSession,
+        names: list[str],
+    ) -> list[TenantCustomRole]:
+        """The roles called one of ``names``, in every tenant."""
+        result = await db.execute(select(TenantCustomRole).where(TenantCustomRole.name.in_(names)))
+        return list(result.scalars().all())
+
+    async def list_tenant_ids_with_default_role(self, db: AsyncSession) -> set[uuid.UUID]:
+        """The tenants that already have a role flagged ``is_default``."""
+        result = await db.execute(
+            select(TenantCustomRole.tenant_id).where(TenantCustomRole.is_default.is_(True))
+        )
+        return set(result.scalars().all())
 
     async def find_default_role(
         self,

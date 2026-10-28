@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,8 +20,24 @@ from auth.db.models.tenant import (
     TenantMember,
 )
 from auth.db.repositories.tenant_role import TenantRoleRepository
+from auth.services.catalog import SyncReport
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TenantRoleSyncReport(SyncReport):
+    """What a synchronisation of the system roles did, in total and per organisation.
+
+    ``tenants`` maps the slug of each organisation that changed to ``{"created": [roles],
+    "added": {role: [scopes]}}``.
+    """
+
+    tenants: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, object]:
+        """A JSON serialisable form."""
+        return {**super().to_dict(), "tenants": self.tenants}
 
 
 class TenantRoleService:
@@ -68,6 +86,85 @@ class TenantRoleService:
         await self._repo.flush(db)
         logger.info("Created %d default roles for tenant %s", len(roles), tenant.id)
         return roles
+
+    async def sync_default_roles(self, db: AsyncSession) -> TenantRoleSyncReport:
+        """Bring the system roles of every organisation up to ``DEFAULT_TENANT_ROLES``.
+
+        The default roles are created with an organisation and never touched afterwards, so
+        an organisation created before a scope was added to them does not hold it. For each
+        organisation and each system role (``owner``, ``admin``, ``member``):
+
+        * a role that is missing is created as ``create_default_roles`` would (it is the
+          default role of the organisation only if the organisation has none);
+        * the default scopes that the role does not grant yet (exactly, through a
+          ``resource:*`` wildcard or through ``*``) are appended to its scopes;
+        * nothing is removed or reworded: the scopes an organisation added, its display
+          names and its custom roles are left alone. A scope that was deliberately removed
+          from a system role comes back, since it cannot be told from one that was never
+          there.
+
+        A role that bears a system name but is not a system role is skipped. The changes are
+        staged and flushed; the caller commits (or rolls back for a dry run).
+        """
+        report = TenantRoleSyncReport()
+        refs = await self._repo.list_tenant_refs(db)
+        have_default = await self._repo.list_tenant_ids_with_default_role(db)
+        existing: dict[tuple[uuid.UUID, str], TenantCustomRole] = {
+            (role.tenant_id, role.name): role
+            for role in await self._repo.list_roles_named(db, list(DEFAULT_TENANT_ROLES))
+        }
+
+        for tenant_id, slug in refs:
+            created: list[str] = []
+            added: dict[str, list[str]] = {}
+            for name, config in DEFAULT_TENANT_ROLES.items():
+                role = existing.get((tenant_id, name))
+                if role is None:
+                    is_default = name == "member" and tenant_id not in have_default
+                    if is_default:
+                        have_default.add(tenant_id)
+                    await self._repo.stage(
+                        db,
+                        TenantCustomRole(
+                            tenant_id=tenant_id,
+                            name=name,
+                            display_name=config["display_name"],
+                            description=config["description"],
+                            scopes=list(config["scopes"]),
+                            is_system=config["is_system"],
+                            display_order=config["display_order"],
+                            is_default=is_default,
+                        ),
+                    )
+                    created.append(name)
+                    report.created.append(
+                        f"organisation {slug} role {name} with {len(config['scopes'])} scope(s)"
+                    )
+                    continue
+                if not role.is_system:
+                    report.skipped.append(
+                        f"organisation {slug} role {name} (not a system role, left as it is)"
+                    )
+                    continue
+                missing = [s for s in dict.fromkeys(config["scopes"]) if not role.has_scope(s)]
+                if missing:
+                    # a new list: the column is not a mutable list
+                    role.scopes = [*role.scopes, *missing]
+                    added[name] = missing
+                    report.updated.append(
+                        f"organisation {slug} role {name} ({', '.join(f'+{s}' for s in missing)})"
+                    )
+            if created or added:
+                report.tenants[slug] = {"created": created, "added": added}
+
+        await self._repo.flush(db)
+        logger.info(
+            "Tenant system roles synchronised: %d created, %d updated, %d skipped",
+            len(report.created),
+            len(report.updated),
+            len(report.skipped),
+        )
+        return report
 
     async def get_tenant_roles(
         self,

@@ -17,7 +17,7 @@ Centralized OIDC/OAuth2 authentication service.
 - Device authorization and pushed authorization requests: RFC 8628 device flow and RFC 9126 pushed authorization requests.
 - Identity provider federation: Login through external OIDC identity providers.
 - REST API v1: Bearer-token JSON API for users, clients, roles, scopes, sessions, keys, tokens and the current user.
-- Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust and webhooks.
+- Organisation API: JSON API to manage organisations, members, roles, branding, providers, trust, custom domain and webhooks.
 - Background maintenance and operations scripts: Cleanup tasks, custom domain provisioning, pairwise backfill and CLI scripts.
 - Administration console: Server-rendered admin pages.
 - Account and organisation settings pages: Self-service settings, personal access tokens and organisation settings.
@@ -313,6 +313,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | PATCH | `/api/v1/me/organisations/{org_id}/email-sender/` | PAT or bearer token; organisation member with scope `settings:write` | Update the email sender configuration for an organisation |
 | GET | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:read` | Return the allowed-scopes configuration for an organisation |
 | PATCH | `/api/v1/me/organisations/{org_id}/allowed-scopes/` | PAT or bearer token; organisation member with scope `settings:write` | Update the allowed-scopes configuration for an organisation |
+| GET | `/api/v1/me/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:read` | Get the custom domain of an organisation and the state of its verification |
+| PUT | `/api/v1/me/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:write` | Set or change the custom domain of an organisation |
+| DELETE | `/api/v1/me/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:write` | Remove the custom domain of an organisation |
+| POST | `/api/v1/me/organisations/{org_id}/domain/verify` | PAT or bearer token; organisation member with scope `domain:write` | Ask for the DNS verification of the custom domain of an organisation |
 | GET | `/api/v1/organisations/` | PAT or bearer token; scope `org:read` | List all organisations with pagination |
 | POST | `/api/v1/organisations/` | PAT or bearer token; scope `org:write` | Create a new organisation |
 | GET | `/api/v1/organisations/{org_id}` | PAT or bearer token; scope `org:read` (any organisation) or organisation member | Retrieve a single organisation by ID |
@@ -370,6 +374,10 @@ HTTP routes served by the application and what each one requires. `public` route
 | POST | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/test` | PAT or bearer token; organisation member with scope `webhooks:write` | Send a test delivery to verify a webhook endpoint is reachable |
 | GET | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/deliveries` | PAT or bearer token; organisation member with scope `webhooks:read` | List delivery attempts for a specific webhook |
 | POST | `/api/v1/organisations/{org_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/replay` | PAT or bearer token; organisation member with scope `webhooks:write` | Replay a past webhook delivery with a fresh envelope |
+| GET | `/api/v1/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:read` | Return the custom domain of an organisation and the state of its verification |
+| PUT | `/api/v1/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:write` | Set or change the custom domain of an organisation |
+| DELETE | `/api/v1/organisations/{org_id}/domain/` | PAT or bearer token; organisation member with scope `domain:write` | Remove the custom domain of an organisation |
+| POST | `/api/v1/organisations/{org_id}/domain/verify` | PAT or bearer token; organisation member with scope `domain:write` | Ask for the DNS verification of the custom domain of an organisation |
 
 ### Legacy profile API
 
@@ -564,8 +572,8 @@ Organisation scopes (`TENANT_SCOPES` in `apps/auth/src/auth/db/models/tenant.py`
 | `settings:read` | View tenant settings | 14 |
 | `settings:write` | Modify tenant settings (name, e-mail sender, allowed scopes, fields) | 15 |
 | `domain:*` | All custom domain operations | 0 |
-| `domain:read` | View the custom domain and its verification status | 1 |
-| `domain:write` | Set, remove and verify the custom domain | 2 |
+| `domain:read` | View the custom domain and its verification status | 3 |
+| `domain:write` | Set, remove and verify the custom domain | 8 |
 | `roles:*` | All role operations | 0 |
 | `roles:read` | View tenant roles | 3 |
 | `roles:write` | Create and modify custom roles | 8 |

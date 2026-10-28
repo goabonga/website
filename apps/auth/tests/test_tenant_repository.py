@@ -122,6 +122,28 @@ class TestFindBySlug:
         assert result is None
 
 
+# ── find_by_custom_domain ────────────────────────────────────────────────────
+
+
+class TestFindByCustomDomain:
+    @pytest.mark.asyncio
+    async def test_found_ignoring_the_case(self, db, repo):
+        tenant = make_tenant()
+        db.execute = AsyncMock(return_value=make_execute_result(scalar_value=tenant))
+
+        assert await repo.find_by_custom_domain(db, "Auth.Acme.Example") is tenant
+        statement = str(
+            db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})
+        )
+        assert "lower(tenants.custom_domain) = 'auth.acme.example'" in statement
+
+    @pytest.mark.asyncio
+    async def test_not_found(self, db, repo):
+        db.execute = AsyncMock(return_value=make_execute_result(scalar_value=None))
+
+        assert await repo.find_by_custom_domain(db, "nobody.example") is None
+
+
 # ── list_tenants ─────────────────────────────────────────────────────────────
 
 

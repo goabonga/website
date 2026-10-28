@@ -176,6 +176,13 @@ The names used in the other pages with a placeholder for your own application or
 user (`vault_my_app_*`, `vault_alice_password_hash`) are examples, not entries
 of the file: name yours the same way.
 
+A check keeps the table, the example and the roles in step:
+`python3 scripts/check_vault_example.py` fails when a `vault_` variable is used
+but missing from `vault.yml.example`, when the example keeps a variable nobody
+uses, when a value is not a placeholder, when a secret of the catalog is not in
+the table above, or when a `vault.yml` is committed in clear. The `scripts` job
+of the CI runs it with the tests.
+
 ## Other secrets
 
 | Secret | Variable | Notes |

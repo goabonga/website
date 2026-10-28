@@ -24,7 +24,7 @@ branch of this repository, and is skipped when:
    branch.
 2. Imports the key, and takes the git name, email and signing key from it.
 3. Replays the commits of the branch on the merge base with
-   `git rebase --exec`, running `scripts/rewrite-dependabot-commit.sh` from
+   `git rebase --exec`, running `scripts/rewrite_dependabot_commit.py` from
    `trusted/` after each pick. The script reads the `pyproject.toml` files of
    the branch as data.
 4. Force-pushes the branch with `--force-with-lease`, using `AUTO_MERGE_PAT`

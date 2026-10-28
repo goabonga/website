@@ -41,7 +41,6 @@ from auth.core.security import hash_password
 from auth.db.models.oauth2 import OAuth2Client
 from auth.db.models.tenant import (
     TENANT_SCOPES,
-    CustomDomainStatus,
     IdentityProvider,
     IdentityProviderType,
     Tenant,
@@ -60,6 +59,7 @@ from auth.db.models.tenant import (
 from auth.db.models.user import User, UserEmail, UserProfile
 from auth.middlewares.tenant import get_session_cookie_name, get_tenant_context
 from auth.services.branding import BrandingConfig, BrandingService
+from auth.services.custom_domain import VerificationOutcome, custom_domain_service
 from auth.services.email import EmailService
 from auth.services.federation import federation_service
 from auth.services.jwks import JWKSService
@@ -3143,59 +3143,11 @@ async def org_domain_submit(
     form_data = await request.form()
     custom_domain = str(form_data.get("custom_domain", "")).strip() or None
 
-    # Track if custom domain changed
-    old_custom_domain = tenant.custom_domain
-    domain_changed = custom_domain != old_custom_domain
-    if not domain_changed:
-        return org_redirect(tenant_id, "/edit", success="Custom domain unchanged")
-
-    tenant.custom_domain = custom_domain
-
-    if custom_domain:
-        # New domain configured - set to pending and trigger verification
-        tenant.custom_domain_status = CustomDomainStatus.PENDING
-    else:
-        # Domain removed - clear status
-        tenant.custom_domain_status = None
-    tenant.custom_domain_verified_at = None
-    tenant.custom_domain_ssl_at = None
-    tenant.custom_domain_error = None
-    tenant.custom_domain_checked_at = None
-
-    await _dispatch_tenant_event(
-        db,
-        tenant_id=tenant.id,
-        event=WebhookEvent.TENANT_UPDATED,
-        data={
-            "tenant_id": str(tenant.id),
-            "display_name": tenant.display_name,
-            "custom_domain": custom_domain,
-            "actor_id": str(user.id),
-        },
+    change = await custom_domain_service.set_domain(
+        db, tenant, custom_domain, actor_id=user.id, dispatch=_dispatch_tenant_event
     )
-
-    await db.commit()
-
-    # Trigger tasks after commit
-    if custom_domain:
-        # Trigger DNS verification task
-        from auth.tasks.custom_domain import verify_custom_domain_dns
-
-        verify_custom_domain_dns.delay(str(tenant.id), custom_domain, tenant.slug)
-        logger.info(
-            "User %s configured custom domain %s for org %s", user.id, custom_domain, tenant_id
-        )
-    elif old_custom_domain:
-        # Trigger config removal task
-        from auth.tasks.custom_domain import remove_custom_domain_config
-
-        remove_custom_domain_config.delay(old_custom_domain, tenant.slug)
-        logger.info(
-            "User %s removed custom domain %s from org %s",
-            user.id,
-            old_custom_domain,
-            tenant_id,
-        )
+    if not change.changed:
+        return org_redirect(tenant_id, "/edit", success="Custom domain unchanged")
 
     return org_redirect(tenant_id, "/edit", success="Custom domain updated")
 
@@ -3328,31 +3280,16 @@ async def org_verify_domain(
         request, tenant_id, db, session_service, required_scope="domain:write"
     )
 
-    if not tenant.custom_domain:
+    outcome = await custom_domain_service.start_verification(db, tenant, actor_id=user.id)
+    if outcome is VerificationOutcome.NO_DOMAIN:
         return org_redirect(tenant_id, "/edit", error="No custom domain configured")
 
-    if tenant.custom_domain_status == CustomDomainStatus.ACTIVE:
+    if outcome is VerificationOutcome.ALREADY_ACTIVE:
         return org_redirect(tenant_id, "/edit", success="Domain is already active")
 
-    if tenant.custom_domain_status in [
-        CustomDomainStatus.SSL_PROVISIONING,
-        CustomDomainStatus.DNS_VERIFYING,
-    ]:
+    if outcome is VerificationOutcome.IN_PROGRESS:
         return org_redirect(tenant_id, "/edit", error="Domain verification already in progress")
 
-    # Reset status to pending and trigger verification
-    tenant.custom_domain_status = CustomDomainStatus.PENDING
-    tenant.custom_domain_error = None
-    await db.commit()
-
-    # Trigger DNS verification task
-    from auth.tasks.custom_domain import verify_custom_domain_dns
-
-    verify_custom_domain_dns.delay(str(tenant.id), tenant.custom_domain, tenant.slug)
-
-    logger.info(
-        "User %s triggered manual domain verification for %s", user.id, tenant.custom_domain
-    )
     return org_redirect(tenant_id, "/edit", success="Domain verification started")
 
 
@@ -3383,18 +3320,7 @@ async def org_domain_status(
         request, tenant_id, db, session_service, required_scope="domain:read"
     )
 
-    return {
-        "custom_domain": tenant.custom_domain,
-        "status": tenant.custom_domain_status.value if tenant.custom_domain_status else None,
-        "error": tenant.custom_domain_error,
-        "verified_at": tenant.custom_domain_verified_at.isoformat()
-        if tenant.custom_domain_verified_at
-        else None,
-        "ssl_at": tenant.custom_domain_ssl_at.isoformat() if tenant.custom_domain_ssl_at else None,
-        "checked_at": tenant.custom_domain_checked_at.isoformat()
-        if tenant.custom_domain_checked_at
-        else None,
-    }
+    return custom_domain_service.status(tenant)
 
 
 # -----------------------------------------------------------------------------

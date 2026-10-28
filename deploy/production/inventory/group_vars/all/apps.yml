@@ -4,9 +4,130 @@
 ---
 # Applications deployed by the apps playbook. See "Deploying applications" in
 # the documentation for the catalog and the override rules.
-website_apps_enabled: []
+#
+# The order matters on a first deployment: custom_domain, mailler and billing
+# register the clients of the applications after their migrations, in this
+# order, and mailler imports the templates of knowledge with the Python of
+# knowledge, so knowledge comes before it.
+website_apps_enabled:
+  - frontend
+  - analytics
+  - custom_domain
+  - knowledge
+  - mailler
+  - billing
+  - auth
+  - backend
+  - mta_sts
+  - apt_server
+  - team
+  - internal
+  - webhooks
+  - vpn_portal
+  - reachy_mini_api
+  - asterisk
 
-# Secret values live in the encrypted file vault.yml of this directory
+# The monorepo is private: the clone uses a token.
+website_repo_token: "{{ vault_website_repo_token | default('') }}"
+
+# OAuth2 clients registered on the authentication server, per application.
+# The identifiers are kept in the vault with the rest of the OAuth2
+# configuration.
+website_oauth2_clients:
+  frontend:
+    client_id: "{{ vault_frontend_oauth2_client_id }}"
+  backend:
+    client_id: "{{ vault_backend_oauth2_client_id }}"
+    swagger_client_id: "{{ vault_backend_oauth2_swagger_client_id }}"
+  analytics:
+    client_id: "{{ vault_analytics_oauth2_client_id }}"
+    swagger_client_id: "{{ vault_analytics_oauth2_swagger_client_id }}"
+  apt_server:
+    client_id: "{{ vault_apt_server_oauth2_client_id }}"
+  billing:
+    client_id: "{{ vault_billing_oauth2_client_id }}"
+  custom_domain:
+    client_id: "{{ vault_custom_domain_oauth2_client_id }}"
+  internal:
+    client_id: "{{ vault_internal_oauth2_client_id }}"
+  knowledge:
+    client_id: "{{ vault_knowledge_oauth2_client_id }}"
+  mailler:
+    client_id: "{{ vault_mailler_oauth2_client_id }}"
+  reachy_mini_api:
+    client_id: "{{ vault_reachy_mini_api_oauth2_client_id }}"
+  team:
+    client_id: "{{ vault_team_oauth2_client_id }}"
+  vpn_portal:
+    client_id: "{{ vault_vpn_portal_oauth2_client_id }}"
+    openvpn_client_id: "{{ vault_vpn_portal_openvpn_oauth2_client_id }}"
+  webhooks:
+    client_id: "{{ vault_webhooks_oauth2_client_id }}"
+
+# Adjustments of the catalog, keyed by component. Dictionaries are merged
+# recursively, lists are replaced.
+website_apps_overrides: {}
+
+# Secrets, stored as encrypted systemd credentials. Application-level entries
+# are shared by the components that declare the name; component-level entries
+# win. The values live in the encrypted file vault.yml of this directory
 # (ansible-vault encrypt); the vault password is the ANSIBLE_VAULT_PASSWORD
 # secret of the GitHub Environment.
-website_apps_overrides: {}
+website_secrets:
+  analytics:
+    OAUTH2_CLIENT_SECRET: "{{ vault_analytics_oauth2_client_secret | default('') }}"
+  apt_server:
+    OAUTH2_CLIENT_SECRET: "{{ vault_apt_server_oauth2_client_secret }}"
+    SESSION_SECRET: "{{ vault_apt_server_session_secret }}"
+    MAILLER_CLIENT_SECRET: "{{ vault_apt_server_mailler_client_secret }}"
+    WEBHOOK_SECRET: "{{ vault_apt_server_webhook_secret }}"
+  asterisk:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+  auth:
+    JWKS_ENCRYPTION_KEY: "{{ vault_auth_jwks_encryption_key }}"
+    MAILLER_CLIENT_SECRET: "{{ vault_auth_mailler_client_secret }}"
+    SMTP_PASSWORD: "{{ vault_smtp_password | default('') }}"
+  backend:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    OAUTH2_CLIENT_SECRET: "{{ vault_backend_oauth2_client_secret }}"
+  billing:
+    OAUTH2_CLIENT_SECRET: "{{ vault_billing_oauth2_client_secret }}"
+    STRIPE_SECRET_KEY: "{{ vault_stripe_secret_key }}"
+    STRIPE_WEBHOOK_SECRET: "{{ vault_stripe_webhook_secret }}"
+  custom_domain:
+    OAUTH2_CLIENT_SECRET: "{{ vault_custom_domain_oauth2_client_secret }}"
+  internal:
+    OAUTH2_CLIENT_SECRET: "{{ vault_internal_oauth2_client_secret }}"
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    SECRET_KEY: "{{ vault_internal_secret_key }}"
+  knowledge:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    OAUTH2_CLIENT_SECRET: "{{ vault_knowledge_oauth2_client_secret }}"
+    # knowledge calls mailler, custom_domain and billing with its own OAuth2
+    # client, so it needs no secret of another client. These two sign the
+    # webhooks of billing and custom_domain; the same values are registered in
+    # those services.
+    BILLING_WEBHOOK_SECRET: "{{ vault_knowledge_billing_webhook_secret }}"
+    CUSTOM_DOMAIN_WEBHOOK_SECRET: "{{ vault_knowledge_custom_domain_webhook_secret }}"
+    GITHUB_WEBHOOK_SECRET: "{{ vault_knowledge_github_webhook_secret | default('') }}"
+  mailler:
+    OAUTH2_CLIENT_SECRET: "{{ vault_mailler_oauth2_client_secret }}"
+    BREVO_API_KEY: "{{ vault_mailler_brevo_api_key }}"
+    WEBHOOK_HMAC_SECRET: "{{ vault_mailler_webhook_hmac_secret }}"
+    SENDGRID_API_KEY: "{{ vault_mailler_sendgrid_api_key | default('') }}"
+    SES_ACCESS_KEY: "{{ vault_mailler_ses_access_key | default('') }}"
+    SES_SECRET_KEY: "{{ vault_mailler_ses_secret_key | default('') }}"
+    PROTONMAIL_PASSWORD: "{{ vault_mailler_protonmail_password | default('') }}"
+  reachy_mini_api:
+    OAUTH2_CLIENT_SECRET: "{{ vault_reachy_mini_api_oauth2_client_secret }}"
+  team:
+    OPENAI_API_KEY: "{{ vault_openai_api_key }}"
+    ANTHROPIC_API_KEY: "{{ vault_team_anthropic_api_key | default('') }}"
+    GITHUB_TOKEN: "{{ vault_team_github_token | default('') }}"
+    OAUTH2_CLIENT_SECRET: "{{ vault_team_oauth2_client_secret | default('') }}"
+  vpn_portal:
+    OAUTH2_CLIENT_SECRET: "{{ vault_vpn_portal_oauth2_client_secret }}"
+    STEPCA_PROVISIONER_PASSWORD: "{{ vault_vpn_portal_stepca_password }}"
+    OPENVPN_OAUTH2_CLIENT_SECRET: "{{ vault_vpn_portal_openvpn_oauth2_client_secret }}"
+  webhooks:
+    OAUTH2_CLIENT_SECRET: "{{ vault_webhooks_oauth2_client_secret }}"

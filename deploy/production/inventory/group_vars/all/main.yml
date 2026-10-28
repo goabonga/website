@@ -26,3 +26,94 @@ website_auth_swagger_scopes: "openid profile email *"
 # Time zone and locale of the host.
 common_timezone: Europe/Paris
 common_locale: fr_FR.UTF-8
+# The host keeps the powerline prompt and the tmux configuration of the
+# previous deployment: the plain ones of the role would replace them.
+common_bash_prompt_enabled: false
+common_tmux_enabled: false
+
+# ---------------------------------------------------------------------------
+# Host roles
+# ---------------------------------------------------------------------------
+# Optional roles of site.yml that production runs. The accounts and the SSH
+# hardening are left to bootstrap.yml, run once by hand.
+site_dnsmasq: true
+site_step_ca: true
+site_geoip: true
+site_openvpn: true
+site_asterisk: true
+site_protonmail_bridge: true
+
+# Redis and PostgreSQL are reached over Unix sockets only.
+redis_port: 0
+redis_socket: /run/redis/redis.sock
+postgres_port: 0
+postgres_pgvector_enabled: true
+postgres_timezone: "{{ common_timezone }}"
+# step-ca reaches its database as the step_ca role, through the Unix socket,
+# with its system account mapped to it.
+postgres_ident_maps:
+  - { map: step-ca-map, system_user: step, pg_user: step_ca }
+postgres_hba_extra_rules:
+  - { type: local, database: step_ca, user: step_ca, method: peer, options: "map=step-ca-map" }
+
+# nginx keeps the catch-all virtual host of the previous deployment: it
+# listens on the addresses of the host and redirects to its host name. The
+# host name virtual host itself is not managed. The challenge of the customer
+# domains of custom_domain is served from /var/www/certbot.
+nginx_hostname: vps-d968375f.vps.ovh.net
+nginx_hostname_vhost_enabled: false
+nginx_redirect_ip_to_hostname: true
+nginx_default_page_enabled: false
+nginx_listen_ipv4: "{{ ansible_facts['default_ipv4']['address'] }}"
+nginx_listen_ipv6: "{{ ansible_facts['default_ipv6']['address'] }}"
+nginx_default_vhost_extra_config:
+  - "location /.well-known/acme-challenge/ {"
+  - "    root /var/www/certbot;"
+  - "}"
+
+# Ban with iptables as before, ban the failures of the nginx logs too, and
+# never ban the VPN.
+fail2ban_banaction: iptables-multiport
+fail2ban_banaction_allports: iptables-allports
+fail2ban_nginx_enabled: true
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - ::1
+  - 10.8.0.0/24
+
+# MaxMind GeoLite2 databases.
+geoip_account_id: "{{ vault_geoip_account_id }}"
+geoip_license_key: "{{ vault_geoip_license_key }}"
+
+# Private certificate authority: its ACME endpoint, certificates stored in
+# PostgreSQL, the revocation list and the provisioner of the VPN portal.
+step_ca_password: "{{ vault_step_ca_password }}"
+# The signing key of the repository is where the previous deployment put it.
+step_ca_repository_key_path: /etc/apt/trusted.gpg.d/smallstep.asc
+step_ca_nginx_enabled: true
+step_ca_postgres_enabled: true
+step_ca_crl_enabled: true
+step_ca_vpn_portal_enabled: true
+step_ca_vpn_portal_password: "{{ vault_vpn_portal_stepca_password }}"
+
+# VPN whose certificates come from step-ca, with step-ca reachable through it.
+openvpn_pki_backend: step-ca
+openvpn_stepca_password: "{{ vault_openvpn_stepca_password }}"
+openvpn_stepca_nginx_enabled: true
+openvpn_clients:
+  - name: laptop
+    ip: 10.8.0.10
+  - name: phone
+    ip: 10.8.0.11
+  - name: tablet
+    ip: 10.8.0.12
+  - name: reachy
+    ip: 10.8.0.20
+  - name: nano
+    ip: 10.8.0.50
+  - name: minus
+    ip: 10.8.0.51
+    aliases:
+      - minus.internal
+  - name: robot
+    ip: 10.8.0.52

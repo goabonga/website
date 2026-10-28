@@ -55,8 +55,19 @@ jobs:
           cache-suffix: ${{ github.job }}
           python-version: "3.11"
       - run: uv sync --frozen --only-group dev
-      - run: uv run --no-sync ruff check --output-format=github .
-      - run: uv run --no-sync ruff format --check .
+      - name: Lint
+        run: uv run --no-sync ruff check --output-format=json --output-file=ruff.json .
+      - name: Summarize ruff check
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py ruff-check ruff.json
+      - name: Format check
+        if: ${{ !cancelled() }}
+        # An explicit shell enables pipefail, so `| tee` keeps the status of the tool.
+        shell: bash
+        run: uv run --no-sync ruff format --check . 2>&1 | tee ruff-format.txt
+      - name: Summarize ruff format
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py ruff-format ruff-format.txt
 
   license-headers:
     name: license-headers
@@ -69,12 +80,18 @@ jobs:
           cache-suffix: ${{ github.job }}
           python-version: "3.11"
       - name: Check SPDX headers
+        shell: bash
         run: |
-          uv run --no-project python scripts/add_license_header.py --path apps --types py --check
-          uv run --no-project python scripts/add_license_header.py --path libs --types py --check
-          uv run --no-project python scripts/add_license_header.py --path scripts --types py,sh --check
-          uv run --no-project python scripts/add_license_header.py --path .github --types yml --check
-          uv run --no-project python scripts/add_license_header.py --path . --types toml --check
+          {
+            uv run --no-project python scripts/add_license_header.py --path apps --types py --check
+            uv run --no-project python scripts/add_license_header.py --path libs --types py --check
+            uv run --no-project python scripts/add_license_header.py --path scripts --types py,sh --check
+            uv run --no-project python scripts/add_license_header.py --path .github --types yml --check
+            uv run --no-project python scripts/add_license_header.py --path . --types toml --check
+          } 2>&1 | tee headers.txt
+      - name: Summarize license headers
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py headers headers.txt
 
   multicz:
     name: multicz
@@ -239,6 +256,9 @@ jobs:
             --cov-report=xml:coverage.xml \
             --junitxml=junit.xml \
             -o junit_family=legacy
+      - name: Summarize tests and coverage
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py pytest --junit junit.xml --coverage coverage.xml
       - name: Run behave scenarios
         run: uv run --frozen --package "${{ matrix.app }}" --group dev behave "apps/${{ matrix.app }}/features"
       - name: Upload the artifacts of failed browser scenarios
@@ -316,7 +336,11 @@ jobs:
           enable-cache: true
           cache-suffix: ${{ github.job }}
           python-version: "3.11"
-      - run: uvx --from 'bandit[toml]' bandit -c pyproject.toml --recursive apps/*/src
+      - name: Run Bandit
+        run: uvx --from 'bandit[toml]' bandit -c pyproject.toml --recursive apps/*/src --format json --output bandit.json
+      - name: Summarize bandit
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py bandit bandit.json
 
   pip-audit:
     name: pip-audit
@@ -329,15 +353,22 @@ jobs:
           cache-suffix: ${{ github.job }}
           python-version: "3.11"
       - run: uv sync --frozen --all-packages
-      # --path takes the site-packages directory, not the environment: given
-      # .venv it audits nothing and exits 0. The two ignored advisories have no
-      # fixed release; they are accepted, with their reasons and a review date,
-      # in osv-scanner.toml.
-      - run: |
+      - name: Run pip-audit
+        shell: bash
+        # --path takes the site-packages directory, not the environment: given
+        # .venv it audits nothing and exits 0. The two ignored advisories have no
+        # fixed release; they are accepted, with their reasons and a review date,
+        # in osv-scanner.toml.
+        run: |
           uvx pip-audit --skip-editable \
             --path "$(uv run --no-sync python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')" \
             --ignore-vuln PYSEC-2026-1325 \
-            --ignore-vuln PYSEC-2026-4298
+            --ignore-vuln PYSEC-2026-4298 2>&1 | tee pip-audit.txt
+      - name: Summarize pip-audit
+        if: ${{ !cancelled() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: python3 scripts/format_summary.py text pip-audit pip-audit.txt
 
   # The binary is pinned to a release and verified against its published
   # checksum instead of downloading whatever `latest` points to.
@@ -358,7 +389,14 @@ jobs:
           echo "${OSV_SCANNER_SHA256}  $HOME/.local/bin/osv-scanner" | sha256sum --check
           chmod +x "$HOME/.local/bin/osv-scanner"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: osv-scanner scan source --lockfile=uv.lock
+      - name: Run OSV-Scanner
+        shell: bash
+        run: osv-scanner scan source --lockfile=uv.lock 2>&1 | tee osv-scanner.txt
+      - name: Summarize osv-scanner
+        if: ${{ !cancelled() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: python3 scripts/format_summary.py text osv-scanner osv-scanner.txt
 
   release:
     name: release

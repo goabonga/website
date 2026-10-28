@@ -116,7 +116,8 @@ jobs:
           BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
           # The script comes from the trusted checkout, never from the branch
           # it rewrites; it reads the pyproject files of the branch as data.
-          git rebase "$BASE_SHA" --exec "$GITHUB_WORKSPACE/trusted/scripts/rewrite-dependabot-commit.sh"
+          git rebase "$BASE_SHA" \
+            --exec "python3 $GITHUB_WORKSPACE/trusted/scripts/rewrite_dependabot_commit.py"
 
       - name: Force-push rewritten branch
         if: steps.gate.outputs.skip != 'true'

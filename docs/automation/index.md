@@ -27,7 +27,7 @@ unsigned commits to a pull request branch, for example with GitHub's
 The workflows never execute code from a pull request while the signing key or
 the merge token is available: they run the scripts of the default branch
 (`scripts/ci_automation.py`, `scripts/sign_commit.py` and
-`scripts/rewrite-dependabot-commit.sh`) and treat the branch as data. The
+`scripts/rewrite_dependabot_commit.py`) and treat the branch as data. The
 branch's own code only runs in `ci`, before and after the signing.
 
 Deployment pull requests are out of this pipeline. The branches

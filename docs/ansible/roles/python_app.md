@@ -569,10 +569,13 @@ when they are set). The file is a template, so a run in check mode
 shows the difference.
 
 After the migrations the role then runs, as the account of `auth` with its
-environment file, `auth bootstrap` and `auth catalog sync`. Both are
-idempotent; their JSON report decides whether the task is reported as changed.
-In check mode they run with `--dry-run` (nothing is written) and a failure is
-ignored, since the migrations may not have been applied. For a database that
+environment file, `auth bootstrap`, `auth catalog sync` and
+`auth tenant-roles sync` (which adds the scopes that a release put in the default
+owner, admin and member roles to the organisations created before it, see
+[the system roles of the organisations](../../apps/auth/21-tenant-roles.md)).
+All three are idempotent; their JSON report decides whether the task is reported
+as changed. In check mode they run with `--dry-run` (nothing is written) and a
+failure is ignored, since the migrations may not have been applied. For a database that
 already holds the rows of the original migrations they find them and create only
 what is missing; set `website_auth_swagger_scopes` to the scopes the
 `swagger-ui` client had before the first run, because the bootstrap makes the

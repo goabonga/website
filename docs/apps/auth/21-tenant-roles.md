@@ -72,6 +72,8 @@ roles created and the scopes added to each role:
 [`auth bootstrap`](20-bootstrap.md) does not run it. The bootstrap only completes
 what a deployment needs to serve; changing the roles of organisations that
 customers manage is a decision of the operator, taken after reading a dry run.
+The deployment of the Ansible collection runs it after `auth catalog sync`, with
+`--dry-run` in check mode (see [the auth catalog](../../ansible/09-auth-catalog.md)).
 
 ## Settings
 

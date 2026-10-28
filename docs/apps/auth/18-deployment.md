@@ -134,10 +134,10 @@ defines three components built from this monorepo: `auth` (the web API),
   `celery beat` for `auth_beat`), with the sudoers entries and writable paths
   of the worker;
 - runs `alembic upgrade head` on every deployment of the `auth` component, then
-  `auth bootstrap` and `auth catalog sync`: the catalog file is rendered from the
-  `auth_catalog` declared by the catalog entry of each enabled application, and
-  the platform tenant and the Swagger UI client come from the `website_auth_*`
-  variables (see [Scopes and roles of the platform services](../../ansible/09-auth-catalog.md));
+  `auth bootstrap`, `auth catalog sync` and `auth tenant-roles sync`: the
+  catalog file is rendered from the `auth_catalog` declared by the catalog entry
+  of each enabled application, and the platform tenant and the Swagger UI client
+  come from the `website_auth_*` variables (see [Scopes and roles of the platform services](../../ansible/09-auth-catalog.md));
 - delivers `JWKS_ENCRYPTION_KEY` and `MAILLER_CLIENT_SECRET` (and the optional
   `SMTP_PASSWORD`) as encrypted systemd credentials, from the `website_secrets`
   of the inventory.

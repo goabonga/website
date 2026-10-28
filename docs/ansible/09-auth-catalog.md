@@ -99,9 +99,12 @@ default, mode `0640`, owned by the account of `auth`) and the environment file o
 The role then applies it: after the migrations it runs, as the account of `auth`,
 `auth bootstrap` (the built-in roles, the platform tenant and the Swagger UI
 client, see [the bootstrap of auth](../apps/auth/20-bootstrap.md)) and `auth catalog
-sync` (see [the catalog of auth](../apps/auth/19-catalog.md)). Both are
-idempotent and print a JSON report; a run is reported as changed only when the
-report says so. In check mode they run with `--dry-run`, which writes nothing, so
+sync` (see [the catalog of auth](../apps/auth/19-catalog.md)), then
+`auth tenant-roles sync`, which adds the scopes that a release put in the
+default roles of the organisations (`owner`, `admin`, `member`) to the
+organisations that already exist (see [the system roles of the
+organisations](../apps/auth/21-tenant-roles.md)). All of them are idempotent and
+print a JSON report; a run is reported as changed only when the report says so. In check mode they run with `--dry-run`, which writes nothing, so
 the plan shows what would be created; a failure is then ignored, since the
 migrations may not have been applied. Nothing is ever deleted: a scope removed
 from a declaration stays in the database until it is deleted from `auth`.

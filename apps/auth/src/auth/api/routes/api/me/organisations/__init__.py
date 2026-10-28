@@ -15,6 +15,7 @@ from auth.api.routes.api.me.organisations import (
     allowed_scopes,
     branding,
     clients,
+    domain,
     email_sender,
     idps,
     members,
@@ -149,3 +150,4 @@ router.include_router(registration_fields.router, prefix="/{org_id}")
 router.include_router(profile_fields.router, prefix="/{org_id}")
 router.include_router(email_sender.router, prefix="/{org_id}")
 router.include_router(allowed_scopes.router, prefix="/{org_id}")
+router.include_router(domain.router, prefix="/{org_id}")

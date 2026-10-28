@@ -67,6 +67,17 @@ class TenantRepository:
         result = await db.execute(select(Tenant).where(Tenant.slug == slug))
         return result.scalar_one_or_none()
 
+    async def find_by_custom_domain(
+        self,
+        db: AsyncSession,
+        domain: str,
+    ) -> Tenant | None:
+        """Fetch the tenant that holds ``domain`` as its custom domain (case-insensitive)."""
+        result = await db.execute(
+            select(Tenant).where(func.lower(Tenant.custom_domain) == domain.lower())
+        )
+        return result.scalar_one_or_none()
+
     async def find_id_by_active_slug(
         self,
         db: AsyncSession,

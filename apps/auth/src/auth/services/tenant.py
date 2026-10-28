@@ -95,6 +95,14 @@ class TenantService:
         """
         return await self._repo.find_id_by_active_slug(db, slug)
 
+    async def get_by_custom_domain(
+        self,
+        db: AsyncSession,
+        domain: str,
+    ) -> Tenant | None:
+        """Return the tenant that holds ``domain`` as its custom domain, if any."""
+        return await self._repo.find_by_custom_domain(db, domain)
+
     async def find_id_slug_by_active_custom_domain(
         self,
         db: AsyncSession,

@@ -35,6 +35,7 @@ branch of this repository, and is skipped when:
 6. Retitles the pull request after its commits: a single commit gives its
    subject, a group keeps its title under the type and scope of its first
    commit (`python3 scripts/rewrite_dependabot_commit.py title BASE..HEAD`).
+7. Tracks the pull request with an issue (see below).
 
 Each commit is re-authored with `--reset-author`, signed, and its
 `Co-authored-by` trailers are dropped.
@@ -78,6 +79,22 @@ proposed (a transitive dependency moved too).
 `uv lock` runs in the checkout of the pull request before the signing key is
 imported, but after the checkout that holds `AUTO_MERGE_PAT` in its git
 configuration: it resolves the lock, and Dependabot only changes versions.
+
+## Issue tracking
+
+`scripts/dependabot_issue.py link` creates an issue titled like the pull
+request, labelled `dependencies` and assigned to the repository owner, and adds
+`Closes #N` to the description of the pull request. Merging through the
+interface then closes the issue by itself. When the title changes, the issue is
+renamed. The issue is found again through a hidden marker in its body, never
+through the description of the pull request, which Dependabot rewrites when it
+recreates the pull request: the next run puts the keyword back.
+
+When a Dependabot pull request is closed, the `close-issue` job runs
+`scripts/dependabot_issue.py close` from the default branch. It closes the issue
+as completed when the pull request was merged, which covers the signed merge,
+and as not planned when Dependabot or a maintainer dropped it. Both use the
+workflow token with `issues: write`.
 
 ## Why the push uses the merge token
 

@@ -83,8 +83,8 @@ Tasks that run commands (`command`, `shell`, `uv sync`, builds) are skipped in
 check mode, so what they would change is invisible to it. The pins cover part
 of that gap: a new release of an application is drift whatever check mode says.
 A clean check is therefore not a proof that nothing changes. The exception is
-`auth`: its `bootstrap` and `catalog sync` commands run in check mode too, with
-`--dry-run`, so the plan lists the scopes, roles and rows they would create (once
+`auth`: its `bootstrap`, `catalog sync` and `tenant-roles sync` commands run in
+check mode too, with `--dry-run`, so the plan lists the scopes, roles and rows they would create (once
 the migrations are applied; before that their failure is ignored).
 
 ## Setting up GitHub

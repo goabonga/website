@@ -22,10 +22,15 @@ with the application, so it must release it: [project].dependencies or
 [project.optional-dependencies] of apps/<app>/pyproject.toml) and chore when
 it only appears in a dev group, either [dependency-groups].dev of the root
 pyproject.toml or of the app pyproject whose dependencies are involved.
+
+The `title` command prints the pull request title matching the rewritten
+commits, so the title and the history agree on the type and the scope.
 """
 
+import os
 import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -99,6 +104,25 @@ def rewrite(changed: list[str], subject: str, body: str) -> str:
     return f"{message}\n\n{body}" if body else message
 
 
+def pull_request_title(title: str, subjects: list[str]) -> str:
+    """The pull request title, typed like the rewritten commits.
+
+    A single commit gives its subject; a group of commits keeps the title
+    text under the type of its first commit.
+    """
+    if len(subjects) == 1:
+        return subjects[0]
+    typed = LEADING_TYPE.match(subjects[0]) if subjects else None
+    if typed is None:
+        return title
+    return f"{typed.group(0)}{LEADING_TYPE.sub('', title)}"
+
+
+def print_title(commit_range: str) -> None:
+    subjects = git("log", "--reverse", "--pretty=%s", commit_range).splitlines()
+    print(pull_request_title(os.environ["PR_TITLE"], subjects))
+
+
 def main() -> None:
     changed = git("show", "--name-only", "--pretty=", "HEAD").splitlines()
     message = rewrite(
@@ -110,4 +134,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["title"]:
+        print_title(sys.argv[2])
+    else:
+        main()

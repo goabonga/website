@@ -45,3 +45,6 @@ environment (see [Production deployment](../ansible/08-production-deployment.md)
    workflows need, and what has not been verified.
 4. [Commit messages](04-commit-messages.md) - the rules a commit message
    must follow, locally and in `ci`.
+5. [CI job summaries](05-ci-summaries.md) - the Markdown summary each tool
+   job of `ci` writes from its report.
+

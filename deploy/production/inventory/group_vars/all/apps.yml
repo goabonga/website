@@ -66,7 +66,73 @@ website_oauth2_clients:
 
 # Adjustments of the catalog, keyed by component. Dictionaries are merged
 # recursively, lists are replaced.
-website_apps_overrides: {}
+website_apps_overrides:
+  # Tenants have their own sub-domain, covered by a wildcard certificate
+  # requested through Route 53.
+  auth:
+    nginx:
+      ssl_wildcard: true
+      ssl_wildcard_domains: ["*.{{ website_hostnames.auth }}"]
+      ssl_dns_provider: route53
+      dns_wildcard_cname_target: "{{ website_domain }}"
+    env_vars:
+      ISSUER: "https://{{ website_hostnames.auth }}"
+      MFA_ISSUER_NAME: Goabonga
+      SMTP_FROM: "contact@{{ website_domain }}"
+      CUSTOM_DOMAIN_CNAME_TARGET: "{{ website_hostnames.auth }}"
+  auth_worker:
+    env_vars:
+      CUSTOM_DOMAIN_CNAME_TARGET: "{{ website_hostnames.auth }}"
+  frontend:
+    env_vars:
+      SECURITY_CONTACT: "mailto:contact@{{ website_domain }}"
+      SECURITY_EXPIRES: "2026-12-31T23:59:59.000Z"
+      SECURITY_PREFERRED_LANGUAGES: "en, fr"
+      LEGAL_ADDRESS: Terre Rouge
+      LEGAL_CITY: 26410 Boulc
+      LEGAL_COUNTRY: FRANCE
+      LEGAL_DIRECTOR_NAME: Chris Becker
+      LEGAL_HOST_NAME: OVH
+      LEGAL_HOST_ADDRESS: 140, Quai du Sartel
+      LEGAL_HOST_CITY: 59100 ROUBAIX
+      LEGAL_HOST_COUNTRY: France
+      LEGAL_HOST_PHONE: 0899 701 761
+      LEGAL_HOST_WEBSITE: ovh.com
+      WELCOME_WORDS: super,french,cool
+      SOCIAL_LINKEDIN: https://linkedin.com/in/goabonga
+      SOCIAL_GITHUB: https://github.com/goabonga
+      SOCIAL_HUGGINGFACE: https://huggingface.co/goabonga
+  backend:
+    env_vars:
+      SECURITY_CONTACT: "mailto:contact@{{ website_domain }}"
+      SECURITY_EXPIRES: "2026-12-31T23:59:59.000Z"
+      SECURITY_PREFERRED_LANGUAGES: "en, fr"
+  analytics:
+    env_vars:
+      APP_NAME: GOABONGA Universal Analytics
+      DOCS_ENABLED: "true"
+      # The session cookie is shared by the sub-domains of the zone.
+      SESSION_COOKIE_DOMAIN: ".{{ website_domain }}"
+      SECURITY_CONTACT: "mailto:contact@{{ website_domain }}"
+      SECURITY_EXPIRES: "2026-12-31T23:59:59.000Z"
+      SECURITY_PREFERRED_LANGUAGES: "en, fr"
+  mta_sts:
+    env_vars:
+      APP_NAME: MTA-STS
+      MTA_STS_MX: "mx.{{ website_domain }}"
+  webhooks:
+    env_vars:
+      DOCS_ENABLED: "true"
+  # The address the VPN profiles connect to.
+  vpn_portal:
+    env_vars:
+      OPENVPN_SERVER: "{{ ansible_host }}"
+  # Its users sign in at the authentication sub-domain of the application.
+  apt_server:
+    env_vars:
+      APT_ORIGIN: goabonga
+      APT_LABEL: goabonga
+      OAUTH2_ISSUER: "https://auth.{{ website_hostnames.apt_server }}"
 
 # Secrets, stored as encrypted systemd credentials. Application-level entries
 # are shared by the components that declare the name; component-level entries

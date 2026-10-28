@@ -43,3 +43,5 @@ environment (see [Production deployment](../ansible/08-production-deployment.md)
    order, signing, merging and re-signing.
 3. [Setup](03-setup.md) - the secrets, variables and repository settings the
    workflows need, and what has not been verified.
+4. [Commit messages](04-commit-messages.md) - the rules a commit message
+   must follow, locally and in `ci`.

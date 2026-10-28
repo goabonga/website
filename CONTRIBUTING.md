@@ -167,6 +167,9 @@ that justifies them.
 - No opportunistic changes (reformatting, renaming, typo fixes) inside a
   feature commit.
 - Do not append `Co-Authored-By` trailers or tool-attribution footers.
+- The `commit-subject` pre-commit hook and the `commit-messages` job of `ci`
+  check the type, the scope, the length and the trailers; see
+  [commit messages](docs/automation/04-commit-messages.md).
 - History is rebased, not patched: fix your branch by amending or rewriting
   the commit that introduced the problem and force-push the branch, instead
   of adding `fix` commits on top of your own unmerged work.

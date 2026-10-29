@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  SPDX-License-Identifier: MIT
+  Copyright (c) 2026 Chris <goabonga@pm.me>
+
+  website master logo. Regenerate the derived assets (docs/website.svg,
+  docs/favicon.ico) with `scripts/regen-icons.sh` after editing.
+
+  One hub, four services: the platform is a set of independent
+  applications that all talk through a shared core (authentication,
+  mail, billing), each deployed and versioned on its own.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Rounded shell: the monorepo the applications share -->
+  <rect x="16" y="16" width="224" height="224" rx="52" fill="#0B3C5D"/>
+  <rect x="34" y="34" width="188" height="188" rx="40" fill="#1D6FA5"/>
+  <!-- Links from the hub to each service -->
+  <g stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" fill="none">
+    <path d="M128 128 L82 82"/>
+    <path d="M128 128 L174 82"/>
+    <path d="M128 128 L82 174"/>
+    <path d="M128 128 L174 174"/>
+  </g>
+  <!-- Services -->
+  <g fill="#FFFFFF">
+    <circle cx="82" cy="82" r="19"/>
+    <circle cx="174" cy="82" r="19"/>
+    <circle cx="82" cy="174" r="19"/>
+    <circle cx="174" cy="174" r="19"/>
+  </g>
+  <!-- Hub -->
+  <circle cx="128" cy="128" r="26" fill="#FFFFFF"/>
+  <circle cx="128" cy="128" r="11" fill="#1D6FA5"/>
+</svg>

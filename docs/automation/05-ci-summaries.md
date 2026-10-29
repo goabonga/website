@@ -38,3 +38,15 @@ The `multicz`, `docs`, `ansible`, `scripts` and `libs` jobs have no summary:
 `multicz`, `zensical` and `ansible` print a short output, and the `scripts` and
 `libs` jobs do not write a report. The release job already writes the plan of
 `multicz` to its summary.
+
+## Coverage and test results on Codecov
+
+The `<app>-test` jobs upload the coverage (`coverage.xml`) and the test results
+(`junit.xml`) of an application with `codecov/codecov-action`, under a flag named
+after the application. The results use `report_type: test_results`, which is
+what replaces the deprecated `codecov/test-results-action`. Because only the
+changed applications are tested, `codecov.yml` declares one flag per application
+with the path of its sources and enables `carryforward`: an application that was
+not tested keeps the coverage of its last upload. The upload does not fail the
+job when Codecov is unreachable or `CODECOV_TOKEN` is missing.
+

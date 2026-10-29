@@ -39,6 +39,19 @@ types = ["fix"]
 title = "Performance"
 types = ["perf"]
 
+# Support code of the browser scenarios. Not released: the release job of ci.yml leaves it out, and
+# it is declared so that the applications that use it are tested when it changes.
+[components.e2e-support]
+tag_format = "e2e-support-v{version}"
+paths = [
+    "libs/e2e-support/src/**",
+    "libs/e2e-support/tests/**",
+    "libs/e2e-support/pyproject.toml",
+]
+bump_files = [
+    { file = "libs/e2e-support/pyproject.toml", key = "project.version" },
+]
+
 [components.mta-sts]
 tag_format = "mta-sts-v{version}"
 paths = [
@@ -70,6 +83,7 @@ bump_files = [
     { file = "README.md", key = 'regex:<!-- v:frontend -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/frontend/CHANGELOG.md"
+depends_on = ["e2e-support"]
 post_bump = ["uv lock"]
 
 [components.asterisk]
@@ -168,6 +182,7 @@ bump_files = [
     { file = "README.md", key = 'regex:<!-- v:internal -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/internal/CHANGELOG.md"
+depends_on = ["e2e-support"]
 post_bump = ["uv lock"]
 
 [components.analytics]
@@ -219,6 +234,7 @@ bump_files = [
     { file = "README.md", key = 'regex:<!-- v:apt-server -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/apt-server/CHANGELOG.md"
+depends_on = ["e2e-support"]
 post_bump = ["uv lock"]
 
 [components.custom-domain]
@@ -289,6 +305,7 @@ bump_files = [
     { file = "README.md", key = 'regex:<!-- v:knowledge -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/knowledge/CHANGELOG.md"
+depends_on = ["e2e-support"]
 post_bump = ["uv lock"]
 
 [components.auth]
@@ -306,6 +323,7 @@ bump_files = [
     { file = "README.md", key = 'regex:<!-- v:auth -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/auth/CHANGELOG.md"
+depends_on = ["e2e-support"]
 post_bump = ["uv lock"]
 
 [components.ansible]

@@ -8,3 +8,36 @@ site_author = "Chris"
 site_url = "https://goabonga.github.io/website/"
 repo_url = "https://github.com/goabonga/website"
 repo_name = "goabonga/website"
+
+# The copyright notice is the only footer text: `extra.generator = false` below drops
+# the "Made with Zensical" line of the theme. Raw HTML, interpolated as-is.
+copyright = """
+Made with <span style="color: #e25555;">&#10084;</span> by
+<a href="https://github.com/goabonga" target="_blank" rel="noopener">goabonga</a>
+"""
+
+[project.theme]
+# Generated from `assets/website.svg` by `scripts/regen-icons.sh` and committed: the
+# docs workflow builds the site from the checked-in tree.
+favicon = "favicon.ico"
+logo = "website.svg"
+
+# Dark first. Neither entry declares `media`, so the system `prefers-color-scheme` is
+# ignored and every visitor lands on the first one, slate. The toggle in the header
+# switches to the next entry and the theme remembers the choice.
+[[project.theme.palette]]
+scheme = "slate"
+primary = "blue"
+accent = "light-blue"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "blue"
+accent = "light-blue"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[project.extra]
+generator = false

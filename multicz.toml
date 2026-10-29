@@ -50,6 +50,7 @@ paths = [
 bump_files = [
     { file = "apps/mta-sts/pyproject.toml", key = "project.version" },
     { file = "apps/mta-sts/src/mta_sts/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:mta-sts -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/mta-sts/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -66,6 +67,7 @@ paths = [
 bump_files = [
     { file = "apps/frontend/pyproject.toml", key = "project.version" },
     { file = "apps/frontend/src/frontend/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:frontend -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/frontend/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -81,6 +83,7 @@ paths = [
 bump_files = [
     { file = "apps/asterisk/pyproject.toml", key = "project.version" },
     { file = "apps/asterisk/src/asterisk/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:asterisk -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/asterisk/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -97,6 +100,7 @@ paths = [
 bump_files = [
     { file = "apps/backend/pyproject.toml", key = "project.version" },
     { file = "apps/backend/src/backend/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:backend -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/backend/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -112,6 +116,7 @@ paths = [
 bump_files = [
     { file = "apps/webhooks/pyproject.toml", key = "project.version" },
     { file = "apps/webhooks/src/webhooks/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:webhooks -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/webhooks/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -127,6 +132,7 @@ paths = [
 bump_files = [
     { file = "apps/reachy-mini-api/pyproject.toml", key = "project.version" },
     { file = "apps/reachy-mini-api/src/reachy_mini_api/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:reachy-mini-api -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/reachy-mini-api/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -143,6 +149,7 @@ paths = [
 bump_files = [
     { file = "apps/billing/pyproject.toml", key = "project.version" },
     { file = "apps/billing/src/billing/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:billing -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/billing/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -158,6 +165,7 @@ paths = [
 bump_files = [
     { file = "apps/internal/pyproject.toml", key = "project.version" },
     { file = "apps/internal/src/internal/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:internal -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/internal/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -174,6 +182,7 @@ paths = [
 bump_files = [
     { file = "apps/analytics/pyproject.toml", key = "project.version" },
     { file = "apps/analytics/src/analytics/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:analytics -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/analytics/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -190,6 +199,7 @@ paths = [
 bump_files = [
     { file = "apps/mailler/pyproject.toml", key = "project.version" },
     { file = "apps/mailler/src/mailler/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:mailler -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/mailler/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -206,6 +216,7 @@ paths = [
 bump_files = [
     { file = "apps/apt-server/pyproject.toml", key = "project.version" },
     { file = "apps/apt-server/src/apt_server/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:apt-server -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/apt-server/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -222,6 +233,7 @@ paths = [
 bump_files = [
     { file = "apps/custom-domain/pyproject.toml", key = "project.version" },
     { file = "apps/custom-domain/src/custom_domain/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:custom-domain -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/custom-domain/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -240,6 +252,7 @@ paths = [
 bump_files = [
     { file = "apps/vpn-portal/pyproject.toml", key = "project.version" },
     { file = "apps/vpn-portal/src/vpn_portal/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:vpn-portal -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/vpn-portal/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -256,6 +269,7 @@ paths = [
 bump_files = [
     { file = "apps/team/pyproject.toml", key = "project.version" },
     { file = "apps/team/src/team/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:team -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/team/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -272,6 +286,7 @@ paths = [
 bump_files = [
     { file = "apps/knowledge/pyproject.toml", key = "project.version" },
     { file = "apps/knowledge/src/knowledge/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:knowledge -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/knowledge/CHANGELOG.md"
 post_bump = ["uv lock"]
@@ -288,6 +303,7 @@ paths = [
 bump_files = [
     { file = "apps/auth/pyproject.toml", key = "project.version" },
     { file = "apps/auth/src/auth/__init__.py", key = "regex:__version__\\s*=\\s*[\"']([^\"']+)[\"']" },
+    { file = "README.md", key = 'regex:<!-- v:auth -->([^<]*)<!-- /v -->' },
 ]
 changelog = "apps/auth/CHANGELOG.md"
 post_bump = ["uv lock"]

@@ -25,26 +25,27 @@ this repository by Ansible.
 
 ## Packages
 
-Every package owns its version, changelog and git tag.
+Every package owns its version, changelog and git tag. The Tag column is
+rewritten by `multicz` in the release commit of the package.
 
 | Package | Role | Documentation | Tag |
 | --- | --- | --- | --- |
-| [`analytics`](apps/analytics) | Privacy-friendly analytics service. | [docs](docs/apps/analytics/index.md) | `analytics-v<version>` |
-| [`apt-server`](apps/apt-server) | FastAPI microservice serving a signed APT repository with per-package access control. | [docs](docs/apps/apt-server/index.md) | `apt-server-v<version>` |
-| [`asterisk`](apps/asterisk) | Voice bot bridging Asterisk AudioSocket calls to the OpenAI Realtime API. | [docs](docs/apps/asterisk/index.md) | `asterisk-v<version>` |
-| [`auth`](apps/auth) | Centralized OIDC/OAuth2 authentication service. | [docs](docs/apps/auth/index.md) | `auth-v<version>` |
-| [`backend`](apps/backend) | Main API service of the platform. | [docs](docs/apps/backend/index.md) | `backend-v<version>` |
-| [`billing`](apps/billing) | Multi-SaaS Stripe billing platform API. | [docs](docs/apps/billing/index.md) | `billing-v<version>` |
-| [`custom-domain`](apps/custom-domain) | Centralized custom domain management with DNS verification and SSL provisioning. | [docs](docs/apps/custom-domain/index.md) | `custom-domain-v<version>` |
-| [`frontend`](apps/frontend) | Frontend application server (FastAPI) serving the website single page application. | [docs](docs/apps/frontend/index.md) | `frontend-v<version>` |
-| [`internal`](apps/internal) | Internal admin dashboard for managing platform services. | [docs](docs/apps/internal/index.md) | `internal-v<version>` |
-| [`knowledge`](apps/knowledge) | Vector storage and semantic search SaaS for AI agents, LLMs and RAG applications. | [docs](docs/apps/knowledge/index.md) | `knowledge-v<version>` |
-| [`mailler`](apps/mailler) | Internal email sending service with multi-provider support, campaigns and inbound processing. | [docs](docs/apps/mailler/index.md) | `mailler-v<version>` |
-| [`mta-sts`](apps/mta-sts) | Minimal FastAPI service serving the MTA-STS policy (RFC 8461). | [docs](docs/apps/mta-sts/index.md) | `mta-sts-v<version>` |
-| [`reachy-mini-api`](apps/reachy-mini-api) | Internal API for the Reachy Mini robot: reports, status and a WebSocket channel. | [docs](docs/apps/reachy-mini-api/index.md) | `reachy-mini-api-v<version>` |
-| [`team`](apps/team) | Multi-agent orchestration platform: AI agents, workflows, tasks and memory behind a REST API. | [docs](docs/apps/team/index.md) | `team-v<version>` |
-| [`vpn-portal`](apps/vpn-portal) | Zero-Trust VPN authentication and certificate issuance service. | [docs](docs/apps/vpn-portal/index.md) | `vpn-portal-v<version>` |
-| [`webhooks`](apps/webhooks) | FastAPI gateway receiving provider webhooks and forwarding them to internal services. | [docs](docs/apps/webhooks/index.md) | `webhooks-v<version>` |
+| [`analytics`](apps/analytics) | Privacy-friendly analytics service. | [docs](docs/apps/analytics/index.md) | <code>analytics-v<!-- v:analytics -->0.0.0<!-- /v --></code> |
+| [`apt-server`](apps/apt-server) | FastAPI microservice serving a signed APT repository with per-package access control. | [docs](docs/apps/apt-server/index.md) | <code>apt-server-v<!-- v:apt-server -->0.0.0<!-- /v --></code> |
+| [`asterisk`](apps/asterisk) | Voice bot bridging Asterisk AudioSocket calls to the OpenAI Realtime API. | [docs](docs/apps/asterisk/index.md) | <code>asterisk-v<!-- v:asterisk -->0.0.0<!-- /v --></code> |
+| [`auth`](apps/auth) | Centralized OIDC/OAuth2 authentication service. | [docs](docs/apps/auth/index.md) | <code>auth-v<!-- v:auth -->0.0.0<!-- /v --></code> |
+| [`backend`](apps/backend) | Main API service of the platform. | [docs](docs/apps/backend/index.md) | <code>backend-v<!-- v:backend -->0.0.0<!-- /v --></code> |
+| [`billing`](apps/billing) | Multi-SaaS Stripe billing platform API. | [docs](docs/apps/billing/index.md) | <code>billing-v<!-- v:billing -->0.0.0<!-- /v --></code> |
+| [`custom-domain`](apps/custom-domain) | Centralized custom domain management with DNS verification and SSL provisioning. | [docs](docs/apps/custom-domain/index.md) | <code>custom-domain-v<!-- v:custom-domain -->0.0.0<!-- /v --></code> |
+| [`frontend`](apps/frontend) | Frontend application server (FastAPI) serving the website single page application. | [docs](docs/apps/frontend/index.md) | <code>frontend-v<!-- v:frontend -->0.0.0<!-- /v --></code> |
+| [`internal`](apps/internal) | Internal admin dashboard for managing platform services. | [docs](docs/apps/internal/index.md) | <code>internal-v<!-- v:internal -->0.0.0<!-- /v --></code> |
+| [`knowledge`](apps/knowledge) | Vector storage and semantic search SaaS for AI agents, LLMs and RAG applications. | [docs](docs/apps/knowledge/index.md) | <code>knowledge-v<!-- v:knowledge -->0.0.0<!-- /v --></code> |
+| [`mailler`](apps/mailler) | Internal email sending service with multi-provider support, campaigns and inbound processing. | [docs](docs/apps/mailler/index.md) | <code>mailler-v<!-- v:mailler -->0.0.0<!-- /v --></code> |
+| [`mta-sts`](apps/mta-sts) | Minimal FastAPI service serving the MTA-STS policy (RFC 8461). | [docs](docs/apps/mta-sts/index.md) | <code>mta-sts-v<!-- v:mta-sts -->0.0.0<!-- /v --></code> |
+| [`reachy-mini-api`](apps/reachy-mini-api) | Internal API for the Reachy Mini robot: reports, status and a WebSocket channel. | [docs](docs/apps/reachy-mini-api/index.md) | <code>reachy-mini-api-v<!-- v:reachy-mini-api -->0.0.0<!-- /v --></code> |
+| [`team`](apps/team) | Multi-agent orchestration platform: AI agents, workflows, tasks and memory behind a REST API. | [docs](docs/apps/team/index.md) | <code>team-v<!-- v:team -->0.0.0<!-- /v --></code> |
+| [`vpn-portal`](apps/vpn-portal) | Zero-Trust VPN authentication and certificate issuance service. | [docs](docs/apps/vpn-portal/index.md) | <code>vpn-portal-v<!-- v:vpn-portal -->0.0.0<!-- /v --></code> |
+| [`webhooks`](apps/webhooks) | FastAPI gateway receiving provider webhooks and forwarding them to internal services. | [docs](docs/apps/webhooks/index.md) | <code>webhooks-v<!-- v:webhooks -->0.0.0<!-- /v --></code> |
 | [`ansible`](ansible) | Ansible collection `goabonga.website`: roles that provision hosts and deploy the applications. | [docs](docs/ansible/index.md) | `ansible-v<version>` |
 | [`playbook-bootstrap`](ansible/playbooks/bootstrap.yml) | First run on a fresh host: deploy account and SSH hardening. | [docs](docs/ansible/06-playbooks.md) | `playbook-bootstrap-v<version>` |
 | [`playbook-site`](ansible/playbooks/site.yml) | Base infrastructure of the platform. | [docs](docs/ansible/06-playbooks.md) | `playbook-site-v<version>` |

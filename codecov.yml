@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# One flag per application: the `test` job uploads the coverage of an application
+# under the flag of the same name, and only for the applications a change touched.
+# Without carryforward the flags of the other applications would be missing from
+# the report of the commit and the total would drop.
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: analytics
+      paths:
+        - apps/analytics/
+    - name: apt-server
+      paths:
+        - apps/apt-server/
+    - name: asterisk
+      paths:
+        - apps/asterisk/
+    - name: auth
+      paths:
+        - apps/auth/
+    - name: backend
+      paths:
+        - apps/backend/
+    - name: billing
+      paths:
+        - apps/billing/
+    - name: custom-domain
+      paths:
+        - apps/custom-domain/
+    - name: frontend
+      paths:
+        - apps/frontend/
+    - name: internal
+      paths:
+        - apps/internal/
+    - name: knowledge
+      paths:
+        - apps/knowledge/
+    - name: mailler
+      paths:
+        - apps/mailler/
+    - name: mta-sts
+      paths:
+        - apps/mta-sts/
+    - name: reachy-mini-api
+      paths:
+        - apps/reachy-mini-api/
+    - name: team
+      paths:
+        - apps/team/
+    - name: vpn-portal
+      paths:
+        - apps/vpn-portal/
+    - name: webhooks
+      paths:
+        - apps/webhooks/
+
+comment:
+  layout: "condensed_header, diff, flags, files"

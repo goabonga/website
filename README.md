@@ -1,12 +1,19 @@
-# website
+<h1 align="center">
+  <img src="docs/website.svg" alt="website" width="120" /><br/>
+  website
+</h1>
 
-[![CI](https://github.com/goabonga/website/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/goabonga/website/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/goabonga/website?logo=codecov)](https://codecov.io/gh/goabonga/website)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/goabonga/website/blob/main/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+<p align="center">
+  <em>Monorepo of the platform services and the Ansible collection that deploys them.</em>
+</p>
 
-Monorepo of the platform services and the Ansible collection that deploys them.
+<p align="center">
+  <a href="https://github.com/goabonga/website/actions/workflows/ci.yml"><img src="https://github.com/goabonga/website/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/></a>
+  <a href="https://codecov.io/gh/goabonga/website"><img src="https://img.shields.io/codecov/c/github/goabonga/website?logo=codecov" alt="Codecov"/></a>
+  <a href="https://github.com/goabonga/website/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python"/></a>
+  <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"/></a>
+</p>
 
 The repository contains sixteen Python applications (FastAPI services) in
 `apps/`, managed as members of a single

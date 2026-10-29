@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: bump-preview
+description: >-
+  Run `multicz bump` write-only so the workspace holds the version the release will
+  publish: the version files of every component that would be bumped (pyproject.toml,
+  __init__.py, galaxy.yml, the readme table) are updated in place. Nothing is
+  committed, tagged or pushed, and neither the post-bump hooks nor the changelogs run.
+  Use it at the start of a job that tests or builds something that carries its version,
+  so that the run of the pull request and the run of the release see the same one.
+  The calling job must have run actions/checkout with fetch-depth 0 first: multicz needs
+  the whole history to compute the next versions.
+
+runs:
+  using: composite
+  steps:
+    # NOTE: no python-version pin here - multicz needs Python >=3.12.
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: bump-preview-${{ github.job }}
+    - name: Bump (write only)
+      shell: bash
+      run: uv tool run multicz bump --no-post-bump --no-changelog

@@ -1,0 +1,254 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: app-check
+description: >-
+  Run one check against one Python target of the workspace (an application, a library or the scripts):
+  `license`, `lint`, `format`, `bandit`, `audit`, `osv`, `test` or `behave`. Every check ends with a summary
+  of its result on the page of the run. The calling job keeps the gate that skips a target nothing changed
+  for, and its own name in the list of checks.
+  The calling job must have run actions/checkout first (with fetch-depth 0 for `test` and `behave`, which
+  preview the next versions): a local action is resolved before any of its steps run.
+
+inputs:
+  check:
+    description: license | lint | format | bandit | audit | osv | test | behave
+    required: true
+  path:
+    description: Directory of the target, for example apps/auth.
+    required: true
+  package:
+    description: Name of the uv workspace package. Required for audit, osv, test and behave.
+    required: false
+    default: ""
+  types:
+    description: File types the license check looks at.
+    required: false
+    default: py
+  browser:
+    description: "`auto` looks for @browser scenarios under features/, `true` always installs Chromium."
+    required: false
+    default: auto
+  codecov-token:
+    description: Token of Codecov. Without it the uploads are skipped without failing.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # The version under test is the one the release will publish.
+    - name: Preview the next versions
+      if: inputs.check == 'test' || inputs.check == 'behave'
+      uses: ./.github/actions/bump-preview
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: ${{ github.job }}
+        python-version: "3.11"
+
+    # ---- license
+    - name: Check the SPDX headers
+      if: inputs.check == 'license'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+        TYPES: ${{ inputs.types }}
+      run: uv run --quiet --no-project python scripts/add_license_header.py --path "$TARGET" --types "$TYPES" --check 2>&1 | tee headers.txt
+    - name: Summarize license headers
+      if: ${{ !cancelled() && inputs.check == 'license' }}
+      shell: bash
+      run: python3 scripts/format_summary.py headers headers.txt
+
+    # ---- lint
+    - name: Install the linters
+      if: inputs.check == 'lint' || inputs.check == 'format'
+      shell: bash
+      run: uv sync --frozen --only-group dev
+    - name: Ruff lint
+      if: inputs.check == 'lint'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+      run: uv run --no-sync ruff check --output-format=json --output-file=ruff.json "$TARGET"
+    - name: Summarize ruff check
+      if: ${{ !cancelled() && inputs.check == 'lint' }}
+      shell: bash
+      run: python3 scripts/format_summary.py ruff-check ruff.json
+
+    # ---- format
+    - name: Ruff format check
+      if: inputs.check == 'format'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+      run: uv run --no-sync ruff format --check "$TARGET" 2>&1 | tee ruff-format.txt
+    - name: Summarize ruff format
+      if: ${{ !cancelled() && inputs.check == 'format' }}
+      shell: bash
+      run: python3 scripts/format_summary.py ruff-format ruff-format.txt
+
+    # ---- bandit
+    - name: Run Bandit
+      if: inputs.check == 'bandit'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+      run: |
+        sources="$TARGET/src"
+        [ -d "$sources" ] || sources="$TARGET"
+        uvx --from 'bandit[toml]' bandit -c pyproject.toml --recursive "$sources" --format json --output bandit.json
+    - name: Summarize bandit
+      if: ${{ !cancelled() && inputs.check == 'bandit' }}
+      shell: bash
+      run: python3 scripts/format_summary.py bandit bandit.json
+
+    # ---- audit and osv: the dependencies of the package alone, as locked in uv.lock
+    - name: Export the locked dependencies
+      if: inputs.check == 'audit' || inputs.check == 'osv'
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv export --frozen --package "$PACKAGE" --no-dev --no-emit-project --no-hashes --output-file requirements.txt
+    - name: Run pip-audit
+      if: inputs.check == 'audit'
+      shell: bash
+      # The two ignored advisories have no fixed release; they are accepted, with their reasons and a
+      # review date, in osv-scanner.toml.
+      run: |
+        uvx pip-audit -r requirements.txt --no-deps --disable-pip \
+          --ignore-vuln PYSEC-2026-1325 \
+          --ignore-vuln PYSEC-2026-4298 \
+          --format json | tee pip-audit.json
+    - name: Summarize pip-audit
+      if: ${{ !cancelled() && inputs.check == 'audit' }}
+      shell: bash
+      run: python3 scripts/format_summary.py pip-audit pip-audit.json --ignored PYSEC-2026-1325 PYSEC-2026-4298
+    # The binary is pinned to a release and verified against its published checksum instead of
+    # downloading whatever `latest` points to.
+    - name: Install OSV-Scanner
+      if: inputs.check == 'osv'
+      shell: bash
+      env:
+        OSV_SCANNER_VERSION: v2.7.0
+        OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+      run: |
+        mkdir -p "$HOME/.local/bin"
+        curl -sSfL \
+          "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+          -o "$HOME/.local/bin/osv-scanner"
+        echo "${OSV_SCANNER_SHA256}  $HOME/.local/bin/osv-scanner" | sha256sum --check
+        chmod +x "$HOME/.local/bin/osv-scanner"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Run OSV-Scanner
+      if: inputs.check == 'osv'
+      shell: bash
+      run: osv-scanner scan source --lockfile=requirements.txt --config osv-scanner.toml --format json | tee osv-scanner.json
+    - name: Summarize osv-scanner
+      if: ${{ !cancelled() && inputs.check == 'osv' }}
+      shell: bash
+      run: python3 scripts/format_summary.py osv-scanner osv-scanner.json
+
+    # ---- test and behave
+    # Browser scenarios (tagged @browser) need Chromium; the targets without any skip the download and the
+    # system packages.
+    - name: Detect browser scenarios
+      id: browser
+      if: inputs.check == 'test' || inputs.check == 'behave'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+        BROWSER: ${{ inputs.browser }}
+      run: |
+        if [ "$BROWSER" = "true" ] || grep -rqs --include='*.feature' '@browser' "$TARGET/features"; then
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "needed=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Install the dependencies
+      if: ${{ (inputs.check == 'test' || inputs.check == 'behave') && inputs.package != '' }}
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv sync --frozen --package "$PACKAGE" --group dev
+    - name: Install the scripts dependencies
+      if: ${{ inputs.check == 'test' && inputs.package == '' }}
+      shell: bash
+      run: uv sync --frozen --only-group dev
+    - name: Cache the Playwright browsers
+      if: steps.browser.outputs.needed == 'true'
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+    - name: Install the browser
+      if: steps.browser.outputs.needed == 'true'
+      shell: bash
+      run: uv run --no-sync playwright install --with-deps chromium
+    - name: Run pytest with coverage
+      if: ${{ inputs.check == 'test' && inputs.package != '' }}
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+        PACKAGE: ${{ inputs.package }}
+      run: |
+        uv run --frozen --package "$PACKAGE" --group dev pytest "$TARGET" \
+          --cov="$TARGET/src" \
+          --cov-report=term-missing \
+          --cov-report=xml:coverage.xml \
+          --junitxml=junit.xml \
+          -o junit_family=legacy
+    - name: Run pytest
+      if: ${{ inputs.check == 'test' && inputs.package == '' }}
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+      run: uv run --no-sync pytest "$TARGET/tests" --junitxml=junit.xml -o junit_family=legacy
+    - name: Summarize tests and coverage
+      if: ${{ !cancelled() && inputs.check == 'test' && inputs.package != '' }}
+      shell: bash
+      run: python3 scripts/format_summary.py pytest --junit junit.xml --coverage coverage.xml
+    - name: Summarize tests
+      if: ${{ !cancelled() && inputs.check == 'test' && inputs.package == '' }}
+      shell: bash
+      run: python3 scripts/format_summary.py pytest --junit junit.xml
+    - name: Upload coverage to Codecov
+      if: ${{ inputs.check == 'test' && inputs.package != '' }}
+      uses: codecov/codecov-action@v6
+      with:
+        files: coverage.xml
+        flags: ${{ inputs.package }}
+        token: ${{ inputs.codecov-token }}
+        fail_ci_if_error: false
+        disable_search: true
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() && inputs.check == 'test' && inputs.package != '' }}
+      uses: codecov/codecov-action@v6
+      with:
+        files: junit.xml
+        flags: ${{ inputs.package }}
+        report_type: test_results
+        token: ${{ inputs.codecov-token }}
+        fail_ci_if_error: false
+        disable_search: true
+    - name: Run behave scenarios
+      if: inputs.check == 'behave'
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+        PACKAGE: ${{ inputs.package }}
+      run: uv run --frozen --package "$PACKAGE" --group dev behave "$TARGET/features" 2>&1 | tee behave.txt
+    - name: Summarize behave
+      if: ${{ !cancelled() && inputs.check == 'behave' }}
+      shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
+      run: python3 scripts/format_summary.py text behave behave.txt
+    - name: Upload the artifacts of failed browser scenarios
+      if: ${{ failure() && steps.browser.outputs.needed == 'true' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: browser-artifacts-${{ inputs.package }}
+        path: artifacts/
+        if-no-files-found: ignore
+        retention-days: 7

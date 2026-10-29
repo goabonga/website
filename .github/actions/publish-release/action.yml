@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: publish-release
+description: >-
+  Create the GitHub release of one component from the tag multicz pushed, with
+  the notes of its changelog. The collection tarball is attached to the release
+  of the ansible component. A release that already exists is left alone, so a
+  job can be run again.
+  The calling job must have run actions/checkout (with the tags) first.
+
+inputs:
+  component:
+    description: Name of the multicz component.
+    required: true
+  version:
+    description: Version multicz bumped the component to.
+    required: true
+  token:
+    description: Token that creates the release. A release created with the default token starts no workflow.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # NOTE: no python-version pin here - multicz needs Python >=3.12.
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: ${{ github.job }}
+    - name: Create the GitHub release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        COMPONENT: ${{ inputs.component }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        # The SAME tag multicz created: every component uses "<component>-v{version}".
+        tag="${COMPONENT}-v${VERSION}"
+        if gh release view "$tag" > /dev/null 2>&1; then
+          echo "Release ${tag} already exists, skipping"
+          exit 0
+        fi
+        notes=$(uv tool run multicz release-notes --tag "$tag")
+        assets=()
+        if [ "$COMPONENT" = "ansible" ]; then
+          # Attach the collection tarball built from the tagged sources.
+          git checkout --detach "$tag"
+          uvx --from ansible-core ansible-galaxy collection build ansible --output-path dist
+          git checkout --detach main
+          assets=(dist/*.tar.gz)
+        fi
+        gh release create "$tag" --title "$tag" --notes "$notes" --verify-tag "${assets[@]}" 2>&1 | tee release.txt
+    - name: Summarize the release
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
+        COMPONENT: ${{ inputs.component }}
+      run: |
+        [ -f release.txt ] || echo "Nothing to create: the release already exists." > release.txt
+        python3 scripts/format_summary.py text "release-${COMPONENT}" release.txt

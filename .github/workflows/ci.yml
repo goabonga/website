@@ -1,10 +1,27 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Continuous integration and release of the monorepo. Every gate runs on pull
-# requests and on pushes to main; the release job only runs on main once all
-# gates are green. Nothing is published to PyPI, Debian or Ansible Galaxy:
-# releases are GitHub Releases (one per bumped component) and the docs site.
+# Continuous integration and release of the monorepo, built around what multicz reports as changed.
+#
+#   detect -> checks (matrix: component x check) -> unit (matrix: component) -> behave (matrix: component)
+#   ci-pass (every job) -> release-bump -> release-<component>, docs-deploy
+#
+# `detect` asks multicz which components changed since the base of the pull request (or the previous
+# tip of main) and publishes them as JSON. multicz owns the dependencies: a change to `ansible` selects
+# the playbooks and `deploy-production`, a change to `e2e-support` selects the applications that use it.
+# scripts/ci_matrix.py turns the selection into the three matrices: the checks of each selected
+# component (license headers, lint, format, bandit, pip-audit and osv-scanner), its unit tests, and its
+# behave scenarios. A matrix with nothing to run is skipped. The tests wait for the checks and the
+# scenarios wait for the tests, so nothing runs tests on code that fails a check.
+#
+# `detect` also names four groups multicz does not know, by the files that changed: `docs`, `scripts`,
+# `workflows` (.github) and `workspace` (the toml files of the root), plus `collection` when the Ansible
+# collection or a playbook changed. detect has to be in the `needs` of the job that reads its outputs:
+# GitHub exposes the outputs of direct dependencies only.
+#
+# The release only runs on main once ci-pass is green. `release-bump` bumps every releasable component in
+# one commit with one tag per component; each `release-<name>` job runs only when its component was
+# bumped and creates its GitHub release. Nothing is published to PyPI, Debian or Ansible Galaxy.
 
 name: ci
 
@@ -42,56 +59,14 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 scripts/check_commit_subject.py --range "$BASE_SHA..$HEAD_SHA"
-
-  lint:
-    name: lint
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.11"
-      - run: uv sync --frozen --only-group dev
-      - name: Lint
-        run: uv run --no-sync ruff check --output-format=json --output-file=ruff.json .
-      - name: Summarize ruff check
-        if: ${{ !cancelled() }}
-        run: python3 scripts/format_summary.py ruff-check ruff.json
-      - name: Format check
-        if: ${{ !cancelled() }}
-        # An explicit shell enables pipefail, so `| tee` keeps the status of the tool.
         shell: bash
-        run: uv run --no-sync ruff format --check . 2>&1 | tee ruff-format.txt
-      - name: Summarize ruff format
+        run: python3 scripts/check_commit_subject.py --range "$BASE_SHA..$HEAD_SHA" 2>&1 | tee commit-messages.txt
+      - name: Summarize commit-messages
         if: ${{ !cancelled() }}
-        run: python3 scripts/format_summary.py ruff-format ruff-format.txt
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: python3 scripts/format_summary.py text commit-messages commit-messages.txt
 
-  license-headers:
-    name: license-headers
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.11"
-      - name: Check SPDX headers
-        shell: bash
-        run: |
-          {
-            uv run --no-project python scripts/add_license_header.py --path apps --types py --check
-            uv run --no-project python scripts/add_license_header.py --path libs --types py --check
-            uv run --no-project python scripts/add_license_header.py --path scripts --types py,sh --check
-            uv run --no-project python scripts/add_license_header.py --path .github --types yml --check
-            uv run --no-project python scripts/add_license_header.py --path . --types toml --check
-          } 2>&1 | tee headers.txt
-      - name: Summarize license headers
-        if: ${{ !cancelled() }}
-        run: python3 scripts/format_summary.py headers headers.txt
 
   multicz:
     name: multicz
@@ -105,63 +80,28 @@ jobs:
         with:
           enable-cache: true
           cache-suffix: ${{ github.job }}
-      - run: uvx multicz validate --strict
+      - name: Validate the multicz configuration
+        shell: bash
+        run: uvx multicz validate --strict --output json | tee multicz.json
+      - name: Summarize multicz
+        if: ${{ !cancelled() }}
+        run: python3 scripts/format_summary.py multicz multicz.json
 
-  docs:
-    name: docs
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.13"
-      - run: uv sync --frozen --only-group doc
-      - run: uv run --no-sync zensical build --clean
-
-  ansible:
-    name: ansible
-    runs-on: ubuntu-24.04
-    env:
-      ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.13"
-      - run: uv sync --frozen --only-group dev
-      - name: Install the collection from ./ansible
-        run: uv run --no-sync ansible-galaxy collection install ./ansible -p .collections
-      - name: Syntax-check the playbooks
-        run: |
-          for playbook in bootstrap site apps; do
-            uv run --no-sync ansible-playbook --syntax-check -i localhost, "goabonga.website.${playbook}"
-          done
-      - name: Argument-spec smoke test
-        run: |
-          for dir in ansible/roles/*/; do
-            role="$(basename "$dir")"
-            uv run --no-sync ansible-doc -t role --json "goabonga.website.${role}" 2>/dev/null \
-              | python3 -c "import json, sys; d = json.load(sys.stdin)['goabonga.website.${role}']; assert d['entry_points']['main']['options'] is not None" \
-              || { echo "::error::argument spec missing or invalid for role ${role}"; exit 1; }
-          done
-
-  # Selects what the per-application and per-library jobs have to run. An
-  # application is tested when multicz reports its component as changed since
-  # the base of the pull request (or the previous tip of main); a change to
-  # anything shared (lock file, root configuration, libraries, this workflow)
-  # selects everything. The release commits of multicz select nothing.
+  # Selects what the jobs have to run, and builds their matrices. multicz reports the components that changed since the base of the
+  # pull request (or the previous tip of main), with their dependents; a change to anything shared (lock
+  # file, root pyproject, this workflow, the local actions) selects everything. The release commits of
+  # multicz select nothing.
   detect:
     name: detect
     runs-on: ubuntu-24.04
     outputs:
-      matrix: ${{ steps.select.outputs.matrix }}
-      has_apps: ${{ steps.select.outputs.has_apps }}
-      libs: ${{ steps.select.outputs.libs }}
-      has_libs: ${{ steps.select.outputs.has_libs }}
+      changed: ${{ steps.select.outputs.changed }}
+      checks: ${{ steps.select.outputs.checks }}
+      has_checks: ${{ steps.select.outputs.has_checks }}
+      tests: ${{ steps.select.outputs.tests }}
+      has_tests: ${{ steps.select.outputs.has_tests }}
+      behave: ${{ steps.select.outputs.behave }}
+      has_behave: ${{ steps.select.outputs.has_behave }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -171,17 +111,18 @@ jobs:
         with:
           enable-cache: true
           cache-suffix: ${{ github.job }}
-      - name: Select the applications and the libraries
+      - name: Select the changed components
         id: select
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           BASE_REF: ${{ github.base_ref }}
-          ALL_PATTERN: ^(uv\.lock|pyproject\.toml|libs/|\.github/workflows/ci\.yml|\.github/actions/)
+          ALL_PATTERN: ^(uv\.lock|pyproject\.toml|\.github/workflows/ci\.yml|\.github/actions/)
         run: |
           set -euo pipefail
-          all_apps=$(find apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
-          all_libs=$(find libs -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort || true)
+          all_components=$(uv tool run multicz config --output json | jq -r '.components | keys[]')
+          all_groups=$(printf '%s\n' docs scripts workflows workspace collection)
+          to_array() { jq -R -s -c 'split("\n") | map(select(. != ""))'; }
 
           if [ "$EVENT" = "pull_request" ]; then
             since="origin/${BASE_REF}"
@@ -192,219 +133,168 @@ jobs:
           fi
 
           if [ "$EVENT" = "push" ] && [[ "$(git log -1 --format=%s)" == "chore(release):"* ]]; then
-            apps=""; libs=""
-          elif [ -z "$since" ] || git diff --name-only "$since" HEAD | grep -Eq "$ALL_PATTERN"; then
-            apps="$all_apps"; libs="$all_libs"
+            names='[]'
+            reason="The release commit of multicz selects nothing: what it contains was tested before"
+          elif [ -z "$since" ]; then
+            names=$(printf '%s\n%s\n' "$all_components" "$all_groups" | to_array)
+            reason="There is nothing to compare with, so everything is selected"
+          elif git diff --name-only "$since" HEAD | grep -Eq "$ALL_PATTERN"; then
+            names=$(printf '%s\n%s\n' "$all_components" "$all_groups" | to_array)
+            reason="A shared file changed (uv.lock, the root pyproject, ci.yml or a local action), so everything is selected"
           else
-            changed=$(uv tool run multicz changed --since "$since" --output json | jq -r '.changed[]')
-            apps=$(comm -12 <(echo "$all_apps") <(echo "$changed" | sort))
-            libs=$(git diff --name-only "$since" HEAD | sed -n 's|^libs/\([^/]*\)/.*|\1|p' | sort -u)
+            reason="multicz changed, with the components that depend on them, and the groups of files that changed"
+            files=$(git diff --name-only "$since" HEAD)
+            components=$(uv tool run multicz changed --since "$since" --output json | jq -c '.changed')
+            groups=$(
+              {
+                grep -Eq '^(docs/|zensical\.toml|assets/)' <<< "$files" && echo docs
+                grep -Eq '^scripts/' <<< "$files" && echo scripts
+                grep -Eq '^\.github/' <<< "$files" && echo workflows
+                grep -Eq '^[^/]+\.toml$' <<< "$files" && echo workspace
+                jq -e 'any(.[]; . == "ansible" or startswith("playbook-"))' <<< "$components" > /dev/null && echo collection
+                true
+              } | to_array
+            )
+            names=$(jq -c -n --argjson a "$components" --argjson b "$groups" '$a + $b')
           fi
 
-          to_json() { jq -R -s -c --arg key "$1" '{($key): (split("\n") | map(select(. != "")))}'; }
-          matrix=$(printf '%s\n' "$apps" | to_json app)
-          libs_json=$(printf '%s\n' "$libs" | to_json lib)
-          {
-            echo "matrix=${matrix}"
-            echo "libs=${libs_json}"
-            echo "has_apps=$([ -n "$apps" ] && echo true || echo false)"
-            echo "has_libs=$([ -n "$libs" ] && echo true || echo false)"
-          } | tee -a "$GITHUB_OUTPUT"
+          changed=$(jq -c -n --argjson names "$names" '{changed: $names}')
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          all=$(printf '%s\n%s\n' "$all_components" "$all_groups" | to_array)
+          jq -n --argjson changed "$names" --argjson all "$all" --arg reason "$reason" --arg since "$since" \
+            '{changed: $changed, all: $all, reason: $reason, since: $since}' > changed.json
+          python3 scripts/format_summary.py changed changed.json
+          printf '%s' "$changed" | python3 scripts/ci_matrix.py >> "$GITHUB_OUTPUT"
 
-  test:
-    name: test (${{ matrix.app }})
+  checks:
+    name: checks (${{ matrix.target }}, ${{ matrix.check }})
     needs: [detect]
-    if: needs.detect.outputs.has_apps == 'true'
+    if: needs.detect.outputs.has_checks == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.detect.outputs.checks) }}
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
+      - uses: ./.github/actions/app-check
         with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}-${{ matrix.app }}
-          python-version: "3.11"
-      # Browser scenarios (tagged @browser) need Chromium; applications without any
-      # skip the download and the system packages.
-      - name: Detect browser scenarios
-        id: browser
-        run: |
-          if grep -rqs --include='*.feature' '@browser' "apps/${{ matrix.app }}/features"; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Install the dependencies
-        if: steps.browser.outputs.needed == 'true'
-        run: uv sync --frozen --package "${{ matrix.app }}" --group dev
-      - name: Cache the Playwright browsers
-        if: steps.browser.outputs.needed == 'true'
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-      - name: Install the browser
-        if: steps.browser.outputs.needed == 'true'
-        run: uv run --no-sync playwright install --with-deps chromium
-      - name: Run pytest with coverage
-        run: |
-          uv run --frozen --package "${{ matrix.app }}" --group dev pytest "apps/${{ matrix.app }}" \
-            --cov="apps/${{ matrix.app }}/src" \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --junitxml=junit.xml \
-            -o junit_family=legacy
-      - name: Summarize tests and coverage
-        if: ${{ !cancelled() }}
-        run: python3 scripts/format_summary.py pytest --junit junit.xml --coverage coverage.xml
-      - name: Run behave scenarios
-        run: uv run --frozen --package "${{ matrix.app }}" --group dev behave "apps/${{ matrix.app }}/features"
-      - name: Upload the artifacts of failed browser scenarios
-        if: ${{ failure() && steps.browser.outputs.needed == 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: browser-artifacts-${{ matrix.app }}
-          path: artifacts/
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
-        with:
-          files: coverage.xml
-          flags: ${{ matrix.app }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          disable_search: true
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v6
-        with:
-          files: junit.xml
-          flags: ${{ matrix.app }}
-          report_type: test_results
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          disable_search: true
+          check: ${{ matrix.check }}
+          path: ${{ matrix.path }}
+          package: ${{ matrix.package }}
+          types: ${{ matrix.types }}
 
-  libs:
-    name: libs (${{ matrix.lib }})
+  ansible:
+    name: ansible (${{ matrix.check }})
     needs: [detect]
-    if: needs.detect.outputs.has_libs == 'true'
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'collection')
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.detect.outputs.libs) }}
+      matrix:
+        check: [syntax, argspec]
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
         with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}-${{ matrix.lib }}
-          python-version: "3.11"
-      - run: uv sync --frozen --package "${{ matrix.lib }}" --group dev
-      # The browser tests of the libraries launch Chromium.
-      - name: Cache the Playwright browsers
-        uses: actions/cache@v6
+          fetch-depth: 0
+      - uses: ./.github/actions/ansible-check
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-      - run: uv run --no-sync playwright install --with-deps chromium
-      - run: uv run --no-sync pytest "libs/${{ matrix.lib }}"
+          check: ${{ matrix.check }}
 
-  scripts:
-    name: scripts
+  docs-build:
+    name: docs-build
+    needs: [detect]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-suffix: ${{ github.job }}
-          python-version: "3.11"
-      - run: uv sync --frozen --only-group dev
-      - run: uv run --no-sync pytest scripts/tests
-
-  bandit:
-    name: bandit
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.11"
-      - name: Run Bandit
-        run: uvx --from 'bandit[toml]' bandit -c pyproject.toml --recursive apps/*/src --format json --output bandit.json
-      - name: Summarize bandit
-        if: ${{ !cancelled() }}
-        run: python3 scripts/format_summary.py bandit bandit.json
-
-  pip-audit:
-    name: pip-audit
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-          python-version: "3.11"
-      - run: uv sync --frozen --all-packages
-      - name: Run pip-audit
+          python-version: "3.13"
+      - run: uv sync --frozen --only-group doc
+      - name: Build the site
         shell: bash
-        # --path takes the site-packages directory, not the environment: given
-        # .venv it audits nothing and exits 0. The two ignored advisories have no
-        # fixed release; they are accepted, with their reasons and a review date,
-        # in osv-scanner.toml.
-        run: |
-          uvx pip-audit --skip-editable \
-            --path "$(uv run --no-sync python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')" \
-            --ignore-vuln PYSEC-2026-1325 \
-            --ignore-vuln PYSEC-2026-4298 2>&1 | tee pip-audit.txt
-      - name: Summarize pip-audit
+        run: uv run --no-sync zensical build --clean 2>&1 | tee docs.txt
+      - name: Summarize docs-build
         if: ${{ !cancelled() }}
         env:
           JOB_STATUS: ${{ job.status }}
-        run: python3 scripts/format_summary.py text pip-audit pip-audit.txt
+        run: python3 scripts/format_summary.py text docs-build docs.txt
 
-  # The binary is pinned to a release and verified against its published
-  # checksum instead of downloading whatever `latest` points to.
-  osv-scanner:
-    name: osv-scanner
+  unit:
+    name: unit (${{ matrix.target }})
+    needs: [detect, checks]
+    # A skipped matrix (nothing selected) does not stop the tests, a failed check does.
+    if: ${{ !failure() && !cancelled() && needs.detect.outputs.has_tests == 'true' }}
     runs-on: ubuntu-24.04
-    env:
-      OSV_SCANNER_VERSION: v2.7.0
-      OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.tests) }}
     steps:
       - uses: actions/checkout@v6
-      - name: Install OSV-Scanner
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/app-check
+        with:
+          check: test
+          path: ${{ matrix.path }}
+          package: ${{ matrix.package }}
+          browser: ${{ matrix.browser }}
+          codecov-token: ${{ matrix.codecov == 'true' && secrets.CODECOV_TOKEN || '' }}
+
+  behave:
+    name: behave (${{ matrix.target }})
+    needs: [detect, unit]
+    if: ${{ !failure() && !cancelled() && needs.detect.outputs.has_behave == 'true' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.behave) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/app-check
+        with:
+          check: behave
+          path: ${{ matrix.path }}
+          package: ${{ matrix.package }}
+
+  # The one check to require: it fails when any job failed or was cancelled, and passes when the others
+  # were skipped because nothing they cover changed.
+  ci-pass:
+    name: ci-pass
+    needs: [detect, commit-messages, multicz, checks, ansible, docs-build, unit, behave]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check the result of every job
+        env:
+          RESULTS: ${{ toJSON(needs) }}
         run: |
-          mkdir -p "$HOME/.local/bin"
-          curl -sSfL \
-            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
-            -o "$HOME/.local/bin/osv-scanner"
-          echo "${OSV_SCANNER_SHA256}  $HOME/.local/bin/osv-scanner" | sha256sum --check
-          chmod +x "$HOME/.local/bin/osv-scanner"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Run OSV-Scanner
-        shell: bash
-        run: osv-scanner scan source --lockfile=uv.lock 2>&1 | tee osv-scanner.txt
-      - name: Summarize osv-scanner
+          set -euo pipefail
+          printf '%s' "$RESULTS" | jq -r 'to_entries[] | "\(.value.result)\t\(.key)"' | sort > results.txt
+          cut -f1 results.txt | uniq -c | sed 's/^ *//' | tee -a results.txt > /dev/null
+          if grep -Eq '^(failure|cancelled)	' results.txt; then
+            echo "::error::a job failed or was cancelled"
+            exit 1
+          fi
+      - name: Summarize ci-pass
         if: ${{ !cancelled() }}
         env:
           JOB_STATUS: ${{ job.status }}
-        run: python3 scripts/format_summary.py text osv-scanner osv-scanner.txt
+        run: python3 scripts/format_summary.py text ci-pass results.txt
 
-  release:
-    name: release
-    needs: [lint, license-headers, multicz, docs, ansible, test, libs, scripts, bandit, pip-audit, osv-scanner]
-    # test and libs are skipped when nothing they cover changed: a skipped gate
-    # does not block the release, a failed one does.
+  release-bump:
+    name: release-bump
+    needs: [ci-pass]
     if: >-
-      !cancelled() && !contains(needs.*.result, 'failure')
+      !cancelled() && needs.ci-pass.result == 'success'
       && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
@@ -413,6 +303,27 @@ jobs:
       no_bumps: ${{ steps.bump.outputs.no_bumps }}
       # Space-separated "<component>=<version>" pairs, one per bumped component.
       bumped: ${{ steps.bump.outputs.bumped }}
+      # The version of each component, empty when it was not bumped.
+      analytics_version: ${{ steps.bump.outputs.analytics_version }}
+      apt_server_version: ${{ steps.bump.outputs.apt_server_version }}
+      asterisk_version: ${{ steps.bump.outputs.asterisk_version }}
+      auth_version: ${{ steps.bump.outputs.auth_version }}
+      backend_version: ${{ steps.bump.outputs.backend_version }}
+      billing_version: ${{ steps.bump.outputs.billing_version }}
+      custom_domain_version: ${{ steps.bump.outputs.custom_domain_version }}
+      frontend_version: ${{ steps.bump.outputs.frontend_version }}
+      internal_version: ${{ steps.bump.outputs.internal_version }}
+      knowledge_version: ${{ steps.bump.outputs.knowledge_version }}
+      mailler_version: ${{ steps.bump.outputs.mailler_version }}
+      mta_sts_version: ${{ steps.bump.outputs.mta_sts_version }}
+      reachy_mini_api_version: ${{ steps.bump.outputs.reachy_mini_api_version }}
+      team_version: ${{ steps.bump.outputs.team_version }}
+      vpn_portal_version: ${{ steps.bump.outputs.vpn_portal_version }}
+      webhooks_version: ${{ steps.bump.outputs.webhooks_version }}
+      ansible_version: ${{ steps.bump.outputs.ansible_version }}
+      playbook_bootstrap_version: ${{ steps.bump.outputs.playbook_bootstrap_version }}
+      playbook_site_version: ${{ steps.bump.outputs.playbook_site_version }}
+      playbook_apps_version: ${{ steps.bump.outputs.playbook_apps_version }}
     steps:
       # The bump commit and the tags are pushed with RELEASE_PAT: a push made
       # with the default token starts no workflow and cannot pass the ruleset.
@@ -465,7 +376,7 @@ jobs:
         run: |
           set -euo pipefail
           ARGS=$(uv tool run multicz config --output json \
-            | jq -r '.components | keys[] | select(startswith("deploy-") | not) | "--component " + .' \
+            | jq -r '.components | keys[] | select((startswith("deploy-") or . == "e2e-support") | not) | "--component " + .' \
             | tr '\n' ' ')
           echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
       - name: Plan release
@@ -478,6 +389,10 @@ jobs:
           PLAN=$(uv tool run multicz bump ${{ steps.components.outputs.args }} --commit --tag --push --sign --output json)
           BUMPED=$(echo "$PLAN" | jq -r '.bumps | to_entries | map("\(.key)=\(.value.next_version)") | join(" ")')
           echo "bumped=${BUMPED}" >> "$GITHUB_OUTPUT"
+          for pair in ${BUMPED}; do
+            component="${pair%%=*}"
+            echo "${component//-/_}_version=${pair#*=}" >> "$GITHUB_OUTPUT"
+          done
       - name: Bump, commit, tag, push
         id: bump_unsigned
         if: steps.gpg.outputs.available != 'true'
@@ -497,13 +412,19 @@ jobs:
           else
             echo "no_bumps=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Summarize the release
+        if: ${{ !cancelled() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          BUMPED: ${{ steps.bump.outputs.bumped }}
+        run: |
+          printf '%s\n' "${BUMPED:-nothing was bumped}" | tr ' ' '\n' > bumped.txt
+          python3 scripts/format_summary.py text release-bump bumped.txt
 
-  github-release:
-    name: github-release
-    needs: [release]
-    if: >-
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && needs.release.result == 'success' && needs.release.outputs.no_bumps == 'false'
+  release-analytics:
+    name: release-analytics
+    needs: [release-bump]
+    if: needs.release-bump.outputs.analytics_version != ''
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -513,51 +434,381 @@ jobs:
           fetch-depth: 0
           ref: main
           token: ${{ secrets.RELEASE_PAT || github.token }}
-      # NOTE: no python-version pin here - multicz needs Python >=3.12.
-      - uses: astral-sh/setup-uv@v7
+      - uses: ./.github/actions/publish-release
         with:
-          enable-cache: true
-          cache-suffix: ${{ github.job }}
-      - name: Install multicz
-        run: uv tool install multicz
-      - name: Create a GitHub release per bumped component
-        env:
-          # A release created with the default token starts no workflow.
-          GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
-          BUMPED: ${{ needs.release.outputs.bumped }}
-        run: |
-          set -euo pipefail
-          for pair in ${BUMPED}; do
-            component="${pair%%=*}"
-            version="${pair#*=}"
-            # The SAME tag multicz created: every component uses
-            # "<component>-v{version}".
-            tag="${component}-v${version}"
-            if gh release view "$tag" > /dev/null 2>&1; then
-              echo "Release ${tag} already exists, skipping"
-              continue
-            fi
-            notes=$(uv tool run multicz release-notes --tag "$tag")
-            assets=()
-            if [ "$component" = "ansible" ]; then
-              # Attach the collection tarball built from the tagged sources.
-              git checkout --detach "$tag"
-              uvx --from ansible-core ansible-galaxy collection build ansible --output-path dist
-              git checkout --detach main
-              assets=(dist/*.tar.gz)
-            fi
-            gh release create "$tag" --title "$tag" --notes "$notes" --verify-tag "${assets[@]}"
-          done
+          component: analytics
+          version: ${{ needs.release-bump.outputs.analytics_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-apt-server:
+    name: release-apt-server
+    needs: [release-bump]
+    if: needs.release-bump.outputs.apt_server_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: apt-server
+          version: ${{ needs.release-bump.outputs.apt_server_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-asterisk:
+    name: release-asterisk
+    needs: [release-bump]
+    if: needs.release-bump.outputs.asterisk_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: asterisk
+          version: ${{ needs.release-bump.outputs.asterisk_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-auth:
+    name: release-auth
+    needs: [release-bump]
+    if: needs.release-bump.outputs.auth_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: auth
+          version: ${{ needs.release-bump.outputs.auth_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-backend:
+    name: release-backend
+    needs: [release-bump]
+    if: needs.release-bump.outputs.backend_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: backend
+          version: ${{ needs.release-bump.outputs.backend_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-billing:
+    name: release-billing
+    needs: [release-bump]
+    if: needs.release-bump.outputs.billing_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: billing
+          version: ${{ needs.release-bump.outputs.billing_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-custom-domain:
+    name: release-custom-domain
+    needs: [release-bump]
+    if: needs.release-bump.outputs.custom_domain_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: custom-domain
+          version: ${{ needs.release-bump.outputs.custom_domain_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-frontend:
+    name: release-frontend
+    needs: [release-bump]
+    if: needs.release-bump.outputs.frontend_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: frontend
+          version: ${{ needs.release-bump.outputs.frontend_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-internal:
+    name: release-internal
+    needs: [release-bump]
+    if: needs.release-bump.outputs.internal_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: internal
+          version: ${{ needs.release-bump.outputs.internal_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-knowledge:
+    name: release-knowledge
+    needs: [release-bump]
+    if: needs.release-bump.outputs.knowledge_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: knowledge
+          version: ${{ needs.release-bump.outputs.knowledge_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-mailler:
+    name: release-mailler
+    needs: [release-bump]
+    if: needs.release-bump.outputs.mailler_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: mailler
+          version: ${{ needs.release-bump.outputs.mailler_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-mta-sts:
+    name: release-mta-sts
+    needs: [release-bump]
+    if: needs.release-bump.outputs.mta_sts_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: mta-sts
+          version: ${{ needs.release-bump.outputs.mta_sts_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-reachy-mini-api:
+    name: release-reachy-mini-api
+    needs: [release-bump]
+    if: needs.release-bump.outputs.reachy_mini_api_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: reachy-mini-api
+          version: ${{ needs.release-bump.outputs.reachy_mini_api_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-team:
+    name: release-team
+    needs: [release-bump]
+    if: needs.release-bump.outputs.team_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: team
+          version: ${{ needs.release-bump.outputs.team_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-vpn-portal:
+    name: release-vpn-portal
+    needs: [release-bump]
+    if: needs.release-bump.outputs.vpn_portal_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: vpn-portal
+          version: ${{ needs.release-bump.outputs.vpn_portal_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-webhooks:
+    name: release-webhooks
+    needs: [release-bump]
+    if: needs.release-bump.outputs.webhooks_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: webhooks
+          version: ${{ needs.release-bump.outputs.webhooks_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-ansible:
+    name: release-ansible
+    needs: [release-bump]
+    if: needs.release-bump.outputs.ansible_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: ansible
+          version: ${{ needs.release-bump.outputs.ansible_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-playbook-bootstrap:
+    name: release-playbook-bootstrap
+    needs: [release-bump]
+    if: needs.release-bump.outputs.playbook_bootstrap_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: playbook-bootstrap
+          version: ${{ needs.release-bump.outputs.playbook_bootstrap_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-playbook-site:
+    name: release-playbook-site
+    needs: [release-bump]
+    if: needs.release-bump.outputs.playbook_site_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: playbook-site
+          version: ${{ needs.release-bump.outputs.playbook_site_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+
+  release-playbook-apps:
+    name: release-playbook-apps
+    needs: [release-bump]
+    if: needs.release-bump.outputs.playbook_apps_version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+      - uses: ./.github/actions/publish-release
+        with:
+          component: playbook-apps
+          version: ${{ needs.release-bump.outputs.playbook_apps_version }}
+          token: ${{ secrets.RELEASE_PAT || github.token }}
 
   docs-deploy:
     name: docs-deploy
-    needs: [release, github-release]
+    needs: [release-bump]
     if: >-
       github.event_name == 'push'
       && github.ref == 'refs/heads/main'
-      && needs.release.result == 'success'
-      && needs.github-release.result == 'success'
-      && needs.release.outputs.no_bumps == 'false'
+      && needs.release-bump.result == 'success'
+      && needs.release-bump.outputs.no_bumps == 'false'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
@@ -580,7 +831,13 @@ jobs:
       - name: Install Zensical (doc group)
         run: uv sync --frozen --only-group doc
       - name: Build site
-        run: uv run --no-sync zensical build --clean
+        shell: bash
+        run: uv run --no-sync zensical build --clean 2>&1 | tee docs.txt
+      - name: Summarize docs-deploy
+        if: ${{ !cancelled() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: python3 scripts/format_summary.py text docs-deploy docs.txt
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site

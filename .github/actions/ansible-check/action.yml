@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: ansible-check
+description: >-
+  Run one check against the Ansible collection: `syntax` (the playbooks parse) or `argspec` (every role has a
+  valid argument specification). The collection is installed from ./ansible at the version the release will
+  publish. The calling job must have run actions/checkout with fetch-depth 0 first.
+
+inputs:
+  check:
+    description: syntax | argspec
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/bump-preview
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: ${{ github.job }}
+        python-version: "3.13"
+    - name: Install the dependencies
+      shell: bash
+      run: uv sync --frozen --only-group dev
+    - name: Install the collection from ./ansible
+      shell: bash
+      env:
+        ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
+      run: uv run --no-sync ansible-galaxy collection install ./ansible -p .collections 2>&1 | tee ansible.txt
+    - name: Syntax-check the playbooks
+      if: inputs.check == 'syntax'
+      shell: bash
+      env:
+        ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
+      run: |
+        {
+          for playbook in bootstrap site apps; do
+            uv run --no-sync ansible-playbook --syntax-check -i localhost, "goabonga.website.${playbook}"
+          done
+        } 2>&1 | tee -a ansible.txt
+    - name: Argument-spec smoke test
+      if: inputs.check == 'argspec'
+      shell: bash
+      env:
+        ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.collections
+      run: |
+        {
+          for dir in ansible/roles/*/; do
+            role="$(basename "$dir")"
+            uv run --no-sync ansible-doc -t role --json "goabonga.website.${role}" 2>/dev/null \
+              | python3 -c "import json, sys; d = json.load(sys.stdin)['goabonga.website.${role}']; assert d['entry_points']['main']['options'] is not None" \
+              || { echo "::error::argument spec missing or invalid for role ${role}"; exit 1; }
+            echo "argument spec of ${role}: ok"
+          done
+        } 2>&1 | tee -a ansible.txt
+    - name: Summarize ansible
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
+        CHECK: ${{ inputs.check }}
+      run: python3 scripts/format_summary.py text "ansible-${CHECK}" ansible.txt

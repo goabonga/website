@@ -97,7 +97,7 @@ Not configured, by choice or because there is nothing to read it from:
 `deploy-production` is the only component that is not a library. It depends on
 all the others, so a release of any of them makes production owe a
 deployment, and only the deploy workflows bump it, after a successful apply:
-the release job of `ci` leaves every `deploy-*` component out. The
+the `release-bump` job of `ci` leaves every `deploy-*` component out. The
 `upstream-notes` plugin of multicz writes the commits of the applications, of
 the collection and of the playbooks that a deployment shipped into its
 changelog and release notes.

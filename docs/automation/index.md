@@ -47,4 +47,5 @@ environment (see [Production deployment](../ansible/08-production-deployment.md)
    must follow, locally and in `ci`.
 5. [CI job summaries](05-ci-summaries.md) - the Markdown summary each tool
    job of `ci` writes from its report.
-
+6. [The ci pipeline](06-ci-pipeline.md) - how the jobs are laid out, which ones
+   run for a change, and how a release is cut.
